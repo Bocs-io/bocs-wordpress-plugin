@@ -162,4 +162,84 @@ class Contact {
 		}
 	}
 
+    public function scheduled_sync_bocs_to_woocommerce(){
+
+        if( false === as_has_scheduled_action([$this, 'sync_from_bocs']) ) {
+            as_schedule_recurring_action( strtotime('tomorrow'), DAY_IN_SECONDS, [$this, 'sync_from_bocs'], array(), '', true );
+        }
+    }
+
+    public function sync_from_bocs() {
+
+        // get the list of contacts
+        $list_url = $this->url.'/contacts';
+
+        $params = array(
+            'headers' => $this->headers
+        );
+
+        $total_contacts = 25;
+
+        while( $total_contacts == 25 ){
+
+            $contacts = wp_remote_get($list_url, $params);
+
+            $total_contacts = 0;
+
+            if (isset( $contacts['body'] )) {
+                $contacts = json_decode($contacts['body'], 2);
+
+                if (isset( $contacts['nextPageLink'] )) {
+                    $list_url = $contacts['nextPageLink'];
+                }
+
+                if (isset( $contacts['data'])) {
+                    $contacts = $contacts['data'];
+
+                    $total_contacts = count($contacts);
+                    if( $total_contacts > 0 ) {
+
+                        foreach ($contacts as $contact) {
+                            // check if the contact already exists on the store
+                            $contact_id = $contact['contactId'];
+                            $bocs_last_update =  $contact['updatedAt'];
+                            $wp_users = new WP_User_Query(
+                                array(
+                                    'meta_key' => 'bocs_contact_id',
+                                    'meta_value' => $contact_id,
+                                    'meta_compare' => '='
+                                )
+                            );
+
+                            if( $wp_users->get_total() > 0 ) {
+                                // check the modified date
+                                foreach ( $wp_users->get_results() as $user ){
+
+                                    $wp_last_update = get_user_meta( $user->ID, 'last_update' );
+                                    $wp_last_update = intval($wp_last_update);
+
+
+                                }
+                            } else {
+                                // look on the user's email address
+
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        // loop each of the contact
+
+        // check if it exists or not based on the user meta
+
+        // add if not exists
+
+        // update if it does exist
+
+        // update only time update is greater than in woocommerce
+    }
+
 }

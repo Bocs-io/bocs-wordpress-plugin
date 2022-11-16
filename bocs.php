@@ -3,14 +3,14 @@
 /**
  *
  * @link              https://bocs.io
- * @since             0.9.13
+ * @since             0.9.15
  * @package           bocs
  *
  * @wordpress-plugin
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.9.13
+ * Version:           0.9.15
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -22,7 +22,7 @@ if (!defined('WPINC') || !defined('ABSPATH')) {
 	die;
 }
 
-define('BOCS_VERSION', '0.9.13');
+define('BOCS_VERSION', '0.9.15');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 

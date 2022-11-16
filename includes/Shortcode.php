@@ -32,7 +32,7 @@ class Shortcode {
      * Central location to create all shortcodes.
      */
     public function bocs_shortcodes_init() {
-        add_shortcode( 'bocs', array( $this, 'bocs_shortcode') );
+        add_shortcode( 'bocs', [$this, 'bocs_shortcode'] );
     }
 
 }

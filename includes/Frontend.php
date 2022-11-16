@@ -29,8 +29,7 @@ class Frontend {
 	public function enqueue_scripts()
 	{
 
-		wp_register_script( $this->option_name.'_service', 'https://mypik-widget-build.s3.ap-southeast-2.amazonaws.com/mypik.js', array('jquery'), '1.0', true );
-		wp_enqueue_script( $this->option_name.'_service');
+		wp_enqueue_script( 'bocs', 'https://mypik-widget-build.s3.ap-southeast-2.amazonaws.com/mypik.js', NULL, BOCS_VERSION, true);
 
 	}
 

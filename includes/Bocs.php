@@ -159,9 +159,10 @@ class Bocs
         $this->loader->add_action('user_register', $contact, 'sync_add_contact');
         // syncs the Update User to Bocs
         $this->loader->add_action('edit_user_profile_update', $contact, 'sync_update_contact');
-        // sybcs the delete user to Bocs
+        // syncs the delete user to Bocs
         $this->loader->add_action('delete_user', $contact, 'sync_delete_contact');
 
+        $contact->sync_from_bocs();
 	}
 
 	/**
