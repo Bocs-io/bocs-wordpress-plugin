@@ -162,7 +162,7 @@ class Bocs
         // syncs the delete user to Bocs
         $this->loader->add_action('delete_user', $contact, 'sync_delete_contact');
 
-        $contact->sync_from_bocs();
+
 	}
 
 	/**

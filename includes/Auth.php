@@ -225,7 +225,6 @@ class Auth {
 			/** The Token is decoded now validate the iss */
 			if ($token->iss != get_bloginfo('url')) {
 				/** The iss do not match, return error */
-				error_log('-------- LINE 227 ---------');
 				return new WP_Error(
 					'bocs_auth_bad_iss',
 					__('The iss do not match with this server', 'wp-api-bocs-auth'),
