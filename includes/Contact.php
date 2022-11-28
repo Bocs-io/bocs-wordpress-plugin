@@ -24,6 +24,12 @@ class Contact {
 	 */
 	public function sync_add_contact( $user_id ){
 
+		// check first if the bocs contact id already exists
+		$contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
+
+		// do not proceed to sync to bocs, this maybe a sync from bocs to wodpress
+		if ( !empty( $contact_id ) ) return;
+
 		$post_to = BOCS_API_URL.'/contacts';
 
 		$params = $this->get_params($user_id);
@@ -32,7 +38,7 @@ class Contact {
 
 		try {
 			$return = wp_remote_post( $post_to, $params );
-			$contact_id = json_decode($return['body'], 2)['data']['contact_id'];
+			$contact_id = json_decode($return['body'], 2)['data']['contactId'];
 
 			// we will add this to the user meta
 			if( !empty($contact_id) ){
@@ -88,38 +94,40 @@ class Contact {
 
 			if (!empty($user)) {
 				$billing = array(
-					//'first_name' => $_POST['billing_first_name'] ?? get_user_meta($user_id, 'billing_first_name', true),
-					//'last_name' => $_POST['billing_last_name'] ?? get_user_meta($user_id, 'billing_last_name', true),
-					//'company' => $_POST['billing_company'] ?? get_user_meta($user_id, 'billing_company', true),
-					//'email' => $_POST['billing_email'] ?? get_user_meta($user_id, 'billing_email', true),
-					//'phone' => $_POST['billing_phone'] ?? get_user_meta($user_id, 'billing_phone', true),
+					'firstName' => $_POST['billing_first_name'] ?? get_user_meta($user_id, 'billing_first_name', true),
+					'lastName' => $_POST['billing_last_name'] ?? get_user_meta($user_id, 'billing_last_name', true),
+					'company' => $_POST['billing_company'] ?? get_user_meta($user_id, 'billing_company', true),
+					'email' => $_POST['billing_email'] ?? get_user_meta($user_id, 'billing_email', true),
+					'phone' => $_POST['billing_phone'] ?? get_user_meta($user_id, 'billing_phone', true),
 					'country' => $_POST['billing_country'] ?? get_user_meta($user_id, 'billing_country', true),
 					'address1' => $_POST['billing_address_1'] ?? get_user_meta($user_id, 'billing_address_1', true),
 					'address2' => $_POST['billing_address_2'] ?? get_user_meta($user_id, 'billing_address_2', true),
 					'city' => $_POST['billing_city'] ?? get_user_meta($user_id, 'billing_city', true),
 					'state' => $_POST['billing_state'] ?? get_user_meta($user_id, 'billing_state', true),
-					'postcode' => $_POST['billing_postcode'] ?? get_user_meta($user_id, 'billing_postcode', true)
+					'postcode' => $_POST['billing_postcode'] ?? get_user_meta($user_id, 'billing_postcode', true),
+					'default' => true
 				);
 
 				$shipping = array(
-					//'first_name' => $_POST['shipping_first_name'] ?? get_user_meta($user_id, 'shipping_first_name', true),
-					//'last_name' => $_POST['shipping_last_name'] ?? get_user_meta($user_id, 'shipping_last_name', true),
-					//'company' => $_POST['shipping_company'] ?? get_user_meta($user_id, 'shipping_company', true),
-					// 'phone' => $_POST['shipping_phone'] ?? get_user_meta($user_id, 'shipping_phone', true),
+					'firstName' => $_POST['shipping_first_name'] ?? get_user_meta($user_id, 'shipping_first_name', true),
+					'lastName' => $_POST['shipping_last_name'] ?? get_user_meta($user_id, 'shipping_last_name', true),
+					'company' => $_POST['shipping_company'] ?? get_user_meta($user_id, 'shipping_company', true),
+					'phone' => $_POST['shipping_phone'] ?? get_user_meta($user_id, 'shipping_phone', true),
 					'country' => $_POST['shipping_country'] ?? get_user_meta($user_id, 'shipping_country', true),
 					'address1' => $_POST['shipping_address_1'] ?? get_user_meta($user_id, 'shipping_address_1', true),
 					'address2' => $_POST['shipping_address_2'] ?? get_user_meta($user_id, 'shipping_address_2', true),
 					'city' => $_POST['shipping_city'] ?? get_user_meta($user_id, 'shipping_city', true),
 					'state' => $_POST['shipping_state'] ?? get_user_meta($user_id, 'shipping_state', true),
-					'postcode' => $_POST['shipping_postcode'] ?? get_user_meta($user_id, 'shipping_postcode', true)
+					'postcode' => $_POST['shipping_postcode'] ?? get_user_meta($user_id, 'shipping_postcode', true),
+					'default' => true
 				);
 
 				$body = array(
 					"email" => $user->user_email,
-					"first_name" => $_POST['first_name'] ?? $user->first_name,
-					"last_name" => $_POST['last_name'] ?? $user->last_name,
-					"billingAddress" => $billing,
-					"shippingAddress" => $shipping
+					"firstName" => $_POST['first_name'] ?? $user->first_name,
+					"lastName" => $_POST['last_name'] ?? $user->last_name,
+					"billing" => $billing,
+					"shipping" => $shipping
 				);
 
 				return array(
@@ -169,6 +177,7 @@ class Contact {
 		}
 	}
 
+
 	public function sync_from_bocs() {
 
 		// get the list of contacts
@@ -203,6 +212,8 @@ class Contact {
 							// check if the contact already exists on the store
 							$contact_id = $contact['contactId'];
 							$bocs_last_update =  $contact['updatedAt'];
+							$bocs_last_update = strtotime($bocs_last_update);
+
 							$wp_users = new WP_User_Query(
 								array(
 									'meta_key' => 'bocs_contact_id',
@@ -218,11 +229,45 @@ class Contact {
 									$wp_last_update = get_user_meta( $user->ID, 'last_update' );
 									$wp_last_update = intval($wp_last_update);
 
-
+									// if bocs modified date is latest then update wordpress site
+									if( $bocs_last_update > $wp_last_update ) {
+										update_user_meta( $user->ID, 'first_name', $contact['firstName'] );
+										update_user_meta( $user->ID, 'last_name', $contact['lastName'] );
+										if ($contact['email'] !== $user->email){
+											wp_update_user( array( 'ID' => $user->ID, 'user_email' => $contact['email'] ) );
+										}
+										break;
+									}
 								}
 							} else {
 								// look on the user's email address
 
+								$wp_user = get_user_by_email($contact['email']);
+
+								if ( $wp_user ) {
+									$wp_last_update = get_user_meta( $wp_user->ID, 'last_update' );
+									if( $bocs_last_update > $wp_last_update ) {
+										update_user_meta( $wp_user->ID, 'first_name', $contact['firstName'] );
+										update_user_meta( $wp_user->ID, 'last_name', $contact['lastName'] );
+									}
+								} else {
+
+									$meta_input = array('bocs_contact_id' => $contact['contactId']);
+
+									// adds the bocs user
+									$data = array(
+										'user_pass' => rand(100000,999999999999),
+										'user_login' => $contact['email'],
+										'user_nicename' => $contact['email'],
+										'user_email' => $contact['email'],
+										'display_name' => $contact['firstName'] . " " . $contact['lastName'],
+										'nickname' => $contact['firstName'],
+										'first_name' => $contact['firstName'],
+										'last_name' => $contact['lastName'],
+										'meta_input' => $meta_input
+									);
+									wp_insert_user($data);
+								}
 							}
 						}
 					}
@@ -230,16 +275,6 @@ class Contact {
 
 			}
 		}
-
-		// loop each of the contact
-
-		// check if it exists or not based on the user meta
-
-		// add if not exists
-
-		// update if it does exist
-
-		// update only time update is greater than in woocommerce
 	}
 
 }
