@@ -34,10 +34,15 @@ class Contact {
 
 		$params = $this->get_params($user_id);
 
+        // filter the address, if there is no address it won't be added to Bocs
+        $body = json_decode($params['body'], true);
+        if (trim($body['shipping']['address1']) == "") return false;
+
 		// then we will create a contact on the Bocs end
 
 		try {
 			$return = wp_remote_post( $post_to, $params );
+            error_log( $return['body'] );
 			$contact_id = json_decode($return['body'], 2)['data']['contactId'];
 
 			// we will add this to the user meta
@@ -108,6 +113,10 @@ class Contact {
 					'default' => true
 				);
 
+                $billing['firstName'] = empty( trim($billing['firstName']) ) ? $user->first_name : trim($billing['firstName']);
+
+                $billing['lastName'] = empty( trim($billing['lastName']) ) ? $user->last_name : trim($billing['lastName']);
+
 				$shipping = array(
 					'firstName' => $_POST['shipping_first_name'] ?? get_user_meta($user_id, 'shipping_first_name', true),
 					'lastName' => $_POST['shipping_last_name'] ?? get_user_meta($user_id, 'shipping_last_name', true),
@@ -121,6 +130,19 @@ class Contact {
 					'postcode' => $_POST['shipping_postcode'] ?? get_user_meta($user_id, 'shipping_postcode', true),
 					'default' => true
 				);
+
+                $shipping['firstName'] = empty( trim($shipping['firstName']) ) ? $user->first_name : trim($shipping['firstName']);
+
+                $shipping['lastName'] = empty( trim($shipping['lastName']) ) ? $user->last_name : trim($shipping['lastName']);
+
+                if( empty( $shipping['address1'] ) ) $shipping['address1'] = $billing['address1'];
+                if( empty( $shipping['address2'] ) ) $shipping['address2'] = $billing['address2'];
+                if( empty( $shipping['company'] ) ) $shipping['company'] = $billing['company'];
+                if( empty( $shipping['phone'] ) ) $shipping['phone'] = $billing['phone'];
+                if( empty( $shipping['country'] ) ) $shipping['country'] = $billing['country'];
+                if( empty( $shipping['city'] ) ) $shipping['city'] = $billing['city'];
+                if( empty( $shipping['state'] ) ) $shipping['city'] = $billing['state'];
+                if( empty( $shipping['postcode'] ) ) $shipping['city'] = $billing['postcode'];
 
 				$body = array(
 					"email" => $user->user_email,
