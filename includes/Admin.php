@@ -3,10 +3,16 @@
 class Admin
 {
 
+    /**
+     * @return void
+     */
 	public function bocs_add_settings_page() {
 		add_options_page( 'Bocs', 'Bocs', 'manage_options', 'bocs-plugin', [$this, 'bocs_render_plugin_settings_page'] );
 	}
 
+    /**
+     * @return void
+     */
 	public function bocs_render_plugin_settings_page() {
 		?>
 		<h2>Bocs Settings</h2>
@@ -20,7 +26,9 @@ class Admin
 	}
 
 	public function bocs_register_settings() {
+
 		register_setting( 'bocs_plugin_options', 'bocs_plugin_options', [$this, 'bocs_plugin_options_validate'] );
+
 		add_settings_section( 'api_settings', 'API Settings', [$this, 'bocs_plugin_section_text'], 'bocs_plugin' );
 
 		// value for the API Key
@@ -29,8 +37,14 @@ class Admin
 		// enable/disable the sync from wordpress to bocs
 		add_settings_field('bocs_plugin_setting_sync_contacts_to_bocs', 'Sync Contacts to Bocs', [$this, 'bocs_plugin_setting_sync_contacts_to_bocs'], 'bocs_plugin', 'api_settings' );
 
+        // enable/disable the daily auto sync from wordpress to bocs
+        add_settings_field('bocs_plugin_setting_sync_daily_contacts_to_bocs', 'Daily Autosync Contacts to Bocs', [$this, 'bocs_plugin_setting_sync_daily_contacts_to_bocs'], 'bocs_plugin', 'api_settings' );
+
 		// enable/disable the sync from wordpress to bocs
 		add_settings_field('bocs_plugin_setting_sync_contacts_from_bocs', 'Sync Contacts From Bocs', [$this, 'bocs_plugin_setting_sync_contacts_from_bocs'], 'bocs_plugin', 'api_settings' );
+
+        // enable/disable the daily auto sync from wordpress to bocs
+        add_settings_field('bocs_plugin_setting_sync_daily_contacts_from_bocs', 'Daily Autosync Contacts From Bocs', [$this, 'bocs_plugin_setting_sync_daily_contacts_from_bocs'], 'bocs_plugin', 'api_settings' );
 
 	}
 
@@ -59,20 +73,41 @@ class Admin
 
 		$options = get_option( 'bocs_plugin_options' );
 
-		$options['sync_contact_to_bocs'] = $options['sync_contact_to_bocs'] ?? 0;
+		$options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-		$html = '<input type="radio" name="bocs_plugin_options[sync_contact_to_bocs]" value="1"';
+		$html = '<input id="bocs_plugin_setting_sync_contacts_to_bocs" type="radio" name="bocs_plugin_options[sync_contacts_to_bocs]" value="1"';
 
-		$html .= $options['sync_contact_to_bocs'] == 1 ? ' checked' : '';
+		$html .= $options['sync_contacts_to_bocs'] == 1 ? ' checked' : '';
 
-		$html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input type="radio" name="bocs_plugin_options[sync_contact_to_bocs]" value="0"';
+		$html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input  id="bocs_plugin_setting_sync_contacts_to_bocs_no"  type="radio" name="bocs_plugin_options[sync_contacts_to_bocs]" value="0"';
 
-		$html .= $options['sync_contact_to_bocs'] != 1 ? ' checked' : '';
+		$html .= $options['sync_contacts_to_bocs'] != 1 ? ' checked' : '';
 
 		$html .= '><label for="0">No</label>';
 
 		echo $html;
 	}
+
+    public function bocs_plugin_setting_sync_daily_contacts_to_bocs(){
+
+        $options = get_option( 'bocs_plugin_options' );
+
+        // Daily Autosync
+
+        $options['sync_daily_contacts_to_bocs'] = $options['sync_daily_contacts_to_bocs'] ?? 0;
+
+        $html = '<input id="bocs_plugin_setting_sync_daily_contacts_to_bocs" type="radio" name="bocs_plugin_options[sync_daily_contacts_to_bocs]" value="1"';
+
+        $html .= $options['sync_daily_contacts_to_bocs'] == 1 ? ' checked' : '';
+
+        $html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input  id="bocs_plugin_setting_sync_daily_contacts_to_bocs_no"  type="radio" name="bocs_plugin_options[sync_daily_contacts_to_bocs]" value="0"';
+
+        $html .= $options['sync_daily_contacts_to_bocs'] != 1 ? ' checked' : '';
+
+        $html .= '><label for="0">No</label>';
+
+        echo $html;
+    }
 
 	/**
 	 * Option for enabling/disabling the sync from wordpress to bocs
@@ -83,30 +118,56 @@ class Admin
 
 		$options = get_option( 'bocs_plugin_options' );
 
-		$options['sync_contact_from_bocs'] = $options['sync_contact_from_bocs'] ?? 0;
+		$options['sync_contacts_from_bocs'] = $options['sync_contacts_from_bocs'] ?? 0;
 
-		$html = '<input type="radio" name="bocs_plugin_options[sync_contact_from_bocs]" value="1"';
+		$html = '<input id="bocs_plugin_setting_sync_contacts_from_bocs" type="radio" name="bocs_plugin_options[sync_contacts_from_bocs]" value="1"';
 
-		$html .= $options['sync_contact_from_bocs'] == 1 ? ' checked' : '';
+		$html .= $options['sync_contacts_from_bocs'] == 1 ? ' checked' : '';
 
-		$html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input type="radio" name="bocs_plugin_options[sync_contact_from_bocs]" value="0"';
+		$html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input id="bocs_plugin_setting_sync_contacts_from_bocs_no" type="radio" name="bocs_plugin_options[sync_contacts_from_bocs]" value="0"';
 
-		$html .= $options['sync_contact_from_bocs'] != 1 ? ' checked' : '';
+		$html .= $options['sync_contacts_from_bocs'] != 1 ? ' checked' : '';
 
 		$html .= '><label for="0">No</label>';
 
 		echo $html;
 	}
 
+    public function bocs_plugin_setting_sync_daily_contacts_from_bocs(){
+
+        $options = get_option( 'bocs_plugin_options' );
+
+        $options['sync_daily_contacts_from_bocs'] = $options['sync_daily_contacts_from_bocs'] ?? 0;
+
+        $html = '<input id="bocs_plugin_setting_sync_daily_contacts_from_bocs" type="radio" name="bocs_plugin_options[sync_daily_contacts_from_bocs]" value="1"';
+
+        $html .= $options['sync_daily_contacts_from_bocs'] == 1 ? ' checked' : '';
+
+        $html .= '><label for="1">Yes</label>&nbsp;&nbsp;&nbsp;<input id="bocs_plugin_setting_sync_daily_contacts_from_bocs_no" type="radio" name="bocs_plugin_options[sync_daily_contacts_from_bocs]" value="0"';
+
+        $html .= $options['sync_daily_contacts_from_bocs'] != 1 ? ' checked' : '';
+
+        $html .= '><label for="0">No</label>';
+
+        echo $html;
+    }
+
     /**
      * @param $input
      * @return array
      */
 	public function bocs_plugin_options_validate( $input ) {
-		$newinput['api_key'] = trim( $input['api_key'] );
+
+        $newinput['api_key'] = trim( $input['api_key'] );
 		if ( ! preg_match( '/^[-a-z0-9]{36}$/i', $newinput['api_key'] ) ) {
 			$newinput['api_key'] = '';
 		}
+
+        $newinput['sync_contacts_to_bocs'] = trim( $input['sync_contacts_to_bocs'] ) == '1' ? 1 : 0;
+        $newinput['sync_contacts_from_bocs'] = trim( $input['sync_contacts_from_bocs'] ) == '1' ? 1 : 0;
+
+        $newinput['sync_daily_contacts_to_bocs'] = trim( $input['sync_daily_contacts_to_bocs'] ) == '1' ? 1 : 0;
+        $newinput['sync_daily_contacts_from_bocs'] = trim( $input['sync_daily_contacts_from_bocs'] ) == '1' ? 1 : 0;
 
 		return $newinput;
 	}

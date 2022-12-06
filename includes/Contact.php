@@ -1,5 +1,8 @@
 <?php
 
+/**
+ *
+ */
 class Contact {
 
 	private $api_token;
