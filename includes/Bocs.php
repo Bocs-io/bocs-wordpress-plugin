@@ -96,6 +96,8 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Shortcode.php';
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
 
+        // require_once plugin_dir_path(dirname(__FILE__)).'libraries/action-scheduler/action-scheduler.php';
+
 		$this->loader = new Loader();
 
 	}
@@ -123,7 +125,7 @@ class Bocs
 		$plugin_admin = new Admin();
 
 		// $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles', 10);
-		// $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts', 10);
+		$this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts', 10);
 
 		// Actions
 		$this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
