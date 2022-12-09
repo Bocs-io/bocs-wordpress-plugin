@@ -149,6 +149,10 @@ class Admin
         $newinput['sync_daily_contacts_to_bocs'] = trim( $input['sync_daily_contacts_to_bocs'] ) == '1' ? 1 : 0;
         $newinput['sync_daily_contacts_from_bocs'] = trim( $input['sync_daily_contacts_from_bocs'] ) == '1' ? 1 : 0;
 
+        require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
+        $contact = new Contact();
+        $contact->sync_to_bocs();
+
 		return $newinput;
 	}
 

@@ -7,7 +7,7 @@ class Contact {
 
 	private $api_token;
 	private $headers;
-    private $per_page;
+	private $per_page;
 
 	public function __construct()
 	{
@@ -17,7 +17,7 @@ class Contact {
 			'Authorization' => $this->api_token,
 			'Content-Type' => 'application/json'
 		);
-        $this->per_page = 10;
+		$this->per_page = 10;
 	}
 
 	/**
@@ -29,42 +29,49 @@ class Contact {
 	 */
 	public function sync_add_contact( $user_id ){
 
-        $options = get_option( 'bocs_plugin_options' );
-        $options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
+		$options = get_option( 'bocs_plugin_options' );
+		$options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-        // no sync happening if it was disabled
-        if ( $options['sync_contacts_to_bocs'] ) return false;
+		// no sync happening if it was disabled
+		if ( $options['sync_contacts_to_bocs'] == 0 ) return false;
 
 		// check first if the bocs contact id already exists
 		$contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
 
 		// do not proceed to sync to bocs, this maybe a sync from bocs to wodpress
+        error_log($contact_id);
 		if ( !empty( $contact_id ) ) return;
 
 		$post_to = BOCS_API_URL.'/contacts';
 
 		$params = $this->get_params($user_id);
 
-        // filter the address, if there is no address it won't be added to Bocs
-        //$body = json_decode($params['body'], true);
-        //if (trim($body['shipping']['address1']) == "") return false;
+		// filter the address, if there is no address it won't be added to Bocs
+		//$body = json_decode($params['body'], true);
+		//if (trim($body['shipping']['address1']) == "") return false;
 
 		// then we will create a contact on the Bocs end
 
 		try {
+            error_log( $post_to );
+            error_log(print_r($params, true));
 			$return = wp_remote_post( $post_to, $params );
-            error_log( $return['body'] );
+            error_log(print_r($return, true));
 			$contact_id = json_decode($return['body'], 2)['data']['contactId'];
 
 			// we will add this to the user meta
 			if( !empty($contact_id) ){
 				delete_user_meta($user_id, 'bocs_contact_id');
 				update_user_meta( $user_id, 'bocs_contact_id', $contact_id );
+                return $contact_id;
 			}
 
 		} catch (Exception $e) {
 			add_settings_error(BOCS_NAME, 'sync_add_contact', $e->getMessage(), 'error');
+            error_log(print_r($e->getMessage(), true));
 		}
+
+        return false;
 
 	}
 
@@ -77,11 +84,11 @@ class Contact {
 	 */
 	public function sync_update_contact( $user_id ){
 
-        $options = get_option( 'bocs_plugin_options' );
-        $options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
+		$options = get_option( 'bocs_plugin_options' );
+		$options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-        // no sync happening if it was disabled
-        if ( $options['sync_contacts_to_bocs'] ) return false;
+		// no sync happening if it was disabled
+		if ( $options['sync_contacts_to_bocs'] ) return false;
 
 		// get the contact id
 		$contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
@@ -93,9 +100,9 @@ class Contact {
 			$params = $this->get_params($user_id);
 			$params['method'] = "PUT";
 
-            // filter the address, if there is no address it won't be added to Bocs
-            // $body = json_decode($params['body'], true);
-            // if (trim($body['shipping']['address1']) == "") return false;
+			// filter the address, if there is no address it won't be added to Bocs
+			// $body = json_decode($params['body'], true);
+			// if (trim($body['shipping']['address1']) == "") return false;
 
 			try {
 				$result = wp_remote_post( $put_to, $params );
@@ -134,9 +141,9 @@ class Contact {
 					'default' => true
 				);
 
-                $billing['firstName'] = empty( trim($billing['firstName']) ) ? $user->first_name : trim($billing['firstName']);
+				$billing['firstName'] = empty( trim($billing['firstName']) ) ? $user->first_name : trim($billing['firstName']);
 
-                $billing['lastName'] = empty( trim($billing['lastName']) ) ? $user->last_name : trim($billing['lastName']);
+				$billing['lastName'] = empty( trim($billing['lastName']) ) ? $user->last_name : trim($billing['lastName']);
 
 				$shipping = array(
 					'firstName' => $_POST['shipping_first_name'] ?? get_user_meta($user_id, 'shipping_first_name', true),
@@ -152,35 +159,35 @@ class Contact {
 					'default' => true
 				);
 
-                $shipping['firstName'] = empty( trim($shipping['firstName']) ) ? $user->first_name : trim($shipping['firstName']);
+				$shipping['firstName'] = empty( trim($shipping['firstName']) ) ? $user->first_name : trim($shipping['firstName']);
 
-                $shipping['lastName'] = empty( trim($shipping['lastName']) ) ? $user->last_name : trim($shipping['lastName']);
+				$shipping['lastName'] = empty( trim($shipping['lastName']) ) ? $user->last_name : trim($shipping['lastName']);
 
-                if( empty( $shipping['address1'] ) ) $shipping['address1'] = $billing['address1'];
-                if( empty( $shipping['address2'] ) ) $shipping['address2'] = $billing['address2'];
-                if( empty( $shipping['company'] ) ) $shipping['company'] = $billing['company'];
-                if( empty( $shipping['phone'] ) ) $shipping['phone'] = $billing['phone'];
-                if( empty( $shipping['country'] ) ) $shipping['country'] = $billing['country'];
-                if( empty( $shipping['city'] ) ) $shipping['city'] = $billing['city'];
-                if( empty( $shipping['state'] ) ) $shipping['city'] = $billing['state'];
-                if( empty( $shipping['postcode'] ) ) $shipping['city'] = $billing['postcode'];
+				if( empty( $shipping['address1'] ) ) $shipping['address1'] = $billing['address1'];
+				if( empty( $shipping['address2'] ) ) $shipping['address2'] = $billing['address2'];
+				if( empty( $shipping['company'] ) ) $shipping['company'] = $billing['company'];
+				if( empty( $shipping['phone'] ) ) $shipping['phone'] = $billing['phone'];
+				if( empty( $shipping['country'] ) ) $shipping['country'] = $billing['country'];
+				if( empty( $shipping['city'] ) ) $shipping['city'] = $billing['city'];
+				if( empty( $shipping['state'] ) ) $shipping['city'] = $billing['state'];
+				if( empty( $shipping['postcode'] ) ) $shipping['city'] = $billing['postcode'];
 
 
-                if( empty( $shipping['address1'] ) || empty( $billing['address1'] ) ) {
-                    $body = array(
-                        "email" => $user->user_email,
-                        "firstName" => $_POST['first_name'] ?? $user->first_name,
-                        "lastName" => $_POST['last_name'] ?? $user->last_name
-                    );
-                } else {
-                    $body = array(
-                        "email" => $user->user_email,
-                        "firstName" => $_POST['first_name'] ?? $user->first_name,
-                        "lastName" => $_POST['last_name'] ?? $user->last_name,
-                        "billing" => $billing,
-                        "shipping" => $shipping
-                    );
-                }
+				if( empty( $shipping['address1'] ) || empty( $billing['address1'] ) ) {
+					$body = array(
+						"email" => $user->user_email,
+						"firstName" => $_POST['first_name'] ?? $user->first_name,
+						"lastName" => $_POST['last_name'] ?? $user->last_name
+					);
+				} else {
+					$body = array(
+						"email" => $user->user_email,
+						"firstName" => $_POST['first_name'] ?? $user->first_name,
+						"lastName" => $_POST['last_name'] ?? $user->last_name,
+						"billing" => $billing,
+						"shipping" => $shipping
+					);
+				}
 
 				return array(
 					'headers' => $this->headers,
@@ -201,11 +208,11 @@ class Contact {
 	 */
 	public function sync_delete_contact( $user_id ){
 
-        $options = get_option( 'bocs_plugin_options' );
-        $options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
+		$options = get_option( 'bocs_plugin_options' );
+		$options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-        // no sync happening if it was disabled
-        if ( $options['sync_contacts_to_bocs'] ) return false;
+		// no sync happening if it was disabled
+		if ( $options['sync_contacts_to_bocs'] ) return false;
 
 		if( !empty($user_id) ) {
 			// get the contact id
@@ -235,69 +242,81 @@ class Contact {
 		}
 	}
 
+    /**
+     *
+     * @return void
+     */
+	public function sync_to_bocs(){
 
-    public function sync_to_bocs(){
+		// get all the list of the users in wordpress
+		$page = 0;
+		$total = $this->per_page;
 
-        // get all the list of the users in wordpress
-        $page = 0;
-        $total = $this->per_page;
+		while( $total == $this->per_page ) {
 
-        while( $total == $this->per_page ) {
+			$wp_users = get_users( array( 'offset' => $page * $this->per_page, 'number' => $this->per_page ) );
 
-            $wp_users = get_users( array( 'offset' => $page * $this->per_page, 'number' => $this->per_page ) );
+            error_log( print_r( count($wp_users), true ) );
 
-            foreach ($wp_users as $wp_user) {
+			foreach ($wp_users as $wp_user) {
 
-                // check first its meta if it has a Bocs contact
-                $user_id = $wp_user->ID;
+				// check first its meta if it has a Bocs contact
+				$user_id = $wp_user->ID;
 
-                if ($user_id) {
+                error_log("User ID: " . $user_id);
 
-                    $bocs_contact_id = get_user_meta( $user_id, 'bocs_contact_id', true );
+				if ($user_id) {
 
-                    if (!empty($bocs_contact_id)) {
+					$bocs_contact_id = get_user_meta( $user_id, 'bocs_contact_id', true );
 
-                        // which is the last update?
-                        $get_url = BOCS_API_URL.'/contacts/'.$bocs_contact_id;
+					if (!empty($bocs_contact_id)) {
 
-                        try {
+						// which is the last update?
+						$get_url = BOCS_API_URL.'/contacts/'.$bocs_contact_id;
 
-                            $params = array ('headers' => $this->headers );
-                            $result = wp_remote_get( $get_url, $params );
+						try {
 
-                            $date_modified_bocs = false;
-                            $date_modified_wp = get_user_meta( $user_id, 'last_update', true );
+							$params = array ('headers' => $this->headers );
+							$result = wp_remote_get( $get_url, $params );
 
-                            if ($result) {
-                                if( isset( $result['body'] ) ){
-                                    $bocs_contact = json_decode($result['body'], 2);
-                                    $bocs_contact = isset($bocs_contact['data']) ? $bocs_contact['data'] : false;
-                                    $date_modified_bocs = strtotime($bocs_contact['dateModifiedGMT']);
-                                }
-                            }
+							$date_modified_bocs = false;
+							$date_modified_wp = get_user_meta( $user_id, 'last_update', true );
 
-                            if ( $date_modified_bocs && $date_modified_wp ){
-                                if ( $date_modified_wp > $date_modified_bocs ){
-                                    // update from wp to bocs
-                                    $this->sync_update_contact($user_id);
-                                }
-                            }
-                        } catch (Exception $e) {
-                            add_settings_error(BOCS_NAME, 'sync_to_bocs', $e->getMessage(), 'error');
-                        }
+							if ($result) {
+								if( isset( $result['body'] ) ){
+									$bocs_contact = json_decode($result['body'], 2);
+									$bocs_contact = isset($bocs_contact['data']) ? $bocs_contact['data'] : false;
+									$date_modified_bocs = strtotime($bocs_contact['dateModifiedGMT']);
+								}
+							}
+
+							if ( $date_modified_bocs && $date_modified_wp ){
+								if ( $date_modified_wp > $date_modified_bocs ){
+									// update from wp to bocs
+                                    error_log("Syncing...");
+									$this->sync_update_contact($user_id);
+								}
+							}
+						} catch (Exception $e) {
+							add_settings_error(BOCS_NAME, 'sync_to_bocs', $e->getMessage(), 'error');
+						}
+					} else {
+
+                        // add to bocs
+                        error_log("Adding...");
+                        $added = $this->sync_add_contact($user_id);
+                        error_log( print_r($added, true) );
+
                     }
-                }
+				}
 
-            }   
+			}
 
-            $total = count( $wp_users );
-            $page++;
-        }
+			$total = count( $wp_users );
+			$page++;
+		}
 
-
-
-
-    }
+	}
 
 
 	public function sync_from_bocs() {
