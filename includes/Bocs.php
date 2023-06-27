@@ -136,6 +136,13 @@ class Bocs
 		$this->loader->add_action('woocommerce_product_data_panels', $plugin_admin, 'bocs_product_panel');
 		$this->loader->add_action('admin_footer', $plugin_admin, 'bocs_admin_custom_js');
 		$this->loader->add_action('woocommerce_process_product_meta', $plugin_admin, 'bocs_process_product_meta');
+
+        // add product
+        $this->loader->add_action('wp_ajax_create_product', $plugin_admin, 'create_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_create_product', $plugin_admin, 'create_product_ajax_callback');
+
+        // create bocs subscription and order if the order is in processing
+        $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
 		/*
 
 
