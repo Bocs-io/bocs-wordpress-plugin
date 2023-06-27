@@ -1,0 +1,16 @@
+v1.16.13
+* Renaming hook name
+* Fix on the broken redirect after selection of the items
+* Fix on the checkout for the API Gateway
+* rename cru-subscription to subscription-pack
+* rename cru-subscription-view to subscription-pack-view
+* added the Skip Next Payment
+* Fix for the cart URL
+* Fix for the Switch Pack
+* Corrected Min Date for the Next Payment Date
+* Disallow adding of coupons/vouchers
+* Hide the Discount Code box
+* Input hide instead of input textbox for the quantity
+
+v1.15.2
+* version from the previous dev
