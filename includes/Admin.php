@@ -88,22 +88,27 @@ class Admin
 
 	public function enqueue_scripts(){
 
-        $options = get_option( 'bocs_plugin_options' );
-        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+		$options = get_option( 'bocs_plugin_options' );
+		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
 		wp_enqueue_script( "bocs-widget-script", "https://feature-testing.app.bocs.io/widget/js/script.js", array(), '0.0.7', true );
 
-        if (class_exists('woocommerce')) {
-            wp_enqueue_script('wc-add-to-cart');
-            wp_enqueue_script('wc-cart-fragments');
-        }
+		if (class_exists('woocommerce')) {
+			wp_enqueue_script('wc-add-to-cart');
+			wp_enqueue_script('wc-cart-fragments');
+		}
 
-		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.45', true );
+		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.51', true );
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce( 'wc_store_api' ),
 			'cartURL' => wc_get_cart_url(),
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('ajax-nonce')
+			'ajax_url' => admin_url('admin-ajax.php'),
+			'nonce'    => wp_create_nonce('ajax-nonce'),
+            'search_nonce'    => wp_create_nonce('ajax-search-nonce'),
+			'bocsGetUrl' => BOCS_API_URL . 'bocs/',
+			'storeId' => $options['bocs_headers']['store'],
+			'orgId' => $options['bocs_headers']['organization'],
+			'authId' => $options['bocs_headers']['authorization']
 		));
 	}
 
@@ -334,346 +339,503 @@ class Admin
 		return $newinput;
 	}
 
-    public function create_product_ajax_callback() {
-        // Verify the AJAX nonce
-        $nonce = $_POST['nonce'];
+	/**
+	 * Creates a product
+	 *
+	 * @return void
+	 */
+	public function create_product_ajax_callback() {
+
+		// Verify the AJAX nonce
+		$nonce = $_POST['nonce'];
+
+        error_log("create_product_ajax_callback: " . $nonce);
+
+        error_log(wp_create_nonce('ajax-nonce'));
+
         if (!wp_verify_nonce($nonce, 'ajax-nonce')) {
-            die('Invalid nonce');
-        }
+			die('Invalid nonce');
+		}
 
-        // Get the product data from the AJAX request
-        $product_title = $_POST['title'];
-        $product_price = $_POST['price'];
-        $product_sku = $_POST['sku'];
-        $product_type = isset($_POST['type']) ? $_POST['type'] : "product";
+		// Get the product data from the AJAX request
+		$product_title = $_POST['title'];
+		$product_price = $_POST['price'];
+		$product_sku = $_POST['sku'];
+		$product_type = isset($_POST['type']) ? $_POST['type'] : "product";
+        $bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : "";
 
-        // Create a new WooCommerce product
-        $new_product = array(
-            'post_title'   => $product_title,
-            'post_status'  => 'publish',
-            'post_type'    => 'product',
-            'post_content' => ''
-        );
-        $product_id = wp_insert_post($new_product);
+		// Create a new WooCommerce product
+		$new_product = array(
+			'post_title'   => $product_title,
+			'post_status'  => 'publish',
+			'post_type'    => 'product',
+			'post_content' => ''
+		);
+		$product_id = wp_insert_post($new_product);
 
-        // Set the product price
-        if ($product_id) {
-            update_post_meta($product_id, '_price', $product_price);
-            update_post_meta($product_id, '_regular_price', $product_price);
-            update_post_meta($product_id, '_sku', $product_sku);
-            update_post_meta($product_id, '_backorders', 'no');
-            update_post_meta($product_id, '_download_expiry', '-1');
-            update_post_meta($product_id, '_download_limit', '-1');
-            update_post_meta($product_id, '_downloadable', 'no');
-            update_post_meta($product_id, '_manage_stock', 'no');
-            update_post_meta($product_id, '_sold_individually', 'no');
-            update_post_meta($product_id, '_stock_status', 'instock');
-            update_post_meta($product_id, '_virtual', 'no');
-            update_post_meta($product_id, '_wc_average_rating', '0');
-            update_post_meta($product_id, '_wc_review_count', '0');
-            update_post_meta($product_id, '_wc_review_count', '0');
+		// Set the product price
+		if ($product_id) {
+			update_post_meta($product_id, '_price', $product_price);
+			update_post_meta($product_id, '_regular_price', $product_price);
+			update_post_meta($product_id, '_sku', $product_sku);
+			update_post_meta($product_id, '_backorders', 'no');
+			update_post_meta($product_id, '_download_expiry', '-1');
+			update_post_meta($product_id, '_download_limit', '-1');
+			update_post_meta($product_id, '_downloadable', 'no');
+			update_post_meta($product_id, '_manage_stock', 'no');
+			update_post_meta($product_id, '_sold_individually', 'no');
+			update_post_meta($product_id, '_stock_status', 'instock');
+			update_post_meta($product_id, '_virtual', 'no');
+			update_post_meta($product_id, '_wc_average_rating', '0');
+			update_post_meta($product_id, '_wc_review_count', '0');
+			update_post_meta($product_id, '_wc_review_count', '0');
 
-            if( $product_type == 'bocs' ){
-                update_post_meta($product_id, 'bocs_product_discount', $_POST['bocs_product_discount']);
-                update_post_meta($product_id, 'bocs_product_discount_type', $_POST['bocs_product_discount_type']);
-                update_post_meta($product_id, 'bocs_product_interval', $_POST['bocs_product_interval']);
-                update_post_meta($product_id, 'bocs_product_interval_count', $_POST['bocs_product_interval_count']);
+			if( $product_type == 'bocs' ){
 
-                update_post_meta($product_id, 'bocs_widget_id', $_POST['bocs_bocs_id']);
+				update_post_meta($product_id, 'bocs_product_discount', $_POST['bocs_product_discount']);
+				update_post_meta($product_id, 'bocs_product_discount_type', $_POST['bocs_product_discount_type']);
+				update_post_meta($product_id, 'bocs_product_interval', $_POST['bocs_product_interval']);
+				update_post_meta($product_id, 'bocs_product_interval_count', $_POST['bocs_product_interval_count']);
+
+				update_post_meta($product_id, 'bocs_bocs_id', $_POST['bocs_bocs_id']);
+                update_post_meta($product_id, 'bocs_type', $_POST['bocs_type']);
+                update_post_meta($product_id, 'bocs_sku', $_POST['bocs_sku']);
+                update_post_meta($product_id, 'bocs_price', $_POST['bocs_price']);
+			}
+
+			if (isset($_POST['bocs_id'])){
+				update_post_meta($product_id, 'bocs_id', $_POST['bocs_id']);
+			}
+
+            if ($bocs_product_id !== ""){
+                update_post_meta($product_id, 'bocs_product_id', $bocs_product_id);
             }
 
-            if (isset($_POST['bocs_id'])){
-                update_post_meta($product_id, 'bocs_id', $_POST['bocs_id']);
+		}
+
+		// Return the product ID as the response
+		wp_send_json($product_id);
+	}
+
+
+	/**
+	 *
+	 * Creates an order and a subscription on Bocs
+	 * once the WooCommerce order is in processing mode
+	 *
+	 * @param integer $order_id
+	 * @return false|void
+	 */
+	public function bocs_order_status_processing( $order_id = 0 ){
+
+		if ( empty($order_id)) return false;
+		// get the order details
+		$order = wc_get_order( $order_id );
+		$bocs_product_discount = 0;
+		$bocs_product_discount_type = 'percent';
+		$bocs_product_interval = 'month';
+		$bocs_product_interval_count = 1;
+		$bocs_name = "";
+		$bocs_widget_id = "";
+
+		$sub_items = [];
+
+		$is_bocs = false;
+
+		foreach( $order->get_items() as $item_id => $item ){
+			$item_data = $item->get_data();
+
+			if (isset($item_data['product_id'])){
+				// meta bocs_id for this product
+				$bocs_id = get_post_meta( $item_data['product_id'], 'bocs_widget_id', true );
+
+				$bocsProd = wc_get_product($item_data['product_id']);
+
+				if (!empty( $bocs_id )){
+					$is_bocs = true;
+
+					$bocs_name = $bocsProd->get_name();
+					$bocs_product_discount = get_post_meta( $item_data['product_id'], 'bocs_product_discount', true );
+					$bocs_product_discount_type = get_post_meta( $item_data['product_id'], 'bocs_product_discount_type', true );
+					$bocs_product_interval = get_post_meta( $item_data['product_id'], 'bocs_product_interval', true );
+					$bocs_product_interval_count = get_post_meta( $item_data['product_id'], 'bocs_product_interval_count', true );
+					$bocs_widget_id = get_post_meta( $item_data['product_id'], 'bocs_widget_id', true );
+
+				} else {
+					$sub_items[] = '{
+							"productId": "'.get_post_meta( $item_data['product_id'], 'bocs_id', true ).'"
+						}';
+				}
+
+			}
+		}
+
+		if ($is_bocs){
+
+			$options = get_option( 'bocs_plugin_options' );
+			$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+			$customer_id = $order->get_customer_id();
+			$bocs_customer_id = '';
+			if (!empty($customer_id)){
+				$bocs_customer_id = get_user_meta($customer_id, 'bocs_id', true);
+			}
+
+			if (empty($bocs_customer_id)) {
+				$bocs_customer_id = "20f4d56d-2b58-430b-8d51-93d2b6a53d59";
+
+				// create customer
+				$curl = curl_init();
+
+				error_log("create customer");
+				error_log(print_r('{
+						"email": "'.$order->get_billing_email().'",
+						"fullName": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
+						"firstName": "'.$order->get_billing_first_name().'",
+						"lastName": "'.$order->get_billing_last_name().'",
+						"role": "customer",
+						"externalSource": "woocommerce",
+						"externalSourceId": "'.$order->get_customer_id().'",
+						"billing": {
+							"firstName": "'.$order->get_billing_first_name().'",
+							"lastName":  "'.$order->get_billing_last_name().'",
+							"company":  "'.$order->get_billing_company().'",
+							"address1": "'.$order->get_billing_address_1().'",
+							"address2": "'.$order->get_billing_address_2().'",
+							"city": "'.$order->get_billing_city().'",
+							"state":  "'.$order->get_billing_state().'",
+							"country": "'.$order->get_billing_country().'",
+							"postcode": "'.$order->get_billing_postcode().'",
+							"phone":  "'.$order->get_billing_phone().'",
+							"email":  "'.$order->get_billing_email().'",
+							"default": true
+							},
+						"shipping": {
+							"firstName": "'.$order->get_shipping_first_name().'",
+							"lastName":  "'.$order->get_shipping_last_name().'",
+							"company":  "'.$order->get_shipping_company().'",
+							"address1": "'.$order->get_shipping_address_1().'",
+							"address2": "'.$order->get_shipping_address_2().'",
+							"city": "'.$order->get_shipping_city().'",
+							"state":  "'.$order->get_shipping_state().'",
+							"country": "'.$order->get_shipping_country().'",
+							"postcode": "'.$order->get_shipping_postcode().'",
+							"phone":  "'.$order->get_shipping_phone().'",
+							"default": true
+							}
+					}', true));
+
+				curl_setopt_array($curl, array(
+					CURLOPT_URL => BOCS_API_URL . 'contacts',
+					CURLOPT_RETURNTRANSFER => true,
+					CURLOPT_ENCODING => '',
+					CURLOPT_MAXREDIRS => 10,
+					CURLOPT_TIMEOUT => 0,
+					CURLOPT_FOLLOWLOCATION => true,
+					CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+					CURLOPT_CUSTOMREQUEST => 'POST',
+					CURLOPT_POSTFIELDS => '{
+						"email": "'.$order->get_billing_email().'",
+						"fullName": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
+						"firstName": "'.$order->get_billing_first_name().'",
+						"lastName": "'.$order->get_billing_last_name().'",
+						"role": "customer",
+						"externalSource": "woocommerce",
+						"externalSourceId": "'.$order->get_customer_id().'",
+						"billing": {
+							"firstName": "'.$order->get_billing_first_name().'",
+							"lastName":  "'.$order->get_billing_last_name().'",
+							"company":  "'.$order->get_billing_company().'",
+							"address1": "'.$order->get_billing_address_1().'",
+							"address2": "'.$order->get_billing_address_2().'",
+							"city": "'.$order->get_billing_city().'",
+							"state":  "'.$order->get_billing_state().'",
+							"country": "'.$order->get_billing_country().'",
+							"postcode": "'.$order->get_billing_postcode().'",
+							"phone":  "'.$order->get_billing_phone().'",
+							"email":  "'.$order->get_billing_email().'",
+							"default": true
+						},
+						"shipping": {
+							"firstName": "'.$order->get_shipping_first_name().'",
+							"lastName":  "'.$order->get_shipping_last_name().'",
+							"company":  "'.$order->get_shipping_company().'",
+							"address1": "'.$order->get_shipping_address_1().'",
+							"address2": "'.$order->get_shipping_address_2().'",
+							"city": "'.$order->get_shipping_city().'",
+							"state":  "'.$order->get_shipping_state().'",
+							"country": "'.$order->get_shipping_country().'",
+							"postcode": "'.$order->get_shipping_postcode().'",
+							"phone":  "'.$order->get_shipping_phone().'",
+							"default": true
+							}
+					}',
+					CURLOPT_HTTPHEADER => array(
+						'Organization: ' . $options['bocs_headers']['organization'],
+						'Content-Type: application/json',
+						'Store: ' . $options['bocs_headers']['store'],
+						'Authorization: ' . $options['bocs_headers']['authorization']
+					),
+				));
+
+				$response = curl_exec($curl);
+				error_log($response);
+				$object = json_decode($response);
+
+				curl_close($curl);
+
+				if($object){
+					if (isset($object->data)){
+						if (isset($object->data->contactId)){
+							// add meta
+							update_user_meta($order->get_customer_id(), "bocs_id", $object->data->contactId);
+							$bocs_customer_id = $object->data->contactId;
+						}
+					}
+				}
+			}
+
+			// then we will create an order
+			$curl = curl_init();
+
+			curl_setopt_array($curl, array(
+				CURLOPT_URL => BOCS_API_URL . 'orders',
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_ENCODING => '',
+				CURLOPT_MAXREDIRS => 10,
+				CURLOPT_TIMEOUT => 0,
+				CURLOPT_FOLLOWLOCATION => true,
+				CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+				CURLOPT_CUSTOMREQUEST => 'POST',
+				CURLOPT_POSTFIELDS => '{
+					"total": ' . $order->get_total() .',
+					"discount": '. $order->get_discount_total() .',
+					"shippingRate": 1,
+					"currency": "'.$order->get_currency().'",
+					"paymentDate": "'.$order->get_date_paid().'",
+					"isPaid": true,
+					"platform": "woocommerce",
+					"customer" : {
+						"customerId": "'.$bocs_customer_id.'",
+						"email": "'.$order->get_billing_email().'",
+						"firstName": "'.$order->get_billing_first_name().'",
+						"lastName": "'.$order->get_billing_last_name().'"
+					}
+				}',
+				CURLOPT_HTTPHEADER => array(
+					'Organization: ' . $options['bocs_headers']['organization'],
+					'Content-Type: application/json',
+					'Store: ' . $options['bocs_headers']['store'],
+					'Authorization: ' . $options['bocs_headers']['authorization']
+				),
+			));
+
+			$response = curl_exec($curl);
+			$object = json_decode($response);
+
+			curl_close($curl);
+
+			if($object){
+				if (isset($object->data)){
+					if (isset($object->data->orderId)){
+						// add meta
+						update_post_meta( $order->get_id(), "bocs_id", $object->data->orderId);
+					}
+				}
+			}
+
+			// done creating the order
+
+			// next we will create subscription
+			$curl = curl_init();
+
+			error_log(print_r('{
+					"name": "'.$bocs_name.' ('.$bocs_product_interval_count.' '.$bocs_product_interval.')",
+					"contact": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
+					"price": ' . $order->get_total() .',
+					"bocs": "'.$bocs_widget_id.'",
+					"startDate": "'.$order->get_date_paid().'",
+					"nextPaymentDate": "'.$order->get_date_paid().'",
+					"frequency": {
+						"discount": '.$bocs_product_discount.',
+						"discountType": "'.$bocs_product_discount_type.'",
+						"timeUnit": "'.$bocs_product_interval.'",
+						"frequency": '.$bocs_product_interval_count.'
+					},
+					"products": [
+						'.implode(',', $sub_items).'
+					]
+				}',true));
+
+			curl_setopt_array($curl, array(
+				CURLOPT_URL => BOCS_API_URL . 'subscriptions',
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_ENCODING => '',
+				CURLOPT_MAXREDIRS => 10,
+				CURLOPT_TIMEOUT => 0,
+				CURLOPT_FOLLOWLOCATION => true,
+				CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+				CURLOPT_CUSTOMREQUEST => 'POST',
+				CURLOPT_POSTFIELDS =>'{
+					"name": "'.$bocs_name.' ('.$bocs_product_interval_count.' '.$bocs_product_interval.')",
+					"contact": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
+					"price": ' . $order->get_total() .',
+					"bocs": "'.$bocs_widget_id.'",
+					"startDate": "'.$order->get_date_paid().'",
+					"nextPaymentDate": "'.$order->get_date_paid().'",
+					"frequency": {
+						"discount": '.$bocs_product_discount.',
+						"discountType": "'.$bocs_product_discount_type.'",
+						"timeUnit": "'.$bocs_product_interval.'",
+						"frequency": '.$bocs_product_interval_count.'
+					},
+					"products": [
+						'.implode(',', $sub_items).'
+					]
+				}',
+				CURLOPT_HTTPHEADER => array(
+					'Organization: ' . $options['bocs_headers']['organization'],
+					'Content-Type: application/json',
+					'Store: ' . $options['bocs_headers']['store'],
+					'Authorization: ' . $options['bocs_headers']['authorization']
+				),
+			));
+
+			$response = curl_exec($curl);
+			error_log($response);
+
+			curl_close($curl);
+		}
+
+	}
+
+    /**
+     * Search for the product
+     *
+     * @return void
+     */
+    public function search_product_ajax_callback(){
+
+		// Verify the AJAX nonce
+		$nonce = $_POST['nonce'];
+        error_log("search_product_ajax_callback: " . $nonce);
+        error_log(wp_create_nonce('ajax-search-nonce'));
+
+		if (!wp_verify_nonce($nonce, 'ajax-search-nonce')) {
+			die('Invalid nonce');
+		}
+
+		$product_id = 0;
+
+		$name = isset($_POST['name']) ? $_POST['name'] : '';
+		$bocs_frequency_id = isset($_POST['bocs_frequency_id']) ? $_POST['bocs_frequency_id'] : 0;
+		$bocs_bocs_id = isset($_POST['bocs_bocs_id']) ? $_POST['bocs_bocs_id'] : 0;
+		$bocs_sku = isset($_POST['bocs_sku']) ? $_POST['bocs_sku'] : 0;
+        $is_bocs = isset($_POST['is_bocs']) ? $_POST['is_bocs'] : 0;
+        $bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : '';
+
+		// first we need to search by sku and frequency id
+		global $wpdb;
+
+        if ($is_bocs == 1){
+            $prepare_query = $wpdb->prepare('SELECT 
+													postmeta.post_id 
+												FROM 
+													' . $wpdb->prefix . 'postmeta as postmeta
+												INNER JOIN
+													' . $wpdb->prefix . 'posts as posts
+												ON
+													posts.ID = postmeta.post_id
+												WHERE 
+													postmeta.meta_key = %s AND postmeta.meta_value = %s
+												AND 
+													postmeta.meta_key = %s AND postmeta.meta_value = %s
+												AND
+													posts.post_status = %s
+												ORDER BY 
+													postmeta.post_id ASC',
+                "bocs_sku", $bocs_sku, "bocs_frequency_id", $bocs_frequency_id, "publish");
+
+            $products = $wpdb->get_results($prepare_query);
+
+            if (count($products) > 0){
+                $product_id = $products[0]->post_id;
             }
 
-        }
+            // if not found, then by bocs id and frequency id
+            if($product_id === 0){
+                $prepare_query = $wpdb->prepare('SELECT 
+														postmeta.post_id 
+													FROM 
+														' . $wpdb->prefix . 'postmeta as postmeta
+													INNER JOIN
+														' . $wpdb->prefix . 'posts as posts
+													ON
+														posts.ID = postmeta.post_id
+													WHERE 
+														postmeta.meta_key = %s AND postmeta.meta_value = %s
+													AND 
+														postmeta.meta_key = %s AND postmeta.meta_value = %s
+													AND
+														posts.post_status = %s
+													ORDER BY 
+														postmeta.post_id ASC',
+                    "bocs_bocs_id", $bocs_bocs_id, "bocs_frequency_id", $bocs_frequency_id, "publish");
 
-        // Return the product ID as the response
-        wp_send_json($product_id);
-    }
+                $products = $wpdb->get_results($prepare_query);
 
-
-    public function bocs_order_status_processing( $order_id = 0 ){
-
-        if ( empty($order_id)) return false;
-        // get the order details
-        $order = wc_get_order( $order_id );
-        $bocs_product_discount = 0;
-        $bocs_product_discount_type = 'percent';
-        $bocs_product_interval = 'month';
-        $bocs_product_interval_count = 1;
-        $bocs_name = "";
-        $bocs_widget_id = "";
-
-        $sub_items = [];
-
-        $is_bocs = false;
-
-        foreach( $order->get_items() as $item_id => $item ){
-            $item_data = $item->get_data();
-
-            if (isset($item_data['product_id'])){
-                // meta bocs_id for this product
-                $bocs_id = get_post_meta( $item_data['product_id'], 'bocs_widget_id', true );
-
-                $bocsProd = wc_get_product($item_data['product_id']);
-
-                if (!empty( $bocs_id )){
-                    $is_bocs = true;
-
-                    $bocs_name = $bocsProd->get_name();
-                    $bocs_product_discount = get_post_meta( $item_data['product_id'], 'bocs_product_discount', true );
-                    $bocs_product_discount_type = get_post_meta( $item_data['product_id'], 'bocs_product_discount_type', true );
-                    $bocs_product_interval = get_post_meta( $item_data['product_id'], 'bocs_product_interval', true );
-                    $bocs_product_interval_count = get_post_meta( $item_data['product_id'], 'bocs_product_interval_count', true );
-                    $bocs_widget_id = get_post_meta( $item_data['product_id'], 'bocs_widget_id', true );
-
-                } else {
-                    $sub_items[] = '{
-                            "productId": "'.get_post_meta( $item_data['product_id'], 'bocs_id', true ).'"
-                        }';
+                if (count($products) > 0){
+                    $product_id = $products[0]->post_id;
                 }
+            }
 
+        } else if($bocs_product_id !== '') {
+            // search according to bocs_product_id
+            $prepare_query = $wpdb->prepare('SELECT 
+														postmeta.post_id 
+													FROM 
+														' . $wpdb->prefix . 'postmeta as postmeta
+													INNER JOIN
+														' . $wpdb->prefix . 'posts as posts
+													ON
+														posts.ID = postmeta.post_id
+													WHERE 
+														postmeta.meta_key = %s AND postmeta.meta_value = %s
+													AND
+														posts.post_status = %s
+													ORDER BY 
+														postmeta.post_id ASC',
+                "bocs_product_id", $bocs_product_id, "publish");
+
+            $products = $wpdb->get_results($prepare_query);
+
+            if (count($products) > 0){
+                $product_id = $products[0]->post_id;
             }
         }
 
-        if ($is_bocs){
+		// if not found, then by name, and should be only 1
+		if($product_id === 0){
+			$prepare_query = $wpdb->prepare('SELECT 
+														ID
+													FROM
+														' . $wpdb->prefix . 'posts
+													WHERE
+														' . $wpdb->prefix . 'posts.post_title = %s
+													AND 
+														' . $wpdb->prefix . 'posts.post_type = %s
+													AND
+														' . $wpdb->prefix . 'posts.post_status = %s',
+				$name, "product", "publish");
 
-            $options = get_option( 'bocs_plugin_options' );
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
-            
-            $customer_id = $order->get_customer_id();
-            $bocs_customer_id = '';
-            if (!empty($customer_id)){
-                $bocs_customer_id = get_user_meta($customer_id, 'bocs_id', true);
-            }
-            
-            if (empty($bocs_customer_id)) {
-                $bocs_customer_id = "20f4d56d-2b58-430b-8d51-93d2b6a53d59";
+			$products = $wpdb->get_results($prepare_query);
 
-                // create customer
-                $curl = curl_init();
+			if (count($products) == 1){
+				$product_id = $products[0]->post_id;
+			}
+		}
 
-                error_log("create customer");
-                error_log(print_r('{
-                        "email": "'.$order->get_billing_email().'",
-                        "fullName": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-                        "firstName": "'.$order->get_billing_first_name().'",
-                        "lastName": "'.$order->get_billing_last_name().'",
-                        "role": "customer",
-                        "externalSource": "woocommerce",
-                        "externalSourceId": "'.$order->get_customer_id().'",
-                        "billing": {
-                            "firstName": "'.$order->get_billing_first_name().'",
-                            "lastName":  "'.$order->get_billing_last_name().'",
-                            "company":  "'.$order->get_billing_company().'",
-                            "address1": "'.$order->get_billing_address_1().'",
-                            "address2": "'.$order->get_billing_address_2().'",
-                            "city": "'.$order->get_billing_city().'",
-                            "state":  "'.$order->get_billing_state().'",
-                            "country": "'.$order->get_billing_country().'",
-                            "postcode": "'.$order->get_billing_postcode().'",
-                            "phone":  "'.$order->get_billing_phone().'",
-                            "email":  "'.$order->get_billing_email().'",
-                            "default": true
-                            },
-                        "shipping": {
-                            "firstName": "'.$order->get_shipping_first_name().'",
-                            "lastName":  "'.$order->get_shipping_last_name().'",
-                            "company":  "'.$order->get_shipping_company().'",
-                            "address1": "'.$order->get_shipping_address_1().'",
-                            "address2": "'.$order->get_shipping_address_2().'",
-                            "city": "'.$order->get_shipping_city().'",
-                            "state":  "'.$order->get_shipping_state().'",
-                            "country": "'.$order->get_shipping_country().'",
-                            "postcode": "'.$order->get_shipping_postcode().'",
-                            "phone":  "'.$order->get_shipping_phone().'",
-                            "default": true
-                            }
-                    }', true));
-
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => BOCS_API_URL . 'contacts',
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'POST',
-                    CURLOPT_POSTFIELDS => '{
-                        "email": "'.$order->get_billing_email().'",
-                        "fullName": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-                        "firstName": "'.$order->get_billing_first_name().'",
-                        "lastName": "'.$order->get_billing_last_name().'",
-                        "role": "customer",
-                        "externalSource": "woocommerce",
-                        "externalSourceId": "'.$order->get_customer_id().'",
-                        "billing": {
-                            "firstName": "'.$order->get_billing_first_name().'",
-                            "lastName":  "'.$order->get_billing_last_name().'",
-                            "company":  "'.$order->get_billing_company().'",
-                            "address1": "'.$order->get_billing_address_1().'",
-                            "address2": "'.$order->get_billing_address_2().'",
-                            "city": "'.$order->get_billing_city().'",
-                            "state":  "'.$order->get_billing_state().'",
-                            "country": "'.$order->get_billing_country().'",
-                            "postcode": "'.$order->get_billing_postcode().'",
-                            "phone":  "'.$order->get_billing_phone().'",
-                            "email":  "'.$order->get_billing_email().'",
-                            "default": true
-                        },
-                        "shipping": {
-                            "firstName": "'.$order->get_shipping_first_name().'",
-                            "lastName":  "'.$order->get_shipping_last_name().'",
-                            "company":  "'.$order->get_shipping_company().'",
-                            "address1": "'.$order->get_shipping_address_1().'",
-                            "address2": "'.$order->get_shipping_address_2().'",
-                            "city": "'.$order->get_shipping_city().'",
-                            "state":  "'.$order->get_shipping_state().'",
-                            "country": "'.$order->get_shipping_country().'",
-                            "postcode": "'.$order->get_shipping_postcode().'",
-                            "phone":  "'.$order->get_shipping_phone().'",
-                            "default": true
-                            }
-                    }',
-                    CURLOPT_HTTPHEADER => array(
-                        'Organization: ' . $options['bocs_headers']['organization'],
-                        'Content-Type: application/json',
-                        'Store: ' . $options['bocs_headers']['store'],
-                        'Authorization: ' . $options['bocs_headers']['authorization']
-                    ),
-                ));
-
-                $response = curl_exec($curl);
-                error_log($response);
-                $object = json_decode($response);
-
-                curl_close($curl);
-
-                if($object){
-                    if (isset($object->data)){
-                        if (isset($object->data->contactId)){
-                            // add meta
-                            update_user_meta($order->get_customer_id(), "bocs_id", $object->data->contactId);
-                            $bocs_customer_id = $object->data->contactId;
-                        }
-                    }
-                }
-            }
-
-            // then we will create an order
-            $curl = curl_init();
-
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => BOCS_API_URL . 'orders',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => '{
-                    "total": ' . $order->get_total() .',
-                    "discount": '. $order->get_discount_total() .',
-                    "shippingRate": 1,
-                    "currency": "'.$order->get_currency().'",
-                    "paymentDate": "'.$order->get_date_paid().'",
-                    "isPaid": true,
-                    "platform": "woocommerce",
-                    "customer" : {
-                        "customerId": "'.$bocs_customer_id.'",
-                        "email": "'.$order->get_billing_email().'",
-                        "firstName": "'.$order->get_billing_first_name().'",
-                        "lastName": "'.$order->get_billing_last_name().'"
-                    }
-                }',
-                CURLOPT_HTTPHEADER => array(
-                    'Organization: ' . $options['bocs_headers']['organization'],
-                    'Content-Type: application/json',
-                    'Store: ' . $options['bocs_headers']['store'],
-                    'Authorization: ' . $options['bocs_headers']['authorization']
-                ),
-            ));
-
-            $response = curl_exec($curl);
-            $object = json_decode($response);
-
-            curl_close($curl);
-
-            if($object){
-                if (isset($object->data)){
-                    if (isset($object->data->orderId)){
-                        // add meta
-                        update_post_meta( $order->get_id(), "bocs_id", $object->data->orderId);
-                    }
-                }
-            }
-
-            // done creating the order
-
-            // next we will create subscription
-            $curl = curl_init();
-
-            error_log(print_r('{
-                    "name": "'.$bocs_name.' ('.$bocs_product_interval_count.' '.$bocs_product_interval.')",
-                    "contact": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-                    "price": ' . $order->get_total() .',
-                    "bocs": "'.$bocs_widget_id.'",
-                    "startDate": "'.$order->get_date_paid().'",
-                    "nextPaymentDate": "'.$order->get_date_paid().'",
-                    "frequency": {
-                        "discount": '.$bocs_product_discount.',
-                        "discountType": "'.$bocs_product_discount_type.'",
-                        "timeUnit": "'.$bocs_product_interval.'",
-                        "frequency": '.$bocs_product_interval_count.'
-                    },
-                    "products": [
-                        '.implode(',', $sub_items).'
-                    ]
-                }',true));
-
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => BOCS_API_URL . 'subscriptions',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => '',
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS =>'{
-                    "name": "'.$bocs_name.' ('.$bocs_product_interval_count.' '.$bocs_product_interval.')",
-                    "contact": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-                    "price": ' . $order->get_total() .',
-                    "bocs": "'.$bocs_widget_id.'",
-                    "startDate": "'.$order->get_date_paid().'",
-                    "nextPaymentDate": "'.$order->get_date_paid().'",
-                    "frequency": {
-                        "discount": '.$bocs_product_discount.',
-                        "discountType": "'.$bocs_product_discount_type.'",
-                        "timeUnit": "'.$bocs_product_interval.'",
-                        "frequency": '.$bocs_product_interval_count.'
-                    },
-                    "products": [
-                        '.implode(',', $sub_items).'
-                    ]
-                }',
-                CURLOPT_HTTPHEADER => array(
-                    'Organization: ' . $options['bocs_headers']['organization'],
-                    'Content-Type: application/json',
-                    'Store: ' . $options['bocs_headers']['store'],
-                    'Authorization: ' . $options['bocs_headers']['authorization']
-                ),
-            ));
-
-            $response = curl_exec($curl);
-            error_log($response);
-
-            curl_close($curl);
-        }
-
-    }
+		wp_send_json($product_id);
+	}
 
 }
