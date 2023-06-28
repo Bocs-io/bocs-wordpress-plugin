@@ -104,7 +104,7 @@ class Admin
 			'cartURL' => wc_get_cart_url(),
 			'ajax_url' => admin_url('admin-ajax.php'),
 			'nonce'    => wp_create_nonce('ajax-nonce'),
-            'search_nonce'    => wp_create_nonce('ajax-search-nonce'),
+			'search_nonce'    => wp_create_nonce('ajax-search-nonce'),
 			'bocsGetUrl' => BOCS_API_URL . 'bocs/',
 			'storeId' => $options['bocs_headers']['store'],
 			'orgId' => $options['bocs_headers']['organization'],
@@ -349,11 +349,7 @@ class Admin
 		// Verify the AJAX nonce
 		$nonce = $_POST['nonce'];
 
-        error_log("create_product_ajax_callback: " . $nonce);
-
-        error_log(wp_create_nonce('ajax-nonce'));
-
-        if (!wp_verify_nonce($nonce, 'ajax-nonce')) {
+		if (!wp_verify_nonce($nonce, 'ajax-nonce')) {
 			die('Invalid nonce');
 		}
 
@@ -362,7 +358,7 @@ class Admin
 		$product_price = $_POST['price'];
 		$product_sku = $_POST['sku'];
 		$product_type = isset($_POST['type']) ? $_POST['type'] : "product";
-        $bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : "";
+		$bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : "";
 
 		// Create a new WooCommerce product
 		$new_product = array(
@@ -398,18 +394,18 @@ class Admin
 				update_post_meta($product_id, 'bocs_product_interval_count', $_POST['bocs_product_interval_count']);
 
 				update_post_meta($product_id, 'bocs_bocs_id', $_POST['bocs_bocs_id']);
-                update_post_meta($product_id, 'bocs_type', $_POST['bocs_type']);
-                update_post_meta($product_id, 'bocs_sku', $_POST['bocs_sku']);
-                update_post_meta($product_id, 'bocs_price', $_POST['bocs_price']);
+				update_post_meta($product_id, 'bocs_type', $_POST['bocs_type']);
+				update_post_meta($product_id, 'bocs_sku', $_POST['bocs_sku']);
+				update_post_meta($product_id, 'bocs_price', $_POST['bocs_price']);
 			}
 
 			if (isset($_POST['bocs_id'])){
 				update_post_meta($product_id, 'bocs_id', $_POST['bocs_id']);
 			}
 
-            if ($bocs_product_id !== ""){
-                update_post_meta($product_id, 'bocs_product_id', $bocs_product_id);
-            }
+			if ($bocs_product_id !== ""){
+				update_post_meta($product_id, 'bocs_product_id', $bocs_product_id);
+			}
 
 		}
 
@@ -487,44 +483,6 @@ class Admin
 				// create customer
 				$curl = curl_init();
 
-				error_log("create customer");
-				error_log(print_r('{
-						"email": "'.$order->get_billing_email().'",
-						"fullName": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-						"firstName": "'.$order->get_billing_first_name().'",
-						"lastName": "'.$order->get_billing_last_name().'",
-						"role": "customer",
-						"externalSource": "woocommerce",
-						"externalSourceId": "'.$order->get_customer_id().'",
-						"billing": {
-							"firstName": "'.$order->get_billing_first_name().'",
-							"lastName":  "'.$order->get_billing_last_name().'",
-							"company":  "'.$order->get_billing_company().'",
-							"address1": "'.$order->get_billing_address_1().'",
-							"address2": "'.$order->get_billing_address_2().'",
-							"city": "'.$order->get_billing_city().'",
-							"state":  "'.$order->get_billing_state().'",
-							"country": "'.$order->get_billing_country().'",
-							"postcode": "'.$order->get_billing_postcode().'",
-							"phone":  "'.$order->get_billing_phone().'",
-							"email":  "'.$order->get_billing_email().'",
-							"default": true
-							},
-						"shipping": {
-							"firstName": "'.$order->get_shipping_first_name().'",
-							"lastName":  "'.$order->get_shipping_last_name().'",
-							"company":  "'.$order->get_shipping_company().'",
-							"address1": "'.$order->get_shipping_address_1().'",
-							"address2": "'.$order->get_shipping_address_2().'",
-							"city": "'.$order->get_shipping_city().'",
-							"state":  "'.$order->get_shipping_state().'",
-							"country": "'.$order->get_shipping_country().'",
-							"postcode": "'.$order->get_shipping_postcode().'",
-							"phone":  "'.$order->get_shipping_phone().'",
-							"default": true
-							}
-					}', true));
-
 				curl_setopt_array($curl, array(
 					CURLOPT_URL => BOCS_API_URL . 'contacts',
 					CURLOPT_RETURNTRANSFER => true,
@@ -579,7 +537,6 @@ class Admin
 				));
 
 				$response = curl_exec($curl);
-				error_log($response);
 				$object = json_decode($response);
 
 				curl_close($curl);
@@ -649,24 +606,6 @@ class Admin
 			// next we will create subscription
 			$curl = curl_init();
 
-			error_log(print_r('{
-					"name": "'.$bocs_name.' ('.$bocs_product_interval_count.' '.$bocs_product_interval.')",
-					"contact": "'.$order->get_billing_first_name().' '.$order->get_billing_last_name().'",
-					"price": ' . $order->get_total() .',
-					"bocs": "'.$bocs_widget_id.'",
-					"startDate": "'.$order->get_date_paid().'",
-					"nextPaymentDate": "'.$order->get_date_paid().'",
-					"frequency": {
-						"discount": '.$bocs_product_discount.',
-						"discountType": "'.$bocs_product_discount_type.'",
-						"timeUnit": "'.$bocs_product_interval.'",
-						"frequency": '.$bocs_product_interval_count.'
-					},
-					"products": [
-						'.implode(',', $sub_items).'
-					]
-				}',true));
-
 			curl_setopt_array($curl, array(
 				CURLOPT_URL => BOCS_API_URL . 'subscriptions',
 				CURLOPT_RETURNTRANSFER => true,
@@ -702,24 +641,20 @@ class Admin
 			));
 
 			$response = curl_exec($curl);
-			error_log($response);
-
 			curl_close($curl);
 		}
 
 	}
 
-    /**
-     * Search for the product
-     *
-     * @return void
-     */
-    public function search_product_ajax_callback(){
+	/**
+	 * Search for the product
+	 *
+	 * @return void
+	 */
+	public function search_product_ajax_callback(){
 
 		// Verify the AJAX nonce
 		$nonce = $_POST['nonce'];
-        error_log("search_product_ajax_callback: " . $nonce);
-        error_log(wp_create_nonce('ajax-search-nonce'));
 
 		if (!wp_verify_nonce($nonce, 'ajax-search-nonce')) {
 			die('Invalid nonce');
@@ -731,14 +666,14 @@ class Admin
 		$bocs_frequency_id = isset($_POST['bocs_frequency_id']) ? $_POST['bocs_frequency_id'] : 0;
 		$bocs_bocs_id = isset($_POST['bocs_bocs_id']) ? $_POST['bocs_bocs_id'] : 0;
 		$bocs_sku = isset($_POST['bocs_sku']) ? $_POST['bocs_sku'] : 0;
-        $is_bocs = isset($_POST['is_bocs']) ? $_POST['is_bocs'] : 0;
-        $bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : '';
+		$is_bocs = isset($_POST['is_bocs']) ? $_POST['is_bocs'] : 0;
+		$bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : '';
 
 		// first we need to search by sku and frequency id
 		global $wpdb;
 
-        if ($is_bocs == 1){
-            $prepare_query = $wpdb->prepare('SELECT 
+		if ($is_bocs == 1){
+			$prepare_query = $wpdb->prepare('SELECT 
 													postmeta.post_id 
 												FROM 
 													' . $wpdb->prefix . 'postmeta as postmeta
@@ -754,17 +689,17 @@ class Admin
 													posts.post_status = %s
 												ORDER BY 
 													postmeta.post_id ASC',
-                "bocs_sku", $bocs_sku, "bocs_frequency_id", $bocs_frequency_id, "publish");
+				"bocs_sku", $bocs_sku, "bocs_frequency_id", $bocs_frequency_id, "publish");
 
-            $products = $wpdb->get_results($prepare_query);
+			$products = $wpdb->get_results($prepare_query);
 
-            if (count($products) > 0){
-                $product_id = $products[0]->post_id;
-            }
+			if (count($products) > 0){
+				$product_id = $products[0]->post_id;
+			}
 
-            // if not found, then by bocs id and frequency id
-            if($product_id === 0){
-                $prepare_query = $wpdb->prepare('SELECT 
+			// if not found, then by bocs id and frequency id
+			if($product_id === 0){
+				$prepare_query = $wpdb->prepare('SELECT 
 														postmeta.post_id 
 													FROM 
 														' . $wpdb->prefix . 'postmeta as postmeta
@@ -780,18 +715,18 @@ class Admin
 														posts.post_status = %s
 													ORDER BY 
 														postmeta.post_id ASC',
-                    "bocs_bocs_id", $bocs_bocs_id, "bocs_frequency_id", $bocs_frequency_id, "publish");
+					"bocs_bocs_id", $bocs_bocs_id, "bocs_frequency_id", $bocs_frequency_id, "publish");
 
-                $products = $wpdb->get_results($prepare_query);
+				$products = $wpdb->get_results($prepare_query);
 
-                if (count($products) > 0){
-                    $product_id = $products[0]->post_id;
-                }
-            }
+				if (count($products) > 0){
+					$product_id = $products[0]->post_id;
+				}
+			}
 
-        } else if($bocs_product_id !== '') {
-            // search according to bocs_product_id
-            $prepare_query = $wpdb->prepare('SELECT 
+		} else if($bocs_product_id !== '') {
+			// search according to bocs_product_id
+			$prepare_query = $wpdb->prepare('SELECT 
 														postmeta.post_id 
 													FROM 
 														' . $wpdb->prefix . 'postmeta as postmeta
@@ -805,14 +740,14 @@ class Admin
 														posts.post_status = %s
 													ORDER BY 
 														postmeta.post_id ASC',
-                "bocs_product_id", $bocs_product_id, "publish");
+				"bocs_product_id", $bocs_product_id, "publish");
 
-            $products = $wpdb->get_results($prepare_query);
+			$products = $wpdb->get_results($prepare_query);
 
-            if (count($products) > 0){
-                $product_id = $products[0]->post_id;
-            }
-        }
+			if (count($products) > 0){
+				$product_id = $products[0]->post_id;
+			}
+		}
 
 		// if not found, then by name, and should be only 1
 		if($product_id === 0){
@@ -836,6 +771,37 @@ class Admin
 		}
 
 		wp_send_json($product_id);
+	}
+
+
+	public function create_subscription_ajax_callback(){
+
+		// Verify the AJAX nonce
+		$nonce = $_POST['nonce'];
+
+		if (!wp_verify_nonce($nonce, 'ajax-create-subscription-nonce')) {
+			die('Invalid nonce');
+		}
+
+		$subscription_id = 0;
+
+		$title = isset( $_POST['title'] ) ? $_POST['title'] : "";
+
+		// get the details we need for creating a subscription
+		$new_subscription = array(
+			'post_title'   => $title,
+			'post_status'  => 'publish',
+			'post_type'    => 'bocs_subscription',
+			'post_content' => ''
+		);
+
+		$subscription_id = wp_insert_post($new_subscription);
+
+		// then we will add the rest of the information at the postmeta
+		// @TODO
+
+		wp_send_json($subscription_id);
+
 	}
 
 }

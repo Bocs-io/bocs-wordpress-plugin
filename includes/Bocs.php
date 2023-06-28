@@ -141,6 +141,10 @@ class Bocs
         $this->loader->add_action('wp_ajax_create_product', $plugin_admin, 'create_product_ajax_callback');
         $this->loader->add_action('wp_ajax_nopriv_create_product', $plugin_admin, 'create_product_ajax_callback');
 
+        // add bocs subscription
+        $this->loader->add_action('wp_ajax_create_subscription', $plugin_admin, 'create_subscription_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_create_subscription', $plugin_admin, 'create_subscription_ajax_callback');
+
         // search product
         $this->loader->add_action('wp_ajax_search_product', $plugin_admin, 'search_product_ajax_callback');
         $this->loader->add_action('wp_ajax_nopriv_search_product', $plugin_admin, 'search_product_ajax_callback');
