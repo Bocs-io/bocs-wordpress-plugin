@@ -1,3 +1,7 @@
+v0.0.17 06/29/2023
+* added the list of subscriptions and showing under the menu
+* added the discount upon checkout
+
 v0.0.16 06/29/2023
 * add subscription to bocs app
 * add new subscription to wordpress site - tables only

@@ -141,6 +141,10 @@ class Bocs
         $this->loader->add_action('wp_ajax_create_product', $plugin_admin, 'create_product_ajax_callback');
         $this->loader->add_action('wp_ajax_nopriv_create_product', $plugin_admin, 'create_product_ajax_callback');
 
+        // create coupon
+        $this->loader->add_action('wp_ajax_create_coupon', $plugin_admin, 'create_coupon_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_create_coupon', $plugin_admin, 'create_coupon_ajax_callback');
+
         // update product
         $this->loader->add_action('wp_ajax_update_product', $plugin_admin, 'update_product_ajax_callback');
         $this->loader->add_action('wp_ajax_nopriv_update_product', $plugin_admin, 'update_product_ajax_callback');

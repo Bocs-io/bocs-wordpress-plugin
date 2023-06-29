@@ -295,9 +295,6 @@ async function bocs_add_to_cart(products, frequency) {
 	// then we will try to add the coupon if there is a discount
 	if (frequency.discount > 0){
 
-		// @TODO implementation of the discount
-		/*
-
 		let discountType = "fixed_cart";
 		const amount = frequency.discount;
 		let couponCode = "bocs-" + amount;
@@ -336,9 +333,25 @@ async function bocs_add_to_cart(products, frequency) {
 
 		if (createdCoupon){
 			// add to cart the created coupon
+			var data = {
+				code: couponCode
+			};
 
+			await jQuery.ajax({
+				url: '/wp-json/wc/store/v1/cart/apply-coupon',
+				method: 'POST',
+				data: data,
+				beforeSend: function (xhr) {
+					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
+				},
+				success: function (response) {
+					console.log('Product added to cart:', response);
+				},
+				error: function (error) {
+					console.log('Error adding product to cart:', error);
+				},
+			});
 		}
-		*/
 	}
 
 	buttonCart.html('Redirecting to Cart...');

@@ -98,7 +98,7 @@ class Admin
 			wp_enqueue_script('wc-cart-fragments');
 		}
 
-		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.54', true );
+		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.56', true );
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce( 'wc_store_api' ),
 			'cartURL' => wc_get_cart_url(),
@@ -109,7 +109,8 @@ class Admin
 			'storeId' => $options['bocs_headers']['store'],
 			'orgId' => $options['bocs_headers']['organization'],
 			'authId' => $options['bocs_headers']['authorization'],
-            'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce')
+			'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
+			'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
 		));
 	}
 
@@ -459,15 +460,15 @@ class Admin
 
 				} else {
 
-                    $product_id = get_post_meta( $item_data['product_id'], 'bocs_product_id', true );
+					$product_id = get_post_meta( $item_data['product_id'], 'bocs_product_id', true );
 
-                    if (empty($product_id)){
-                        $product_id = get_post_meta( $item_data['product_id'], 'bocs_id', true );
-                    }
+					if (empty($product_id)){
+						$product_id = get_post_meta( $item_data['product_id'], 'bocs_id', true );
+					}
 
-                    if(!empty($product_id)){
-                        $sub_items[] = '{"productId": "'.$product_id.'"}';
-                    }
+					if(!empty($product_id)){
+						$sub_items[] = '{"productId": "'.$product_id.'"}';
+					}
 
 				}
 
@@ -649,77 +650,91 @@ class Admin
 			));
 
 			$response = curl_exec($curl);
-            $object = json_decode($response);
+			$object = json_decode($response);
 
 			curl_close($curl);
 
-            // and create a subscription in woocommerce
-            $order_post_data = get_post($order_id);
+			// and create a subscription in woocommerce
+			$order_post_data = get_post($order_id);
 
-            if ($order_post_data) {
-                $title = "Bocs Subscription";
+			if ($order_post_data) {
+				$title = "Bocs Subscription";
 
-                // Create new post array.
-                $new_post = [
-                    'post_title'  => $title,
-                    'post_name'   => sanitize_title($title),
-                    'post_status' => 'publish',
-                    'post_type'   => "bocs_subscription"
-                ];
 
-                // Insert new post.
-                $new_post_id = wp_insert_post($new_post);
 
-                // Copy post meta.
-                $post_meta = get_post_custom($order_id);
-                foreach ($post_meta as $key => $values) {
-                    foreach ($values as $value) {
-                        add_post_meta($new_post_id, $key, maybe_unserialize($value));
-                    }
-                }
+				// Create new post array.
+				$new_post = [
+					'post_title'  => $title,
+					'post_name'   => sanitize_title($title),
+					'post_status' => 'active',
+					'post_type'   => "bocs_subscription",
+					'post_parent' => $order_id,
+					'post_author' => $customer_id
+				];
 
-                // Copy post taxonomies.
-                $taxonomies = get_post_taxonomies($order_id);
-                foreach ($taxonomies as $taxonomy) {
-                    $term_ids = wp_get_object_terms($order_id, $taxonomy, ['fields' => 'ids']);
-                    wp_set_object_terms($new_post_id, $term_ids, $taxonomy);
-                }
+				// Insert new post.
+				$new_post_id = wp_insert_post($new_post);
 
-                add_post_meta( $new_post_id, 'bocs_product_discount', $bocs_product_discount );
-                add_post_meta( $new_post_id, 'bocs_product_discount_type', $bocs_product_discount_type );
-                add_post_meta( $new_post_id, 'bocs_product_interval', $bocs_product_interval );
-                add_post_meta( $new_post_id, 'bocs_product_interval_count', $bocs_product_interval_count );
-                add_post_meta( $new_post_id, 'bocs_bocs_id', $bocs_widget_id );
+				// Copy post meta.
+				$post_meta = get_post_custom($order_id);
+				foreach ($post_meta as $key => $values) {
+					foreach ($values as $value) {
+						add_post_meta($new_post_id, $key, maybe_unserialize($value));
+					}
+				}
 
-                // get paid date
-                $start_date = new DateTime();
-                $paid_date = get_post_meta( $new_post_id, '_paid_date', true );
-                if ($paid_date){
-                    if ( !empty($paid_date) ){
-                        $start_date = new DateTime($paid_date);
-                    }
-                }
+				// Copy post taxonomies.
+				$taxonomies = get_post_taxonomies($order_id);
+				foreach ($taxonomies as $taxonomy) {
+					$term_ids = wp_get_object_terms($order_id, $taxonomy, ['fields' => 'ids']);
+					wp_set_object_terms($new_post_id, $term_ids, $taxonomy);
+				}
 
-                $next_payment = $start_date;
-                $next_payment->modify("+" . $bocs_product_interval_count . " " . $bocs_product_interval );
+				add_post_meta( $new_post_id, 'bocs_product_discount', $bocs_product_discount );
+				add_post_meta( $new_post_id, 'bocs_product_discount_type', $bocs_product_discount_type );
+				add_post_meta( $new_post_id, 'bocs_product_interval', $bocs_product_interval );
+				add_post_meta( $new_post_id, 'bocs_product_interval_count', $bocs_product_interval_count );
+				add_post_meta( $new_post_id, 'bocs_bocs_id', $bocs_widget_id );
 
-                add_post_meta( $new_post_id, 'bocs_subscription_trial_end', 0 );
-                add_post_meta( $new_post_id, 'bocs_subscription_next_payment', $next_payment->format('Y-m-d H:i:s') );
-                add_post_meta( $new_post_id, 'bocs_subscription_cancelled', 0 );
-                add_post_meta( $new_post_id, 'bocs_subscription_end', 0 );
-                add_post_meta( $new_post_id, 'bocs_subscription_payment_retry', 0 );
-                add_post_meta( $new_post_id, 'bocs_subscription_start', $start_date->format('Y-m-d H:i:s') );
+				// get paid date
+				$start_date = "";
+				$paid_date = get_post_meta( $new_post_id, '_paid_date', true );
 
-                // remove not need meta keys
-                delete_post_meta($new_post_id, '_order_key');
-                delete_post_meta($new_post_id, '_cart_hash');
-                delete_post_meta($new_post_id, '_new_order_email_sent');
-                delete_post_meta($new_post_id, '_order_stock_reduced');
-                delete_post_meta($new_post_id, '_transaction_id');
+				if ($paid_date){
+					if ( !empty($paid_date) ){
+						$start_date = $paid_date;
+					}
+				}
 
-                update_post_meta( $order_id, 'bocs_subscription_renewal_id', $new_post_id );
+				$time_unit = 'year';
+				if ( str_contains($bocs_product_interval, 'day') ){
+					$time_unit = 'day';
+				} else if ( str_contains($bocs_product_interval, 'week') ){
+					$time_unit = 'week';
+				} else if ( str_contains($bocs_product_interval, 'month') ){
+					$time_unit = 'month';
+				}
 
-            }
+				$next_payment = New DateTime();
+				$next_payment->modify("+" . $bocs_product_interval_count . " " . $time_unit );
+
+				add_post_meta( $new_post_id, 'bocs_subscription_trial_end', 0 );
+				add_post_meta( $new_post_id, 'bocs_subscription_next_payment', $next_payment->format('Y-m-d H:i:s') );
+				add_post_meta( $new_post_id, 'bocs_subscription_cancelled', 0 );
+				add_post_meta( $new_post_id, 'bocs_subscription_end', 0 );
+				add_post_meta( $new_post_id, 'bocs_subscription_payment_retry', 0 );
+				add_post_meta( $new_post_id, 'bocs_subscription_start', $start_date);
+
+				// remove not need meta keys
+				delete_post_meta($new_post_id, '_order_key');
+				delete_post_meta($new_post_id, '_cart_hash');
+				delete_post_meta($new_post_id, '_new_order_email_sent');
+				delete_post_meta($new_post_id, '_order_stock_reduced');
+				delete_post_meta($new_post_id, '_transaction_id');
+
+				update_post_meta( $order_id, 'bocs_subscription_renewal_id', $new_post_id );
+
+			}
 		}
 
 	}
@@ -851,26 +866,59 @@ class Admin
 		wp_send_json($product_id);
 	}
 
-    public function update_product_ajax_callback() {
+	public function update_product_ajax_callback() {
 
-        // Verify the AJAX nonce
-        $nonce = $_POST['nonce'];
+		// Verify the AJAX nonce
+		$nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-update-product-nonce')) {
-            die('Invalid nonce');
-        }
+		if (!wp_verify_nonce($nonce, 'ajax-update-product-nonce')) {
+			die('Invalid nonce');
+		}
 
-        // Get the product data from the AJAX request
-        $bocs_product_id = $_POST['bocs_product_id'];
-        $product_id = $_POST['id'];
+		// Get the product data from the AJAX request
+		$bocs_product_id = $_POST['bocs_product_id'];
+		$product_id = $_POST['id'];
 
-        // Set the product price
-        if ($product_id) {
-            update_post_meta($product_id, 'bocs_product_id', $bocs_product_id);
-        }
+		// Set the product price
+		if ($product_id) {
+			update_post_meta($product_id, 'bocs_product_id', $bocs_product_id);
+		}
 
-        // Return the product ID as the response
-        wp_send_json($product_id);
-    }
+		// Return the product ID as the response
+		wp_send_json($product_id);
+	}
+
+	public function create_coupon_ajax_callback(){
+
+		// Verify the AJAX nonce
+		$nonce = $_POST['nonce'];
+
+		if (!wp_verify_nonce($nonce, 'ajax-create-coupon-nonce')) {
+			die('Invalid nonce');
+		}
+
+		$coupon_code = sanitize_text_field($_POST['coupon_code']);
+		$discount_type = sanitize_text_field($_POST['discount_type']);
+		$amount = floatval($_POST['amount']);
+
+		$coupon = array(
+			'post_title' => $coupon_code,
+			'post_content' => '',
+			'post_status' => 'publish',
+			'post_author' => 1,
+			'post_type' => 'shop_coupon'
+		);
+
+		$new_coupon_id = wp_insert_post($coupon);
+
+		if ($new_coupon_id) {
+			update_post_meta($new_coupon_id, 'discount_type', $discount_type);
+			update_post_meta($new_coupon_id, 'coupon_amount', $amount);
+			wp_send_json_success();
+		} else {
+			wp_send_json_error();
+		}
+
+	}
 
 }
