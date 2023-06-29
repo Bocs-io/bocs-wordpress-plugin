@@ -273,6 +273,72 @@ async function bocs_add_to_cart(products, frequency) {
 			});
 		}
 
+		// we will update the woocommerce product in case the bocs_product_id was not in the meta
+		if (wcProductId !== 0 && product.productId){
+			if (  product.productId !== "" ){
+				// we will try to update the bocs_product_id on the meta key
+				await jQuery.ajax({
+					url: ajax_object.ajax_url,
+					type: 'POST',
+					data: {
+						action: 'update_product',   // The AJAX action name to be handled by the server
+						nonce: ajax_object.update_product_nonce,   // The AJAX nonce value
+						id: wcProductId,
+						bocs_product_id: product.productId
+					}
+				});
+			}
+		}
+
+	}
+
+	// then we will try to add the coupon if there is a discount
+	if (frequency.discount > 0){
+
+		// @TODO implementation of the discount
+		/*
+
+		let discountType = "fixed_cart";
+		const amount = frequency.discount;
+		let couponCode = "bocs-" + amount;
+
+		if (frequency.discountType == "percentage" || frequency.discountType == "percent" ){
+			discountType = "percent";
+			couponCode = couponCode + "off";
+		} else {
+			couponCode = couponCode + "fixed";
+		}
+
+		couponCode = couponCode + "-" + (Math.random() + 1).toString(36).substring(7);
+		const now = Date.now();
+		couponCode = couponCode + "-" + now;
+
+		// then we will try to add this coupon
+		var data = {
+			action: 'create_coupon',
+			nonce: ajax_object.couponNonce,
+			coupon_code: couponCode,
+			discount_type: discountType,
+			amount: amount
+		}
+
+		const createdCoupon = await jQuery.ajax({
+			url: ajax_object.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'create_coupon',
+				nonce: ajax_object.couponNonce,
+				coupon_code: couponCode,
+				discount_type: discountType,
+				amount: amount
+			}
+		});
+
+		if (createdCoupon){
+			// add to cart the created coupon
+
+		}
+		*/
 	}
 
 	buttonCart.html('Redirecting to Cart...');

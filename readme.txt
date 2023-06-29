@@ -1,3 +1,7 @@
+v0.0.16 06/29/2023
+* add subscription to bocs app
+* add new subscription to wordpress site - tables only
+
 v0.0.15 06/28/2023
 * fixes on the cart checkout
 * added logo on the menu
