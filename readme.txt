@@ -1,3 +1,6 @@
+v0.0.18 07/23/2023
+* added collections list
+
 v0.0.17 06/29/2023
 * added the list of subscriptions and showing under the menu
 * added the discount upon checkout

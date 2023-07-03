@@ -1,0 +1,49 @@
+/* Remove default bullets */
+#bocsUL  {
+    list-style-type: none;
+    cursor: pointer;
+}
+
+/* Remove margins and padding from the parent ul */
+#bocsUL  {
+    margin: 0;
+    padding: 0;
+}
+
+#bocsUL li {
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
+    list-style: none;
+}
+
+/* Style the bocsCaret/arrow */
+.bocsCaret {
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
+}
+
+/* Create the bocsCaret/arrow with a unicode, and style it */
+.bocsCaret::before {
+    content: "\25B6";
+    color: black;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* Rotate the bocsCaret/arrow icon when clicked on (using JavaScript) */
+.bocsCaret-down::before {
+    transform: rotate(90deg);
+}
+
+/* Hide the bocsNested list */
+.bocsNested {
+    display: none;
+}
+
+/* Show the bocsNested list when the user clicks on the bocsCaret/arrow (with JavaScript) */
+.active {
+    display: block;
+    font-weight: bold;
+    text-decoration: underline;
+    background-color: #CCCCCC;
+}

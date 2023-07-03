@@ -22,13 +22,18 @@ const bocsIcon =
 		)
 );
 
-let options;
+let collectionsList = [];
+let bocsList = [];
+
+let collectionOptions = [];
+let bocsOptions = [];
 
 jQuery( async function ($){
 
 	try {
-		const list = $.ajax({
-			url: ajax_object.url,
+
+		collectionsList = $.ajax({
+			url: ajax_object.collectionsURL,
 			type: "GET",
 			contentType: "application/json; charset=utf-8",
 			headers: {
@@ -38,26 +43,39 @@ jQuery( async function ($){
 			}
 		});
 
-		options = [React.createElement(
-			"option",
-			null,
-			"Getting the list..."
-		)];
+		bocsList = $.ajax({
+			url: ajax_object.bocsURL,
+			type: "GET",
+			contentType: "application/json; charset=utf-8",
+			headers: {
+				'Organization': ajax_object.Organization,
+				'Store': ajax_object.Store,
+				'Authorization': ajax_object.Authorization
+			}
+		});
 
-		await list.then((result) => {
-			options = [React.createElement(
-				"option",
-				null,
-				"Select a Bocs Collection"
-			)];
-			result.data.forEach( (item) => {
-				options.push(React.createElement(
-					"option",
-					{ value: item.bocsId},
-					item.name
-				));
+		await collectionsList.then( (collections) => {
+			collections.data.forEach( (collection) => {
+				collectionOptions.push(
+					{
+						id: 'collection-'+collection.collectionId,
+						name: collection.name == '' ? collection.collectionId : collection.name
+					}
+				);
 			});
 		});
+
+		await bocsList.then( (bocs) => {
+			bocs.data.forEach( (boc) => {
+				bocsOptions.push(
+					{
+						id: 'bocs-'+boc.bocsId,
+						name: boc.name == '' ? boc.bocsId : boc.name
+					}
+				);
+			});
+		});
+
 	} catch (error){
 		console.log(error);
 		options = [React.createElement(
@@ -76,23 +94,82 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	attributes: {
 		collectionId: { type: 'string' }
 	},
-	edit: function(props){
+	edit: function (props){
 
-		function updateCollectionId(event){props.setAttributes({collectionId: event.target.value})}
+		function updateCollectionId(event){
 
-		return React.createElement(
-			"select",
-			{ name: "bocs-collection", onChange: updateCollectionId },
-			...options);
+			props.setAttributes({collectionId: ""});
 
+			if (event.target.parentElement.querySelector(".bocsNested") ){
+				event.target.parentElement.querySelector(".bocsNested").classList.toggle("active");
+			} else {
+				props.setAttributes({collectionId: event.target.id});
+				event.toggle("active");
+			}
+
+		}
+
+		let collectionHTML = [];
+		let bocsHTML = [];
+
+		collectionOptions.forEach((collection) => {
+			collectionHTML.push(
+				React.createElement("li", {
+					onClick: updateCollectionId,
+					id: collection.id
+				}, collection.name)
+			);
+		});
+
+		bocsOptions.forEach((bocs) => {
+			bocsHTML.push(
+				React.createElement("li", {
+					onClick: updateCollectionId,
+					id: bocs.id
+				}, bocs.name)
+			);
+		});
+
+		let result = "No Bocs or Collection Found";
+
+		if (collectionOptions.length > 0 || bocsOptions.length > 0){
+			result = /*#__PURE__*/React.createElement("ul", {
+				id: "bocsUL"
+			}, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
+				class: "bocsCaret",
+				onClick: updateCollectionId
+			}, "Collected Widget"), /*#__PURE__*/React.createElement("ul", {
+				class: "bocsNested"
+			}, ...collectionHTML)), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
+				class: "bocsCaret",
+				onClick: updateCollectionId
+			}, "Bocs Widget"), /*#__PURE__*/React.createElement("ul", {
+				class: "bocsNested"
+			}, ...bocsHTML)));
+		}
+
+		return result;
 
 	},
-	save: function(props){
-		return /*#__PURE__*/React.createElement("div", {
-			id: "bocs-widget",
-			"data-id": props.attributes.collectionId
-		});
+	save: function (props){
+
+		let result = "";
+
+		if (props.attributes.collectionId){
+			if (props.attributes.collectionId.includes('bocs-')){
+				result = /*#__PURE__*/React.createElement("div", {
+					id: "bocs-widget",
+					"data-id": props.attributes.collectionId.replace("bocs-","")
+				});
+			} else if(props.attributes.collectionId.includes('collection-')){
+				result =  /*#__PURE__*/React.createElement("div", {
+					id: "collections-widget",
+					"data-id": props.attributes.collectionId.replace("collection-","")
+				});
+			}
+		}
+
+		return result;
+
 	}
 });
-
-
