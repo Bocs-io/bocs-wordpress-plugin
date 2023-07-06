@@ -16,6 +16,7 @@
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       bocs
+ * Tag
  */
 
 if (!defined('WPINC') || !defined('ABSPATH')) {
@@ -38,6 +39,10 @@ if (file_exists(dirname(__FILE__).'/includes/vendor/autoload.php')) {
 
 if (!class_exists('WP_List_Table')){
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+}
+
+if (!class_exists('Updater')){
+    require_once dirname(__FILE__).'/includes/Updater.php';
 }
 
 /**
@@ -84,6 +89,10 @@ function run_plugin()
 {
     $plugin = new Bocs();
     $plugin->run();
+
+    $updater = new Updater(__FILE__);
+    $updater->initialize();
+
 }
 
 add_action( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'action_bocs_plugin', 10 );
