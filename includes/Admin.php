@@ -72,11 +72,11 @@ class Admin
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.5');
+        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.7');
 
 		wp_enqueue_script('jquery');
 
-		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.161');
+		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.167');
 		wp_enqueue_script("bocs-custom-block");
 
 		wp_localize_script('bocs-custom-block', 'ajax_object', array(
@@ -101,7 +101,7 @@ class Admin
 			wp_enqueue_script('wc-cart-fragments');
 		}
 
-		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.56', true );
+		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.58', true );
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce( 'wc_store_api' ),
 			'cartURL' => wc_get_cart_url(),

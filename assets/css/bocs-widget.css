@@ -43,6 +43,10 @@
 /* Show the bocsNested list when the user clicks on the bocsCaret/arrow (with JavaScript) */
 .active {
     display: block;
+}
+
+#bocsUL li.active {
+    display: block;
     font-weight: bold;
     text-decoration: underline;
     background-color: #CCCCCC;

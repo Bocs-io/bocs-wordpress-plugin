@@ -104,13 +104,14 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				event.target.parentElement.querySelector(".bocsNested").classList.toggle("active");
 			} else {
 				props.setAttributes({collectionId: event.target.id});
-				event.toggle("active");
+				event.target.classList.add("active");
 			}
 
 		}
 
 		let collectionHTML = [];
 		let bocsHTML = [];
+		let result = "Getting list of Bocs and Collection";
 
 		collectionOptions.forEach((collection) => {
 			collectionHTML.push(
@@ -129,8 +130,6 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				}, bocs.name)
 			);
 		});
-
-		let result = "No Bocs or Collection Found";
 
 		if (collectionOptions.length > 0 || bocsOptions.length > 0){
 			result = /*#__PURE__*/React.createElement("ul", {
@@ -159,11 +158,13 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			if (props.attributes.collectionId.includes('bocs-')){
 				result = /*#__PURE__*/React.createElement("div", {
 					id: "bocs-widget",
+					"data-type": "bocs",
 					"data-id": props.attributes.collectionId.replace("bocs-","")
 				});
 			} else if(props.attributes.collectionId.includes('collection-')){
 				result =  /*#__PURE__*/React.createElement("div", {
-					id: "collections-widget",
+					id: "bocs-widget",
+					"data-type": "collections",
 					"data-id": props.attributes.collectionId.replace("collection-","")
 				});
 			}

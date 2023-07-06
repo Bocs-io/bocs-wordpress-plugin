@@ -1,5 +1,9 @@
 
-async function bocs_add_to_cart(products, frequency) {
+async function bocs_add_to_cart(params) {
+
+	const bocsId = params.bocsId;
+	const frequency = params.selectedFrequency;
+	const products = params.selectedProducts;
 
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -43,7 +47,6 @@ async function bocs_add_to_cart(products, frequency) {
 	let bocsSku = '';
 	let boxPrice = 0;
 	let bocsName = '';
-	const bocsId = jQuery("div#bocs-widget").data("id");
 
 	// in case that there is none, then show warning/notification
 	if (wooCommerceProductId === 0){
@@ -53,7 +56,7 @@ async function bocs_add_to_cart(products, frequency) {
 
 				// we will get the details first regarding the bocsid
 				const bocsData = await jQuery.ajax({
-					url: ajax_object.bocsGetUrl + jQuery("div#bocs-widget").data("id"),
+					url: ajax_object.bocsGetUrl + bocsId,
 					type: 'GET',
 					beforeSend: function (xhr) {
 						xhr.setRequestHeader("Accept", "application/json");
