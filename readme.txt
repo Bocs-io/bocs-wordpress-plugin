@@ -1,4 +1,8 @@
-v0.0.18 07/23/2023
+v0.0.19 07/06/2023
+* fix widget for the collections list
+* added wordpress updater
+
+v0.0.18 07/03/2023
 * added collections list
 
 v0.0.17 06/29/2023
