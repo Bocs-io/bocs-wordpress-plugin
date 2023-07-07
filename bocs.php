@@ -10,20 +10,22 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.19
+ * Version:           0.0.20
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       bocs
  * Tag
+ * Requires at least: 5.6.0
+ * Requires PHP: 7.3.5
  */
 
 if (!defined('WPINC') || !defined('ABSPATH')) {
 	die;
 }
 
-define('BOCS_VERSION', '0.0.19');
+define('BOCS_VERSION', '0.0.20');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
@@ -87,11 +89,11 @@ function action_bocs_plugin( $links ) {
  */
 function run_plugin()
 {
+
     $plugin = new Bocs();
     $plugin->run();
 
-    $updater = new Updater(__FILE__);
-    $updater->initialize();
+
 
 }
 
@@ -99,3 +101,23 @@ add_action( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'action_bocs_p
 register_activation_hook(__FILE__, 'activate_bocs_plugin');
 register_deactivation_hook(__FILE__, 'deactivate_bocs_plugin');
 run_plugin();
+
+if (!class_exists("Bocs\\Updater\\Repository\\AbstractRepository")){
+    require_once dirname(__FILE__).'/includes/Updater/Repository/AbstractRepository.php';
+}
+
+if (!class_exists("Bocs\Updater\Repository\Github")){
+    require_once dirname(__FILE__).'/includes/Updater/Repository/Github.php';
+}
+
+if (!class_exists("Bocs\Updater\Repository\BocsRepo")){
+    require_once dirname(__FILE__).'/includes/Updater/Repository/BocsRepo.php';
+}
+
+if (!class_exists("Bocs\Updater\Updater")){
+    require_once dirname(__FILE__).'/includes/Updater/Updater.php';
+}
+
+$repo = new \Bocs\Updater\Repository\BocsRepo();
+$updater = new \Bocs\Updater\Updater(__FILE__, $repo);
+$updater->bootstrap();

@@ -47,6 +47,7 @@ class Bocs
 
 		$this->load_dependencies();
 		// $this->set_locale();
+        $this->define_updater_hooks();
 		$this->define_admin_hooks();
 		// $this->define_public_hooks();
 
@@ -88,6 +89,8 @@ class Bocs
 
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_List_Table.php';
 
+        require_once plugin_dir_path(dirname(__FILE__)).'includes/Updater.php';
+
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
 		 * side of the site.
@@ -119,6 +122,21 @@ class Bocs
 
 	}
 
+    private function define_updater_hooks(){
+
+        $updater = new Updater(plugin_dir_path(dirname(__FILE__)) . 'bocs.php' );
+
+        $this->loader->add_action('admin_init', $updater, 'set_plugin_properties');
+        $this->loader->add_filter('pre_set_site_transient_update_plugins', $updater, 'modify_transient');
+        $this->loader->add_filter('plugins_api', $updater, 'plugin_popup', 10, 3);
+        $this->loader->add_filter('upgrader_post_install', $updater, 'after_install', 10, 3);
+        /*$this->loader->add_filter('upgrader_pre_download', $this, function (){
+            global $updater;
+            $this->loader->add_filter('http_request_args', $updater, 'download_package', 15, 2);
+            return false;
+        });*/
+    }
+
 	/**
 	 * Register all of the hooks related to the admin area functionality
 	 * of the plugin.
@@ -126,6 +144,7 @@ class Bocs
 	private function define_admin_hooks()
 	{
 		$plugin_admin = new Admin();
+
 		$this->loader->add_action('enqueue_block_editor_assets', $plugin_admin, 'bocs_widget_script_register');
 		$this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
 
@@ -155,6 +174,9 @@ class Bocs
 
         // create bocs subscription and order if the order is in processing
         $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
+
+        // this is for the plugin updater
+
 		/*
 
 

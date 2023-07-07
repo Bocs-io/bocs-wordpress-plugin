@@ -1,3 +1,6 @@
+v0.0.20 07/07/2023
+* added the working plugin updater
+
 v0.0.19 07/06/2023
 * fix widget for the collections list
 * added wordpress updater
