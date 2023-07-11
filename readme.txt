@@ -1,3 +1,6 @@
+v0.0.21 07/11/2023
+* added auto add bocs keys needed
+
 v0.0.20 07/07/2023
 * added the working plugin updater
 
