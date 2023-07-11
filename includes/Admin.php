@@ -68,6 +68,10 @@ class Admin
 
 	public function bocs_widget_script_register(){
 
+        // this to make sure that the keys were added or updated
+        $bocs = new Bocs();
+        $bocs->auto_add_bocs_keys();
+
 		// get the settings
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
@@ -90,6 +94,10 @@ class Admin
 	}
 
 	public function enqueue_scripts(){
+
+        // this to make sure that the keys were added or updated
+        $bocs = new Bocs();
+        $bocs->auto_add_bocs_keys();
 
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();

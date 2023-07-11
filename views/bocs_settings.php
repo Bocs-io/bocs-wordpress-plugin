@@ -1,4 +1,8 @@
 <?php
+
+$bocs = new Bocs();
+$bocs->auto_add_bocs_keys();
+
 $options = get_option( 'bocs_plugin_options' );
 $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 ?>
@@ -27,7 +31,7 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 				</tr>
 				<tr valign="top">
 					<th scope="row" class="titledesc">
-						<label>Authentication</label>
+						<label>Autherization</label>
 					</th>
 					<td class="forminp forminp-text">
 						<input type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php echo $options['bocs_headers']['authorization'] ?? "" ?>" />

@@ -247,79 +247,146 @@ class Bocs
 	public static function activate()
 	{
 		// Activate registration required
+        // we will check if the api@bocs.io user is created
+        $bocs_account = get_user_by('email', 'api@bocs.io');
 
-		// we will allow guest checkout
-		// update_option('woocommerce_enable_guest_checkout', 'yes');
-		// update_option('woocommerce_enable_checkout_login_reminder', 'yes');
+        if ($bocs_account){
 
-		// we will check if the api@bocs.io user is created
-		$bocs_account = get_user_by('email', 'api@bocs.io');
+            // get will get the user meta
+            $bocs_store_id = get_user_meta($bocs_account->ID, 'bocs_store', true);
+            $bocs_organization = get_user_meta($bocs_account->ID, 'bocs_organization', true);
+            $bocs_authorization = get_user_meta($bocs_account->ID, 'bocs_authorization', true);
+            $bocs_woocommerce_key = get_user_meta($bocs_account->ID, 'bocs_wookey', true);
+            $bocs_woocommerce_secret = get_user_meta($bocs_account->ID, 'bocs_woosecret', true);
 
-		if ($bocs_account){
+            // then we well update bocs settings
+            $options = get_option( 'bocs_plugin_options' );
+            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-			// get will get the user meta
-			$bocs_store_id = get_user_meta($bocs_account->ID, 'bocs_store', true);
-			$bocs_organization = get_user_meta($bocs_account->ID, 'bocs_organization', true);
-			$bocs_authorization = get_user_meta($bocs_account->ID, 'bocs_authorization', true);
-			$bocs_woocommerce_key = get_user_meta($bocs_account->ID, 'bocs_wookey', true);
-			$bocs_woocommerce_secret = get_user_meta($bocs_account->ID, 'bocs_woosecret', true);
+            $settings_counter = 0;
 
-			// then we well update bocs settings
-			$options = get_option( 'bocs_plugin_options' );
-			$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+            if( $bocs_organization !== false) {
+                if (trim($bocs_organization) !== ""){
+                    $options['bocs_headers']['organization'] = $bocs_organization;
+                    $settings_counter++;
+                }
+            }
 
-			$settings_counter = 0;
+            if( $bocs_authorization !== false) {
+                if (trim($bocs_authorization) !== ""){
+                    $options['bocs_headers']['authorization'] = $bocs_authorization;
+                    $settings_counter++;
+                }
+            }
 
-			if( $bocs_organization !== false) {
-				if (trim($bocs_organization) !== ""){
-					$options['bocs_headers']['organization'] = $bocs_organization;
-					$settings_counter++;
-				}
-			}
+            if( $bocs_store_id !== false) {
+                if (trim($bocs_store_id) !== ""){
+                    $options['bocs_headers']['store'] = $bocs_store_id;
+                    $settings_counter++;
+                }
+            }
 
-			if( $bocs_authorization !== false) {
-				if (trim($bocs_authorization) !== ""){
-					$options['bocs_headers']['authorization'] = $bocs_authorization;
-					$settings_counter++;
-				}
-			}
+            if( $bocs_woocommerce_key !== false) {
+                if (trim($bocs_woocommerce_key) !== ""){
+                    $options['bocs_headers']['woocommerce_key'] = $bocs_woocommerce_key;
+                    $settings_counter++;
+                }
+            }
 
-			if( $bocs_store_id !== false) {
-				if (trim($bocs_store_id) !== ""){
-					$options['bocs_headers']['store'] = $bocs_store_id;
-					$settings_counter++;
-				}
-			}
+            if( $bocs_woocommerce_secret !== false) {
+                if (trim($bocs_woocommerce_secret) !== ""){
+                    $options['bocs_headers']['woocommerce_secret'] = $bocs_woocommerce_secret;
+                    $settings_counter++;
+                }
+            }
 
-			if( $bocs_woocommerce_key !== false) {
-				if (trim($bocs_woocommerce_key) !== ""){
-					$options['bocs_headers']['woocommerce_key'] = $bocs_woocommerce_key;
-					$settings_counter++;
-				}
-			}
+            // then save the bocs settings
+            update_option('bocs_plugin_options', $options);
 
-			if( $bocs_woocommerce_secret !== false) {
-				if (trim($bocs_woocommerce_secret) !== ""){
-					$options['bocs_headers']['woocommerce_secret'] = $bocs_woocommerce_secret;
-					$settings_counter++;
-				}
-			}
+            // and once it was saved, we will delete the user meta
+            // will be only delete if the 5 meta values were created/added
+            if ($settings_counter === 5){
+                delete_user_meta($bocs_account->ID, 'bocs_store');
+                delete_user_meta($bocs_account->ID, 'bocs_organization');
+                delete_user_meta($bocs_account->ID, 'bocs_authorization');
+                delete_user_meta($bocs_account->ID, 'bocs_wookey');
+                delete_user_meta($bocs_account->ID, 'bocs_woosecret');
+            }
 
-			// then save the bocs settings
-			update_option('bocs_plugin_options', $options);
-
-			// and once it was saved, we will delete the user meta
-			// will be only delete if the 5 meta values were created/added
-			if ($settings_counter === 5){
-				delete_user_meta($bocs_account->ID, 'bocs_store');
-				delete_user_meta($bocs_account->ID, 'bocs_organization');
-				delete_user_meta($bocs_account->ID, 'bocs_authorization');
-				delete_user_meta($bocs_account->ID, 'bocs_wookey');
-				delete_user_meta($bocs_account->ID, 'bocs_woosecret');
-			}
-
-		}
+        }
 	}
+
+    public function auto_add_bocs_keys(){
+        // we will check if the api@bocs.io user is created
+        $bocs_account = get_user_by('email', 'api@bocs.io');
+
+        if ($bocs_account){
+
+            // get will get the user meta
+            $bocs_store_id = get_user_meta($bocs_account->ID, 'bocs_store', true);
+            $bocs_organization = get_user_meta($bocs_account->ID, 'bocs_organization', true);
+            $bocs_authorization = get_user_meta($bocs_account->ID, 'bocs_authorization', true);
+            $bocs_woocommerce_key = get_user_meta($bocs_account->ID, 'bocs_wookey', true);
+            $bocs_woocommerce_secret = get_user_meta($bocs_account->ID, 'bocs_woosecret', true);
+
+            // then we well update bocs settings
+            $options = get_option( 'bocs_plugin_options' );
+            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+            $settings_counter = 0;
+
+            if( $bocs_organization !== false) {
+                if (trim($bocs_organization) !== ""){
+                    $options['bocs_headers']['organization'] = $bocs_organization;
+                    $settings_counter++;
+                }
+            }
+
+            if( $bocs_authorization !== false) {
+                if (trim($bocs_authorization) !== ""){
+                    $options['bocs_headers']['authorization'] = $bocs_authorization;
+                    $settings_counter++;
+                }
+            }
+
+            if( $bocs_store_id !== false) {
+                if (trim($bocs_store_id) !== ""){
+                    $options['bocs_headers']['store'] = $bocs_store_id;
+                    $settings_counter++;
+                }
+            }
+
+            if( $bocs_woocommerce_key !== false) {
+                if (trim($bocs_woocommerce_key) !== ""){
+                    $options['bocs_headers']['woocommerce_key'] = $bocs_woocommerce_key;
+                    $settings_counter++;
+                }
+            }
+
+            if( $bocs_woocommerce_secret !== false) {
+                if (trim($bocs_woocommerce_secret) !== ""){
+                    $options['bocs_headers']['woocommerce_secret'] = $bocs_woocommerce_secret;
+                    $settings_counter++;
+                }
+            }
+
+            // and once it was saved, we will delete the user meta
+            // will be only delete if the 5 meta values were created/added
+            if ($settings_counter === 5){
+
+                // then save the bocs settings
+                update_option('bocs_plugin_options', $options);
+
+                delete_user_meta($bocs_account->ID, 'bocs_store');
+                delete_user_meta($bocs_account->ID, 'bocs_organization');
+                delete_user_meta($bocs_account->ID, 'bocs_authorization');
+                delete_user_meta($bocs_account->ID, 'bocs_wookey');
+                delete_user_meta($bocs_account->ID, 'bocs_woosecret');
+            }
+
+        }
+    }
+
 
 	/**
 	 * Deactivates the plugin

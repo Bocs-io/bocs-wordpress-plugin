@@ -92,9 +92,6 @@ function run_plugin()
 
     $plugin = new Bocs();
     $plugin->run();
-
-
-
 }
 
 add_action( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'action_bocs_plugin', 10 );
