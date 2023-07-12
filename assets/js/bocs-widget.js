@@ -100,11 +100,20 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 			props.setAttributes({collectionId: ""});
 
+			// deselect all by default
+
+			// uncheck the radios
+			jQuery(".bocsNested > li").removeClass("active");
+
+			// unhightlight the selected
+
+
 			if (event.target.parentElement.querySelector(".bocsNested") ){
+				event.target.classList.toggle("bocsCaret-down");
 				event.target.parentElement.querySelector(".bocsNested").classList.toggle("active");
 			} else {
 				props.setAttributes({collectionId: event.target.id});
-				event.target.classList.add("active");
+				event.target.classList.add(	"active");
 			}
 
 		}
@@ -118,16 +127,39 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				React.createElement("li", {
 					onClick: updateCollectionId,
 					id: collection.id
-				}, collection.name)
+				},
+					React.createElement(
+						"input",
+						{
+							type: "radio",
+							value: collection.id,
+							name: "selectedOption",
+							className: "radioOption"
+						}
+					),
+					collection.name)
 			);
 		});
 
 		bocsOptions.forEach((bocs) => {
 			bocsHTML.push(
-				React.createElement("li", {
-					onClick: updateCollectionId,
-					id: bocs.id
-				}, bocs.name)
+				React.createElement(
+					"li",
+					{
+						onClick: updateCollectionId,
+						id: bocs.id
+					},
+					React.createElement(
+						"input",
+						{
+							type: "radio",
+							value: bocs.id,
+							name: "selectedOption",
+							className: "radioOption"
+						}
+					),
+					bocs.name
+				)
 			);
 		});
 

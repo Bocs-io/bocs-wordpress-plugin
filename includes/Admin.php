@@ -76,11 +76,11 @@ class Admin
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.7');
+        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.9');
 
 		wp_enqueue_script('jquery');
 
-		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.167');
+		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.171');
 		wp_enqueue_script("bocs-custom-block");
 
 		wp_localize_script('bocs-custom-block', 'ajax_object', array(

@@ -1,3 +1,7 @@
+v0.0.22 07/12/2023
+* added radio input on the bocs widget editor
+* remove highlight to non-active option
+
 v0.0.21 07/11/2023
 * added auto add bocs keys needed
 
