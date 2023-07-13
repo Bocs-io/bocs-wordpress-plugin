@@ -120,13 +120,89 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		let collectionHTML = [];
 		let bocsHTML = [];
+
+		//console.log(ajax_object.bocs_widget_bocs, ajax_object.bocs_widget_collections, ajax_object.bocs_widget_selected);
+
 		let result = "Getting list of Bocs and Collection";
+
+		if( ajax_object.bocs_widget_collections !== '' ){
+			ajax_object.bocs_widget_collections.forEach((collection) => {
+				collectionHTML.push(
+					React.createElement("li", {
+							onClick: updateCollectionId,
+							id: collection.id,
+							className: ajax_object.bocs_widget_selected === 'collection-' + collection.id ? 'active' : ''
+						},
+						React.createElement(
+							"input",
+							{
+								type: "radio",
+								value: collection.id,
+								name: "selectedOption",
+								className: "radioOption",
+								checked: ajax_object.bocs_widget_selected === 'collection-' + collection.id
+							}
+						),
+						collection.name)
+				);
+			});
+		}
+
+		if ( ajax_object.bocs_widget_bocs !== '' ){
+			ajax_object.bocs_widget_bocs.forEach((bocs) => {
+				bocsHTML.push(
+					React.createElement(
+						"li",
+						{
+							onClick: updateCollectionId,
+							id: bocs.id,
+							className: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id ? 'active' : ''
+						},
+						React.createElement(
+							"input",
+							{
+								type: "radio",
+								value: bocs.id,
+								name: "selectedOption",
+								className: "radioOption",
+								checked: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id
+							}
+						),
+						bocs.name
+					)
+				);
+			});
+		}
+
+		if (collectionHTML.length > 0 || bocsHTML.length > 0){
+			result = /*#__PURE__*/React.createElement("ul", {
+				id: "bocsUL"
+			}, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
+				class: "bocsCaret",
+				onClick: updateCollectionId
+			}, "Collected Widget"), /*#__PURE__*/React.createElement("ul", {
+				class: "bocsNested"
+			}, ...collectionHTML)), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
+				class: "bocsCaret",
+				onClick: updateCollectionId
+			}, "Bocs Widget"), /*#__PURE__*/React.createElement("ul", {
+				class: "bocsNested"
+			}, ...bocsHTML)));
+		}
+
+		collectionHTML = [];
+		bocsHTML = [];
+
+		// before getting the actual list of the bocs and collection, we will get the list
+		// from the stored on the options
+
 
 		collectionOptions.forEach((collection) => {
 			collectionHTML.push(
 				React.createElement("li", {
 					onClick: updateCollectionId,
-					id: collection.id
+					id: collection.id,
+					className: ajax_object.bocs_widget_selected === 'collection-' + collection.id ? 'active' : ''
 				},
 					React.createElement(
 						"input",
@@ -147,7 +223,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					"li",
 					{
 						onClick: updateCollectionId,
-						id: bocs.id
+						id: bocs.id,
+						className: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id ? 'active' : ''
 					},
 					React.createElement(
 						"input",
@@ -185,6 +262,22 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	save: function (props){
 
 		let result = "";
+
+		// we will save first the list of the bocs and of the collections
+		// on the database via options
+
+		jQuery.ajax({
+			url: ajax_object.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'save_widget_options',
+				nonce: ajax_object.nonce,   // The AJAX nonce value
+				bocs: bocsOptions,
+				collections: collectionOptions,
+				selectedOption: props.attributes.collectionId
+			}
+		});
+
 
 		if (props.attributes.collectionId){
 			if (props.attributes.collectionId.includes('bocs-')){

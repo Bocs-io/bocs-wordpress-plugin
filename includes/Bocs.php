@@ -175,7 +175,11 @@ class Bocs
         // create bocs subscription and order if the order is in processing
         $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
 
-        // this is for the plugin updater
+        // this is for the saving of the bocs and collections list
+        // so that it will show the default and/or the selected option
+        // with the ones listed
+        $this->loader->add_action('wp_ajax_save_widget_options', $plugin_admin, 'save_widget_options_callback');
+        $this->loader->add_action('wp_ajax_nopriv_save_widget_options', $plugin_admin, 'save_widget_options_callback');
 
 		/*
 

@@ -1,3 +1,6 @@
+v0.0.23 07/13/2023
+* saving on the bocs widget editor fix
+
 v0.0.22 07/12/2023
 * added radio input on the bocs widget editor
 * remove highlight to non-active option
