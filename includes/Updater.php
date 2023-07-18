@@ -29,9 +29,6 @@ class Updater {
 	}
 
 	public function set_plugin_properties() {
-
-        error_log("set_plugin_properties");
-
 		$this->plugin	= get_plugin_data( $this->file );
 		$this->basename = plugin_basename( $this->file );
 		$this->active	= is_plugin_active( $this->basename );
@@ -67,8 +64,6 @@ class Updater {
 				$response = current( $response ); // Get the first item
 			}
 
-            error_log(print_r($response, true));
-
 			$this->github_response = $response; // Set it to our property
 		}
 	}
@@ -89,8 +84,6 @@ class Updater {
 	}
 
 	public function modify_transient( $transient ) {
-
-        error_log("modify_transient");
 
 		if( property_exists( $transient, 'checked') ) { // Check if transient has a checked property
 

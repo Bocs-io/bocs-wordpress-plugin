@@ -131,7 +131,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					React.createElement("li", {
 							onClick: updateCollectionId,
 							id: collection.id,
-							className: ajax_object.bocs_widget_selected === 'collection-' + collection.id ? 'active' : ''
+							className: ajax_object.bocs_widget_selected === ('collection-' + collection.id) ? 'active' : ''
 						},
 						React.createElement(
 							"input",
@@ -140,7 +140,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 								value: collection.id,
 								name: "selectedOption",
 								className: "radioOption",
-								checked: ajax_object.bocs_widget_selected === 'collection-' + collection.id
+								checked: ajax_object.bocs_widget_selected === ('collection-' + collection.id)
 							}
 						),
 						collection.name)
@@ -156,7 +156,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 						{
 							onClick: updateCollectionId,
 							id: bocs.id,
-							className: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id ? 'active' : ''
+							className: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id) ? 'active' : ''
 						},
 						React.createElement(
 							"input",
@@ -165,7 +165,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 								value: bocs.id,
 								name: "selectedOption",
 								className: "radioOption",
-								checked: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id
+								checked: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id)
 							}
 						),
 						bocs.name
@@ -202,7 +202,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				React.createElement("li", {
 					onClick: updateCollectionId,
 					id: collection.id,
-					className: ajax_object.bocs_widget_selected === 'collection-' + collection.id ? 'active' : ''
+					className: ajax_object.bocs_widget_selected === ('collection-' + collection.id) ? 'active' : ''
 				},
 					React.createElement(
 						"input",
@@ -224,7 +224,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					{
 						onClick: updateCollectionId,
 						id: bocs.id,
-						className: ajax_object.bocs_widget_selected === 'bocs-' + bocs.id ? 'active' : ''
+						className: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id) ? 'active' : ''
 					},
 					React.createElement(
 						"input",

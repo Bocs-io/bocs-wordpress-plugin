@@ -80,14 +80,13 @@ class Admin
 
 		wp_enqueue_script('jquery');
 
-		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.177');
+		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.179');
 		wp_enqueue_script("bocs-custom-block");
 
         // we will load first what is the currently saved bocs and collection
         $bocs_widget_bocs = get_option('bocs_widget_bocs');
         $bocs_widget_collections = get_option('bocs_widget_collections');
         $bocs_widget_selected = get_option('bocs_widget_selected');
-
 
 		wp_localize_script('bocs-custom-block', 'ajax_object', array(
 			'bocsURL' => BOCS_API_URL . "bocs",

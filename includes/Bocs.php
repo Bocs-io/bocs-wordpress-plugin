@@ -51,6 +51,9 @@ class Bocs
 		$this->define_admin_hooks();
 		// $this->define_public_hooks();
 
+        $this->define_account_profile_hooks();
+        $this->define_sync_hooks();
+
 	}
 
 	/**
@@ -86,10 +89,15 @@ class Bocs
 		 * The class responsible for defining all actions that occur in the admin area.
 		 */
 		require_once plugin_dir_path(dirname(__FILE__)).'includes/Admin.php';
+        require_once plugin_dir_path(dirname(__FILE__)).'includes/Account.php';
 
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_List_Table.php';
 
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Updater.php';
+
+        require_once plugin_dir_path(dirname(__FILE__)).'includes/Sync.php';
+
+        require_once plugin_dir_path(dirname(__FILE__)).'includes/Curl.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
@@ -121,6 +129,29 @@ class Bocs
 		$this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
 
 	}
+
+    private function define_sync_hooks(){
+
+        $syncing = new Sync();
+
+        $this->loader->add_action('profile_update', $syncing, 'profile_update', 10, 3);
+        $this->loader->add_filter('insert_user_meta', $syncing, 'insert_user_meta', 10, 4);
+    }
+
+    /**
+     * handles hooks related to the My Account / My Profile
+     *
+     * @return void
+     */
+    private function define_account_profile_hooks(){
+
+        $account = new Account();
+
+        $this->loader->add_filter('woocommerce_account_menu_items', $account, 'add_bocs_menu');
+        $this->loader->add_action('init', $account, 'bocs_subscription_endpoint');
+        $this->loader->add_filter('woocommerce_account_bocs-subscription_endpoint', $account, 'bocs_subscription_endpoint_template');
+
+    }
 
     private function define_updater_hooks(){
 

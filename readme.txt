@@ -1,3 +1,6 @@
+v0.0.24 07/18/2023
+* Added synced when a user is edited
+
 v0.0.23 07/13/2023
 * saving on the bocs widget editor fix
 
