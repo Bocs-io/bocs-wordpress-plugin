@@ -246,6 +246,16 @@ class Sync {
 
 	}
 
+	/**
+	 * 
+	 * Attempts to sync or add if not exists the user data 
+	 * when he update his profile
+	 * 
+	 * @param int $user_id
+	 * 
+	 * @return void
+	 * 
+	 */
 	public function save_account_details( $user_id ){
 
 		// check if the user has a bocs record
@@ -273,7 +283,6 @@ class Sync {
 			}
 		}
 
-
 		if( empty($bocs_contact_id) ){
 
 			// add only to the app
@@ -286,15 +295,20 @@ class Sync {
 			$params[] = '"lastName": "'. $last_name .'"';
 			$params[] = '"fullName": "'. $first_name . ' ' . $last_name .  '"';
 
-			if( !empty($old_userdata->roles) ) {
-				if( !empty($old_userdata->roles[0]) ){
-					$params[] = '"role": "'. $old_userdata->roles[0] .'"';
+			if($old_userdata){
+
+				if( !empty($old_userdata->roles) ) {
+					if( !empty($old_userdata->roles[0]) ){
+						$params[] = '"role": "'. $old_userdata->roles[0] .'"';
+					}
 				}
+
+				$params[] = '"username": "'. $old_userdata->user_login .'"';
 			}
 			
 			$params[] = '"externalSource": "Wordpress"';
 			$params[] = '"externalSourceId": "'. $user_id .'"';
-			$params[] = '"username": "'. $old_userdata->user_login .'"';
+			
 
 			$data = '{';
 			$data .= implode(',', $params);
@@ -307,9 +321,10 @@ class Sync {
 			if ($createdUser->data){
 				if ($createdUser->data[0]->contactId){
 					$bocs_contact_id = $createdUser->data[0]->contactId;
-					add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
 				}
 			}
+
 		} else {
 
 			$do_sync = false;
@@ -338,7 +353,6 @@ class Sync {
 
 			if( $old_userdata ){
 				$old_email = $old_userdata->user_email;
-				
 			}
 	
 			if( $old_email !== $email ){
@@ -347,10 +361,9 @@ class Sync {
 			}
 	
 			if($do_sync){
-				$data = '{';
-	
-				$data .= implode(',', $params);
 
+				$data = '{';
+				$data .= implode(',', $params);
 				$data .= '}';
 
 				$url = 'sync/contacts/' . $bocs_contact_id ;
