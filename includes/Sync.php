@@ -246,4 +246,118 @@ class Sync {
 
 	}
 
+	public function save_account_details( $user_id ){
+
+		// check if the user has a bocs record
+		$bocs_contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
+		$email = isset($_POST['account_email']) ? sanitize_email($_POST['account_email']) : '';
+		$first_name = isset($_POST['account_first_name']) ? sanitize_text_field($_POST['account_first_name']) : '';
+		$last_name = isset($_POST['account_last_name']) ? sanitize_text_field($_POST['account_last_name']) : '';
+		$old_userdata = get_userdata( $user_id );
+
+		// in case that the user doesnt have a bocs contact id
+		// we will search by email
+		if (empty($bocs_contact_id)){
+			// search if the user exist using email
+			$url = 'contacts?query=email:' . $email;
+			$get_user = $curl->get($url);
+
+			if ($get_user){
+
+				$result = json_decode($get_user);
+
+				if ($result->data && count($result->data) > 0){
+					$bocs_contact_id = $result->data[0]->contactId;
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				}
+			}
+		}
+
+
+		if( empty($bocs_contact_id) ){
+
+			// add only to the app
+			// we will add  the user here
+			// but will not do the sync as the adding is
+			// considered as the first syncs
+			$params = array();
+			$params[] = '"email": "'. $email .'"';
+			$params[] = '"firstName": "'. $first_name .'"';
+			$params[] = '"lastName": "'. $last_name .'"';
+			$params[] = '"fullName": "'. $first_name . ' ' . $last_name .  '"';
+
+			if( !empty($old_userdata->roles) ) {
+				if( !empty($old_userdata->roles[0]) ){
+					$params[] = '"role": "'. $old_userdata->roles[0] .'"';
+				}
+			}
+			
+			$params[] = '"externalSource": "Wordpress"';
+			$params[] = '"externalSourceId": "'. $user_id .'"';
+			$params[] = '"username": "'. $old_userdata->user_login .'"';
+
+			$data = '{';
+			$data .= implode(',', $params);
+
+			$data .= '}';
+
+			$url = 'contacts';
+			$createdUser = $curl->post($url, $data);
+
+			if ($createdUser->data){
+				if ($createdUser->data[0]->contactId){
+					$bocs_contact_id = $createdUser->data[0]->contactId;
+					add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+				}
+			}
+		} else {
+
+			$do_sync = false;
+
+			$old_first_name = get_user_meta($user_id, 'first_name', true);
+			$old_last_name = get_user_meta($user_id, 'last_name', true);
+			$old_email = '';
+
+			$params = array();
+
+			$params[] = '"id": "'. $bocs_contact_id .'"';
+	
+			if( $old_first_name !== $first_name ){
+				$do_sync = true;
+				$params[] = '"firstName": "'. $first_name .'"';
+			}
+	
+			if( $old_last_name !== $last_name ){
+				$do_sync = true;
+				$params[] = '"lastName": "'. $last_name .'"';
+			}
+	
+			if( $do_sync ){
+				$params[] = '"fullName": "'. $first_name . ' '. $last_name .'"';
+			}
+
+			if( $old_userdata ){
+				$old_email = $old_userdata->user_email;
+				
+			}
+	
+			if( $old_email !== $email ){
+				$do_sync = true;
+				$params[] = '"email": "'. $email .'"';
+			}
+	
+			if($do_sync){
+				$data = '{';
+	
+				$data .= implode(',', $params);
+
+				$data .= '}';
+
+				$url = 'sync/contacts/' . $bocs_contact_id ;
+				$curl->put($url, $data);
+			}
+		}
+
+	}
+
 }
