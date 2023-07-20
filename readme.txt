@@ -1,3 +1,6 @@
+v0.0.25 07/20/2023
+* When user his own profile - trigger sync
+
 v0.0.24 07/18/2023
 * Added synced when a user is edited
 
