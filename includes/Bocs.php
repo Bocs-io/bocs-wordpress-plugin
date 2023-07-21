@@ -130,7 +130,11 @@ class Bocs
 
 	}
 
-    private function define_sync_hooks(){
+    /**
+	 * This will handle the hooks related to Bocs' App syncs
+	 *
+	 */
+	private function define_sync_hooks(){
 
         $syncing = new Sync();
 
@@ -160,6 +164,8 @@ class Bocs
         $updater = new Updater(plugin_dir_path(dirname(__FILE__)) . 'bocs.php' );
 
         $this->loader->add_action('admin_init', $updater, 'set_plugin_properties');
+
+
         $this->loader->add_filter('pre_set_site_transient_update_plugins', $updater, 'modify_transient');
         $this->loader->add_filter('plugins_api', $updater, 'plugin_popup', 10, 3);
         $this->loader->add_filter('upgrader_post_install', $updater, 'after_install', 10, 3);

@@ -66,7 +66,11 @@ class Sync {
 				$params[] = '"firstName": "'. $userdata['first_name'] .'"';
 				$params[] = '"lastName": "'. $userdata['last_name'] .'"';
 				$params[] = '"fullName": "'. $userdata['first_name'] . ' ' . $userdata['last_name'] .  '"';
-				$params[] = '"role": "'. $userdata['role'] .'"';
+
+				if( !empty( $userdata['role'] ) ){
+					$params[] = '"role": "'. $userdata['role'] .'"';
+				}
+				
 				$params[] = '"externalSource": "Wordpress"';
 				$params[] = '"externalSourceId": "'. $user->ID .'"';
 				$params[] = '"username": "'. $user->user_login .'"';
