@@ -82,6 +82,7 @@ class Sync {
 
 				$url = 'contacts';
 				$createdUser = $curl->post($url, $data);
+				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
 					if ($createdUser->data[0]->contactId){
@@ -107,7 +108,10 @@ class Sync {
 				$data .= '}';
 
 				$url = 'sync/contacts/' . $bocs_contact_id ;
-				$curl->put($url, $data);
+				$addedSync = $curl->put($url, $data);
+
+				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
+				
 			}
 		}
 
@@ -155,7 +159,7 @@ class Sync {
 			}
 		}
 
-		$new_role = $user_data['role'];
+		$new_role = !empty($user_data['role']) ? $user_data['role'] : '';
 
 		$new_data = array();
 		$do_sync = false;
@@ -165,7 +169,7 @@ class Sync {
 			$do_sync = true;
 		}
 
-		if ($old_role !== $new_role){
+		if ($old_role !== $new_role && $new_role !== ''){
 			$new_data['role'] = $new_role;
 			$do_sync = true;
 		}
@@ -208,7 +212,11 @@ class Sync {
 				$params[] = '"firstName": "'. $user_data['first_name'] .'"';
 				$params[] = '"lastName": "'. $user_data['last_name'] .'"';
 				$params[] = '"fullName": "'. $user_data['first_name'] . ' ' . $user_data['last_name'] .  '"';
-				$params[] = '"role": "'. $user_data['role'] .'"';
+
+				if( !empty( $user_data['role'] ) ){
+					$params[] = '"role": "'. $user_data['role'] .'"';
+				}
+				
 				$params[] = '"externalSource": "Wordpress"';
 				$params[] = '"externalSourceId": "'. $old_user_data->ID .'"';
 				$params[] = '"username": "'. $old_user_data->user_login .'"';
@@ -220,6 +228,7 @@ class Sync {
 
 				$url = 'contacts';
 				$createdUser = $curl->post($url, $data);
+				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
 					if ($createdUser->data[0]->contactId){
@@ -243,7 +252,9 @@ class Sync {
 				$data .= '}';
 
 				$url = 'sync/contacts/' . $bocs_contact_id ;
-				$curl->put($url, $data);
+				$addedSync = $curl->put($url, $data);
+
+				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
 			}
 
 		}
@@ -321,6 +332,7 @@ class Sync {
 
 			$url = 'contacts';
 			$createdUser = $curl->post($url, $data);
+			error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 			if ($createdUser->data){
 				if ($createdUser->data[0]->contactId){
@@ -371,7 +383,9 @@ class Sync {
 				$data .= '}';
 
 				$url = 'sync/contacts/' . $bocs_contact_id ;
-				$curl->put($url, $data);
+				$addedSync = $curl->put($url, $data);
+
+				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
 			}
 		}
 
