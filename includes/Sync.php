@@ -117,8 +117,8 @@ class Sync {
 				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
-					if ($createdUser->data[0]->contactId){
-						$bocs_contact_id = $createdUser->data[0]->contactId;
+					if ($createdUser->data->contactId){
+						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
 					}
 				}
@@ -166,8 +166,8 @@ class Sync {
 					error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 					if ($createdUser->data){
-						if ($createdUser->data[0]->contactId){
-							$bocs_contact_id = $createdUser->data[0]->contactId;
+						if ($createdUser->data->contactId){
+							$bocs_contact_id = $createdUser->data->contactId;
 							update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
 						}
 					}
@@ -286,8 +286,8 @@ class Sync {
 				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
-					if ($createdUser->data[0]->contactId){
-						$bocs_contact_id = $createdUser->data[0]->contactId;
+					if ($createdUser->data->contactId){
+						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
 					}
 				}
@@ -329,8 +329,8 @@ class Sync {
 					error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 					if ($createdUser->data){
-						if ($createdUser->data[0]->contactId){
-							$bocs_contact_id = $createdUser->data[0]->contactId;
+						if ($createdUser->data->contactId){
+							$bocs_contact_id = $createdUser->data->contactId;
 							update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
 						}
 					}
@@ -415,8 +415,8 @@ class Sync {
 			error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 			if ($createdUser->data){
-				if ($createdUser->data[0]->contactId){
-					$bocs_contact_id = $createdUser->data[0]->contactId;
+				if ($createdUser->data->contactId){
+					$bocs_contact_id = $createdUser->data->contactId;
 					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
 				}
 			}
