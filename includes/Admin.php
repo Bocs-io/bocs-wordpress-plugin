@@ -193,12 +193,22 @@ class Admin
 		// @TODO
 	}
 
+	/**
+	 * The page for the list of errors
+	 * 
+	 * @return void
+	 */
+	public function bocs_error_logs_page(){
+		
+		require_once dirname( __FILE__ ) . '/../views/bocs_error_logs.php';
+
+	}
+
 	public function bocs_sync_store_page(){
-
-
 
 		$this->_bocs_post_sync_options();
 		require_once dirname( __FILE__ ) . '/../views/bocs_sync_store.php';
+
 	}
 
 	public function bocs_settings_page(){
@@ -215,6 +225,7 @@ class Admin
 		add_submenu_page("bocs", "Subscriptions", "Subscriptions", "manage_options", 'bocs-subscriptions', [$this, 'bocs_list_subscriptions'] );
 		add_submenu_page("bocs", "Settings", "Settings", "manage_options", 'bocs-settings', [$this, 'bocs_settings_page'] );
 		add_submenu_page("bocs", "Sync Store", "Sync Store", "manage_options", 'bocs-sync-store', [$this, 'bocs_sync_store_page'] );
+		add_submenu_page("bocs", "Error Logs", "Error Logs", "manage_options", 'bocs-error-logs', [$this, 'bocs_error_logs_page'] );
 
 		remove_submenu_page('bocs','bocs');
 	}
