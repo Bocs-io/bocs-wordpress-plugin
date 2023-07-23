@@ -1047,6 +1047,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 {"id":1000,"module":"subscriptions","code":401,"message":"Nullam molestie nibh in lectus. Pellentesque at nulla. Suspendisse potenti. Cras in purus eu magna vulputate luctus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.","log_time":"2022-11-26 22:11:55"}]';
 
         $result = json_decode( $data );
+        error_log( print_r($result, true) );
 
         return $result;
 
