@@ -11,6 +11,8 @@ class Sync {
 	 * @return boolean|object
 	 */
 	private function _createUser( $user ){
+
+		$curl = new Curl();
 		
 		$result = false;
 
