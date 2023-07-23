@@ -27,7 +27,6 @@ class Error_Logs_List_Table extends WP_List_Table {
     public function column_default($item, $column_name)
 	{
 		switch ($column_name){
-            case 'id':
 			case 'module':
 			case 'code':
 			case 'message':
@@ -152,7 +151,7 @@ class Error_Logs_List_Table extends WP_List_Table {
         $result = json_decode( $data, true );
 
         return [array(
-                'id' => 100,
+                
                 'module' => "contacts",
                 'code' => 400,
                 'message' => "Curabitur gravida nisi at nibh. In hac habitasse platea dictumst. Aliquam augue quam, sollicitudin vitae, consectetuer eget, rutrum at, lorem. Integer tincidunt ante vel ipsum. Praesent blandit lacinia erat. Vestibulum sed magna at nunc commodo placerat.",
