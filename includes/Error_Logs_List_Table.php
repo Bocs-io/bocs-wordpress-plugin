@@ -1046,7 +1046,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 {"id":999,"module":"invoices","code":400,"message":"Duis aliquam convallis nunc. Proin at turpis a pede posuere nonummy. Integer non velit. Donec diam neque, vestibulum eget, vulputate ut, ultrices vel, augue. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Donec pharetra, magna vestibulum aliquet ultrices, erat tortor sollicitudin mi, sit amet lobortis sapien sapien non mi. Integer ac neque. Duis bibendum.","log_time":"2023-04-18 06:29:29"},
 {"id":1000,"module":"subscriptions","code":401,"message":"Nullam molestie nibh in lectus. Pellentesque at nulla. Suspendisse potenti. Cras in purus eu magna vulputate luctus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.","log_time":"2022-11-26 22:11:55"}]';
 
-        $result = json_decode( $data );
+        $result = json_decode( $data, true );
         error_log( print_r($result, true) );
 
         return $result;
