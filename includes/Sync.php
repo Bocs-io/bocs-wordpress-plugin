@@ -2,6 +2,43 @@
 
 class Sync {
 
+
+	/**
+	 * Creates a user on the Bocs app
+	 *
+	 * @param array $user
+	 *
+	 * @return boolean|object
+	 */
+	private function _createUser( $user ){
+		
+		$result = false;
+
+		$params = array();
+		$params[] = '"email": "'. $user['email'] .'"';
+		$params[] = '"firstName": "'. $user['first_name'] .'"';
+		$params[] = '"lastName": "'. $user['last_name'] .'"';
+		$params[] = '"fullName": "'. $user['first_name'] . ' ' . $user['last_name'] .  '"';
+
+		if( !empty( $user['role'] ) ){
+			$params[] = '"role": "'. $user['role'] .'"';
+		}
+		
+		$params[] = '"externalSource": "Wordpress"';
+		$params[] = '"externalSourceId": "'. $user['id'] .'"';
+		$params[] = '"username": "'. $user['username'] .'"';
+
+		$data = '{';
+		$data .= implode(',', $params);
+
+		$data .= '}';
+
+		$url = 'contacts';
+		$result = $curl->post($url, $data);
+
+		return $result;
+	}
+
 	/**
 	 * @param array $meta
 	 * @param WP_User $user
@@ -61,27 +98,20 @@ class Sync {
 				// we will add  the user here
 				// but will not do the sync as the adding is
 				// considered as the first syncs
-				$params = array();
-				$params[] = '"email": "'. $user->user_email .'"';
-				$params[] = '"firstName": "'. $userdata['first_name'] .'"';
-				$params[] = '"lastName": "'. $userdata['last_name'] .'"';
-				$params[] = '"fullName": "'. $userdata['first_name'] . ' ' . $userdata['last_name'] .  '"';
+				$params = array(
+					'id'			=> $user->ID,
+					'username'		=> $user->user_login,
+					'email' 		=> $user->user_email,
+					'first_name'	=> $userdata['first_name'],
+					'last_name'		=> $user_data['last_name']
+				);
 
 				if( !empty( $userdata['role'] ) ){
-					$params[] = '"role": "'. $userdata['role'] .'"';
+					$params['role'] = $userdata['role'];
 				}
-				
-				$params[] = '"externalSource": "Wordpress"';
-				$params[] = '"externalSourceId": "'. $user->ID .'"';
-				$params[] = '"username": "'. $user->user_login .'"';
 
-				$data = '{';
-				$data .= implode(',', $params);
+				$createdUser = $this->_createUser($params);
 
-				$data .= '}';
-
-				$url = 'contacts';
-				$createdUser = $curl->post($url, $data);
 				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
@@ -111,6 +141,35 @@ class Sync {
 				$addedSync = $curl->put($url, $data);
 
 				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
+
+				// in case that the bocs contact id does not exist
+				// then possibly if implies that this is related to
+				// previous or deleted bocs account
+				// thus we may need to re - add this
+				if( $addedSync->code  == 404 ){
+					$params = array(
+						'id'			=> $user->ID,
+						'username'		=> $user->user_login,
+						'email' 		=> $user->user_email,
+						'first_name'	=> $userdata['first_name'],
+						'last_name'		=> $user_data['last_name']
+					);
+
+					if( !empty( $userdata['role'] ) ){
+						$params['role'] = $userdata['role'];
+					}
+
+					$createdUser = $this->_createUser($params);
+
+					error_log( ' CREATED USER ' . print_r($createdUser , true) );
+
+					if ($createdUser->data){
+						if ($createdUser->data[0]->contactId){
+							$bocs_contact_id = $createdUser->data[0]->contactId;
+							update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+						}
+					}
+				}
 				
 			}
 		}
@@ -207,27 +266,21 @@ class Sync {
 				// we will add  the user here
 				// but will not do the sync as the adding is
 				// considered as the first syncs
-				$params = array();
-				$params[] = '"email": "'. $new_user_email .'"';
-				$params[] = '"firstName": "'. $user_data['first_name'] .'"';
-				$params[] = '"lastName": "'. $user_data['last_name'] .'"';
-				$params[] = '"fullName": "'. $user_data['first_name'] . ' ' . $user_data['last_name'] .  '"';
+
+				$params = array(
+					'id'			=> $old_user_data->ID,
+					'username'		=> $old_user_data->user_login,
+					'first_name'	=> $user_data['first_name'],
+					'last_name'		=> $user_data['last_name']
+				);
 
 				if( !empty( $user_data['role'] ) ){
-					$params[] = '"role": "'. $user_data['role'] .'"';
+					$params['role'] = $user_data['role'];
 				}
+
 				
-				$params[] = '"externalSource": "Wordpress"';
-				$params[] = '"externalSourceId": "'. $old_user_data->ID .'"';
-				$params[] = '"username": "'. $old_user_data->user_login .'"';
+				$createdUser = $this->_createUser($params);
 
-				$data = '{';
-				$data .= implode(',', $params);
-
-				$data .= '}';
-
-				$url = 'contacts';
-				$createdUser = $curl->post($url, $data);
 				error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 				if ($createdUser->data){
@@ -255,6 +308,31 @@ class Sync {
 				$addedSync = $curl->put($url, $data);
 
 				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
+
+				if( $addedSync->code == 404 ){
+					$params = array(
+						'id'			=> $old_user_data->ID,
+						'username'		=> $old_user_data->user_login,
+						'first_name'	=> $user_data['first_name'],
+						'last_name'		=> $user_data['last_name']
+					);
+
+					if( !empty( $user_data['role'] ) ){
+						$params['role'] = $user_data['role'];
+					}
+
+					
+					$createdUser = $this->_createUser($params);
+					
+					error_log( ' CREATED USER ' . print_r($createdUser , true) );
+
+					if ($createdUser->data){
+						if ($createdUser->data[0]->contactId){
+							$bocs_contact_id = $createdUser->data[0]->contactId;
+							update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+						}
+					}
+				}
 			}
 
 		}
