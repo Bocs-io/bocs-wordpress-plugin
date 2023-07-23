@@ -9,7 +9,7 @@ class Error_Logs_List_Table extends WP_List_Table {
             'module'    => 'Module',
             'code'      => 'Error Code',
             'message'   => 'Error Message',
-            'log_time'      => 'Date/Time'
+            'log_time'  => 'Date/Time'
         );
 
         return $columns;
@@ -152,14 +152,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 
         $result = json_decode( $data, true );
 
-        return [array(
-                
-                'module' => "contacts",
-                'code' => 400,
-                'message' => "Curabitur gravida nisi at nibh. In hac habitasse platea dictumst. Aliquam augue quam, sollicitudin vitae, consectetuer eget, rutrum at, lorem. Integer tincidunt ante vel ipsum. Praesent blandit lacinia erat. Vestibulum sed magna at nunc commodo placerat.",
-                'log_time' => "2023-04-07 14:24:09"
-            )];
-
+        return $result;
     }
 
 }
