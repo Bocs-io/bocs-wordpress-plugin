@@ -103,7 +103,7 @@ class Sync {
 					'username'		=> $user->user_login,
 					'email' 		=> $user->user_email,
 					'first_name'	=> $userdata['first_name'],
-					'last_name'		=> $user_data['last_name']
+					'last_name'		=> $userdata['last_name']
 				);
 
 				if( !empty( $userdata['role'] ) ){
@@ -152,7 +152,7 @@ class Sync {
 						'username'		=> $user->user_login,
 						'email' 		=> $user->user_email,
 						'first_name'	=> $userdata['first_name'],
-						'last_name'		=> $user_data['last_name']
+						'last_name'		=> $userdata['last_name']
 					);
 
 					if( !empty( $userdata['role'] ) ){
