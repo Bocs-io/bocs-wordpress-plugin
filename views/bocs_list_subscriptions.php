@@ -1,7 +1,3 @@
-<?php
-
-?>
-
 <div class="wrap">
     <h2>Bocs Subscriptions</h2>
 <?php
