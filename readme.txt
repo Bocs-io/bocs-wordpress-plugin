@@ -1,3 +1,6 @@
+v0.0.26 07/24/2023
+* Fix when the bocs' contact id is outdated or not on the same Bocs Account
+
 v0.0.25 07/20/2023
 * When user his own profile - trigger sync
 

@@ -114,8 +114,6 @@ class Sync {
 
 				$createdUser = $this->_createUser($params);
 
-				error_log( ' CREATED USER ' . print_r($createdUser , true) );
-
 				if ($createdUser->data){
 					if ($createdUser->data->contactId){
 						$bocs_contact_id = $createdUser->data->contactId;
@@ -142,8 +140,6 @@ class Sync {
 				$url = 'sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
-				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
-
 				// in case that the bocs contact id does not exist
 				// then possibly if implies that this is related to
 				// previous or deleted bocs account
@@ -162,8 +158,6 @@ class Sync {
 					}
 
 					$createdUser = $this->_createUser($params);
-
-					error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 					if ($createdUser->data){
 						if ($createdUser->data->contactId){
@@ -283,8 +277,6 @@ class Sync {
 				
 				$createdUser = $this->_createUser($params);
 
-				error_log( ' CREATED USER ' . print_r($createdUser , true) );
-
 				if ($createdUser->data){
 					if ($createdUser->data->contactId){
 						$bocs_contact_id = $createdUser->data->contactId;
@@ -309,8 +301,6 @@ class Sync {
 				$url = 'sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
-				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
-
 				if( $addedSync->code == 404 ){
 					$params = array(
 						'id'			=> $old_user_data->ID,
@@ -325,8 +315,6 @@ class Sync {
 
 					
 					$createdUser = $this->_createUser($params);
-					
-					error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 					if ($createdUser->data){
 						if ($createdUser->data->contactId){
@@ -412,7 +400,6 @@ class Sync {
 
 			$url = 'contacts';
 			$createdUser = $curl->post($url, $data);
-			error_log( ' CREATED USER ' . print_r($createdUser , true) );
 
 			if ($createdUser->data){
 				if ($createdUser->data->contactId){
@@ -465,7 +452,6 @@ class Sync {
 				$url = 'sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
-				error_log( 'ADDED SYNC ' . print_r( $addedSync, true ) );
 			}
 		}
 

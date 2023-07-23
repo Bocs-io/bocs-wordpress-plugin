@@ -3,6 +3,8 @@
 class Curl {
 
 	/**
+	 * Do the processes
+	 *
 	 * @param $url
 	 * @param $method
 	 * @param $data
