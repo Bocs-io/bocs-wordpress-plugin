@@ -15,16 +15,19 @@ class Error_Logs_List_Table extends WP_List_Table {
     }
 
     public function prepare_items(){
+
         $columns = $this->get_columns();
 		$hidden = array();
 		$sortable = array();
 		$this->_column_headers = array($columns, $hidden, $sortable);
 		$this->items = $this->_get_table_data();
+
     }
 
     public function column_default($item, $column_name)
 	{
 		switch ($column_name){
+            case 'id':
 			case 'module':
 			case 'code':
 			case 'message':
@@ -1048,9 +1051,11 @@ class Error_Logs_List_Table extends WP_List_Table {
 
         $result = json_decode( $data, true );
 
-        error_log( print_r($result[0], true) );
+        foreach($result as $row ){
+            error_log( print_r($row, true) );
+        }
 
-        return $result[0];
+        return $result;
 
     }
 
