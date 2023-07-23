@@ -12,6 +12,8 @@ class Error_Logs_List_Table extends WP_List_Table {
             'log_time'      => 'Date/Time'
         );
 
+        return $columns;
+
     }
 
     public function prepare_items(){
