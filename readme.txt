@@ -1,3 +1,7 @@
+v0.0.27 
+* moved the position of the menu
+* added sample error log menu and content
+
 v0.0.26 07/24/2023
 * Fix when the bocs' contact id is outdated or not on the same Bocs Account
 
