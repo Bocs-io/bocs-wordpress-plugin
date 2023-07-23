@@ -99,6 +99,8 @@ class Bocs
 
         require_once plugin_dir_path(dirname(__FILE__)).'includes/Curl.php';
 
+		require_once plugin_dir_path(dirname(__FILE__)).'includes/Error_Logs_List_Table.php';
+
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
 		 * side of the site.
