@@ -44,7 +44,7 @@ if (!class_exists('WP_List_Table')){
 }
 
 if (!class_exists('WC_Log_Handler')){
-    require_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/log-handlers/class-wc-log-handler.php');
+    require_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/abstracts/abstract-wc-log-handler.php');
 }
 
 if (!class_exists('WC_Log_Handler_DB')){
