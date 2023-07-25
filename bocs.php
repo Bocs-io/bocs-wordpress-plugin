@@ -43,6 +43,10 @@ if (!class_exists('WP_List_Table')){
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 
+if (!class_exists('WC_Log_Handler_DB')){
+    require_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/log-handlers/class-wc-log-handler-db.php');
+}
+
 if (!class_exists('Updater')){
     require_once dirname(__FILE__).'/includes/Updater.php';
 }
