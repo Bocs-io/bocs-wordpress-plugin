@@ -471,18 +471,4 @@ class Sync {
 		}
 
 	}
-
-	public function insert_log(){
-
-		global $wpdb;
-
-		$table_name = $wpdb->prefix . 'woocommerce_log';
-
-		$data = array(
-			'timestamp'		=> date('Y-m-d H:i:s'),
-			'level'			=> 
-		);
-	}
-
-
 }
