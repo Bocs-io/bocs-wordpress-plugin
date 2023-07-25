@@ -2,6 +2,16 @@
 
 class Admin
 {
+	/**
+	 * added bocs log handler
+	 * 
+	 */
+	public function bocs_register_log_handlers( $handlers ){
+
+		array_push( $handlers, new Bocs_Log_Handler() );
+
+		return $handlers;
+	}
 
 	/**
 	 * Updates the bocs product based on the app parameters

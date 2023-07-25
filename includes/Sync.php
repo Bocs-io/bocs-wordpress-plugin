@@ -86,8 +86,13 @@ class Sync {
 					$result = json_decode($get_user);
 
 					if ($result->data && count($result->data) > 0){
+						
 						$bocs_contact_id = $result->data[0]->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+
+						wc_get_logger()->info('User with email address ' . $user->user_email . ' was found on the app', array( 'source' => 'bocs' ));
+					} else {
+						wc_get_logger()->notice('email address ' . $user->user_email . ' is NOT found on the app', array( 'source' => 'bocs' ));
 					}
 				}
 			}
@@ -118,6 +123,7 @@ class Sync {
 					if ($createdUser->data->contactId){
 						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+						wc_get_logger()->info('User with email address ' . $user->user_email . ' was added on WordPress', array( 'source' => 'bocs' ));
 					}
 				}
 
@@ -145,6 +151,9 @@ class Sync {
 				// previous or deleted bocs account
 				// thus we may need to re - add this
 				if( $addedSync->code  == 404 ){
+					
+					wc_get_logger()->info('User with email address ' . $user->user_email . ' will be created', array( 'source' => 'bocs' ));
+
 					$params = array(
 						'id'			=> $user->ID,
 						'username'		=> $user->user_login,
@@ -163,7 +172,13 @@ class Sync {
 						if ($createdUser->data->contactId){
 							$bocs_contact_id = $createdUser->data->contactId;
 							update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+							wc_get_logger()->info('User with email address ' . $user->user_email . ' done created', array( 'source' => 'bocs' ));
+						} else {
+							wc_get_logger()->error('User with email address ' . $user->user_email . ' was NOT created', array( 'source' => 'bocs' ));
 						}
+					} else {
+
+							wc_get_logger()->error('User with email address ' . $user->user_email . ' was NOT created', array( 'source' => 'bocs' ));
 					}
 				}
 				
@@ -456,5 +471,18 @@ class Sync {
 		}
 
 	}
+
+	public function insert_log(){
+
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'woocommerce_log';
+
+		$data = array(
+			'timestamp'		=> date('Y-m-d H:i:s'),
+			'level'			=> 
+		);
+	}
+
 
 }

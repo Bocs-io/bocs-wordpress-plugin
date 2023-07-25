@@ -17,6 +17,7 @@ class Bocs_List_Table extends WP_List_Table {
 			"orders"            => "Orders"
 
 		);
+		
 		return $columns;
 	}
 

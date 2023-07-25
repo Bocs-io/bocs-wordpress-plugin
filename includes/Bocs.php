@@ -101,6 +101,8 @@ class Bocs
 
 		require_once plugin_dir_path(dirname(__FILE__)).'includes/Error_Logs_List_Table.php';
 
+		require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_Log_Handler.php';
+
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
 		 * side of the site.
@@ -221,6 +223,8 @@ class Bocs
         // with the ones listed
         $this->loader->add_action('wp_ajax_save_widget_options', $plugin_admin, 'save_widget_options_callback');
         $this->loader->add_action('wp_ajax_nopriv_save_widget_options', $plugin_admin, 'save_widget_options_callback');
+
+		$this->loader->add_filter('woocommerce_register_log_handlers', $plugin_admin, 'bocs_register_log_handlers');
 
 		/*
 
