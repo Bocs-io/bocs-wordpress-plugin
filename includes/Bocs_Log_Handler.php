@@ -1,11 +1,9 @@
 <?php
 
-class Bocs_Log_Handler extends WC_Log_Handler_DB {
+class Bocs_Log_Handler {
     
-    public function handle($timestamp, $level, $message, $context){
-
-        parent::handle($timestamp, $level, $message, $context);
-
+    public function insert_log(  ) {
+        
     }
 
 }

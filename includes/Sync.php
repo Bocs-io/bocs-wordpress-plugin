@@ -143,7 +143,7 @@ class Sync {
 
 				$data .= '}';
 
-				$url = 'sync/contacts/' . $bocs_contact_id ;
+				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
 				// in case that the bocs contact id does not exist
@@ -313,7 +313,7 @@ class Sync {
 
 				$data .= '}';
 
-				$url = 'sync/contacts/' . $bocs_contact_id ;
+				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
 				if( $addedSync->code == 404 ){
@@ -464,7 +464,7 @@ class Sync {
 				$data .= implode(',', $params);
 				$data .= '}';
 
-				$url = 'sync/contacts/' . $bocs_contact_id ;
+				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
 				$addedSync = $curl->put($url, $data);
 
 			}

@@ -1,4 +1,8 @@
-v0.0.27 
+v0.0.28 07/26/2023
+* Updated the endpoint for the sync
+* Removed the logs related code due to errors
+
+v0.0.27 07/24/2023
 * moved the position of the menu
 * added sample error log menu and content
 

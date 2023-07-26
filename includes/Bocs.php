@@ -101,7 +101,7 @@ class Bocs
 
 		require_once plugin_dir_path(dirname(__FILE__)).'includes/Error_Logs_List_Table.php';
 
-		require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_Log_Handler.php';
+		// require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_Log_Handler.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
@@ -224,30 +224,7 @@ class Bocs
         $this->loader->add_action('wp_ajax_save_widget_options', $plugin_admin, 'save_widget_options_callback');
         $this->loader->add_action('wp_ajax_nopriv_save_widget_options', $plugin_admin, 'save_widget_options_callback');
 
-		$this->loader->add_filter('woocommerce_register_log_handlers', $plugin_admin, 'bocs_register_log_handlers');
-
-		/*
-
-
-
-		// Actions
-		$this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
-		// $this->loader->add_action('admin_init', $plugin_admin, 'bocs_register_settings');
-
-		$contact = new Contact();
-
-		$this->loader->add_action('wp_ajax_sync_contacts_to_bocs', $contact, 'sync_to_bocs');
-		$this->loader->add_action('wp_ajax_nopriv_sync_contacts_to_bocs', $contact, 'sync_to_bocs');
-
-		$this->loader->add_action('wp_ajax_force_sync_contact_to_bocs', $contact, 'force_sync_to_bocs');
-		$this->loader->add_action('wp_ajax_nopriv_force_sync_contact_to_bocs', $contact, 'force_sync_to_bocs');
-
-		$this->loader->add_action('wp_ajax_force_sync_contact_from_bocs', $contact, 'force_sync_from_bocs');
-		$this->loader->add_action('wp_ajax_nopriv_force_sync_contact_from_bocs', $contact, 'force_sync_from_bocs');
-
-		$tag = new Tag();
-
-		$this->loader->add_action('saved_term', $tag, 'bocs_saved_term', 10, 5);*/
+		// $this->loader->add_filter('woocommerce_register_log_handlers', $plugin_admin, 'bocs_register_log_handlers');
 
 
 	}

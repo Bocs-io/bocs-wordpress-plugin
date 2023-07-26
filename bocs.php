@@ -10,7 +10,7 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.27
+ * Version:           0.0.28
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -25,7 +25,7 @@ if (!defined('WPINC') || !defined('ABSPATH')) {
 	die;
 }
 
-define('BOCS_VERSION', '0.0.27');
+define('BOCS_VERSION', '0.0.28');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
@@ -41,14 +41,6 @@ if (file_exists(dirname(__FILE__).'/includes/vendor/autoload.php')) {
 
 if (!class_exists('WP_List_Table')){
     require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
-}
-
-if (!class_exists('WC_Log_Handler')){
-    require_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/abstracts/abstract-wc-log-handler.php');
-}
-
-if (!class_exists('WC_Log_Handler_DB')){
-    require_once(ABSPATH . 'wp-content/plugins/woocommerce/includes/log-handlers/class-wc-log-handler-db.php');
 }
 
 if (!class_exists('Updater')){
