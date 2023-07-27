@@ -49,7 +49,7 @@ class Curl {
 
 		// we will be logging the error/success here
 		$logger = new Bocs_Log_Handler();
-		$logger->process_log_from_result($result, $url, $data, $method);
+		$logger->process_log_from_result($result, $url, $data, $method, $module, $id);
 
 		return $result;
 
