@@ -8,7 +8,8 @@ class Curl {
 	 * @param $url
 	 * @param $method
 	 * @param $data
-	 * @return bool|string
+	 *
+	 * @return array|object
 	 */
 	private function process($url, $method = "GET", $data = ""){
 
@@ -44,18 +45,39 @@ class Curl {
 
 		curl_close($curl);
 
-		return json_decode($response);
+		$result = json_decode($response);
+
+		// we will be logging the error/success here
+		$logger = new Bocs_Log_Handler();
+		$logger->process_log_from_result($result, $url, $data, $method);
+
+		return $result;
 
 	}
 
+	/**
+	 * Post HTTP method for the private API
+	 * 
+	 * @return array|object
+	 */
 	public function post($url, $data){
 		return $this->process( BOCS_API_URL . $url, "POST", $data );
 	}
 
+	/**
+	 * Put HTTP method for the private API
+	 * 
+	 * @return array|object
+	 */
 	public function put($url, $data){
 		return $this->process( BOCS_API_URL . $url, "PUT", $data );
 	}
 
+	/**
+	 * Get HTTP Method for the private API
+	 * 
+	 * @return array|object
+	 */
 	public function get( $url ){
 		return $this->process(BOCS_API_URL . $url, "GET");
 	}

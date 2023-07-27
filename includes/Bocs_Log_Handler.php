@@ -1,13 +1,36 @@
 <?php
 
 class Bocs_Log_Handler {
+
+    public function process_log_from_result( $result, $url = false, $params = false, $method = 'get' ){
+
+        if( empty($result) ) return false;
+        if( empty($result->code) ) return false;
+        if( empty($result->message) ) return false;
+
+        
+
+        $level = 'notice';
+        $message = $result->message;
+        $context = 'method: ' . $method;
+
+        if( $result->code == 200 ){
+            $level = 'notice';
+        } else {
+            $level = 'error';
+            $context .= ', data: ' . $params;
+        }
+
+        $this->insert_log($level, $message, $context);
+
+    }
     
     /**
      * Adds logs on the woocommerce_log table
      * 
      * @param string $level 
      *
-     * The level numbers and their corresponding severity levels are as follows:
+     * The status numbers and their corresponding severity levels are as follows:
      * 
      * 0 - Emergency: The highest severity level, indicating a system-wide critical failure.
      * 1 - Alert: An urgent situation that requires immediate attention.
