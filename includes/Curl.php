@@ -61,7 +61,6 @@ class Curl {
 	 * @return array|object
 	 */
 	public function post($url, $data, $module = '', $id = ''){
-		error_log( 'post '. $module . ' ' . $id );
 		return $this->process( BOCS_API_URL . $url, "POST", $data, $module, $id );
 	}
 
@@ -71,7 +70,6 @@ class Curl {
 	 * @return array|object
 	 */
 	public function put($url, $data, $module = '', $id = ''){
-		error_log( 'put '. $module . ' ' . $id );
 		return $this->process( BOCS_API_URL . $url, "PUT", $data, $module, $id );
 	}
 
@@ -81,7 +79,6 @@ class Curl {
 	 * @return array|object
 	 */
 	public function get( $url, $module = '', $id = ''){
-		error_log('get '.  $module . ' ' . $id );
 		return $this->process(BOCS_API_URL . $url, "GET", NULL, $module, $id);
 	}
 
