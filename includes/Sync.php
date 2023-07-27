@@ -36,7 +36,7 @@ class Sync {
 		$data .= '}';
 
 		$url = 'contacts';
-		$result = $curl->post($url, $data);
+		$result = $curl->post($url, $data, 'contacts', $user['id']);
 
 		return $result;
 	}
@@ -79,7 +79,7 @@ class Sync {
 			if (empty($bocs_contact_id)){
 				// search if the user exist using email
 				$url = 'contacts?query=email:' . $user->user_email;
-				$get_user = $curl->get($url);
+				$get_user = $curl->get($url, 'contacts', $user->ID );
 
 				if ($get_user->data && count($get_user->data) > 0){
 						
@@ -138,7 +138,7 @@ class Sync {
 				$data .= '}';
 
 				$url = 'wp/sync/contacts/' . $user->ID ;
-				$addedSync = $curl->put($url, $data);
+				$addedSync = $curl->put($url, $data, 'contacts', $user->ID);
 
 				// in case that the bocs contact id does not exist
 				// then possibly if implies that this is related to
@@ -246,7 +246,7 @@ class Sync {
 			if (empty($bocs_contact_id)){
 				// search if the user exist using email
 				$url = 'contacts?query=email:' . $new_user_email;
-				$get_user = $curl->get($url);
+				$get_user = $curl->get($url, 'contacts', $user_id);
 
 				if ($get_user->data && count($get_user->data) > 0){
 					$bocs_contact_id = $get_user->data[0]->contactId;
@@ -297,14 +297,14 @@ class Sync {
 				$data .= '}';
 
 				$url = 'wp/sync/contacts/' . $old_user_data->ID ;
-				$addedSync = $curl->put($url, $data);
+				$addedSync = $curl->put($url, $data, 'contacts', $old_user_data->ID);
 
 				// Contact not found
 				if( $addedSync->code == 404 ){
 
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
-					$createdSync = $curl->post($url, $data);
+					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
 
 					// in case it was also not a success
 					// then we will add the user
@@ -363,7 +363,7 @@ class Sync {
 		if (empty($bocs_contact_id)){
 			// search if the user exist using email
 			$url = 'contacts?query=email:' . $email;
-			$get_user = $curl->get($url);
+			$get_user = $curl->get($url, 'contacts', $user_id);
 
 			if ($get_user->data && count($get_user->data) > 0){
 				$bocs_contact_id = $get_user->data[0]->contactId;
@@ -404,7 +404,7 @@ class Sync {
 			$data .= '}';
 
 			$url = 'contacts';
-			$createdUser = $curl->post($url, $data);
+			$createdUser = $curl->post($url, $data, 'contacts', $user_id);
 
 			if ($createdUser->data){
 				if ($createdUser->data->contactId){
@@ -454,15 +454,15 @@ class Sync {
 				$data .= implode(',', $params);
 				$data .= '}';
 
-				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
-				$addedSync = $curl->put($url, $data);
+				$url = 'wp/sync/contacts/' . $user_id ;
+				$addedSync = $curl->put($url, $data, 'contacts', $user_id);
 
 				// Contact not found
 				if( $addedSync->code == 404 ){
 
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
-					$createdSync = $curl->post($url, $data);
+					$createdSync = $curl->post($url, $data, 'contacts', $user_id);
 
 					// in case it was also not a success
 					// then we will add the user
