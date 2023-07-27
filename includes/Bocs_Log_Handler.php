@@ -2,7 +2,7 @@
 
 class Bocs_Log_Handler {
 
-    public function process_log_from_result( $result, $url = false, $params = false, $method = 'get' ){
+    public function process_log_from_result( $result, $url = false, $params = false, $method = 'get', $module = '', $id = '' ){
 
         if( empty($result) ) return false;
         if( empty($result->code) ) return false;
@@ -12,7 +12,12 @@ class Bocs_Log_Handler {
 
         $level = 'notice';
         $message = $result->message;
-        $context = 'method: ' . $method;
+
+        $context = 'module: ' . $module;
+
+        $context .= ', id: ' . $id;
+
+        $context .= ', method: ' . $method;
 
         if( $result->code == 200 ){
             $level = 'notice';

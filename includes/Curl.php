@@ -11,7 +11,7 @@ class Curl {
 	 *
 	 * @return array|object
 	 */
-	private function process($url, $method = "GET", $data = ""){
+	private function process($url, $method = "GET", $data = "", $module = '', $id = ''){
 
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
@@ -60,8 +60,8 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function post($url, $data){
-		return $this->process( BOCS_API_URL . $url, "POST", $data );
+	public function post($url, $data, $module = '', $id = ''){
+		return $this->process( BOCS_API_URL . $url, "POST", $data, $module, $id );
 	}
 
 	/**
@@ -69,8 +69,8 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function put($url, $data){
-		return $this->process( BOCS_API_URL . $url, "PUT", $data );
+	public function put($url, $data, $module = '', $id = ''){
+		return $this->process( BOCS_API_URL . $url, "PUT", $data, $module, $id );
 	}
 
 	/**
@@ -78,8 +78,8 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function get( $url ){
-		return $this->process(BOCS_API_URL . $url, "GET");
+	public function get( $url, $module = '', $id = ''){
+		return $this->process(BOCS_API_URL . $url, "GET", NULL, $module, $id);
 	}
 
 }

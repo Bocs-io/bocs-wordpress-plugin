@@ -1,3 +1,8 @@
+v0.0.29 07/27/2023
+* Endpoint ID fix
+* Added logs on the syncs 
+* Added module and id on logs
+
 v0.0.28 07/26/2023
 * Updated the endpoint for the sync
 * Removed the logs related code due to errors
