@@ -89,10 +89,6 @@ class Sync {
 						
 						$bocs_contact_id = $result->data[0]->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-
-						wc_get_logger()->info('User with email address ' . $user->user_email . ' was found on the app', array( 'source' => 'bocs' ));
-					} else {
-						wc_get_logger()->notice('email address ' . $user->user_email . ' is NOT found on the app', array( 'source' => 'bocs' ));
 					}
 				}
 			}
@@ -123,7 +119,6 @@ class Sync {
 					if ($createdUser->data->contactId){
 						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-						wc_get_logger()->info('User with email address ' . $user->user_email . ' was added on WordPress', array( 'source' => 'bocs' ));
 					}
 				}
 
@@ -133,9 +128,13 @@ class Sync {
 
 				$params = array();
 
-				$params[] = '"id": "'. $bocs_contact_id .'"';
+				$params[] = '"id": "'. $user->ID .'"';
 
 				foreach ($new_data as $key => $value){
+
+					if( $key == 'first_name' ) $key = 'firstName';
+					if( $key == 'last_name' ) $key = 'lastName';
+
 					$params[] = '"'. $key .'": "'. $value .'"';
 				}
 
@@ -143,7 +142,7 @@ class Sync {
 
 				$data .= '}';
 
-				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
+				$url = 'wp/sync/contacts/' . $user->ID ;
 				$addedSync = $curl->put($url, $data);
 
 				// in case that the bocs contact id does not exist
@@ -152,8 +151,6 @@ class Sync {
 				// thus we may need to re - add this
 				if( $addedSync->code  == 404 ){
 					
-					wc_get_logger()->info('User with email address ' . $user->user_email . ' will be created', array( 'source' => 'bocs' ));
-
 					$params = array(
 						'id'			=> $user->ID,
 						'username'		=> $user->user_login,
@@ -172,13 +169,7 @@ class Sync {
 						if ($createdUser->data->contactId){
 							$bocs_contact_id = $createdUser->data->contactId;
 							update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-							wc_get_logger()->info('User with email address ' . $user->user_email . ' done created', array( 'source' => 'bocs' ));
-						} else {
-							wc_get_logger()->error('User with email address ' . $user->user_email . ' was NOT created', array( 'source' => 'bocs' ));
 						}
-					} else {
-
-							wc_get_logger()->error('User with email address ' . $user->user_email . ' was NOT created', array( 'source' => 'bocs' ));
 					}
 				}
 				
@@ -306,6 +297,8 @@ class Sync {
 				$params[] = '"id": "'. $bocs_contact_id .'"';
 
 				foreach ($new_data as $key => $value){
+					if( $key == 'first_name' ) $key = 'firstName';
+					if( $key == 'last_name' ) $key = 'lastName';
 					$params[] = '"'. $key .'": "'. $value .'"';
 				}
 
@@ -313,7 +306,7 @@ class Sync {
 
 				$data .= '}';
 
-				$url = 'wp/sync/contacts/' . $bocs_contact_id ;
+				$url = 'wp/sync/contacts/' . $old_user_data->ID ;
 				$addedSync = $curl->put($url, $data);
 
 				if( $addedSync->code == 404 ){
