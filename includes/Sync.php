@@ -81,15 +81,10 @@ class Sync {
 				$url = 'contacts?query=email:' . $user->user_email;
 				$get_user = $curl->get($url);
 
-				if ($get_user){
-
-					$result = json_decode($get_user);
-
-					if ($result->data && count($result->data) > 0){
+				if ($get_user->data && count($get_user->data) > 0){
 						
-						$bocs_contact_id = $result->data[0]->contactId;
-						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-					}
+					$bocs_contact_id = $get_user->data[0]->contactId;
+					add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
 				}
 			}
 
@@ -253,14 +248,9 @@ class Sync {
 				$url = 'contacts?query=email:' . $new_user_email;
 				$get_user = $curl->get($url);
 
-				if ($get_user){
-
-					$result = json_decode($get_user);
-
-					if ($result->data && count($result->data) > 0){
-						$bocs_contact_id = $result->data[0]->contactId;
-						add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
-					}
+				if ($get_user->data && count($get_user->data) > 0){
+					$bocs_contact_id = $get_user->data[0]->contactId;
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
 				}
 			}
 
@@ -375,14 +365,9 @@ class Sync {
 			$url = 'contacts?query=email:' . $email;
 			$get_user = $curl->get($url);
 
-			if ($get_user){
-
-				$result = json_decode($get_user);
-
-				if ($result->data && count($result->data) > 0){
-					$bocs_contact_id = $result->data[0]->contactId;
-					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
-				}
+			if ($get_user->data && count($get_user->data) > 0){
+				$bocs_contact_id = $get_user->data[0]->contactId;
+				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
 			}
 		}
 
@@ -490,8 +475,13 @@ class Sync {
 							'last_name'		=> $last_name
 						);
 
-						if( !empty( $user_data['role'] ) ){
-							$params['role'] = $user_data['role'];
+						if($old_userdata){
+
+							if( !empty($old_userdata->roles) ) {
+								if( !empty($old_userdata->roles[0]) ){
+									$params['role'] = $old_userdata->roles[0];
+								}
+							}
 						}
 
 						
