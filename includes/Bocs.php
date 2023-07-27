@@ -101,7 +101,7 @@ class Bocs
 
 		require_once plugin_dir_path(dirname(__FILE__)).'includes/Error_Logs_List_Table.php';
 
-		// require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_Log_Handler.php';
+		require_once plugin_dir_path(dirname(__FILE__)).'includes/Bocs_Log_Handler.php';
 
 		/**
 		 * The class responsible for defining all actions that occur in the public-facing
