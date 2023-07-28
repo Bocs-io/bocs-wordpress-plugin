@@ -13,17 +13,18 @@ class Bocs_Log_Handler {
         $level = 'notice';
         $message = $result->message;
 
-        $context = 'module: ' . $module;
-
-        $context .= ', id: ' . $id;
-
-        $context .= ', method: ' . $method;
+        $context = array(
+            'module'    => $module,
+            'id'        => $id,
+            'method'    => $method,
+            'data'      => $params
+        );
+        
 
         if( $result->code == 200 ){
             $level = 'notice';
         } else {
             $level = 'error';
-            $context .= ', data: ' . $params;
         }
 
         $this->insert_log($level, $message, $context);
@@ -96,6 +97,10 @@ class Bocs_Log_Handler {
                 $level_number = 7;
                 break;
 
+        }
+
+        if( is_array( $context ) || is_object( $context ) ){
+            $context = json_encode( $context );
         }
 
         return $wpdb->query(
