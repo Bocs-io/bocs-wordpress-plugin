@@ -64,17 +64,19 @@ class Error_Logs_List_Table extends WP_List_Table {
             )
         );
 
-        error_log( print_r($logs, true) );
-
         foreach( $logs as $log ){
 
             $context = $log->context; 
             $decoded_context = json_decode( $context, true );
 
+            if( $log->message = 'success' ){
+                $decoded_context['code'] = 200;
+            }
+
             $result[] = array(
                 'id' => $log->log_id,
                 'module' => $decoded_context['module'],
-                'code' => $decoded_context['code'],
+                'code' => isset($decoded_context['code']) ? $decoded_context['code'] : '',
                 'message' => $log->message,
                 'log_time' => $log->timestamp
             );

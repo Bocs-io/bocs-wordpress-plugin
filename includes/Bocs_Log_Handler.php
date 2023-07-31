@@ -17,7 +17,8 @@ class Bocs_Log_Handler {
             'module'    => $module,
             'id'        => $id,
             'method'    => $method,
-            'data'      => $params
+            'data'      => $params,
+            'code'      => $result->code
         );
         
 
