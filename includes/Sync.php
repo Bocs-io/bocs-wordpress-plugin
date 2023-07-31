@@ -526,6 +526,8 @@ class Sync {
 
 			// search if the user exist using email
 			$url = 'contacts?query=email:' . $email;
+
+			$curl = new Curl();
 			$get_user = $curl->get($url, 'contacts', $user_id);
 
 			if ($get_user->data && count($get_user->data) > 0){
