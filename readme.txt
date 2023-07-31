@@ -1,3 +1,6 @@
+v0.0.31 07/31/2023
+* create/register new user log/sync
+
 v0.0.30 07/30/2023
 * log's context update to json encoded array
 * added details on the table display
