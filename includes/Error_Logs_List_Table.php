@@ -64,6 +64,8 @@ class Error_Logs_List_Table extends WP_List_Table {
             )
         );
 
+        error_log( print_r($logs, true) );
+
         foreach( $logs as $log ){
 
             $context = $log->context; 
