@@ -75,12 +75,22 @@ class Error_Logs_List_Table extends WP_List_Table {
                 $decoded_context['code'] = 200;
             }
 
+            $details = "Method: " . $decoded_context['method'] . "\n";
+            
+            if( $decoded_context['module'] == 'contacts' ){
+                $details .= "WordPress User ID: " + $decoded_context['id'] . "\n";
+            }
+
+            if( isset($decoded_context['data']) ){
+                $details .= "Parameters: " + $decoded_context['data'] . "\n";
+            }
+
             $result[] = array(
                 'id' => $log->log_id,
                 'module' => $decoded_context['module'],
                 'code' => isset($decoded_context['code']) ? $decoded_context['code'] : '',
                 'message' => $log->message,
-                'details' => $context,
+                'details' => $details,
                 'log_time' => $log->timestamp
             );
         }
