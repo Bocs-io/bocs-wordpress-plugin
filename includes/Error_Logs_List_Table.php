@@ -57,7 +57,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 
         $table_name = $wpdb->prefix . 'woocommerce_log';
 
-        $logs = $wpdb->query(
+        $logs = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT * FROM {$table_name} WHERE source = %s",
                 "bocs"
