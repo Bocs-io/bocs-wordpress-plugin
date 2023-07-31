@@ -42,6 +42,9 @@ class Sync {
 	}
 
 	/**
+	 * Hook when the user meta was updated
+	 * we will get the first name and last name in case there are changes
+	 *
 	 * @param array $meta
 	 * @param WP_User $user
 	 * @param bool $update
@@ -498,6 +501,56 @@ class Sync {
 				}
 
 			}
+		}
+
+	}
+
+	/**
+	 * Hook for user_register
+	 * It will create a user on bocs end if the user does not exist
+	 * otherwise update the meta on woocommerce end
+	 * 
+	 * @param int $user_id
+	 * 
+	 * @return void
+	 */
+	public function bocs_user_register($user_id){
+
+		$user = new WP_User( $user_id );
+
+		if( $user ){
+
+			$bocs_contact_id = '';
+			// get the email address
+			$email = $user->get_user_email();
+
+			// search if the user exist using email
+			$url = 'contacts?query=email:' . $email;
+			$get_user = $curl->get($url, 'contacts', $user_id);
+
+			if ($get_user->data && count($get_user->data) > 0){
+				$bocs_contact_id = $get_user->data[0]->contactId;
+				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			}
+
+			// we will add the user to the bocs app
+			if(empty($bocs_contact_id)){
+
+				$roles = $user->get_roles();
+
+				$params = array(
+					'email' => $email,
+					'first_name' => $user->get_user_firstname(),
+					'last_name' => $user->get_user_lastname(),
+					'role' => count( $roles ) > 0 ? $roles[0] : 'customer',
+					'id' => $user_id,
+					'username' => $user->get_user_login()
+				);
+				
+				$this->_createUser($params);
+				
+			}
+
 		}
 
 	}

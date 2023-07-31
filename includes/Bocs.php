@@ -146,6 +146,9 @@ class Bocs
         $this->loader->add_filter('insert_user_meta', $syncing, 'insert_user_meta', 10, 4);
 
 		$this->loader->add_action('woocommerce_save_account_details', $syncing, 'save_account_details');
+
+		// add new user hooks
+		$this->loader->add_action('user_register', $syncing, '');
     }
 
     /**
