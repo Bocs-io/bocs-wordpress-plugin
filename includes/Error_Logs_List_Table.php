@@ -61,7 +61,7 @@ class Error_Logs_List_Table extends WP_List_Table {
             $wpdb->prepare(
                 "SELECT * FROM {$table_name} WHERE source = %s",
                 "bocs"
-            );
+            )
         );
 
         foreach( $logs as $log ){
