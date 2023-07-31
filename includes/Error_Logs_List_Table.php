@@ -78,11 +78,11 @@ class Error_Logs_List_Table extends WP_List_Table {
             $details = "Method: " . $decoded_context['method'] . "\n";
             
             if( $decoded_context['module'] == 'contacts' ){
-                $details .= "WordPress User ID: " + $decoded_context['id'] . "\n";
+                $details .= "WordPress User ID: " . $decoded_context['id'] . "\n";
             }
 
             if( isset($decoded_context['data']) ){
-                $details .= "Parameters: " + $decoded_context['data'] . "\n";
+                $details .= "Parameters: " . $decoded_context['data'] . "\n";
             }
 
             $result[] = array(
