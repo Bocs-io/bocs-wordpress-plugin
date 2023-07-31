@@ -9,7 +9,7 @@ class Error_Logs_List_Table extends WP_List_Table {
             'module'    => 'Module',
             'code'      => 'Error Code',
             'message'   => 'Error Message',
-            'details'   => 'Details'
+            'details'   => 'Details',
             'log_time'  => 'Date/Time'
         );
 
