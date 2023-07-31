@@ -8,8 +8,6 @@ class Bocs_Log_Handler {
         if( empty($result->code) ) return false;
         if( empty($result->message) ) return false;
 
-        
-
         $level = 'notice';
         $message = $result->message;
 
@@ -18,7 +16,8 @@ class Bocs_Log_Handler {
             'id'        => $id,
             'method'    => $method,
             'data'      => $params,
-            'code'      => $result->code
+            'code'      => $result->code,
+            'url'       => str_replace(BOCS_API_URL, '', $url)
         );
         
 

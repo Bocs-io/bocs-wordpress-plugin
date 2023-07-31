@@ -81,8 +81,12 @@ class Error_Logs_List_Table extends WP_List_Table {
                 $details .= "WordPress User ID: " . $decoded_context['id'] . ", ";
             }
 
-            if( isset($decoded_context['data']) ){
+            if( !empty($decoded_context['data']) ){
                 $details .= "Parameters: " . $decoded_context['data'] . ", ";
+            }
+
+            if( !empty( $decoded_context['url'] ) ){
+                $details .= "Endpoint: " . $decoded_context['url'];
             }
 
             $result[] = array(
@@ -93,6 +97,7 @@ class Error_Logs_List_Table extends WP_List_Table {
                 'details' => $details,
                 'log_time' => $log->timestamp
             );
+
         }
 
         return $result;
