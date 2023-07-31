@@ -148,7 +148,7 @@ class Bocs
 		$this->loader->add_action('woocommerce_save_account_details', $syncing, 'save_account_details');
 
 		// add new user hooks
-		$this->loader->add_action('user_register', $syncing, '');
+		$this->loader->add_action('user_register', $syncing, 'bocs_user_register');
     }
 
     /**
