@@ -1,5 +1,6 @@
-v0.0.30 07/28/2023
+v0.0.30 07/30/2023
 * log's context update to json encoded array
+* added details on the table display
 
 v0.0.29 07/27/2023
 * Endpoint ID fix
