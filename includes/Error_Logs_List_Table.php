@@ -9,6 +9,7 @@ class Error_Logs_List_Table extends WP_List_Table {
             'module'    => 'Module',
             'code'      => 'Error Code',
             'message'   => 'Error Message',
+            'details'   => 'Details'
             'log_time'  => 'Date/Time'
         );
 
@@ -32,6 +33,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 			case 'module':
 			case 'code':
 			case 'message':
+            case 'details':
 			case 'log_time':
 			default:
 				return $item[$column_name];
@@ -78,6 +80,7 @@ class Error_Logs_List_Table extends WP_List_Table {
                 'module' => $decoded_context['module'],
                 'code' => isset($decoded_context['code']) ? $decoded_context['code'] : '',
                 'message' => $log->message,
+                'details' => $context,
                 'log_time' => $log->timestamp
             );
         }
