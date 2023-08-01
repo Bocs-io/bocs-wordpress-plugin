@@ -155,28 +155,35 @@ class Sync {
 				// previous or deleted bocs account
 				// thus we may need to re - add this
 				if( $addedSync->code  == 404 ){
-					
-					$params = array(
-						'id'			=> $user->ID,
-						'username'		=> $user->user_login,
-						'email' 		=> $user->user_email,
-						'first_name'	=> $userdata['first_name'],
-						'last_name'		=> $userdata['last_name']
-					);
 
-					if( !empty( $userdata['role'] ) ){
-						$params['role'] = $userdata['role'];
-					}
+					// we will do a post
+					$url = 'wp/sync/contacts';
+					$postedSync = $curl->post($url, $data, 'contacts', $user->ID);
 
-					$createdUser = $this->_createUser($params);
-					error_log( print_r($createdUser , true) );
+					if( $postedSync->code == 404 ){
+						$params = array(
+							'id'			=> $user->ID,
+							'username'		=> $user->user_login,
+							'email' 		=> $user->user_email,
+							'first_name'	=> $userdata['first_name'],
+							'last_name'		=> $userdata['last_name']
+						);
 
-					if ($createdUser->data){
-						if ($createdUser->data->contactId){
-							$bocs_contact_id = $createdUser->data->contactId;
-							update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+						if( !empty( $userdata['role'] ) ){
+							$params['role'] = $userdata['role'];
+						}
+
+						$createdUser = $this->_createUser($params);
+						error_log( print_r($createdUser , true) );
+
+						if ($createdUser->data){
+							if ($createdUser->data->contactId){
+								$bocs_contact_id = $createdUser->data->contactId;
+								update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+							}
 						}
 					}
+					
 				}
 				
 			}
@@ -316,36 +323,14 @@ class Sync {
 				// Contact not found
 				if( $addedSync->code == 404 ){
 
-					// we will try the POST
-					$url = 'wp/sync/contacts' ;
-					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
+					$url = 'wp/sync/contacts';
+					$postedSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
+					
+					if( $postedSync->code == 404 ){
 
-					// in case it was also not a success
-					// then we will add the user
-					// Contact not added
-					if( $createdSync->code == 404 ){
-						$params = array(
-							'id'			=> $old_user_data->ID,
-							'username'		=> $old_user_data->user_login,
-							'first_name'	=> $user_data['first_name'],
-							'last_name'		=> $user_data['last_name']
-						);
-
-						if( !empty( $user_data['role'] ) ){
-							$params['role'] = $user_data['role'];
-						}
-
-						
-						$createdUser = $this->_createUser($params);
-						error_log( print_r($createdUser, true) );
-
-						if ($createdUser->data){
-							if ($createdUser->data->contactId){
-								$bocs_contact_id = $createdUser->data->contactId;
-								update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
-							}
-						}
 					}
+
+					
 					
 				}
 			}
