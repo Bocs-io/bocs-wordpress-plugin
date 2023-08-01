@@ -55,14 +55,11 @@ class Sync {
 	 */
 	public function insert_user_meta($meta, $user, $update, $userdata){
 
-		error_log( print_r( $userdata, true ) );
+		error_log( "insert user meta" );
 
 		// get the firstname before the update
 		$old_first_name = get_user_meta( $user->ID, 'first_name', true );
 		$old_last_name = get_user_meta( $user->ID, 'last_name', true );
-
-		error_log( $old_first_name );
-		error_log( $old_last_name );
 
 		$do_sync = false;
 		$new_data = array();
@@ -87,12 +84,15 @@ class Sync {
 			if (empty($bocs_contact_id)){
 				// search if the user exist using email
 				$url = 'contacts?query=email:' . $user->user_email;
+				error_log("Getting Bocs contact with email " . $user->user_email );
 				$get_user = $curl->get($url, 'contacts', $user->ID );
 
 				if ($get_user->data && count($get_user->data) > 0){
-						
+					error_log("contact found...");
 					$bocs_contact_id = $get_user->data[0]->contactId;
 					add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					error_log("contact NOT found");
 				}
 			}
 
@@ -116,13 +116,19 @@ class Sync {
 					$params['role'] = $userdata['role'];
 				}
 
+				error_log('creating a contact on bocs app');
 				$createdUser = $this->_createUser($params);
 
 				if ($createdUser->data){
 					if ($createdUser->data->contactId){
+						error_log("contact was created");
 						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+					} else {
+						error_log("contact was not created");
 					}
+				} else {
+					error_log("contact was not created");
 				}
 
 			} else {
@@ -146,18 +152,20 @@ class Sync {
 				$data .= '}';
 
 				$url = 'wp/sync/contacts/' . $user->ID ;
+				error_log("adding a sync for user " . $user->ID);
 				$addedSync = $curl->put($url, $data, 'contacts', $user->ID);
-
-				error_log( print_r($addedSync, true) );
 
 				// in case that the bocs contact id does not exist
 				// then possibly if implies that this is related to
 				// previous or deleted bocs account
 				// thus we may need to re - add this
 				if( $addedSync->code != 200 ){
-
+					
+					error_log("there was an error on PUT");
 					// we will do a post
 					$url = 'wp/sync/contacts';
+					error_log("adding sync using POST");
+					
 					$postedSync = $curl->post($url, $data, 'contacts', $user->ID);
 
 					if( $postedSync->code != 200 ){
@@ -173,17 +181,27 @@ class Sync {
 							$params['role'] = $userdata['role'];
 						}
 
+						error_log("creating the user on bocs");
 						$createdUser = $this->_createUser($params);
-						error_log( print_r($createdUser , true) );
 
 						if ($createdUser->data){
 							if ($createdUser->data->contactId){
+								error_log("created the user on bocs");
 								$bocs_contact_id = $createdUser->data->contactId;
 								update_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+							} else {
+								error_log("NOT creating the user on bocs");
+						
 							}
+						} else {
+							error_log("NOT syncing using POST");
 						}
+					} else {
+						error_log("added sync successfully using POST");
 					}
 					
+				} else {
+					error_log("added sync successfully");
 				}
 				
 			}
@@ -266,9 +284,14 @@ class Sync {
 				$url = 'contacts?query=email:' . $new_user_email;
 				$get_user = $curl->get($url, 'contacts', $user_id);
 
+				error_log("getting the bocs user with email address " . $new_user_email);
+
 				if ($get_user->data && count($get_user->data) > 0){
 					$bocs_contact_id = $get_user->data[0]->contactId;
+					error_log( "bocs user was found" );
 					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					error_log("bocs user with that email address NOT found");
 				}
 			}
 
@@ -288,15 +311,19 @@ class Sync {
 					$params['role'] = $user_data['role'];
 				}
 
-				
+				error_log("adding user to bocs");
 				$createdUser = $this->_createUser($params);
-				error_log( print_r( $createdUser, true ) );
 
 				if ($createdUser->data){
 					if ($createdUser->data->contactId){
+						error_log("bocs user was created");
 						$bocs_contact_id = $createdUser->data->contactId;
 						add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+					} else {
+						error_log("error on creating bocs user");
 					}
+				} else {
+					error_log('error on creating bocs user');
 				}
 			} else {
 				$data = '{';
@@ -315,22 +342,25 @@ class Sync {
 
 				$data .= '}';
 
+				error_log("Adding sync of contact " . $old_user_data->ID);
 				$url = 'wp/sync/contacts/' . $old_user_data->ID ;
 				$addedSync = $curl->put($url, $data, 'contacts', $old_user_data->ID);
-
-				error_log(print_r($addedSync, true));
 
 				// Contact not found
 				if( $addedSync->code != 200 ){
 
+					error_log("added sync using PUT failed");
+
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
+					error_log("adding sync using POST");
 					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
 
 					// in case it was also not a success
 					// then we will add the user
 					// Contact not added
 					if( $createdSync->code != 200 ){
+						error_log("Adding POST sync FAILED");
 						$params = array(
 							'id'			=> $old_user_data->ID,
 							'username'		=> $old_user_data->user_login,
@@ -342,18 +372,26 @@ class Sync {
 							$params['role'] = $user_data['role'];
 						}
 
-						
+						error_log("Creating bocs user");
 						$createdUser = $this->_createUser($params);
-						error_log( print_r($createdUser, true) );
 
 						if ($createdUser->data){
 							if ($createdUser->data->contactId){
+								error_log("Bocs user was created successfully");
 								$bocs_contact_id = $createdUser->data->contactId;
 								update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+							} else {
+								error_log("Bocs user was not created");
 							}
+						} else {
+							error_log("Bocs user was not created");
 						}
+					} else {
+						error_log("Adding sync using POST success");
 					}
 					
+				} else {
+					error_log("Added sync was successful");
 				}
 			}
 
@@ -385,11 +423,15 @@ class Sync {
 		if (empty($bocs_contact_id)){
 			// search if the user exist using email
 			$url = 'contacts?query=email:' . $email;
+			error_log("geting bocs user with email " . $email);
 			$get_user = $curl->get($url, 'contacts', $user_id);
 
 			if ($get_user->data && count($get_user->data) > 0){
+				error_log("Bocs user was found");
 				$bocs_contact_id = $get_user->data[0]->contactId;
 				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			} else {
+				error_log("bocs user not found");
 			}
 		}
 
@@ -426,17 +468,26 @@ class Sync {
 			$data .= '}';
 
 			$url = 'contacts';
+
+			error_log("creating bocs user");
+
 			$createdUser = $curl->post($url, $data, 'contacts', $user_id);
 
 			if ($createdUser->data){
 				if ($createdUser->data->contactId){
+					error_log('bocs user was CREATED');
 					$bocs_contact_id = $createdUser->data->contactId;
 					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					error_log('bocs user was not created');
 				}
+			} else {
+				error_log('bocs user was not created');
 			}
 
 		} else {
-
+			
+			error_log('bocs user found');
 			$do_sync = false;
 
 			$old_first_name = get_user_meta($user_id, 'first_name', true);
@@ -477,6 +528,7 @@ class Sync {
 				$data .= '}';
 
 				$url = 'wp/sync/contacts/' . $user_id ;
+				error_log("adding PUT sync");
 				$addedSync = $curl->put($url, $data, 'contacts', $user_id);
 
 				// Contact not found
@@ -484,12 +536,15 @@ class Sync {
 
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
+					error_log("Error PUT sync");
+					error_log("doing POST sync");
 					$createdSync = $curl->post($url, $data, 'contacts', $user_id);
 
 					// in case it was also not a success
 					// then we will add the user
 					// Contact not added
 					if( $createdSync->code != 200 ){
+						error_log("POST sync FAILED");
 						$params = array(
 							'id'			=> $old_userdata->ID,
 							'username'		=> $old_userdata->user_login,
@@ -506,17 +561,26 @@ class Sync {
 							}
 						}
 
-						
+						error_log('Creating Bocs user');
 						$createdUser = $this->_createUser($params);
 
 						if ($createdUser->data){
 							if ($createdUser->data->contactId){
+								error_log("Created bocs user done");
 								$bocs_contact_id = $createdUser->data->contactId;
 								update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+							} else {
+								error_log('Bocs user not created');
 							}
+						} else {
+							error_log("Bosc user not created");
 						}
+					} else {
+						error_log("POST sync success");
 					}
 					
+				} else {
+					error_log('success PUT sync');
 				}
 
 			}
@@ -547,11 +611,15 @@ class Sync {
 			$url = 'contacts?query=email:' . $email;
 
 			$curl = new Curl();
+			error_log('getting bocs user with email ' . $email);
 			$get_user = $curl->get($url, 'contacts', $user_id);
 
 			if ($get_user->data && count($get_user->data) > 0){
+				error_log('Bocs user FOUND');
 				$bocs_contact_id = $get_user->data[0]->contactId;
 				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			} else {
+				error_log('bocs user not found');
 			}
 
 			// we will add the user to the bocs app
@@ -567,7 +635,7 @@ class Sync {
 					'id' => $user_id,
 					'username' => $user->get_user_login()
 				);
-				
+				error_log('creating bocs user');
 				$this->_createUser($params);
 				
 			}
