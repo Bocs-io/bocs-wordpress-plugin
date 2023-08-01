@@ -323,14 +323,36 @@ class Sync {
 				// Contact not found
 				if( $addedSync->code == 404 ){
 
-					$url = 'wp/sync/contacts';
-					$postedSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
-					
-					if( $postedSync->code == 404 ){
+					// we will try the POST
+					$url = 'wp/sync/contacts' ;
+					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
 
+					// in case it was also not a success
+					// then we will add the user
+					// Contact not added
+					if( $createdSync->code == 404 ){
+						$params = array(
+							'id'			=> $old_user_data->ID,
+							'username'		=> $old_user_data->user_login,
+							'first_name'	=> $user_data['first_name'],
+							'last_name'		=> $user_data['last_name']
+						);
+
+						if( !empty( $user_data['role'] ) ){
+							$params['role'] = $user_data['role'];
+						}
+
+						
+						$createdUser = $this->_createUser($params);
+						error_log( print_r($createdUser, true) );
+
+						if ($createdUser->data){
+							if ($createdUser->data->contactId){
+								$bocs_contact_id = $createdUser->data->contactId;
+								update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+							}
+						}
 					}
-
-					
 					
 				}
 			}
