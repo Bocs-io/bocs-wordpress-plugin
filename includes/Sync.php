@@ -154,13 +154,13 @@ class Sync {
 				// then possibly if implies that this is related to
 				// previous or deleted bocs account
 				// thus we may need to re - add this
-				if( $addedSync->code  == 404 ){
+				if( $addedSync->code != 200 ){
 
 					// we will do a post
 					$url = 'wp/sync/contacts';
 					$postedSync = $curl->post($url, $data, 'contacts', $user->ID);
 
-					if( $postedSync->code == 404 ){
+					if( $postedSync->code != 200 ){
 						$params = array(
 							'id'			=> $user->ID,
 							'username'		=> $user->user_login,
@@ -321,7 +321,7 @@ class Sync {
 				error_log(print_r($addedSync, true));
 
 				// Contact not found
-				if( $addedSync->code == 404 ){
+				if( $addedSync->code != 200 ){
 
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
@@ -330,7 +330,7 @@ class Sync {
 					// in case it was also not a success
 					// then we will add the user
 					// Contact not added
-					if( $createdSync->code == 404 ){
+					if( $createdSync->code != 200 ){
 						$params = array(
 							'id'			=> $old_user_data->ID,
 							'username'		=> $old_user_data->user_login,
@@ -480,7 +480,7 @@ class Sync {
 				$addedSync = $curl->put($url, $data, 'contacts', $user_id);
 
 				// Contact not found
-				if( $addedSync->code == 404 ){
+				if( $addedSync->code != 200 ){
 
 					// we will try the POST
 					$url = 'wp/sync/contacts' ;
@@ -489,7 +489,7 @@ class Sync {
 					// in case it was also not a success
 					// then we will add the user
 					// Contact not added
-					if( $createdSync->code == 404 ){
+					if( $createdSync->code != 200 ){
 						$params = array(
 							'id'			=> $old_userdata->ID,
 							'username'		=> $old_userdata->user_login,
