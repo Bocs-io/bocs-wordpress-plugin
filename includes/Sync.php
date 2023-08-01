@@ -55,19 +55,24 @@ class Sync {
 	 */
 	public function insert_user_meta($meta, $user, $update, $userdata){
 
+		error_log( print_r( $userdata, true ) );
+
 		// get the firstname before the update
 		$old_first_name = get_user_meta( $user->ID, 'first_name', true );
 		$old_last_name = get_user_meta( $user->ID, 'last_name', true );
 
+		error_log( $old_first_name );
+		error_log( $old_last_name );
+
 		$do_sync = false;
 		$new_data = array();
 
-		if ($old_first_name !== $userdata['first_name']){
+		if ($old_first_name != $userdata['first_name']){
 			$do_sync = true;
 			$new_data['first_name'] = $userdata['first_name'];
 		}
 
-		if ($old_last_name !== $userdata['last_name']){
+		if ($old_last_name != $userdata['last_name']){
 			$do_sync = true;
 			$new_data['last_name'] = $userdata['last_name'];
 		}
@@ -143,6 +148,8 @@ class Sync {
 				$url = 'wp/sync/contacts/' . $user->ID ;
 				$addedSync = $curl->put($url, $data, 'contacts', $user->ID);
 
+				error_log( print_r($addedSync, true) );
+
 				// in case that the bocs contact id does not exist
 				// then possibly if implies that this is related to
 				// previous or deleted bocs account
@@ -162,6 +169,7 @@ class Sync {
 					}
 
 					$createdUser = $this->_createUser($params);
+					error_log( print_r($createdUser , true) );
 
 					if ($createdUser->data){
 						if ($createdUser->data->contactId){
@@ -275,6 +283,7 @@ class Sync {
 
 				
 				$createdUser = $this->_createUser($params);
+				error_log( print_r( $createdUser, true ) );
 
 				if ($createdUser->data){
 					if ($createdUser->data->contactId){
@@ -302,6 +311,8 @@ class Sync {
 				$url = 'wp/sync/contacts/' . $old_user_data->ID ;
 				$addedSync = $curl->put($url, $data, 'contacts', $old_user_data->ID);
 
+				error_log(print_r($addedSync, true));
+
 				// Contact not found
 				if( $addedSync->code == 404 ){
 
@@ -326,6 +337,7 @@ class Sync {
 
 						
 						$createdUser = $this->_createUser($params);
+						error_log( print_r($createdUser, true) );
 
 						if ($createdUser->data){
 							if ($createdUser->data->contactId){
