@@ -1,3 +1,6 @@
+v0.0.32 08/01/2023
+* Fixes on the sync end
+
 v0.0.31 07/31/2023
 * create/register new user log/sync
 
