@@ -56,10 +56,15 @@ class Sync {
 	public function insert_user_meta($meta, $user, $update, $userdata){
 
 		error_log( "insert user meta" );
+		error_log('user log');
+		error_log( print_r( $user, true ) );
+		error_log('userdata log')
+		error_log( print_r( $userdata, true ) );
 
 		// get the firstname before the update
 		$old_first_name = get_user_meta( $user->ID, 'first_name', true );
 		$old_last_name = get_user_meta( $user->ID, 'last_name', true );
+		$old_email = $user->user_email;
 
 		$do_sync = false;
 		$new_data = array();
@@ -74,6 +79,10 @@ class Sync {
 			$new_data['last_name'] = $userdata['last_name'];
 		}
 
+		if( $old_email != $userdata['user_email'] ){
+			$new_data['email'] = $userdata['user_email'];
+		}
+
 		if ($do_sync){
 
 			$curl = new Curl();
@@ -83,7 +92,7 @@ class Sync {
 
 			if (empty($bocs_contact_id)){
 				// search if the user exist using email
-				$url = 'contacts?query=email:' . $user->user_email;
+				$url = 'contacts?query=email:' . $userdata['user_email'];
 				error_log("Getting Bocs contact with email " . $user->user_email );
 				$get_user = $curl->get($url, 'contacts', $user->ID );
 
