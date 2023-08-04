@@ -1,3 +1,6 @@
+v0.0.33 08/04/2023
+* Moved the sync logs and sync modules under settings as tabs
+
 v0.0.32 08/01/2023
 * Fixes on the sync end
 
