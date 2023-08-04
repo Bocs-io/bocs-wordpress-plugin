@@ -1,613 +1,73 @@
-@import url('https://fonts.googleapis.com/css?family=Roboto:400, 500');
-@import url(https://fonts.googleapis.com/css2?family=Noto+Serif&display=swap);
-body .bocs{
-    font-size:14px
-}
-body .bocs a,
-body .bocs h1,
-body .bocs h2,
-body .bocs h3,
-body .bocs h4{
-    font-family:Roboto,sans-serif
-}
-.bocs h1,
-.bocs h2,
-.bocs h3,
-.bocs h4,
-.bocs h5,
-.bocs h6{
-    margin-top:10px;
-    margin-bottom:10px
-}
-body .bocs button,
-body .bocs h5,
-body .bocs h6,
-body .bocs li,
-body .bocs p,
-body .bocs ul li a{
-    font-family:Roboto,sans-serif
-}
-.bocs label{
-    margin-bottom:5px;
-    font-weight:700
-}
-.bocs a{
-    text-decoration:unset;
-    color:#337ab7
-}
-.bocs a:hover{
-    text-decoration:underline
-}
-.bocs .text-center{
-    text-align:center
-}
-.bocs .text-right{
-    text-align:right
-}
-.bocs .d-flex{
-    display:flex
-}
-.bocs .center-align-dflex{
-    align-items:center;
-    display:flex;
-    justify-content:center;
-    flex-direction:column
-}
-.bocs .h-100{
-    height:100%
-}
-.bocs .mb-2{
-    margin-bottom:15px
-}
-.bocs .mr-1{
-    margin-right:10px
-}
-.bocs .mt-1{
-    margin-top:10px
-}
-.bocs .float-right{
-    float:right
-}
-.bocs .fw-600{
-    font-weight:600
-}
-.bocs .text-white{
-    color:#fff!important
-}
-.bocs .text-capitalize{
-    text-transform:capitalize
-}
-.bocs .text-uppercase{
-    text-transform:uppercase
-}
-.bocs input[type=checkbox]:checked::before{
-    width:1.5rem;
-    margin:-2px 0 0 -4px
-}
-.bocs input[type=checkbox]:focus{
-    outline:unset!important
-}
-.bocs .color-grey{
-    color:#4a4a4a!important
-}
-.bocs .color-blue{
-    color:#7683ad!important
-}
-.bocs a{
-    outline:unset!important;
-    box-shadow:none!important
-}
-.bocs .custom-container{
-    max-width:1440px;
-    margin:auto
-}
-.bocs #wpcontent{
-    padding:0!important
-}
-.bocs #wpbody-content{
-    padding-bottom:65px;
-    float:left;
-    width:100%;
-    overflow:visible!important
-}
-.bocs #add-new-account #header .intro-video{
-    display:none
-}
-.bocs #header{
-    padding-top:77px;
-    padding-bottom:40px;
-    background-color:#f6f6ff;
-    height:100%;
-    position:relative;
-    text-align:center
-}
-.bocs #header .top-links{
-    position:absolute;
-    top:15px;
-    right:10px
-}
-.bocs #header .top-links a{
-    text-decoration:underline
-}
-.bocs #header .logo-img img{
-    height:70px
-}
-.bocs #header a:hover,
-.bocs .intro-video a:hover{
-    color:#2f9d92
-}
-.bocs .malcare #header a:hover,
-.bocs .malcare .intro-video a:hover{
-    color:#ee5151
-}
-.bocs #header .heading{
-    font-family:Roboto;
-    font-style:normal;
-    font-size:22px;
-    font-weight:500;
-    margin-top:20px
-}
-.bocs #header .intro-video,
-.bocs #list-features .intro-video{
-    padding:10px 25px;
-    background:rgba(255,255,255);
-    border:1px solid #e3ebfd;
-    box-sizing:border-box;
-    border-radius:8px;
-    max-width:300px;
-    font-family:Lato;
-    font-weight:400;
-    font-style:normal;
-    font-size:14px;
-    line-height:17px;
-    color:#7683ad;
-    margin:auto;
-    margin-top:15px
-}
-.bocs #list-features .intro-video{
-    margin:unset;
-    margin-top:50px
-}
-.bocs .intro-video a{
-    text-decoration:none
-}
-.bocs .email-form{
-    margin-top:10px
-}
-.bocs .email-form h5.check-box-text input.check-box{
-    position:relative;
-    width:20px;
-    height:20px;
-    border-radius:4px
-}
-.bocs .email-form h5.check-box-text{
-    font-style:normal;
-    font-weight:400;
-    font-size:14px;
-    line-height:17px;
-    text-align:center;
-    letter-spacing:.291667px;
-    color:#4a4a4a;
-    margin:15px 5px
-}
-.bocs .email-form .search-container label>a{
-    text-decoration:underline
-}
-.bocs .email-form .search-container label>a{
-    color:#2f9d92
-}
-.bocs .malcare .email-form .search-container label>a{
-    color:#ee5151
-}
-.bocs .email-form input.search{
-    background:#fff;
-    box-sizing:border-box;
-    box-shadow:0 2px 10px rgba(204,203,203,.4);
-    border-radius:8px;
-    padding:25px;
-    max-width:600px;
-    width:100%;
-    font-family:Roboto;
-    font-weight:400;
-    font-size:16px;
-    line-height:10px;
-    letter-spacing:.319444px;
-    height:52px
-}
-.bocs .email-form input.search{
-    border:1px solid rgba(71,194,214,.5)
-}
-.bocs .malcare .email-form input.search{
-    border:1px solid rgba(101,99,255,.5)
-}
-.bocs .email-form .e-mail-button{
-    border:1px solid #e5e5e5;
-    box-sizing:border-box;
-    padding:25px;
-    max-width:600px;
-    width:100%;
-    border-radius:8px;
-    font-style:normal;
-    font-weight:600;
-    font-size:17px;
-    line-height:1px;
-    text-align:center;
-    letter-spacing:.333333px;
-    color:#4a4a4a
-}
-.bocs .email-form .e-mail-button:active{
-    transform:translateY(.5px)
-}
-.bocs .email-form .e-mail-button{
-    background:#00848B
-}
-.bocs .malcare .email-form .e-mail-button{
-    background:#ffffff
-}
-.bocs #account-list h4,
-.bocs #footer h4,
-.bocs #list-features h4{
-    font-family:Roboto;
-    font-weight:500;
-    font-style:normal;
-    font-size:24px;
-    line-height:28px;
-    text-align:center;
-    letter-spacing:.416667px;
-    color:#4a4a4a
-}
-.bocs #account-list h5,
-.bocs #footer h5,
-.bocs #list-features h5{
-    font-family:Roboto;
-    font-weight:400;
-    font-style:normal;
-    font-size:12px;
-    line-height:28px;
-    text-align:center;
-    letter-spacing:.8px;
-    text-transform:uppercase
-}
-.bocs h5{
-    color:#2f9d92
-}
-.bocs .malcare h5{
-    color:#ee5151
-}
-.bocs #footer .brand{
-    justify-content:center
-}
-.bocs #footer .brand img{
-    margin:0 15px
-}
-.bocs #footer .heading{
-    margin-bottom:30px
-}
-.bocs #wpbody-content{
-    padding-bottom:65px;
-    float:left;
-    width:100%;
-    overflow:visible!important
-}
-.bocs #wpbody-content{
-    padding-bottom:65px;
-    float:left;
-    width:100%;
-    overflow:visible!important
-}
-.bocs #account-list,
-.bocs #footer,
-.bocs #list-features{
-    padding:50px 0
-}
-.bocs #list-features .heading{
-    padding-bottom:20px
-}
-.bocs #list-features img.main-image{
-    width:100%
-}
-.bocs #list-features ul{
-    list-style:inside
-}
-.bocs #list-features li{
-    font-size:12px
-}
-.bocs #list-features #accordion input{
-    display:none
-}
-.bocs #list-features #accordion{
-    background:#fff;
-    font-family:Roboto;
-    font-style:normal
-}
-.bocs #list-features #accordion h4{
-    color:#333;
-    font-weight:500;
-    font-size:18px;
-    line-height:24px;
-    text-align:left
-}
-.bocs #list-features #accordion h5{
-    color:#2f9d92;
-    font-weight:400;
-    font-size:11px;
-    line-height:22px;
-    letter-spacing:.5px
-}
-.bocs #list-features #accordion h5{
-    color:#2f9d92
-}
-.bocs .malcare #list-features #accordion h5{
-    color:#ee5151
-}
-.bocs #list-features #accordion label{
-    border-radius:8px;
-    display:block;
-    margin-bottom:.125em;
-    padding:.25em 1em;
-    z-index:20
-}
-.bocs #list-features #accordion label:hover{
-    text-decoration:underline
-}
-.bocs #list-features #accordion .article{
-    display:none;
-    overflow:hidden;
-    z-index:10;
-    font-weight:400;
-    font-size:14px;
-    line-height:22px;
-    padding:.25em 1em;
-    color:#888
-}
-.bocs #list-features #accordion .article ul{
-    padding:unset
-}
-.bocs #list-features #accordion input:checked~.acc-card{
-    border:1px solid rgba(101,99,255,.3);
-    box-sizing:border-box;
-    box-shadow:0 2px 8px rgba(229,229,229,.25);
-    border-radius:8px
-}
-.bocs #list-features #accordion input:checked~.acc-card .article{
-    display:block
-}
-.bocs #account-list .account-list-container{
-    width:800px;
-    margin:auto;
-    padding:20px;
-    box-sizing:border-box;
-    box-shadow:2px 2px 9px rgb(212 212 212),0 0 9px rgb(212 212 212);
-    border-radius:11.5px
-}
-.bocs #account-list table{
-    min-width:700px;
-    margin:auto;
-    margin-top:30px
-}
-.bocs #account-list .table-container{
-    max-height:340px;
-    overflow:auto
-}
-.bocs #account-list table input.button-primary{
-    box-shadow:unset
-}
-.bocs #account-list .table-container::-webkit-scrollbar{
-    width:6px;
-    height:6px
-}
-.bocs #account-list .table-container::-webkit-scrollbar-thumb{
-    background:#ccc;
-    border-radius:10px;
-    width:6px;
-    height:6px
-}
-.bocs #account-list table tr th{
-    text-align:center
-}
-.bocs #account-list table tr td{
-    padding:10px
-}
-.bocs #testimony{
-    overflow:hidden
-}
-.bocs #testimony .carousel{
-    padding-top:80px;
-    text-align:center;
-    height:auto;
-    width:100%;
-    margin:auto;
-    position:relative
-}
-.bocs #testimony .slide h1{
-    font-family:"Noto Serif";
-    font-style:normal;
-    font-weight:400;
-    font-size:144px;
-    line-height:51px;
-    text-align:center;
-    letter-spacing:.9px;
-    color:#ffffff;
-    margin:20px
-}
-.bocs #testimony .slide h4{
-    font-family:Roboto;
-    font-style:normal;
-    font-weight:400;
-    font-size:28px;
-    line-height:46px;
-    text-align:center;
-    letter-spacing:.2px;
-    color:#fff;
-    padding:20px;
-    max-width:1440px;
-    margin:auto
-}
-.bocs #testimony .slide h5{
-    font-family:Roboto;
-    font-style:normal;
-    font-weight:400;
-    font-size:18px;
-    line-height:21px;
-    text-align:center;
-    letter-spacing:.15px;
-    color:#fff;
-    mix-blend-mode:normal;
-    opacity:.58;
-    padding:20px;
-    max-width:1440px;
-    margin:auto
-}
-.bocs #testimony .carousel .slides{
-    width:400%;
-    left:0;
-    padding-left:0;
-    padding-top:1em;
-    list-style:none;
-    position:relative;
-    -webkit-transition:transform .5s;
-    -moz-transition:transform .5s;
-    -o-transition:transform .5s;
-    transition:transform .5s
-}
-.bocs #testimony .carousel .slide .user{
-    position:relative;
-    top:-90px;
-    border-radius:50%;
-    height:140px;
-    width:140px;
-    object-fit:cover
-}
-.bocs #testimony .carousel .slide-div{
-    background:#005d8b;
-    width:100%
-}
-.bocs #testimony .carousel .slides li{
-    width:25%;
-    position:relative;
-    float:left
-}
-.bocs #testimony .carousel li p{
-    margin-top:0
-}
-.bocs #testimony .carousel .slidesNavigation{
-    display:inline-block;
-    list-style:none;
-    margin:40px
-}
-.bocs #testimony .carousel input{
-    display:none
-}
-.bocs #testimony .carousel .slidesNavigation label{
-    float:left;
-    margin:6px;
-    display:block;
-    height:10px;
-    width:10px;
-    -webkit-border-radius:50%;
-    border-radius:50%;
-    border:solid 1px #fff;
-    background:#fff;
-    opacity:.4;
-    font-size:0
-}
-.bocs #radio-1:checked~.slides{
-    transform:translateX(0)
-}
-.bocs #radio-2:checked~.slides{
-    transform:translateX(-25%)
-}
-.bocs #radio-3:checked~.slides{
-    transform:translateX(-50%)
-}
-.bocs #radio-4:checked~.slides{
-    transform:translateX(-75%)
-}
-.bocs #testimony .carousel #radio-1:checked~.slidesNavigation label#dotForRadio-1, .bocs #testimony .carousel #radio-2:checked~.slidesNavigation label#dotForRadio-2, .bocs #testimony .carousel #radio-3:checked~.slidesNavigation label#dotForRadio-3, .bocs #testimony .carousel #radio-4:checked~.slidesNavigation label#dotForRadio-4{
-    opacity:1
-}
-.bocs a.btn{
-    font-size:14px;
-    text-decoration:unset
-}
-.bocs .btn.btn-primary{
-    background-color:#337ab7;
-    border-color:#2e6da4
-}
-.bocs .btn.btn-primary:hover{
-    background-color:#286090;
-    border-color:#204d74
-}
-@media (max-width:624px){
-    .bocs #get-started span{
-        display:none
-    }
-    .bocs #get-started:before{
-        font-size:13px;
-        content:"Submit"
-    }
-    .bocs #footer .brand{
-        justify-content:center
-    }
-    .bocs #footer .brand img{
-        margin:20px;
-        display:inline-block
-    }
-    .bocs .email-form .search-container label{
-        font-size:11px
-    }
-    .bocs #header .heading{
-        font-size:18px
-    }
-    .bocs #header .logo-img img{
-        height:60px
-    }
-    .bocs #header .intro-video,.bocs #list-features .intro-video{
-        max-width:77%
-    }
-    .bocs slide #list-features .intro-video{
-        margin-bottom:15px
-    }
-    .bocs #list-features img.main-image{
-        width:100%
-    }
-    .bocs #account-list .account-list-container{
-        width:unset;
-        box-shadow:unset;
-        margin:0 10px
-    }
-    .bocs #account-list a.btn{
-        margin-bottom:10px
-    }
-}
-@media (max-width:1024px){
-    .bocs .man-img{
-        display:none
-    }
-    .bocs .d-flex{
-        display:inline-block!important
-    }
-    .bocs .intro-video{
-        margin:auto;
-        margin-bottom:70px
-    }
-}
-@media (min-width:1024px) and (max-width:1367px){
-    .bocs #get-started span{
-        display:none
-    }
-    .bocs #get-started:before{
-        content:"Submit"
-    }
-}
-@media (min-width:768px){
-    .bocs .justify-content-center{
-        justify-content:center
-    }
-}
-@media (max-width:1440px){
-    .bocs .row{
-        margin-left:0!important;
-        margin-right:0!important
-    }
+/*
+ CSS for the main interaction
+*/
+.tabset > input[type="radio"] {
+  position: absolute;
+  left: -200vw;
+}
+
+.tabset .tab-panel {
+  display: none;
+}
+
+.tabset > input:first-child:checked ~ .tab-panels > .tab-panel:first-child,
+.tabset > input:nth-child(3):checked ~ .tab-panels > .tab-panel:nth-child(2),
+.tabset > input:nth-child(5):checked ~ .tab-panels > .tab-panel:nth-child(3),
+.tabset > input:nth-child(7):checked ~ .tab-panels > .tab-panel:nth-child(4),
+.tabset > input:nth-child(9):checked ~ .tab-panels > .tab-panel:nth-child(5),
+.tabset > input:nth-child(11):checked ~ .tab-panels > .tab-panel:nth-child(6) {
+  display: block;
+}
+
+
+.tabset > label {
+  position: relative;
+  display: inline-block;
+  padding: 15px 15px 25px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tabset > label::after {
+  content: "";
+  position: absolute;
+  left: 15px;
+  bottom: 10px;
+  width: 22px;
+  height: 4px;
+  background: #8d8d8d;
+}
+
+input:focus-visible + label {
+  outline: 2px solid rgba(0,102,204,1);
+  border-radius: 3px;
+}
+
+.tabset > label:hover,
+.tabset > input:focus + label,
+.tabset > input:checked + label {
+  color: #06c;
+}
+
+.tabset > label:hover::after,
+.tabset > input:focus + label::after,
+.tabset > input:checked + label::after {
+  background: #06c;
+}
+
+.tabset > input:checked + label {
+  border-color: #ccc;
+  border-bottom: 1px solid #fff;
+  margin-bottom: -1px;
+}
+
+.tab-panel {
+  padding: 30px 0;
+  border-top: 1px solid #ccc;
+}
+
+.tabset {
+  max-width: 65em;
 }
