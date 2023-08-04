@@ -143,6 +143,8 @@ class Admin
 			'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
 			'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
 		));
+
+		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.1');
 	}
 
 	public function bocs_homepage(){
