@@ -15,7 +15,7 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array(); ?>
   <label for="tab2">Sync Logs</label>
   <!-- Tab 3 -->
   <input type="radio" name="tabset" id="tab3" aria-controls="dunkles">
-  <label for="tab3">Dunkles Bock</label>
+  <label for="tab3">Sync Store</label>
   
   <div class="tab-panels">
     <section id="marzen" class="tab-panel">
@@ -60,9 +60,7 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array(); ?>
       <h2>Sync Logs</h2>
     </section>
     <section id="dunkles" class="tab-panel">
-      <h2>6C. Dunkles Bock</h2>
-      <p><strong>Overall Impression:</strong> A dark, strong, malty German lager beer that emphasizes the malty-rich and somewhat toasty qualities of continental malts without being sweet in the finish.</p>
-      <p><strong>History:</strong> Originated in the Northern German city of Einbeck, which was a brewing center and popular exporter in the days of the Hanseatic League (14th to 17th century). Recreated in Munich starting in the 17th century. The name “bock” is based on a corruption of the name “Einbeck” in the Bavarian dialect, and was thus only used after the beer came to Munich. “Bock” also means “Ram” in German, and is often used in logos and advertisements.</p>
+      <h2>Sync Store</h2>
     </section>
   </div>
 </div>
