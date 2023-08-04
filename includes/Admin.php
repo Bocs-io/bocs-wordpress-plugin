@@ -113,6 +113,10 @@ class Admin
 
 	}
 
+	public function admin_enqueue_scripts(){
+		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.2');
+	}
+
 	public function enqueue_scripts(){
 
         // this to make sure that the keys were added or updated
@@ -143,8 +147,6 @@ class Admin
 			'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
 			'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
 		));
-
-		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.1');
 	}
 
 	public function bocs_homepage(){

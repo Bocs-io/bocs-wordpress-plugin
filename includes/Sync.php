@@ -56,10 +56,6 @@ class Sync {
 	public function insert_user_meta($meta, $user, $update, $userdata){
 
 		error_log( "insert user meta" );
-		error_log('user log');
-		error_log( print_r( $user, true ) );
-		error_log('userdata log');
-		error_log( print_r( $userdata, true ) );
 
 		// get the firstname before the update
 		$old_first_name = get_user_meta( $user->ID, 'first_name', true );

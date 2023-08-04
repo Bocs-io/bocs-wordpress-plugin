@@ -19,6 +19,9 @@
   display: block;
 }
 
+/*
+ Styling
+*/
 
 .tabset > label {
   position: relative;
@@ -66,6 +69,15 @@ input:focus-visible + label {
 .tab-panel {
   padding: 30px 0;
   border-top: 1px solid #ccc;
+}
+
+/*
+ Demo purposes only
+*/
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
 }
 
 .tabset {
