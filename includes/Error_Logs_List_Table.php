@@ -61,7 +61,7 @@ class Error_Logs_List_Table extends WP_List_Table {
 
         $logs = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$table_name} WHERE source = %s",
+                "SELECT * FROM {$table_name} WHERE source = %s ORDER BY log_id DESC",
                 "bocs"
             )
         );
