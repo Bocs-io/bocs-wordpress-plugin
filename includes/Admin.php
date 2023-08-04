@@ -239,7 +239,7 @@ class Admin
 		add_submenu_page("bocs", "Subscriptions", "Subscriptions", "manage_options", 'bocs-subscriptions', [$this, 'bocs_list_subscriptions'] );
 		add_submenu_page("bocs", "Settings", "Settings", "manage_options", 'bocs-settings', [$this, 'bocs_settings_page'] );
 		add_submenu_page("bocs", "Sync Store", "Sync Store", "manage_options", 'bocs-sync-store', [$this, 'bocs_sync_store_page'] );
-		add_submenu_page("bocs", "Error Logs", "Error Logs", "manage_options", 'bocs-error-logs', [$this, 'bocs_error_logs_page'] );
+		// add_submenu_page("bocs", "Error Logs", "Error Logs", "manage_options", 'bocs-error-logs', [$this, 'bocs_error_logs_page'] );
 
 		remove_submenu_page('bocs','bocs');
 	}

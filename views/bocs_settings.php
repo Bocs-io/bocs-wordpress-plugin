@@ -58,6 +58,11 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array(); ?>
   </section>
     <section id="rauchbier" class="tab-panel">
       <h2>Sync Logs</h2>
+	  <?php 
+		$table = new Error_Logs_List_Table();
+		$table->prepare_items();
+		$table->display();
+	  ?>
     </section>
     <section id="dunkles" class="tab-panel">
       <h2>Sync Store</h2>
