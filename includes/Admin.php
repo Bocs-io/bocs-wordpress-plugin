@@ -1000,4 +1000,41 @@ class Admin
 
     }
 
+	public function custom_user_admin_icon_css(){
+
+		// adds the modified styling here
+		// echo '<style></style>';
+		echo "";
+
+	}
+
+	/**
+	 * Adds an icon before the user's full name
+	 * 
+	 * 
+	 */
+	public function custom_admin_user_icon( $val, $column_name, $user_id ) {
+
+		if( $column_name === 'username' ){
+
+			// check user's meta if from bocs
+			$bocs_source = get_user_meta( $user_id, "bocs_source", true );
+
+			$icon = " W ";
+
+			if( $bocs_source ){
+				if( $bocs_source == 1 || $bocs_source === "true"){
+					// we will consider this as source from bocs
+					$icon = " B ";
+				}
+			}
+
+			$val = $icon . $val;
+
+		}
+
+		return $val;
+
+	}
+
 }
