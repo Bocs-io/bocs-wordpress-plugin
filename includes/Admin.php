@@ -1015,6 +1015,10 @@ class Admin
 	 */
 	public function custom_admin_user_icon( $val, $column_name, $user_id ) {
 
+		error_log("column name: " . $column_name);
+		error_log("user id: " . $user_id);
+		error_log("value: " . $val);
+
 		if( $column_name === 'username' ){
 
 			// check user's meta if from bocs
