@@ -1008,6 +1008,11 @@ class Admin
 
 	}
 
+	public function custom_add_user_column( $columns ){
+		$columns['source'] = "Source";
+		return $columns;
+	}
+
 	/**
 	 * Adds an icon before the user's full name
 	 * 
@@ -1019,21 +1024,19 @@ class Admin
 		error_log("user id: " . $user_id);
 		error_log("value: " . $val);
 
-		if( $column_name === 'username' ){
+		if( $column_name == 'source' ){
 
 			// check user's meta if from bocs
 			$bocs_source = get_user_meta( $user_id, "bocs_source", true );
 
-			$icon = " W ";
+			$val = "Wordpress";
 
 			if( $bocs_source ){
 				if( $bocs_source == 1 || $bocs_source === "true"){
 					// we will consider this as source from bocs
-					$icon = " B ";
+					$val = "Bocs";
 				}
 			}
-
-			$val = $icon . $val;
 
 		}
 
