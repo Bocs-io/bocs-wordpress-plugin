@@ -231,7 +231,7 @@ class Bocs
 		// adding icons on the list of users
 		// to determine which one is from WordPress or Bocs
 		$this->loader->add_action('admin_head-users.php', $plugin_admin, 'custom_user_admin_icon_css');
-		$this->loader->add_filter('manage_users_custom_column', $plugin_admin, 'custom_admin_user_icon', 10, 3);
+		$this->loader->add_filter('manage_users_custom_column', $plugin_admin, 'custom_admin_user_icon', 15, 3);
 
 
 	}
