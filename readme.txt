@@ -1,3 +1,6 @@
+v0.0.34 08/11/2023
+* Added Source (Wordpress or Bocs) column on Admin Users List
+
 v0.0.33 08/04/2023
 * Moved the sync logs and sync modules under settings as tabs
 
