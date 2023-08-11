@@ -235,7 +235,7 @@ class Bocs
 		$this->loader->add_filter('manage_users_custom_column', $plugin_admin, 'custom_admin_user_icon', 15, 3);
 
 		// adds filter to the list of users
-		$this->loader->add_action('restrict_manage_users', $plugin_admin, 'custom_manage');
+		// $this->loader->add_action('restrict_manage_users', $plugin_admin, 'custom_add_source_filter');
 
 
 	}
