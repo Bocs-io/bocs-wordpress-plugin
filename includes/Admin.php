@@ -1048,4 +1048,10 @@ class Admin
 		echo '<select name="source"><option value="">Select Source</option><option value="bocs">Bocs</option><option value="wordpress">WordPress</option></select>';
 	}
 
+	public function custom_filter_users_by_source($query){
+
+		if( !is_admin() || !$query->is_main_query() ) return;
+		
+	}
+
 }
