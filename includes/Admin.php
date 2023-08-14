@@ -1058,6 +1058,8 @@ class Admin
 	 */
 	public function custom_filter_users_by_source($query){
 
+		error_log('before is not admin or not main query');
+		
 		if( !is_admin() || !$query->is_main_query() ) return;
 
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
