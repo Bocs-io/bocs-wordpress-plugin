@@ -1042,6 +1042,8 @@ class Admin
 
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
 
+		error_log( 'custom_add_source_filter?: ' . print_r($current_source, true) );
+
 		echo '<select name="source">
 				<option value=""' . ( $current_source == '' || $current_source == 'select' ? ' selected' : '' ) . '></option>
 				<option value="select">Select Source</option>
@@ -1059,6 +1061,8 @@ class Admin
 		if( !is_admin() || !$query->is_main_query() ) return;
 
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
+
+		error_log( 'custom_filter_users_by_source?: ' . print_r($current_source, true) );
 
 		if( $current_source != 'bocs' && $current_source != 'wordpress' ) return;
 
