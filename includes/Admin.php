@@ -1020,24 +1020,18 @@ class Admin
 	 */
 	public function custom_admin_user_icon( $val, $column_name, $user_id ) {
 
-		error_log("column name: " . $column_name);
-		error_log("user id: " . $user_id);
-		error_log("value: " . $val);
-
 		if( $column_name == 'source' ){
-
 			// check user's meta if from bocs
-			$bocs_source = get_user_meta( $user_id, "bocs_source", true );
+			$bocs_source = get_user_meta( $user_id, IS_BOCS_META_KEY, true );
 
 			$val = "Wordpress";
 
 			if( $bocs_source ){
-				if( $bocs_source == 1 || $bocs_source === "true"){
+				if( $bocs_source == 1 || $bocs_source == "true"){
 					// we will consider this as source from bocs
 					$val = "Bocs";
 				}
 			}
-
 		}
 
 		return $val;
@@ -1045,13 +1039,97 @@ class Admin
 	}
 	
 	public function custom_add_source_filter(){
-		echo '<select name="source"><option value="">Select Source</option><option value="bocs">Bocs</option><option value="wordpress">WordPress</option></select>';
+
+		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
+
+		echo '<select name="source">
+				<option value=""' . ( $current_source == '' || $current_source == 'select' ? ' selected' : '' ) . '></option>
+				<option value="select">Select Source</option>
+				<option value="both"' . ( $current_source == 'both' ? ' selected' : '' ) . '>Both</option>
+				<option value="bocs"' . ( $current_source == 'bocs' ? ' selected' : '' ) . '>Bocs</option>
+				<option value="wordpress"' . ( $current_source == 'wordpress' ? ' selected' : '' ) . '>WordPress</option>
+			</select>';
 	}
 
+	/**
+	 * Filter the query by source
+	 */
 	public function custom_filter_users_by_source($query){
 
 		if( !is_admin() || !$query->is_main_query() ) return;
-		
+
+		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
+
+		if( $current_source != 'bocs' && $current_source != 'wordpress' ) return;
+
+		$meta_queries = array();
+
+		if( $current_source == 'bocs' ){
+
+			$meta_queries[] = array(
+				'key' => IS_BOCS_META_KEY,
+				'value' => true,
+				'compare' => '='
+			);
+
+			$meta_queries[] = array(
+				'key' => IS_BOCS_META_KEY,
+				'value' => 'true',
+				'compare' => '='
+			);
+
+			$meta_queries[] = array(
+				'key' => IS_BOCS_META_KEY,
+				'value' => 1,
+				'compare' => '='
+			);
+
+			$meta_queries[] = array(
+				'key' => IS_BOCS_META_KEY,
+				'value' => '1',
+				'compare' => '='
+			);
+
+			$query->set('meta_query', array('relation' => 'OR') + $meta_queries);
+
+		} else {
+
+			$meta_query = array(
+				'relation' => 'OR',
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => 'NOT EXISTS',
+				),
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => '=',
+					'value'   => '',
+				),
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => '=',
+					'value'   => '0',
+				),
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => '=',
+					'value'   => 0,
+				),
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => '=',
+					'value'   => false,
+				),
+				array(
+					'key'     => IS_BOCS_META_KEY,
+					'compare' => '=',
+					'value'   => 'false',
+				)
+			);
+
+			$query->set('meta_query', $meta_query);
+
+		}
 	}
 
 }
