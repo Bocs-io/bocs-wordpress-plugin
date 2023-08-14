@@ -1040,9 +1040,9 @@ class Admin
 	
 	public function custom_add_source_filter(){
 
-		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
+		// @TODO appending the source on the url
 
-		error_log( 'custom_add_source_filter?: ' . print_r($current_source, true) );
+		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
 
 		echo '<select name="source">
 				<option value=""' . ( $current_source == '' || $current_source == 'select' ? ' selected' : '' ) . '></option>
@@ -1058,15 +1058,11 @@ class Admin
 	 */
 	public function custom_filter_users_by_source($query){
 
-		error_log('before is not admin or not main query');
-		
 		// if( !is_admin() || !$query->is_main_query() ) return;
 		if( !is_admin() ) return;
 
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
-
-		error_log( 'custom_filter_users_by_source?: ' . print_r($current_source, true) );
-
+	
 		if( $current_source != 'bocs' && $current_source != 'wordpress' ) return;
 
 		$meta_queries = array();
