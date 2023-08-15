@@ -1041,7 +1041,7 @@ class Admin
 	public function custom_add_source_filter(){
 
 		// @TODO appending the source on the url
-
+		error_log( print_r( $_GET, true ) );
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
 
 		echo '<select name="source" id="source">
@@ -1057,6 +1057,8 @@ class Admin
 	 * Filter the query by source
 	 */
 	public function custom_filter_users_by_source($query){
+
+        error_log( print_r( $_GET, true ) );
 
 		// if( !is_admin() || !$query->is_main_query() ) return;
 		if( !is_admin() ) return;
