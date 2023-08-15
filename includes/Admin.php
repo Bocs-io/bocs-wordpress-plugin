@@ -1044,12 +1044,12 @@ class Admin
 
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
 
-		echo '<select name="source">
-				<option value=""' . ( $current_source == '' || $current_source == 'select' ? ' selected' : '' ) . '></option>
+		echo '<select name="source" id="source">
+				<option value=""></option>
 				<option value="select">Select Source</option>
-				<option value="both"' . ( $current_source == 'both' ? ' selected' : '' ) . '>Both</option>
-				<option value="bocs"' . ( $current_source == 'bocs' ? ' selected' : '' ) . '>Bocs</option>
-				<option value="wordpress"' . ( $current_source == 'wordpress' ? ' selected' : '' ) . '>WordPress</option>
+				<option value="both">Both</option>
+				<option value="bocs">Bocs</option>
+				<option value="wordpress">WordPress</option>
 			</select>';
 	}
 
