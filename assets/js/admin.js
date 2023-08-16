@@ -1,6 +1,9 @@
+console.log("before jQuery");
 jQuery( function ( $ ) {
 
-    console.log($('select#source').val());
+    console.log("before checking...");
+    console.log($('select#source').length);
+    console.log($('input#changeit').length);
 
     if( $('select#source').length > 0 && $('input#changeit').length > 0){
 
