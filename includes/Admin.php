@@ -115,7 +115,7 @@ class Admin
 
 	public function admin_enqueue_scripts(){
 		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.2');
-		wp_enqueue_script( "bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.6', true );
+		wp_enqueue_script( "bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.7', true );
 	}
 
 	public function enqueue_scripts(){
