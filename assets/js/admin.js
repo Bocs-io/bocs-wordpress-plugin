@@ -18,7 +18,13 @@ jQuery( function ( $ ) {
             if( selectedSource.length ){
                 if( selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both'){
                     e.preventDefault();
-                    window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
+
+                    if( selectedSource === 'bocs' || selectedSource === 'wordpress' ){
+                        window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
+                    } else {
+                        window.location.href = window.location.origin + window.location.pathname;
+                    }
+
                 }
             }
 
