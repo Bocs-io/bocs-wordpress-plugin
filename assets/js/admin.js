@@ -36,8 +36,8 @@ jQuery( function ( $ ) {
     if( $('select#source').length > 0 && $('input#changeit').length == 0){
 
         $('select#source').click(function (e){
+            e.preventDefault();
             const selectedSource = $(this).val();
-
             if( selectedSource === 'bocs' || selectedSource === 'wordpress' ){
                 window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
             } else {
