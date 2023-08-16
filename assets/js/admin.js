@@ -1,5 +1,7 @@
 jQuery( function ( $ ) {
 
+    console.log($('select#source').val());
+
     if( $('select#source').length > 0 && $('input#changeit').length > 0){
 
         const selectedSource = $('select#source').val();
