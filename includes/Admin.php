@@ -115,6 +115,7 @@ class Admin
 
 	public function admin_enqueue_scripts(){
 		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.2');
+		wp_enqueue_script( "bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(), '0.0.1', true );
 	}
 
 	public function enqueue_scripts(){
@@ -1041,7 +1042,6 @@ class Admin
 	public function custom_add_source_filter(){
 
 		// @TODO appending the source on the url
-		error_log( print_r( $_GET, true ) );
 		$current_source = isset( $_GET['source'] ) ? $_GET['source'] : '';
 
 		echo '<select name="source" id="source">
@@ -1057,9 +1057,7 @@ class Admin
 	 * Filter the query by source
 	 */
 	public function custom_filter_users_by_source($query){
-
-        error_log( print_r( $_GET, true ) );
-
+        
 		// if( !is_admin() || !$query->is_main_query() ) return;
 		if( !is_admin() ) return;
 
