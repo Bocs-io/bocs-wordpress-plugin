@@ -1,3 +1,6 @@
+v0.0.35 08/16/2023
+* Added filter on the admin users list for options bocs or wordpress or both
+
 v0.0.34 08/11/2023
 * Added Source (Wordpress or Bocs) column on Admin Users List
 
