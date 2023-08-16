@@ -1,23 +1,31 @@
 console.log("before jQuery");
 jQuery( function ( $ ) {
 
-    console.log("before checking...");
-    console.log($('select#source').length);
-    console.log($('input#changeit').length);
+    console.log("before clicking button");
 
-    if( $('select#source').length > 0 && $('input#changeit').length > 0){
+    $('input#changeit').click(function (e){
 
-        const selectedSource = $('select#source').val();
+        console.log("button clicked");
+        console.log($('select#source').length);
+        console.log($('input#changeit').length);
 
-        if( selectedSource.length ){
-            if( selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both'){
-                $('input#changeit').click(function (e){
+        if( $('select#source').length > 0 && $('input#changeit').length > 0){
+
+            const selectedSource = $('select#source').val();
+
+            console.log('selectedSource: ' + selectedSource);
+
+            if( selectedSource.length ){
+                if( selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both'){
                     e.preventDefault();
                     window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
-                });
+                }
             }
+
         }
 
-    }
+    });
+
+
 
 });
