@@ -1,3 +1,6 @@
+v0.0.36 09/13/2023
+* Added the Fixed type
+
 v0.0.35 08/16/2023
 * Added filter on the admin users list for options bocs or wordpress or both
 
