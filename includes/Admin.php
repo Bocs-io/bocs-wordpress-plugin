@@ -134,7 +134,7 @@ class Admin
 			wp_enqueue_script('wc-cart-fragments');
 		}
 
-		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.58', true );
+		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.72', true );
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce( 'wc_store_api' ),
 			'cartURL' => wc_get_cart_url(),
@@ -408,6 +408,9 @@ class Admin
 		$product_sku = $_POST['sku'];
 		$product_type = isset($_POST['type']) ? $_POST['type'] : "product";
 		$bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : "";
+        $parent_id = isset($_POST['parent_id']) ? $_POST['parent_id'] : 0;
+		$variation_attributes = array();
+
 
 		// Create a new WooCommerce product
 		$new_product = array(
@@ -808,107 +811,34 @@ class Admin
 		$bocs_sku = isset($_POST['bocs_sku']) ? $_POST['bocs_sku'] : 0;
 		$is_bocs = isset($_POST['is_bocs']) ? $_POST['is_bocs'] : 0;
 		$bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : '';
+        $bocs_product_type = 'bocs_bocs_id';
 
 		// first we need to search by sku and frequency id
 		global $wpdb;
 
-		if ($is_bocs == 1){
-			$prepare_query = $wpdb->prepare('SELECT 
-													postmeta.post_id 
-												FROM 
-													' . $wpdb->prefix . 'postmeta as postmeta
-												INNER JOIN
-													' . $wpdb->prefix . 'posts as posts
-												ON
-													posts.ID = postmeta.post_id
-												WHERE 
-													postmeta.meta_key = %s AND postmeta.meta_value = %s
-												AND 
-													postmeta.meta_key = %s AND postmeta.meta_value = %s
-												AND
-													posts.post_status = %s
-												ORDER BY 
-													postmeta.post_id ASC',
-				"bocs_sku", $bocs_sku, "bocs_frequency_id", $bocs_frequency_id, "publish");
+        if ($bocs_bocs_id !== 0){
+	        $bocs_product_type = 'bocs_bocs_id';
+        } else if ( $bocs_product_id !== '' ){
+	        $bocs_product_type = 'bocs_product_id';
+        }
 
-			$products = $wpdb->get_results($prepare_query);
+		$prepare_query = $wpdb->prepare("SELECT meta.post_id FROM  " . $wpdb->prefix . "postmeta as meta 
+                                                    INNER JOIN " . $wpdb->prefix . "posts as posts 
+                                                    ON posts.ID = meta.post_id 
+                                                    WHERE meta.meta_key = %s 
+                                                    AND meta.meta_value = %s  
+                                                    AND posts.post_status = %s 
+                                                    ORDER BY  meta.post_id ASC",
+			$bocs_product_type, $bocs_bocs_id, 'publish'
+		);
 
-			if (count($products) > 0){
-				$product_id = $products[0]->post_id;
-			}
+		$products = $wpdb->get_results($prepare_query);
 
-			// if not found, then by bocs id and frequency id
-			if($product_id === 0){
-				$prepare_query = $wpdb->prepare('SELECT 
-														postmeta.post_id 
-													FROM 
-														' . $wpdb->prefix . 'postmeta as postmeta
-													INNER JOIN
-														' . $wpdb->prefix . 'posts as posts
-													ON
-														posts.ID = postmeta.post_id
-													WHERE 
-														postmeta.meta_key = %s AND postmeta.meta_value = %s
-													AND 
-														postmeta.meta_key = %s AND postmeta.meta_value = %s
-													AND
-														posts.post_status = %s
-													ORDER BY 
-														postmeta.post_id ASC',
-					"bocs_bocs_id", $bocs_bocs_id, "bocs_frequency_id", $bocs_frequency_id, "publish");
 
-				$products = $wpdb->get_results($prepare_query);
-
-				if (count($products) > 0){
-					$product_id = $products[0]->post_id;
-				}
-			}
-
-		} else if($bocs_product_id !== '') {
-			// search according to bocs_product_id
-			$prepare_query = $wpdb->prepare('SELECT 
-														postmeta.post_id 
-													FROM 
-														' . $wpdb->prefix . 'postmeta as postmeta
-													INNER JOIN
-														' . $wpdb->prefix . 'posts as posts
-													ON
-														posts.ID = postmeta.post_id
-													WHERE 
-														postmeta.meta_key = %s AND postmeta.meta_value = %s
-													AND
-														posts.post_status = %s
-													ORDER BY 
-														postmeta.post_id ASC',
-				"bocs_product_id", $bocs_product_id, "publish");
-
-			$products = $wpdb->get_results($prepare_query);
-
-			if (count($products) > 0){
-				$product_id = $products[0]->post_id;
-			}
+		if (count($products) > 0){
+			$product_id = $products[0]->post_id;
 		}
 
-		// if not found, then by name, and should be only 1
-		if($product_id === 0){
-			$prepare_query = $wpdb->prepare('SELECT 
-														ID
-													FROM
-														' . $wpdb->prefix . 'posts
-													WHERE
-														' . $wpdb->prefix . 'posts.post_title = %s
-													AND 
-														' . $wpdb->prefix . 'posts.post_type = %s
-													AND
-														' . $wpdb->prefix . 'posts.post_status = %s',
-				$name, "product", "publish");
-
-			$products = $wpdb->get_results($prepare_query);
-
-			if (count($products) == 1){
-				$product_id = $products[0]->post_id;
-			}
-		}
 
 		wp_send_json($product_id);
 	}

@@ -1,9 +1,5 @@
 
-async function bocs_add_to_cart(params) {
-
-	const bocsId = params.bocsId;
-	const frequency = params.selectedFrequency;
-	const products = params.selectedProducts;
+async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedProducts: products}) {
 
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -22,89 +18,59 @@ async function bocs_add_to_cart(params) {
 
 	let wooCommerceProductId = 0;
 
-	if (frequency.externalSourceId){
-		wooCommerceProductId = frequency.externalSourceId;
-	} else if(frequency.sku) {
-		// search by sku
-		const bocsProduct = await jQuery.ajax(
-			{
-				url: '/wp-json/wc/store/v1/products?sku=' + encodeURIComponent(frequency.sku) ,
-				method: 'GET',
-				data: data,
-				beforeSend: function (xhr) {
-					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
-				}
-			}
-		);
-
-		if( bocsProduct.length ){
-			wooCommerceProductId = bocsProduct[0].id;
-		}
-
-	}
-
 	let bocsType = '';
 	let bocsSku = '';
 	let boxPrice = 0;
 	let bocsName = '';
 
-	// in case that there is none, then show warning/notification
-	if (wooCommerceProductId === 0){
+	// we will get the details first regarding the bocsid
+	const bocsData = await jQuery.ajax({
+		url: ajax_object.bocsGetUrl + bocsId,
+		type: 'GET',
+		beforeSend: function (xhr) {
+			xhr.setRequestHeader("Accept", "application/json");
+			xhr.setRequestHeader("Organization", ajax_object.orgId);
+			xhr.setRequestHeader("Store", ajax_object.storeId);
+			xhr.setRequestHeader("Authorization", ajax_object.authId);
+		}
+	});
 
-		if(bocsId){
-			if (bocsId !== ""){
+	if (bocsData){
+		if (bocsData.data){
 
-				// we will get the details first regarding the bocsid
-				const bocsData = await jQuery.ajax({
-					url: ajax_object.bocsGetUrl + bocsId,
-					type: 'GET',
-					beforeSend: function (xhr) {
-						xhr.setRequestHeader("Accept", "application/json");
-						xhr.setRequestHeader("Organization", ajax_object.orgId);
-						xhr.setRequestHeader("Store", ajax_object.storeId);
-						xhr.setRequestHeader("Authorization", ajax_object.authId);
-					}
+			if ( bocsData.data.name){
+
+				bocsType = bocsData.data.type;
+				bocsSku = bocsData.data.sku;
+				boxPrice = bocsData.data.boxPrice;
+				bocsName = bocsData.data.name;
+
+				// then we will search the product on WooCommerce
+				const params = {
+					action: 'search_product',
+					nonce: ajax_object.search_nonce,   // The AJAX nonce value
+					name: bocsName +  ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',
+					bocs_frequency_id: frequency.id, // frequency id
+					bocs_bocs_id: bocsId,
+					bocs_sku: bocsSku,
+					is_bocs: 1
+				};
+
+				// in case that the product does not exist, then we will search according to bocs_product_id or product name
+				const searchProduct = await jQuery.ajax({
+					url: ajax_object.ajax_url,
+					type: 'POST',
+					data: params
 				});
 
-				if (bocsData){
-					if (bocsData.data){
-
-						if ( bocsData.data.name){
-
-							bocsType = bocsData.data.type;
-							bocsSku = bocsData.data.sku;
-							boxPrice = bocsData.data.boxPrice;
-							bocsName = bocsData.data.name;
-
-							// then we will search the product on WooCommerce
-
-							// in case that the product does not exist, then we will search according to bocs_product_id or product name
-							const searchProduct = await jQuery.ajax({
-								url: ajax_object.ajax_url,
-								type: 'POST',
-								data: {
-									action: 'search_product',
-									nonce: ajax_object.search_nonce,   // The AJAX nonce value
-									name: bocsName +  '(' + frequency.frequency + ' ' + frequency.timeUnit + ')',
-									bocs_frequency_id: frequency.id, // frequency id
-									bocs_bocs_id: bocsId,
-									bocs_sku: bocsSku,
-									is_bocs: 1
-								}
-							});
-
-							if (searchProduct){
-								if (searchProduct > 0){
-									// there exists a product
-									wooCommerceProductId = searchProduct;
-								}
-							}
-						}
+				if (searchProduct){
+					if (searchProduct > 0){
+						// there exists a product
+						wooCommerceProductId = searchProduct;
 					}
 				}
 			}
 		}
-
 	}
 
 	// we will create the product
@@ -117,7 +83,7 @@ async function bocs_add_to_cart(params) {
 			data: {
 				action: 'create_product',   // The AJAX action name to be handled by the server
 				nonce: ajax_object.nonce,   // The AJAX nonce value
-				title: bocsName +  '(' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
+				title: bocsName +  ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
 				price: '0',             // Set the product price
 				bocs_product_discount: frequency.discount,
 				bocs_product_discount_type: frequency.discountType,
@@ -150,6 +116,7 @@ async function bocs_add_to_cart(params) {
 
 
 	if (wooCommerceProductId !== 0){
+
 		// add to cart
 
 		var data = {
@@ -178,51 +145,31 @@ async function bocs_add_to_cart(params) {
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
 
+		console.log(product);
+
 		let wcProductId = 0;
 
-		if (product.externalSourceId && product.externalSourceId !== ""){
-			wcProductId = product.externalSourceId;
-		} else if (product.sku && product.sku !== "") {
-			// we will check via sku
-			const wooProduct = await jQuery.ajax(
-				{
-					url: '/wp-json/wc/store/v1/products?sku=' + encodeURIComponent(product.sku) ,
-					method: 'GET',
-					data: data,
-					beforeSend: function (xhr) {
-						xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
-					}
-				}
-			);
+		// we will search for the product according to the bocs_product_id and title
+		const searchProduct = await jQuery.ajax({
+			url: ajax_object.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'search_product',
+				nonce: ajax_object.search_nonce,   // The AJAX nonce value
+				name: product.name,
+				bocs_product_id: product.productId,
+				is_bocs: 0
+			}
+		});
 
-			if( wooProduct.length ){
-				wcProductId = wooProduct[0].id;
+		if (searchProduct){
+			if (searchProduct > 0){
+				// there exists a product
+				wcProductId = searchProduct;
 			}
 		}
 
-		if (wcProductId == 0){
-			// we will search for the product according to the bocs_product_id and title
-			const searchProduct = await jQuery.ajax({
-				url: ajax_object.ajax_url,
-				type: 'POST',
-				data: {
-					action: 'search_product',
-					nonce: ajax_object.search_nonce,   // The AJAX nonce value
-					name: product.name,
-					bocs_product_id: product.productId,
-					is_bocs: 0
-				}
-			});
-
-			if (searchProduct){
-				if (searchProduct > 0){
-					// there exists a product
-					wcProductId = searchProduct;
-				}
-			}
-		}
-
-		if (wcProductId == 0){
+		if (wcProductId === 0){
 
 			// we will attempt to create the product
 			const createdProduct = await jQuery.ajax({
@@ -252,7 +199,69 @@ async function bocs_add_to_cart(params) {
 
 		}
 
-		if (wcProductId != 0){
+		if (wcProductId !== 0){
+
+			// before adding to cart, we will check if it has variations
+			if( product.variations.length > 0 ){
+				console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
+				buttonCart.html('Product with Variations is NOT WORKING as of now...');
+			}
+
+			/* if( product.variations.length > 0 ){
+				// wcProductId = product.variations[0].externalSourceId;
+
+				// search first for each of the variations if there is already an existing tied record
+				let variationId = 0;
+				let selectedVariation = false;
+
+				for (const variation of product.variations) {
+
+					const searchVariation = await jQuery.ajax({
+						url: ajax_object.ajax_url,
+						type: 'POST',
+						data: {
+							action: 'search_product',
+							nonce: ajax_object.search_nonce,
+							name: product.name,
+							bocs_product_id: variation.productId,
+							is_bocs: 0
+						}
+					});
+
+					if (searchVariation){
+						if (searchVariation > 0){
+							// there exists a product
+							variationId = searchVariation;
+						}
+					}
+
+					if (variationId !== 0 && selectedVariation === false){
+						wcProductId = variationId;
+						selectedVariation = true;
+					}
+
+					if( variationId === 0 ){
+						// we will create this product variation
+						const createdVariation = await jQuery.ajax({
+							url: ajax_object.ajax_url,
+							type: 'POST',
+							data: {
+								action: 'create_product',   // The AJAX action name to be handled by the server
+								nonce: ajax_object.nonce,   // The AJAX nonce value
+								title: product.name,        // Set the product title
+								price: product.price,             // Set the product price
+								sku: product.sku,
+								bocs_product_id: variation.productId,
+								type: 'variation',
+								parent_id: product.productId,
+								option: variation.option
+								// Add more product data as needed
+							}
+						});
+					}
+				}
+			} */
+
 			// add to cart
 
 			var data = {
@@ -298,15 +307,18 @@ async function bocs_add_to_cart(params) {
 	// then we will try to add the coupon if there is a discount
 	if (frequency.discount > 0){
 
-		let discountType = "fixed_cart";
+		let discountType = "percent";
 		const amount = frequency.discount;
 		let couponCode = "bocs-" + amount;
 
-		if (frequency.discountType == "percentage" || frequency.discountType == "percent" ){
-			discountType = "percent";
-			couponCode = couponCode + "off";
+		if( frequency.discountType === 'dollar' ){
+			discountType = "fixed_cart";
+		}
+
+		if (discountType === "percent" ){
+			couponCode = couponCode + "percent";
 		} else {
-			couponCode = couponCode + "fixed";
+			couponCode = couponCode + "off";
 		}
 
 		couponCode = couponCode + "-" + (Math.random() + 1).toString(36).substring(7);
