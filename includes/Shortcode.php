@@ -20,8 +20,10 @@ class Shortcode {
         $output = '<div id="bocs-widget"';
 
         if (isset( $atts['collection'] )) {
-            $output .= ' data-collection="'.$atts['collection'].'"';
-        }
+            $output .= ' data-type="collection" data-id="'.$atts['collection'].'"';
+        } else if (isset( $atts['widget'] )) {
+		    $output .= ' data-type="bocs" data-id="'.$atts['widget'].'"';
+	    }
 
         $output .= '></div>';
 

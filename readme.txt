@@ -1,3 +1,9 @@
+v0.0.38 09/15/2023
+* Redirects to the checkout page
+
+v0.0.37 09/14/2023
+* Added support for editors using ACF
+
 v0.0.36 09/13/2023
 * Added the Fixed type
 

@@ -204,7 +204,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 			// before adding to cart, we will check if it has variations
 			if( product.variations.length > 0 ){
 				console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
-				buttonCart.html('Product with Variations is NOT WORKING as of now...');
+				// buttonCart.html('Product with Variations is NOT WORKING as of now...');
 			}
 
 			/* if( product.variations.length > 0 ){

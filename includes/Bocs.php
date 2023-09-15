@@ -49,7 +49,7 @@ class Bocs
 		// $this->set_locale();
         $this->define_updater_hooks();
 		$this->define_admin_hooks();
-		// $this->define_public_hooks();
+		$this->define_public_hooks();
 
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
@@ -109,8 +109,10 @@ class Bocs
 		 */
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Frontend.php';
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Auth.php';
+
 		// Bocs's Shortcode
-		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Shortcode.php';
+		require_once plugin_dir_path(dirname(__FILE__)).'includes/Shortcode.php';
+
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Tag.php';
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Widget.php';
@@ -238,6 +240,9 @@ class Bocs
 		$this->loader->add_action('restrict_manage_users', $plugin_admin, 'custom_add_source_filter');
 		$this->loader->add_action('pre_get_users', $plugin_admin, 'custom_filter_users_by_source');
 
+		// adding metabox on the right side of the page
+		$this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_bocs_widget_metabox');
+
 	}
 
 	/**
@@ -247,32 +252,32 @@ class Bocs
 	private function define_public_hooks()
 	{
 
-		$plugin_public = new Frontend();
+		//$plugin_public = new Frontend();
 		// Scripts and styles
-		$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles', 10);
-		$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts', 10);
-		$this->loader->add_action('template_redirect', $plugin_public, 'bocs_add_to_cart_and_redirect');
+		//$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles', 10);
+		//$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts', 10);
+		//$this->loader->add_action('template_redirect', $plugin_public, 'bocs_add_to_cart_and_redirect');
 
-		$auth_public = new Auth();
-		$this->loader->add_action('rest_api_init', $auth_public, 'add_api_routes');
-		$this->loader->add_filter('rest_api_init', $auth_public, 'add_cors_support');
-		$this->loader->add_filter('determine_current_user', $auth_public, 'determine_current_user', 99);
-		$this->loader->add_filter('rest_pre_dispatch', $auth_public, 'rest_pre_dispatch', 10, 2);
+		//$auth_public = new Auth();
+		//$this->loader->add_action('rest_api_init', $auth_public, 'add_api_routes');
+		//$this->loader->add_filter('rest_api_init', $auth_public, 'add_cors_support');
+		//$this->loader->add_filter('determine_current_user', $auth_public, 'determine_current_user', 99);
+		//$this->loader->add_filter('rest_pre_dispatch', $auth_public, 'rest_pre_dispatch', 10, 2);
 
 		$shortcode = new Shortcode();
 		$this->loader->add_action('init', $shortcode, 'bocs_shortcodes_init');
 
-		$contact = new Contact();
+		//$contact = new Contact();
 
 		// syncs the Add User to Bocs
-		$this->loader->add_action('user_register', $contact, 'sync_add_contact');
+		//$this->loader->add_action('user_register', $contact, 'sync_add_contact');
 		// syncs the Update User to Bocs
-		$this->loader->add_action('edit_user_profile_update', $contact, 'sync_update_contact');
+		//$this->loader->add_action('edit_user_profile_update', $contact, 'sync_update_contact');
 		// syncs the delete user to Bocs
-		$this->loader->add_action('delete_user', $contact, 'sync_delete_contact');
+		//$this->loader->add_action('delete_user', $contact, 'sync_delete_contact');
 
-		$this->loader->add_action('show_user_profile', $contact, 'user_render_fields');
-		$this->loader->add_action('edit_user_profile', $contact, 'user_render_fields');
+		//$this->loader->add_action('show_user_profile', $contact, 'user_render_fields');
+		//$this->loader->add_action('edit_user_profile', $contact, 'user_render_fields');
 
 	}
 

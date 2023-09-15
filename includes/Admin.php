@@ -115,7 +115,22 @@ class Admin
 
 	public function admin_enqueue_scripts(){
 		wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.2');
-		wp_enqueue_script( "bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.8', true );
+
+		// get the settings
+		$options = get_option( 'bocs_plugin_options' );
+		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.12');
+		wp_enqueue_script("bocs-admin-js");
+
+		wp_localize_script('bocs-admin-js', 'ajax_object', array(
+			'bocsURL' => BOCS_API_URL . "bocs",
+			'collectionsURL' => BOCS_API_URL . "collections",
+			'Organization' => $options['bocs_headers']['organization'],
+			'Store' => $options['bocs_headers']['store'],
+			'Authorization' => $options['bocs_headers']['authorization']
+		));
+
 	}
 
 	public function enqueue_scripts(){
@@ -134,10 +149,12 @@ class Admin
 			wp_enqueue_script('wc-cart-fragments');
 		}
 
+        $redirect = wc_get_checkout_url();
+
 		wp_enqueue_script( "bocs-add-to-cart", plugin_dir_url( __FILE__ ) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.72', true );
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce( 'wc_store_api' ),
-			'cartURL' => wc_get_cart_url(),
+			'cartURL' => $redirect,
 			'ajax_url' => admin_url('admin-ajax.php'),
 			'nonce'    => wp_create_nonce('ajax-nonce'),
 			'search_nonce'    => wp_create_nonce('ajax-search-nonce'),
@@ -1064,5 +1081,34 @@ class Admin
 
 		}
 	}
+
+    public function bocs_widget_metabox_content($page){
+
+        echo "<div id='bocs-page-sidebar'>
+                <label>Collections</label><br /><select id='bocs-page-sidebar-collections' name='collections'></select><br />
+                <br /><label>Bocs</label><br /><select id='bocs-page-sidebar-bocs' name='bocs'></select><br />
+                <br />
+                <br />
+                <label><b>Copy the shortcode below</b></label><br />
+                <code id='bocs-shortcode-copy'></code>
+            </div>";
+
+    }
+
+	/**
+     * Adds metabox on the right side of the Edit Page
+     *
+	 * @return void
+	 */
+    public function add_bocs_widget_metabox(){
+        add_meta_box(
+                'bocs_widget_metabox',
+            'Bocs Widget Shortcode',
+            array( $this, 'bocs_widget_metabox_content' ),
+            'page',
+            'side',
+            'high'
+        );
+    }
 
 }

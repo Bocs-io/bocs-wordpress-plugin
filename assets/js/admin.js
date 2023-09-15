@@ -37,11 +37,117 @@ jQuery( function ( $ ) {
 
 
         });
+    }
+});
 
+
+let collectionsList = [];
+let bocsList = [];
+
+let collectionOptions = [];
+let bocsOptions = [];
+
+jQuery(window).on("load", function() {
+    if( jQuery("#bocs-page-sidebar").length > 0 ){
+        // then we will insert the getting of the list of collections and bocs
+
+        jQuery( async function ($){
+
+            try {
+
+                collectionsList = $.ajax({
+                    url: ajax_object.collectionsURL,
+                    type: "GET",
+                    contentType: "application/json; charset=utf-8",
+                    headers: {
+                        'Organization': ajax_object.Organization,
+                        'Store': ajax_object.Store,
+                        'Authorization': ajax_object.Authorization
+                    }
+                });
+
+                bocsList = $.ajax({
+                    url: ajax_object.bocsURL,
+                    type: "GET",
+                    contentType: "application/json; charset=utf-8",
+                    headers: {
+                        'Organization': ajax_object.Organization,
+                        'Store': ajax_object.Store,
+                        'Authorization': ajax_object.Authorization
+                    }
+                });
+
+                jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
+                    value: '',
+                    text: 'Please wait...'
+                }));
+
+                jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
+                    value: '',
+                    text: 'Please wait...'
+                }));
+
+                await collectionsList.then( (collections) => {
+                    jQuery('#bocs-page-sidebar-collections').empty();
+
+                    if(collections.data.length === 0){
+                        jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
+                            value: '',
+                            text: 'No Collections...'
+                        }));
+                    } else {
+
+                        collections.data.forEach( (collection) => {
+                            jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
+                                value: collection.collectionId,
+                                text: collection.name == '' ? collection.collectionId : collection.name
+                            }));
+                        });
+
+                        jQuery('#bocs-page-sidebar-collections').on('change', function() {
+
+                            jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
+
+                        });
+                    }
+
+
+                });
+
+                await bocsList.then( (bocs) => {
+
+                    jQuery('#bocs-page-sidebar-bocs').empty();
+
+                    if( bocs.data.length === 0  ){
+                        jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
+                            value: '',
+                            text: 'No Bocs...'
+                        }));
+                    } else {
+
+                        bocs.data.forEach( (boc) => {
+
+                            jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
+                                value: boc.bocsId,
+                                text: boc.name == '' ? boc.bocsId : boc.name
+                            }));
+
+                        });
+
+                        jQuery('#bocs-page-sidebar-bocs').on('change', function() {
+
+                            jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
+
+                        });
+                    }
+
+                });
+
+            } catch (error){
+                console.log(error);
+            }
+        });
 
 
     }
-
-
-
 });
