@@ -65,6 +65,9 @@ class Sync {
 		$do_sync = false;
 		$new_data = array();
 
+		if( !isset($userdata['first_name']) ) return $meta;
+		if( !isset($userdata['last_name']) ) return $meta;
+
 		if ($old_first_name != $userdata['first_name']){
 			$do_sync = true;
 			$new_data['first_name'] = $userdata['first_name'];
@@ -619,10 +622,14 @@ class Sync {
 			error_log('getting bocs user with email ' . $email);
 			$get_user = $curl->get($url, 'contacts', $user_id);
 
-			if ($get_user->data && count($get_user->data) > 0){
-				error_log('Bocs user FOUND');
-				$bocs_contact_id = $get_user->data[0]->contactId;
-				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			if( isset($get_user->data) ){
+				if ($get_user->data && count($get_user->data) > 0){
+					error_log('Bocs user FOUND');
+					$bocs_contact_id = $get_user->data[0]->contactId;
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					error_log('bocs user not found');
+				}
 			} else {
 				error_log('bocs user not found');
 			}
@@ -630,13 +637,21 @@ class Sync {
 			// we will add the user to the bocs app
 			if(empty($bocs_contact_id)){
 
+				$role = 'customer';
 				$roles = $user->get_roles();
+				if (!empty($roles)){
+					if (is_array($roles)){
+						if (count($roles)){
+							$role = $roles[0];
+						}
+					}
+				}
 
 				$params = array(
 					'email' => $email,
 					'first_name' => $user->get_user_firstname(),
 					'last_name' => $user->get_user_lastname(),
-					'role' => count( $roles ) > 0 ? $roles[0] : 'customer',
+					'role' => $role,
 					'id' => $user_id,
 					'username' => $user->get_user_login()
 				);
