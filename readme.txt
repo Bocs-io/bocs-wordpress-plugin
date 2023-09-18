@@ -1,3 +1,6 @@
+v0.0.39 09/18/2023
+* Fix error when creating a customer via API
+
 v0.0.38 09/15/2023
 * Redirects to the checkout page
 
