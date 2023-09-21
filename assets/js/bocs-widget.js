@@ -125,7 +125,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		let result = "Getting list of Bocs and Collection";
 
-		if( ajax_object.bocs_widget_collections !== '' ){
+		if( jQuery.isArray(ajax_object.bocs_widget_collections) ){
 			ajax_object.bocs_widget_collections.forEach((collection) => {
 				collectionHTML.push(
 					React.createElement("li", {
@@ -148,7 +148,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			});
 		}
 
-		if ( ajax_object.bocs_widget_bocs !== '' ){
+		if ( jQuery.isArray(ajax_object.bocs_widget_bocs) ){
 			ajax_object.bocs_widget_bocs.forEach((bocs) => {
 				bocsHTML.push(
 					React.createElement(

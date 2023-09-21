@@ -41,11 +41,11 @@ jQuery( function ( $ ) {
 });
 
 
-let collectionsList = [];
-let bocsList = [];
+let collections_list = [];
+let bocs_list = [];
 
-let collectionOptions = [];
-let bocsOptions = [];
+let collection_options = [];
+let bocs_options = [];
 
 jQuery(window).on("load", function() {
     if( jQuery("#bocs-page-sidebar").length > 0 ){
@@ -55,7 +55,7 @@ jQuery(window).on("load", function() {
 
             try {
 
-                collectionsList = $.ajax({
+                collections_list = $.ajax({
                     url: ajax_object.collectionsURL,
                     type: "GET",
                     contentType: "application/json; charset=utf-8",
@@ -66,7 +66,7 @@ jQuery(window).on("load", function() {
                     }
                 });
 
-                bocsList = $.ajax({
+                bocs_list = $.ajax({
                     url: ajax_object.bocsURL,
                     type: "GET",
                     contentType: "application/json; charset=utf-8",
@@ -87,7 +87,7 @@ jQuery(window).on("load", function() {
                     text: 'Please wait...'
                 }));
 
-                await collectionsList.then( (collections) => {
+                await collections_list.then( (collections) => {
                     jQuery('#bocs-page-sidebar-collections').empty();
 
                     if(collections.data.length === 0){
@@ -114,7 +114,7 @@ jQuery(window).on("load", function() {
 
                 });
 
-                await bocsList.then( (bocs) => {
+                await bocs_list.then( (bocs) => {
 
                     jQuery('#bocs-page-sidebar-bocs').empty();
 
@@ -144,7 +144,7 @@ jQuery(window).on("load", function() {
                 });
 
             } catch (error){
-                console.log(error);
+                console.error(error);
             }
         });
 

@@ -1,3 +1,6 @@
+v0.0.41 09/21/2023
+* Fix error when both Gutenburg and sidebar is loading
+
 v0.0.40 09/18/2023
 * Fix error when creating a customer via API
 
