@@ -265,33 +265,13 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array(); ?>
                     xhr.setRequestHeader("Authorization", "<?php echo $options['bocs_headers']['authorization']?>");
                 },
 				success: function (response){
-                    // we will sync tne bocs to wordpress
+                    // we will sync the bocs to wordpress
                     if (response.data){
-                        jQuery.each(response.data, function (index, item){
-                            console.log("\n");
-                            console.log("Bocs ID: " + item.bocsId);
-                            console.log("Type: " + item.type);
-                            console.log("Name: " + item.name);
-                            console.log("Description: " + item.description);
-                            console.log("SKU: " + item.sku);
-                            console.log("IS Price per Frequency?: " + item.pricePerFrequency);
-                            console.log("Items:");
-
-                            if ( item.items ){
-                                jQuery.each(item.items, function (index2, product){
-                                    console.log("         Product ID: " + product.productId);
-                                    console.log("         Product Name: " + product.name);
-                                    console.log("         Product Price: " + product.price);
-                                    console.log("         Product Quantity: " + product.quantity);
-                                    console.log("         Product Description: " + product.description);
-                                    console.log("         Product SKU: " + product.sku);
-                                });
-                            }
-                        })
+                        
                     }
                 },
                 error: function (xhr) {
-                    console.log(xhr);
+                    console.error(xhr);
                 }
 			});
 		}

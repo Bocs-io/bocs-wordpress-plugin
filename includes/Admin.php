@@ -86,11 +86,23 @@ class Admin
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.9');
+		wp_enqueue_style('font-awesome', plugin_dir_url(__FILE__) . '../assets/css/font-awesome.min.css', null, '0.0.1');
+        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.10');
 
 		wp_enqueue_script('jquery');
 
-		wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array('wp-blocks', 'wp-i18n', 'wp-editor', 'jquery'), '0.0.179');
+		wp_register_script("bocs-custom-block",
+            plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js',
+            array(
+                'wp-components',
+                'wp-block-editor',
+                'wp-blocks',
+                'wp-i18n',
+                'wp-editor',
+                'wp-data',
+                'jquery'
+            ),
+            '0.0.180');
 		wp_enqueue_script("bocs-custom-block");
 
         // we will load first what is the currently saved bocs and collection
@@ -120,7 +132,7 @@ class Admin
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.12');
+		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.13');
 		wp_enqueue_script("bocs-admin-js");
 
 		wp_localize_script('bocs-admin-js', 'ajax_object', array(

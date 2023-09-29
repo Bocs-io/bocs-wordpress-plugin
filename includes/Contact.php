@@ -295,9 +295,7 @@ class Contact {
 	 */
 	public function sync_to_bocs(){
 
-        error_log("Contacts::sync_to_bocs");
-
-		if ( !isset( $_POST['sync_enabled'] ) ){
+        if ( !isset( $_POST['sync_enabled'] ) ){
 			echo json_encode(0);
 			exit;
 		}
@@ -399,10 +397,9 @@ class Contact {
      */
     public function as_daily_sync_to_bocs(){
 		if ( false === as_has_scheduled_action("daily_sync_to_bocs") ){
-            error_log('daily_sync_to_bocs false');
-			as_schedule_recurring_action( strtotime('+15 minutes'), 15 * 60, 'daily_sync_to_bocs', array(), '', true);
+            as_schedule_recurring_action( strtotime('+15 minutes'), 15 * 60, 'daily_sync_to_bocs', array(), '', true);
 		} else {
-            error_log('daily_sync_to_bocs true');
+            // error_log('daily_sync_to_bocs true');
         }
 	}
 
@@ -413,10 +410,9 @@ class Contact {
      */
     public function as_daily_sync_from_bocs(){
         if ( false === as_has_scheduled_action("daily_sync_from_bocs") ){
-            error_log('daily_sync_from_bocs false');
             as_schedule_recurring_action( strtotime('+15 minutes'), 15 * 60, 'daily_sync_from_bocs', array(), '', true);
         } else {
-            error_log('daily_sync_from_bocs true');
+            // error_log('daily_sync_from_bocs true');
         }
     }
 
