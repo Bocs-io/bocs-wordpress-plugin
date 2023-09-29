@@ -1,4 +1,13 @@
 const bocsEl = wp.element.createElement;
+const blockEditor = wp.blockEditor;
+const BlockControls = blockEditor.BlockControls;
+const Components = wp.components;
+const Button = Components.Button;
+const Toolbar = Components.Toolbar;
+const ToolbarButton = Components.ToolbarButton;
+const ToolbarDropdown = Components.ToolbarDropdownMenu;
+const ToolbarGroup = Components.ToolbarGroup;
+const DropdownMenu = Components.DropdownMenu;
 
 const bocsIcon =
 	bocsEl(
@@ -77,8 +86,8 @@ jQuery( async function ($){
 		});
 
 	} catch (error){
-		console.log(error);
-		options = [React.createElement(
+		console.error(error);
+		options = [bocsEl(
 			"option",
 			null,
 			"No store connected"
@@ -94,170 +103,111 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	attributes: {
 		collectionId: { type: 'string' }
 	},
+	description: "This block displays products from your ",
 	edit: function (props){
 
-		function updateCollectionId(event){
+		let blockProps = blockEditor.useBlockProps();
+		var isSelected = props.isSelected;
 
-			props.setAttributes({collectionId: ""});
+		function updateSelected(id, name){
 
-			// deselect all by default
+			props.setAttributes({collectionId: id});
 
-			// uncheck the radios
-			jQuery(".bocsNested > li").removeClass("active");
+			// then update the view
+			jQuery('div.bocs-dropdown-menu-body').hide();
+			jQuery('p.bocs-widget-description').hide();
 
-			// unhightlight the selected
+			var type = 'bocs';
 
-
-			if (event.target.parentElement.querySelector(".bocsNested") ){
-				event.target.classList.toggle("bocsCaret-down");
-				event.target.parentElement.querySelector(".bocsNested").classList.toggle("active");
-			} else {
-				props.setAttributes({collectionId: event.target.id});
-				event.target.classList.add(	"active");
+			if (id.indexOf('collection') !== -1) {
+				type = 'collection';
 			}
 
+			if (type === 'bocs') jQuery( 'p.bocs-widget-selected-desc' ).html("<b>Bocs Widget:</b><span>Name: " + name + "</<span>");
+			else jQuery( 'p.bocs-widget-selected-desc' ).html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
 		}
-
-		let collectionHTML = [];
-		let bocsHTML = [];
-
-		//console.log(ajax_object.bocs_widget_bocs, ajax_object.bocs_widget_collections, ajax_object.bocs_widget_selected);
-
-		let result = "Getting list of Bocs and Collection";
-
-		if( ajax_object.bocs_widget_collections !== '' ){
-			ajax_object.bocs_widget_collections.forEach((collection) => {
-				collectionHTML.push(
-					React.createElement("li", {
-							onClick: updateCollectionId,
-							id: collection.id,
-							className: ajax_object.bocs_widget_selected === ('collection-' + collection.id) ? 'active' : ''
-						},
-						React.createElement(
-							"input",
-							{
-								type: "radio",
-								value: collection.id,
-								name: "selectedOption",
-								className: "radioOption",
-								checked: ajax_object.bocs_widget_selected === ('collection-' + collection.id)
-							}
-						),
-						collection.name)
-				);
-			});
-		}
-
-		if ( ajax_object.bocs_widget_bocs !== '' ){
-			ajax_object.bocs_widget_bocs.forEach((bocs) => {
-				bocsHTML.push(
-					React.createElement(
-						"li",
-						{
-							onClick: updateCollectionId,
-							id: bocs.id,
-							className: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id) ? 'active' : ''
-						},
-						React.createElement(
-							"input",
-							{
-								type: "radio",
-								value: bocs.id,
-								name: "selectedOption",
-								className: "radioOption",
-								checked: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id)
-							}
-						),
-						bocs.name
-					)
-				);
-			});
-		}
-
-		if (collectionHTML.length > 0 || bocsHTML.length > 0){
-			result = /*#__PURE__*/React.createElement("ul", {
-				id: "bocsUL"
-			}, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
-				class: "bocsCaret",
-				onClick: updateCollectionId
-			}, "Collected Widget"), /*#__PURE__*/React.createElement("ul", {
-				class: "bocsNested"
-			}, ...collectionHTML)), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
-				class: "bocsCaret",
-				onClick: updateCollectionId
-			}, "Bocs Widget"), /*#__PURE__*/React.createElement("ul", {
-				class: "bocsNested"
-			}, ...bocsHTML)));
-		}
-
-		collectionHTML = [];
-		bocsHTML = [];
 
 		// before getting the actual list of the bocs and collection, we will get the list
 		// from the stored on the options
 
+		var collectionMenuOptions = [];
+		var bocsMenuOptions = [];
 
 		collectionOptions.forEach((collection) => {
-			collectionHTML.push(
-				React.createElement("li", {
-					onClick: updateCollectionId,
-					id: collection.id,
-					className: ajax_object.bocs_widget_selected === ('collection-' + collection.id) ? 'active' : ''
-				},
-					React.createElement(
-						"input",
-						{
-							type: "radio",
-							value: collection.id,
-							name: "selectedOption",
-							className: "radioOption"
-						}
-					),
-					collection.name)
+			collectionMenuOptions.push(
+				{ label: collection.name, value: collection.id, title: collection.name, onClick: () => updateSelected(collection.id, collection.name) }
 			);
 		});
 
 		bocsOptions.forEach((bocs) => {
-			bocsHTML.push(
-				React.createElement(
-					"li",
-					{
-						onClick: updateCollectionId,
-						id: bocs.id,
-						className: ajax_object.bocs_widget_selected === ('bocs-' + bocs.id) ? 'active' : ''
-					},
-					React.createElement(
-						"input",
-						{
-							type: "radio",
-							value: bocs.id,
-							name: "selectedOption",
-							className: "radioOption"
-						}
-					),
-					bocs.name
-				)
+			bocsMenuOptions.push(
+				{ label: bocs.name, value: bocs.id, title: bocs.name, onClick: () => updateSelected(bocs.id, bocs.name) }
 			);
 		});
 
-		if (collectionOptions.length > 0 || bocsOptions.length > 0){
-			result = /*#__PURE__*/React.createElement("ul", {
-				id: "bocsUL"
-			}, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
-				class: "bocsCaret",
-				onClick: updateCollectionId
-			}, "Collected Widget"), /*#__PURE__*/React.createElement("ul", {
-				class: "bocsNested"
-			}, ...collectionHTML)), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
-				class: "bocsCaret",
-				onClick: updateCollectionId
-			}, "Bocs Widget"), /*#__PURE__*/React.createElement("ul", {
-				class: "bocsNested"
-			}, ...bocsHTML)));
-		}
-
-		return result;
-
+		return bocsEl(
+			"div",
+			blockProps,
+			isSelected && bocsEl(
+				BlockControls,
+				{ key: 'controls' },
+				bocsEl( ToolbarGroup, null,
+					bocsEl(
+						DropdownMenu,
+						{
+							label: 'Collections',
+							text: 'Collections',
+							controls: collectionMenuOptions,
+							isTertiary: true,
+							icon: false,
+							className: 'bocs-dropdown-menu'
+						}
+					),
+					bocsEl(
+						DropdownMenu,
+						{
+							label: 'Bocs',
+							text: 'Bocs',
+							controls: bocsMenuOptions,
+							isTertiary: true,
+							icon: false,
+							className: 'bocs-dropdown-menu'
+						}
+					)
+				)
+			),
+			bocsEl(
+				"p",
+				{className: 'bocs-widget-description'},
+				"This block displays products from your Bocs widget. Click on Bocs or Collection to add the code to display your widget. Once added save your page and you should be able to view the widget on your site now."
+			),
+			isSelected && bocsEl(
+				DropdownMenu,
+				{
+					label: 'Collections',
+					text: 'Collections',
+					controls: collectionMenuOptions,
+					isTertiary: true,
+					icon: false,
+					className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
+				}
+			),
+			isSelected && bocsEl(
+				DropdownMenu,
+				{
+					label: 'Bocs',
+					text: 'Bocs',
+					controls: bocsMenuOptions,
+					isTertiary: true,
+					icon: false,
+					className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
+				}
+			),
+			bocsEl(
+				"p",
+				{className: 'bocs-widget-selected-desc'}
+			)
+		);
 	},
 	save: function (props){
 
@@ -281,13 +231,13 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		if (props.attributes.collectionId){
 			if (props.attributes.collectionId.includes('bocs-')){
-				result = /*#__PURE__*/React.createElement("div", {
+				result = bocsEl("div", {
 					id: "bocs-widget",
 					"data-type": "bocs",
 					"data-id": props.attributes.collectionId.replace("bocs-","")
 				});
 			} else if(props.attributes.collectionId.includes('collection-')){
-				result =  /*#__PURE__*/React.createElement("div", {
+				result =  bocsEl("div", {
 					id: "bocs-widget",
 					"data-type": "collections",
 					"data-id": props.attributes.collectionId.replace("collection-","")

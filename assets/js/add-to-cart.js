@@ -132,10 +132,10 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 				xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
 			},
 			success: function (response) {
-				console.log('Product added to cart:', response);
+				// console.success('Product added to cart:', response);
 			},
 			error: function (error) {
-				console.log('Error adding product to cart:', error);
+				console.error('Error adding product to cart:', error);
 			},
 		});
 	}
@@ -144,8 +144,6 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
-
-		console.log(product);
 
 		let wcProductId = 0;
 
@@ -277,10 +275,10 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
 				},
 				success: function (response) {
-					console.log('Product added to cart:', response);
+					// console.log('Product added to cart:', response);
 				},
 				error: function (error) {
-					console.log('Error adding product to cart:', error);
+					console.error('Error adding product to cart:', error);
 				},
 			});
 		}
@@ -360,10 +358,10 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
 				},
 				success: function (response) {
-					console.log('Product added to cart:', response);
+					// console.log('Product added to cart:', response);
 				},
 				error: function (error) {
-					console.log('Error adding product to cart:', error);
+					console.error('Error adding product to cart:', error);
 				},
 			});
 		}
