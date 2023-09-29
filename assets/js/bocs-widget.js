@@ -5,7 +5,6 @@ const Components = wp.components;
 const Button = Components.Button;
 const Toolbar = Components.Toolbar;
 const ToolbarButton = Components.ToolbarButton;
-const ToolbarDropdown = Components.ToolbarDropdownMenu;
 const ToolbarGroup = Components.ToolbarGroup;
 const DropdownMenu = Components.DropdownMenu;
 
