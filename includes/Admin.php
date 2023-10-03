@@ -2,6 +2,12 @@
 
 class Admin
 {
+    private $save_widget_nonce = '';
+
+    public function __construct(){
+        $this->save_widget_nonce = wp_create_nonce('save-widget-nonce');
+    }
+
 	/**
 	 * added bocs log handler
 	 * 
@@ -87,7 +93,7 @@ class Admin
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
 		wp_enqueue_style('font-awesome', plugin_dir_url(__FILE__) . '../assets/css/font-awesome.min.css', null, '0.0.1');
-        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.10');
+        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.15');
 
 		wp_enqueue_script('jquery');
 
@@ -102,27 +108,27 @@ class Admin
                 'wp-data',
                 'jquery'
             ),
-            '0.0.180');
+            '0.0.198');
+
+        // get the current post id
+		$post_id = get_the_ID();
+        $selected_widget_id = get_post_meta( $post_id, 'selected_bocs_widget_id', true );
+		$selected_widget_name = get_post_meta( $post_id, 'selected_bocs_widget_name', true );
+
+        $params = array(
+	        'bocsURL' => BOCS_API_URL . "bocs",
+	        'collectionsURL' => BOCS_API_URL . "collections",
+	        'Organization' => $options['bocs_headers']['organization'],
+	        'Store' => $options['bocs_headers']['store'],
+	        'Authorization' => $options['bocs_headers']['authorization'],
+	        'nonce' => $this->save_widget_nonce,
+	        'ajax_url' => admin_url('admin-ajax.php'),
+            'selected_id' => $selected_widget_id,
+            'selected_name' => $selected_widget_name
+        );
+
 		wp_enqueue_script("bocs-custom-block");
-
-        // we will load first what is the currently saved bocs and collection
-        $bocs_widget_bocs = get_option('bocs_widget_bocs');
-        $bocs_widget_collections = get_option('bocs_widget_collections');
-        $bocs_widget_selected = get_option('bocs_widget_selected');
-
-		wp_localize_script('bocs-custom-block', 'ajax_object', array(
-			'bocsURL' => BOCS_API_URL . "bocs",
-            'collectionsURL' => BOCS_API_URL . "collections",
-			'Organization' => $options['bocs_headers']['organization'],
-			'Store' => $options['bocs_headers']['store'],
-			'Authorization' => $options['bocs_headers']['authorization'],
-            'nonce' => wp_create_nonce("ajax-save-widget-options-nonce"),
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'bocs_widget_bocs' => $bocs_widget_bocs,
-            'bocs_widget_collections' => $bocs_widget_collections,
-            'bocs_widget_selected' => $bocs_widget_selected
-		));
-
+        wp_localize_script('bocs-custom-block', 'bocs_widget_object', $params);
 	}
 
 	public function admin_enqueue_scripts(){
@@ -938,25 +944,23 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-save-widget-options-nonce')) {
+        if (!wp_verify_nonce($nonce, 'save-widget-nonce')) {
             die('Invalid nonce');
         }
 
-        $bocs = isset( $_POST['bocs'] ) ? $_POST['bocs'] : '';
-        $collections = isset( $_POST['collections'] ) ? $_POST['collections'] : '';
         $selectedOption = isset( $_POST['selectedOption'] ) ? $_POST['selectedOption'] : '';
+	    $selectedOptionName = isset( $_POST['selectedOptionName'] ) ? $_POST['selectedOptionName'] : '';
+        $postId = isset( $_POST['postId'] ) ? $_POST['postId'] : '';
 
-        if ( $bocs !== ''){
-            update_option("bocs_widget_bocs", $bocs);
+        if (!empty($postId) && !empty( $selectedOption )){
+            update_post_meta( $postId, 'selected_bocs_widget_id', $selectedOption );
+	        update_post_meta( $postId, 'selected_bocs_widget_name', $selectedOptionName );
+            echo 'success';
+            die();
         }
 
-        if ($collections !== ''){
-            update_option("bocs_widget_collections", $collections);
-        }
-
-        if ($selectedOption !== ''){
-            update_option("bocs_widget_selected", $selectedOption);
-        }
+	    echo 'failed';
+	    die();
 
     }
 

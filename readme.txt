@@ -1,3 +1,7 @@
+v0.0.43 10/03/2023
+* Added icon on the description
+* Edit Page, showing the selected/saved
+
 v0.0.42 09/29/2023
 * New UI added on Gutenburg Editor
 

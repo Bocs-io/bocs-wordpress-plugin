@@ -123,6 +123,17 @@ div.bocs-block-widget-blocs-options > ul li:hover {
     font-family: 'FontAwesome';
     position: absolute;
     top: 50%;
-    right: -2px;
+    right: -5px;
     transform: translateY(-50%);
+}
+
+div.bocs-dropdown-menu > button {
+    margin-right: 15px;
+}
+
+p.bocs-widget-description,
+p.bocs-widget-selected-desc{
+    display: inline;
+    position: relative;
+    top: -25px;
 }
