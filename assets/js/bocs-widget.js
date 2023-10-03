@@ -134,26 +134,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		const hasSelected = bocs_widget_object.selected_id !== '';
 		let preLoadText = "";
 
-		if( bocs_widget_object.selected_id.includes('bocs') ){
-			preLoadText = [bocsEl(
-				"b",
-				null,
-				"Bocs Widget:"
-			), bocsEl(
-				"span",
-				null,
-				"Name: " + bocs_widget_object.selected_name
-			)];
-		} else if (bocs_widget_object.selected_id.includes('collection')) {
-			preLoadText = [bocsEl(
-				"b",
-				null,
-				"Collections Widget:"
-			), bocsEl(
-				"span",
-				null,
-				"Name: " + bocs_widget_object.selected_name
-			)];
+		if( bocs_widget_object.selected_id !== '' ){
+			preLoadText = bocs_widget_object.selected_name;
 		}
 
 		function updateSelected(id, name){

@@ -108,7 +108,7 @@ class Admin
                 'wp-data',
                 'jquery'
             ),
-            '0.0.198');
+            '0.0.199');
 
         // get the current post id
 		$post_id = get_the_ID();
