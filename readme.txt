@@ -1,3 +1,9 @@
+v0.0.45 10/03/2023
+* readme changes
+
+v0.0.44 10/03/2023
+* correction on the edit page
+
 v0.0.43 10/03/2023
 * Added icon on the description
 * Edit Page, showing the selected/saved
