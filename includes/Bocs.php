@@ -200,6 +200,9 @@ class Bocs
 		$this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
 
 		$this->loader->add_action('init', $plugin_admin, 'register_bocs_product_type');
+
+		$this->loader->add_action('init', $plugin_admin, 'update_widgets_collections');
+
 		$this->loader->add_filter('woocommerce_product_data_tabs', $plugin_admin, 'bocs_product_tab');
 		$this->loader->add_action('woocommerce_product_data_panels', $plugin_admin, 'bocs_product_panel');
 		$this->loader->add_action('admin_footer', $plugin_admin, 'bocs_admin_custom_js');
@@ -358,6 +361,12 @@ class Bocs
         }
 	}
 
+	/**
+	 * This is to auto add the keys need on the site's end
+	 * in order to access the data from the app
+	 * 
+	 * @return void
+	 */
     public function auto_add_bocs_keys(){
         // we will check if the api@bocs.io user is created
         $bocs_account = get_user_by('email', 'api@bocs.io');

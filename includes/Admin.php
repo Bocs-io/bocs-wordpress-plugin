@@ -108,12 +108,16 @@ class Admin
                 'wp-data',
                 'jquery'
             ),
-            '0.0.199');
+            '20231006.2');
 
         // get the current post id
 		$post_id = get_the_ID();
         $selected_widget_id = get_post_meta( $post_id, 'selected_bocs_widget_id', true );
 		$selected_widget_name = get_post_meta( $post_id, 'selected_bocs_widget_name', true );
+
+        // we will get the list of collections and widgets
+		$bocs_collections = get_option("bocs_collections");
+		$bocs_widgets = get_option("bocs_widgets");
 
         $params = array(
 	        'bocsURL' => BOCS_API_URL . "bocs",
@@ -124,7 +128,9 @@ class Admin
 	        'nonce' => $this->save_widget_nonce,
 	        'ajax_url' => admin_url('admin-ajax.php'),
             'selected_id' => $selected_widget_id,
-            'selected_name' => $selected_widget_name
+            'selected_name' => $selected_widget_name,
+            'bocs_collections' => $bocs_collections,
+	        'bocs_widgets' => $bocs_widgets
         );
 
 		wp_enqueue_script("bocs-custom-block");
@@ -138,15 +144,22 @@ class Admin
 		$options = get_option( 'bocs_plugin_options' );
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '0.0.13');
+		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '20231006.1');
 		wp_enqueue_script("bocs-admin-js");
+
+		// we will get the list of collections and widgets
+		$bocs_collections = get_option("bocs_collections");
+		$bocs_widgets = get_option("bocs_widgets");
+
 
 		wp_localize_script('bocs-admin-js', 'ajax_object', array(
 			'bocsURL' => BOCS_API_URL . "bocs",
 			'collectionsURL' => BOCS_API_URL . "collections",
 			'Organization' => $options['bocs_headers']['organization'],
 			'Store' => $options['bocs_headers']['store'],
-			'Authorization' => $options['bocs_headers']['authorization']
+			'Authorization' => $options['bocs_headers']['authorization'],
+			'bocs_collections' => $bocs_collections,
+			'bocs_widgets' => $bocs_widgets
 		));
 
 	}
@@ -1125,6 +1138,113 @@ class Admin
             'side',
             'high'
         );
+    }
+
+	/**
+     * This will do the auto add/update for getting the list
+     * of the collections and widget
+     *
+	 * @return void
+	 */
+    public function update_widgets_collections(){
+
+        // first check if we are at the admin page
+        if (!is_admin()) return;
+
+        // get the last update time
+	    $last_update = get_option("bocs_last_update_time");
+
+        if ( !empty($last_update) ){
+	        // we will only allow if this is more than an hour
+	        if ( (time() -  $last_update) / 3600 < 1 ) return;
+        }
+
+        // get the keys needed to access the app
+	    $options = get_option( 'bocs_plugin_options' );
+	    $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+        $organization_key = $options['bocs_headers']['organization'] ?? "";
+        $store_key = $options['bocs_headers']['store'] ?? "";
+        $auth_key = $options['bocs_headers']['authorization'] ?? "";
+
+        if ( empty($organization_key) || empty($store_key) || empty($auth_key) ) return;
+
+	    $widgets_url = BOCS_API_URL . "bocs";
+	    $collections_url = BOCS_API_URL . "collections";
+
+        $args = array(
+            'headers' => array(
+	            'Organization' => $organization_key,
+	            'Store' => $store_key,
+	            'Authorization' => $auth_key
+            )
+        );
+
+	    $widgets_response = wp_remote_request($widgets_url, $args);
+	    $collections_response = wp_remote_request($collections_url, $args);
+
+        if (is_wp_error($widgets_response)){
+	        $error_message = $widgets_response->get_error_message();
+            error_log($error_message);
+            return;
+        }
+
+	    if (is_wp_error($collections_response)){
+		    $error_message = $collections_response->get_error_message();
+		    error_log($error_message);
+		    return;
+	    }
+
+	    $widgets_body = wp_remote_retrieve_body($widgets_response);
+	    $collections_body = wp_remote_retrieve_body($collections_response);
+
+	    $widgets_data = json_decode($widgets_body, true);
+        $collections_data = json_decode($collections_body, true);
+
+        // then we will process and save the data
+	    $active_widgets = array();
+	    $active_collections = array();
+
+        if( $widgets_data['code'] == 200 || $widgets_data['message'] == 'success' ){
+            // then get all the data
+
+            if( $widgets_data['data'] ){
+                foreach($widgets_data['data'] as $bocs){
+                    if ($bocs['status'] == 'active'){
+                        $data = array(
+	                        'id' => $bocs['bocsId'],
+	                        'type' => $bocs['type'],
+                            'name' => $bocs['name'],
+                            'description' => $bocs['description']
+                        );
+	                    $active_widgets[] = $data;
+                    }
+                }
+            }
+        }
+
+	    if( $collections_data['code'] == 200 || $collections_data['message'] == 'success' ){
+		    // then get all the data
+
+		    if( $collections_data['data'] ){
+			    foreach($collections_data['data'] as $collection){
+				    if ($collection['status'] == 'active'){
+					    $data = array(
+						    'id' => $collection['collectionId'],
+						    'type' => $collection['type'],
+						    'name' => $collection['name'],
+						    'description' => $collection['description']
+					    );
+					    $active_collections[] = $data;
+				    }
+			    }
+		    }
+	    }
+
+        update_option("bocs_collections", $active_collections);
+	    update_option("bocs_widgets", $active_widgets);
+        update_option("bocs_last_update_time", time());
+
     }
 
 }

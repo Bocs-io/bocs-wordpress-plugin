@@ -55,64 +55,90 @@ const bocsIconMedium =
 let collectionsList = [];
 let bocsList = [];
 
-let collectionOptions = [];
-let bocsOptions = [];
+let collectionOptions = [{id: 'collection-0', name: "Please wait..."}];
+let bocsOptions = [{id: 'bocs-0', name: "Please wait..."}];
 
 jQuery( async function ($){
 
 	try {
 
-		collectionsList = $.ajax({
-			url: bocs_widget_object.collectionsURL,
-			type: "GET",
-			contentType: "application/json; charset=utf-8",
-			headers: {
-				'Organization': bocs_widget_object.Organization,
-				'Store': bocs_widget_object.Store,
-				'Authorization': bocs_widget_object.Authorization
-			}
-		});
+		if( bocs_widget_object.bocs_collections ){
 
-		bocsList = $.ajax({
-			url: bocs_widget_object.bocsURL,
-			type: "GET",
-			contentType: "application/json; charset=utf-8",
-			headers: {
-				'Organization': bocs_widget_object.Organization,
-				'Store': bocs_widget_object.Store,
-				'Authorization': bocs_widget_object.Authorization
-			}
-		});
-
-		await collectionsList.then( (collections) => {
-			collections.data.forEach( (collection) => {
+			collectionOptions = [];
+			bocs_widget_object.bocs_collections.forEach( (collection) => {
 				collectionOptions.push(
 					{
-						id: 'collection-'+collection.collectionId,
-						name: collection.name == '' ? collection.collectionId : collection.name
+						id: 'collection-' + collection['id'],
+						name: collection['name']
 					}
 				);
 			});
-		});
 
-		await bocsList.then( (bocs) => {
-			bocs.data.forEach( (boc) => {
+		} else {
+
+			collectionsList = $.ajax({
+				url: bocs_widget_object.collectionsURL,
+				type: "GET",
+				contentType: "application/json; charset=utf-8",
+				headers: {
+					'Organization': bocs_widget_object.Organization,
+					'Store': bocs_widget_object.Store,
+					'Authorization': bocs_widget_object.Authorization
+				}
+			});
+
+			await collectionsList.then( (collections) => {
+				collectionOptions = [];
+				collections.data.forEach( (collection) => {
+					collectionOptions.push(
+						{
+							id: 'collection-'+collection.collectionId,
+							name: collection.name === '' ? collection.collectionId : collection.name
+						}
+					);
+				});
+			});
+		}
+
+		if (bocs_widget_object.bocs_widgets){
+
+			bocsOptions = [];
+			bocs_widget_object.bocs_widgets.forEach( (bocs) => {
 				bocsOptions.push(
 					{
-						id: 'bocs-'+boc.bocsId,
-						name: boc.name == '' ? boc.bocsId : boc.name
+						id: 'bocs-' + bocs['id'],
+						name: bocs['name']
 					}
 				);
 			});
-		});
 
+		} else {
+
+			bocsList = $.ajax({
+				url: bocs_widget_object.bocsURL,
+				type: "GET",
+				contentType: "application/json; charset=utf-8",
+				headers: {
+					'Organization': bocs_widget_object.Organization,
+					'Store': bocs_widget_object.Store,
+					'Authorization': bocs_widget_object.Authorization
+				}
+			});
+
+			await bocsList.then( (bocs) => {
+				bocsOptions = [];
+				bocs.data.forEach( (boc) => {
+					bocsOptions.push(
+						{
+							id: 'bocs-'+boc.bocsId,
+							name: boc.name === '' ? boc.bocsId : boc.name
+						}
+					);
+				});
+			});
+		}
 	} catch (error){
 		console.error(error);
-		options = [bocsEl(
-			"option",
-			null,
-			"No store connected"
-		)];
 	}
 
 });
@@ -172,11 +198,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		}
 
-		// before getting the actual list of the bocs and collection, we will get the list
-		// from the stored on the options
-
-		var collectionMenuOptions = [];
-		var bocsMenuOptions = [];
+		let collectionMenuOptions = [];
+		let bocsMenuOptions = [];
 
 		collectionOptions.forEach((collection) => {
 			collectionMenuOptions.push(

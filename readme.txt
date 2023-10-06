@@ -1,3 +1,7 @@
+v0.0.46 10/06/2023
+* get the list of the collections and widgets every hour
+* loads the list of the collections and widgets directly
+
 v0.0.45 10/03/2023
 * readme changes
 
