@@ -9,3 +9,4 @@ define('BOCS_COLLECTIONS_DETAIL', 'COLLECTIONS DETAIL:');
 define('BOCS_SETTINGS', 'Bocs Settings');
 define('BOCS_TITLE', 'Bocs');
 define('IS_BOCS_META_KEY', 'is_bocs_data');
+define('CUSTOM_API_VERSION', 'v1');

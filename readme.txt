@@ -1,3 +1,6 @@
+v0.0.47 10/16/2023
+* added the auto add of the collections and widgets when the apps' end was updated
+
 v0.0.46 10/06/2023
 * get the list of the collections and widgets every hour
 * loads the list of the collections and widgets directly

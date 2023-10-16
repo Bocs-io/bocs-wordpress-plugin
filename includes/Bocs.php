@@ -112,6 +112,9 @@ class Bocs
 
 		// Bocs's Shortcode
 		require_once plugin_dir_path(dirname(__FILE__)).'includes/Shortcode.php';
+		
+		// Api class - for the custom rest api
+		require_once plugin_dir_path(dirname(__FILE__)).'includes/Api.php';
 
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
 		//require_once plugin_dir_path(dirname(__FILE__)).'includes/Tag.php';
@@ -269,6 +272,11 @@ class Bocs
 
 		$shortcode = new Shortcode();
 		$this->loader->add_action('init', $shortcode, 'bocs_shortcodes_init');
+		 
+		error_log('trying to register route');
+		$api_class = new Api();
+		$this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
+		
 
 		//$contact = new Contact();
 
