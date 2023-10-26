@@ -248,6 +248,9 @@ class Bocs
 
 		// adding metabox on the right side of the page
 		$this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_bocs_widget_metabox');
+		
+		// adding meta box on the product page
+		$this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_product_sidebar_to_woocommerce_admin');
 
 	}
 
@@ -258,37 +261,12 @@ class Bocs
 	private function define_public_hooks()
 	{
 
-		//$plugin_public = new Frontend();
-		// Scripts and styles
-		//$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles', 10);
-		//$this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts', 10);
-		//$this->loader->add_action('template_redirect', $plugin_public, 'bocs_add_to_cart_and_redirect');
-
-		//$auth_public = new Auth();
-		//$this->loader->add_action('rest_api_init', $auth_public, 'add_api_routes');
-		//$this->loader->add_filter('rest_api_init', $auth_public, 'add_cors_support');
-		//$this->loader->add_filter('determine_current_user', $auth_public, 'determine_current_user', 99);
-		//$this->loader->add_filter('rest_pre_dispatch', $auth_public, 'rest_pre_dispatch', 10, 2);
-
 		$shortcode = new Shortcode();
 		$this->loader->add_action('init', $shortcode, 'bocs_shortcodes_init');
 		 
-		error_log('trying to register route');
 		$api_class = new Api();
 		$this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
-		
 
-		//$contact = new Contact();
-
-		// syncs the Add User to Bocs
-		//$this->loader->add_action('user_register', $contact, 'sync_add_contact');
-		// syncs the Update User to Bocs
-		//$this->loader->add_action('edit_user_profile_update', $contact, 'sync_update_contact');
-		// syncs the delete user to Bocs
-		//$this->loader->add_action('delete_user', $contact, 'sync_delete_contact');
-
-		//$this->loader->add_action('show_user_profile', $contact, 'user_render_fields');
-		//$this->loader->add_action('edit_user_profile', $contact, 'user_render_fields');
 
 	}
 

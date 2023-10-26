@@ -1,3 +1,7 @@
+v0.0.48 10/26/2023
+* added the method for adding and showing of the Bocs' product logs
+* added the admin sidebar for the product's bocs logs
+
 v0.0.47 10/16/2023
 * added the auto add of the collections and widgets when the apps' end was updated
 
