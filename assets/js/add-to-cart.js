@@ -1,6 +1,6 @@
 
-async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selectedProducts: products }) {
-
+async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProducts: products }) {
+	const bocsId = id;
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
 	await jQuery.ajax({
@@ -155,7 +155,7 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 				action: 'search_product',
 				nonce: ajax_object.search_nonce,   // The AJAX nonce value
 				name: product.name,
-				bocs_product_id: product.productId,
+				bocs_product_id: product.id,
 				is_bocs: 0
 			}
 		});
@@ -179,7 +179,7 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 					title: product.name,        // Set the product title
 					price: product.price,             // Set the product price
 					sku: product.sku,
-					bocs_product_id: product.productId,
+					bocs_product_id: product.id,
 					type: 'product'
 					// Add more product data as needed
 				}
@@ -221,7 +221,7 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 							action: 'search_product',
 							nonce: ajax_object.search_nonce,
 							name: product.name,
-							bocs_product_id: variation.productId,
+							bocs_product_id: variation.id,
 							is_bocs: 0
 						}
 					});
@@ -249,9 +249,9 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 								title: product.name,        // Set the product title
 								price: product.price,             // Set the product price
 								sku: product.sku,
-								bocs_product_id: variation.productId,
+								bocs_product_id: variation.id,
 								type: 'variation',
-								parent_id: product.productId,
+								parent_id: product.id,
 								option: variation.option
 								// Add more product data as needed
 							}
@@ -284,8 +284,8 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 		}
 
 		// we will update the woocommerce product in case the bocs_product_id was not in the meta
-		if (wcProductId !== 0 && product.productId) {
-			if (product.productId !== "") {
+		if (wcProductId !== 0 && product.id) {
+			if (product.id !== "") {
 				// we will try to update the bocs_product_id on the meta key
 				await jQuery.ajax({
 					url: ajax_object.ajax_url,
@@ -294,7 +294,7 @@ async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selected
 						action: 'update_product',   // The AJAX action name to be handled by the server
 						nonce: ajax_object.update_product_nonce,   // The AJAX nonce value
 						id: wcProductId,
-						bocs_product_id: product.productId
+						bocs_product_id: product.id
 					}
 				});
 			}
