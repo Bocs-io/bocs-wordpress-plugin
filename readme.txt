@@ -1,3 +1,7 @@
+v0.0.50 04/15/2024
+* updated the bocsId to id
+* updated the productId to id
+
 v0.0.49 04/15/2024
 * updated the bocsId to id
 * updated the collectionId to id

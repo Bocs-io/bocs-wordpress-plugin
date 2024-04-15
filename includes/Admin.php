@@ -192,7 +192,7 @@ class Admin
 
 		$redirect = wc_get_checkout_url();
 
-		wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.72', true);
+		wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array('jquery', 'bocs-widget-script'), '0.0.73', true);
 		wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
 			'cartNonce' => wp_create_nonce('wc_store_api'),
 			'cartURL' => $redirect,
