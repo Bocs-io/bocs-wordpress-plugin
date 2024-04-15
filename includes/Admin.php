@@ -1277,6 +1277,52 @@ class Admin
 		update_option("bocs_last_update_time", time());
 	}
 
+<<<<<<< HEAD
+=======
+    }
+    
+    
+    /**
+     * Adds sidebar to a product edit page
+     * This is for the bocs logs
+     * 
+     * @return void
+     */
+    public function add_product_sidebar_to_woocommerce_admin(){
+        
+        add_meta_box(
+            'bocs_product_sidebar', 
+            'Bocs Sync', 
+            array($this, 'render_product_sidebar'),
+            'product',
+            'side',
+            'default'
+        );
+        
+        
+    }
+    
+    /**
+     * 
+     * Shows the list of the bocs logs of the product 
+     * 
+     * @param WP_Post $post
+     * 
+     * @return void
+     */
+    public function render_product_sidebar($post){
+        
+        // get the list of the logs related on this product and bocs
+        $logs_class = new Bocs_Log_Handler();
+        $comments = $logs_class->get_product_logs($post->ID);
+        
+        if( !empty($comments) ){
+            foreach( $comments as $comment ){
+                echo "<p>" . $comment['comment_content'] . "</p>";
+            }
+        }
+    }
+>>>>>>> origin/main
 
 	/**
 	 * Adds sidebar to a product edit page
