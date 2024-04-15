@@ -1,5 +1,5 @@
 
-async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedProducts: products}) {
+async function bocs_add_to_cart({ bocsId, selectedFrequency: frequency, selectedProducts: products }) {
 
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -35,10 +35,10 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 		}
 	});
 
-	if (bocsData){
-		if (bocsData.data){
+	if (bocsData) {
+		if (bocsData.data) {
 
-			if ( bocsData.data.name){
+			if (bocsData.data.name) {
 
 				bocsType = bocsData.data.type;
 				bocsSku = bocsData.data.sku;
@@ -49,7 +49,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 				const params = {
 					action: 'search_product',
 					nonce: ajax_object.search_nonce,   // The AJAX nonce value
-					name: bocsName +  ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',
+					name: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',
 					bocs_frequency_id: frequency.id, // frequency id
 					bocs_bocs_id: bocsId,
 					bocs_sku: bocsSku,
@@ -63,8 +63,8 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 					data: params
 				});
 
-				if (searchProduct){
-					if (searchProduct > 0){
+				if (searchProduct) {
+					if (searchProduct > 0) {
 						// there exists a product
 						wooCommerceProductId = searchProduct;
 					}
@@ -74,7 +74,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 	}
 
 	// we will create the product
-	if (wooCommerceProductId === 0){
+	if (wooCommerceProductId === 0) {
 
 		// we will attempt to create the product
 		const createdProduct = await jQuery.ajax({
@@ -83,7 +83,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 			data: {
 				action: 'create_product',   // The AJAX action name to be handled by the server
 				nonce: ajax_object.nonce,   // The AJAX nonce value
-				title: bocsName +  ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
+				title: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
 				price: '0',             // Set the product price
 				bocs_product_discount: frequency.discount,
 				bocs_product_discount_type: frequency.discountType,
@@ -101,7 +101,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 			}
 		});
 
-		if (createdProduct){
+		if (createdProduct) {
 
 			wooCommerceProductId = createdProduct;
 
@@ -115,7 +115,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 	}
 
 
-	if (wooCommerceProductId !== 0){
+	if (wooCommerceProductId !== 0) {
 
 		// add to cart
 
@@ -160,14 +160,14 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 			}
 		});
 
-		if (searchProduct){
-			if (searchProduct > 0){
+		if (searchProduct) {
+			if (searchProduct > 0) {
 				// there exists a product
 				wcProductId = searchProduct;
 			}
 		}
 
-		if (wcProductId === 0){
+		if (wcProductId === 0) {
 
 			// we will attempt to create the product
 			const createdProduct = await jQuery.ajax({
@@ -185,7 +185,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 				}
 			});
 
-			if (createdProduct){
+			if (createdProduct) {
 				wcProductId = createdProduct;
 			} else {
 
@@ -197,10 +197,10 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 
 		}
 
-		if (wcProductId !== 0){
+		if (wcProductId !== 0) {
 
 			// before adding to cart, we will check if it has variations
-			if( product.variations.length > 0 ){
+			if (product.variations.length > 0) {
 				console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
 				// buttonCart.html('Product with Variations is NOT WORKING as of now...');
 			}
@@ -284,8 +284,8 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 		}
 
 		// we will update the woocommerce product in case the bocs_product_id was not in the meta
-		if (wcProductId !== 0 && product.productId){
-			if (  product.productId !== "" ){
+		if (wcProductId !== 0 && product.productId) {
+			if (product.productId !== "") {
 				// we will try to update the bocs_product_id on the meta key
 				await jQuery.ajax({
 					url: ajax_object.ajax_url,
@@ -303,17 +303,17 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 	}
 
 	// then we will try to add the coupon if there is a discount
-	if (frequency.discount > 0){
+	if (frequency.discount > 0) {
 
 		let discountType = "percent";
 		const amount = frequency.discount;
 		let couponCode = "bocs-" + amount;
 
-		if( frequency.discountType === 'dollar' ){
+		if (frequency.discountType === 'dollar') {
 			discountType = "fixed_cart";
 		}
 
-		if (discountType === "percent" ){
+		if (discountType === "percent") {
 			couponCode = couponCode + "percent";
 		} else {
 			couponCode = couponCode + "off";
@@ -344,7 +344,7 @@ async function bocs_add_to_cart({bocsId, selectedFrequency: frequency, selectedP
 			}
 		});
 
-		if (createdCoupon){
+		if (createdCoupon) {
 			// add to cart the created coupon
 			var data = {
 				code: couponCode

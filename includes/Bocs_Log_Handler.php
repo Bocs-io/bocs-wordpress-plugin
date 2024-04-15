@@ -1,6 +1,74 @@
 <?php
 
 class Bocs_Log_Handler {
+    
+    protected $allowed_types = array('product');
+    
+    
+    /**
+     * 
+     * Add bocs logs to the product
+     * 
+     * @param integer $post_id
+     * @param string $comment
+     * 
+     * @return void|string|boolean
+     * 
+     */
+    public function add_product_log($post_id, $comment =  ''){
+        
+        if(empty($comment)) return;
+        
+        global $wpdb;
+        
+        $comment_date = current_time( 'mysql' );
+        $comment_date_gmt = get_gmt_from_date( $comment_date );
+        
+        // then we will attempt to add to the table
+        $data = array(
+            'comment_post_ID'      => $post_id,
+            'comment_author'       => 'Bocs',
+            'comment_author_email' => 'api@bocs.io',
+            'comment_author_url'   => 'bocs.io',
+            'comment_content'      => $comment,
+            'comment_agent'        => 'Bocs',
+            'comment_type'         => 'bocs_product_logs',
+            'comment_parent'       => 0,
+            'comment_approved'     => 1,
+            'comment_date'         => $comment_date,
+            'comment_date_gmt'     => $comment_date_gmt
+        );
+        
+        // insert in to the table
+        $table_name = $wpdb->prefix . 'comments';
+        
+        $wpdb->insert( $table_name , $data);
+        
+        if( $wpdb->last_error ) return $wpdb->last_error;
+        
+        return true;
+        
+    }
+    
+    /**
+     * 
+     * Get the list of the bocs logs from the product
+     * 
+     * @param integer $post_id
+     * 
+     * @return boolean|array|object|NULL
+     */
+    public function get_product_logs($post_id = 0){
+        
+        if( empty( $post_id ) ) return false;
+        
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'comments';
+        
+        return $wpdb->get_results("SELECT * FROM $table_name WHERE comment_post_ID = " . $post_id . " AND comment_type = 'bocs_product_logs' ORDER BY comment_date DESC", ARRAY_A);
+        
+    }
 
     public function process_log_from_result( $result, $url = false, $params = false, $method = 'get', $module = '', $id = '' ){
 

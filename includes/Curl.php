@@ -1,6 +1,7 @@
 <?php
 
-class Curl {
+class Curl
+{
 
 	/**
 	 * Do the processes
@@ -11,9 +12,10 @@ class Curl {
 	 *
 	 * @return array|object
 	 */
-	private function process($url, $method = "GET", $data = "", $module = '', $id = ''){
+	private function process($url, $method = "GET", $data = "", $module = '', $id = '')
+	{
 
-		$options = get_option( 'bocs_plugin_options' );
+		$options = get_option('bocs_plugin_options');
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
 		$curl = curl_init();
@@ -35,7 +37,7 @@ class Curl {
 			),
 		);
 
-		if ( $method === "PUT" || $method === "POST" || $data === ""){
+		if ($method === "PUT" || $method === "POST" || $data === "") {
 			$header[CURLOPT_POSTFIELDS] = $data;
 		}
 
@@ -52,7 +54,6 @@ class Curl {
 		$logger->process_log_from_result($result, $url, $data, $method, $module, $id);
 
 		return $result;
-
 	}
 
 	/**
@@ -60,8 +61,9 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function post($url, $data, $module = '', $id = ''){
-		return $this->process( BOCS_API_URL . $url, "POST", $data, $module, $id );
+	public function post($url, $data, $module = '', $id = '')
+	{
+		return $this->process(BOCS_API_URL . $url, "POST", $data, $module, $id);
 	}
 
 	/**
@@ -69,8 +71,9 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function put($url, $data, $module = '', $id = ''){
-		return $this->process( BOCS_API_URL . $url, "PUT", $data, $module, $id );
+	public function put($url, $data, $module = '', $id = '')
+	{
+		return $this->process(BOCS_API_URL . $url, "PUT", $data, $module, $id);
 	}
 
 	/**
@@ -78,8 +81,8 @@ class Curl {
 	 * 
 	 * @return array|object
 	 */
-	public function get( $url, $module = '', $id = ''){
+	public function get($url, $module = '', $id = '')
+	{
 		return $this->process(BOCS_API_URL . $url, "GET", NULL, $module, $id);
 	}
-
 }

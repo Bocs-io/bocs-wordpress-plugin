@@ -1,15 +1,15 @@
-jQuery( function ( $ ) {
+jQuery(function ($) {
 
-    $('input#changeit').click(function (e){
+    $('input#changeit').click(function (e) {
 
-        if( $('select#source').length > 0 && $('input#changeit').length > 0){
+        if ($('select#source').length > 0 && $('input#changeit').length > 0) {
 
             const selectedSource = $('select#source').val();
-            if( selectedSource.length ){
-                if( selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both'){
+            if (selectedSource.length) {
+                if (selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both') {
                     e.preventDefault();
 
-                    if( selectedSource === 'bocs' || selectedSource === 'wordpress' ){
+                    if (selectedSource === 'bocs' || selectedSource === 'wordpress') {
                         window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
                     } else {
                         window.location.href = window.location.origin + window.location.pathname;
@@ -23,13 +23,13 @@ jQuery( function ( $ ) {
     });
 
 
-    if( $('select#source').length > 0 && $('input#changeit').length == 0){
+    if ($('select#source').length > 0 && $('input#changeit').length == 0) {
 
-        $('select#source').change(function (e){
+        $('select#source').change(function (e) {
             e.preventDefault();
             const selectedSource = $(this).val();
 
-            if( selectedSource === 'bocs' || selectedSource === 'wordpress' ){
+            if (selectedSource === 'bocs' || selectedSource === 'wordpress') {
                 window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
             } else {
                 window.location.href = window.location.origin + window.location.pathname;
@@ -47,11 +47,11 @@ let bocs_list = [];
 let collection_options = [];
 let bocs_options = [];
 
-jQuery(window).on("load", function() {
-    if( jQuery("#bocs-page-sidebar").length > 0 ){
+jQuery(window).on("load", function () {
+    if (jQuery("#bocs-page-sidebar").length > 0) {
         // then we will insert the getting of the list of collections and bocs
 
-        jQuery( async function ($){
+        jQuery(async function ($) {
 
             try {
 
@@ -67,16 +67,16 @@ jQuery(window).on("load", function() {
                     text: 'Please wait...'
                 }));
 
-                if( ajax_object.bocs_collections ){
+                if (ajax_object.bocs_collections) {
 
-                    if(ajax_object.bocs_collections.length === 0){
+                    if (ajax_object.bocs_collections.length === 0) {
                         jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                             value: '',
                             text: 'No Collections...'
                         }));
                     } else {
                         jQuery('#bocs-page-sidebar-collections').empty();
-                        ajax_object.bocs_collections.forEach( (collection) => {
+                        ajax_object.bocs_collections.forEach((collection) => {
                             jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                                 value: collection['id'],
                                 text: collection['name'] == '' ? collection['id'] : collection['name']
@@ -96,24 +96,24 @@ jQuery(window).on("load", function() {
                         }
                     });
 
-                    await collections_list.then( (collections) => {
+                    await collections_list.then((collections) => {
                         jQuery('#bocs-page-sidebar-collections').empty();
 
-                        if(collections.data.length === 0){
+                        if (collections.data.length === 0) {
                             jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                                 value: '',
                                 text: 'No Collections...'
                             }));
                         } else {
 
-                            collections.data.forEach( (collection) => {
+                            collections.data.forEach((collection) => {
                                 jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                                    value: collection.collectionId,
-                                    text: collection.name == '' ? collection.collectionId : collection.name
+                                    value: collection.id,
+                                    text: collection.name == '' ? collection.id : collection.name
                                 }));
                             });
 
-                            jQuery('#bocs-page-sidebar-collections').on('change', function() {
+                            jQuery('#bocs-page-sidebar-collections').on('change', function () {
 
                                 jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
 
@@ -125,9 +125,9 @@ jQuery(window).on("load", function() {
                 }
 
 
-                if( ajax_object.bocs_widgets ){
+                if (ajax_object.bocs_widgets) {
 
-                    if(ajax_object.bocs_widgets.length === 0){
+                    if (ajax_object.bocs_widgets.length === 0) {
                         jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
                             value: '',
                             text: 'No Bocs...'
@@ -136,7 +136,7 @@ jQuery(window).on("load", function() {
 
                         jQuery('#bocs-page-sidebar-bocs').empty();
 
-                        ajax_object.bocs_widgets.forEach( (bocs) => {
+                        ajax_object.bocs_widgets.forEach((bocs) => {
                             jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
                                 value: bocs['id'],
                                 text: bocs['name'] == '' ? bocs['id'] : bocs['name']
@@ -156,27 +156,27 @@ jQuery(window).on("load", function() {
                         }
                     });
 
-                    await bocs_list.then( (bocs) => {
+                    await bocs_list.then((bocs) => {
 
                         jQuery('#bocs-page-sidebar-bocs').empty();
 
-                        if( bocs.data.length === 0  ){
+                        if (bocs.data.length === 0) {
                             jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
                                 value: '',
                                 text: 'No Bocs...'
                             }));
                         } else {
 
-                            bocs.data.forEach( (boc) => {
+                            bocs.data.forEach((boc) => {
 
                                 jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                                    value: boc.bocsId,
-                                    text: boc.name == '' ? boc.bocsId : boc.name
+                                    value: boc.id,
+                                    text: boc.name == '' ? boc.id : boc.name
                                 }));
 
                             });
 
-                            jQuery('#bocs-page-sidebar-bocs').on('change', function() {
+                            jQuery('#bocs-page-sidebar-bocs').on('change', function () {
 
                                 jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
 
@@ -186,7 +186,7 @@ jQuery(window).on("load", function() {
                     });
                 }
 
-            } catch (error){
+            } catch (error) {
                 console.error(error);
             }
         });

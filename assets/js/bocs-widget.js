@@ -11,42 +11,50 @@ const DropdownMenu = Components.DropdownMenu;
 const bocsIcon =
 	bocsEl(
 		'svg',
-		{ width: 24, height: 24, viewBox: "0 0 36 36", version: 1.1, xmlns: "http://www.w3.org/2000/svg", xmlnsXlink:"http://www.w3.org/1999/xlink", xmlSpace:"preserve", xmlnsSerif: "http://www.serif.com/", style: {
-			fillRule: "evenodd", clipRule: "evenodd", strokeLinejoin: "round", strokeMiterlimit: 2
-			} },
+		{
+			width: 24, height: 24, viewBox: "0 0 36 36", version: 1.1, xmlns: "http://www.w3.org/2000/svg", xmlnsXlink: "http://www.w3.org/1999/xlink", xmlSpace: "preserve", xmlnsSerif: "http://www.serif.com/", style: {
+				fillRule: "evenodd", clipRule: "evenodd", strokeLinejoin: "round", strokeMiterlimit: 2
+			}
+		},
 		bocsEl(
 			'g',
-			{ transform: "matrix(1,0,0,1,-647.753,-303.839)"},
+			{ transform: "matrix(1,0,0,1,-647.753,-303.839)" },
 			bocsEl(
 				'g',
-				{transform: "matrix(1,0,0,1,-8.46249,-21.314)"},
+				{ transform: "matrix(1,0,0,1,-8.46249,-21.314)" },
 				bocsEl(
 					'path',
-					{ d: "M686.684,328.173C686.258,326.125 684.248,324.807 682.199,325.234L659.235,330.012C657.186,330.439 655.869,332.448 656.295,334.497L661.074,357.461C661.5,359.51 663.51,360.827 665.558,360.401L688.523,355.622C690.572,355.196 691.889,353.187 691.463,351.138L686.684,328.173ZM673.879,334.202C678.21,334.202 681.726,338.062 681.726,342.817C681.726,347.572 678.21,351.432 673.879,351.432C669.548,351.432 666.032,347.572 666.032,342.817C666.032,338.062 669.548,334.202 673.879,334.202Z", style: {
-						fill: "#00848B"
-						}}
+					{
+						d: "M686.684,328.173C686.258,326.125 684.248,324.807 682.199,325.234L659.235,330.012C657.186,330.439 655.869,332.448 656.295,334.497L661.074,357.461C661.5,359.51 663.51,360.827 665.558,360.401L688.523,355.622C690.572,355.196 691.889,353.187 691.463,351.138L686.684,328.173ZM673.879,334.202C678.21,334.202 681.726,338.062 681.726,342.817C681.726,347.572 678.21,351.432 673.879,351.432C669.548,351.432 666.032,347.572 666.032,342.817C666.032,338.062 669.548,334.202 673.879,334.202Z", style: {
+							fill: "#00848B"
+						}
+					}
 				)
 			)
 		)
-);
+	);
 
 const bocsIconMedium =
 	bocsEl(
 		'svg',
-		{ width: 50, height: 50, viewBox: "0 0 50 50", version: 1.1, xmlns: "http://www.w3.org/2000/svg", xmlnsXlink:"http://www.w3.org/1999/xlink", xmlSpace:"preserve", xmlnsSerif: "http://www.serif.com/", style: {
+		{
+			width: 50, height: 50, viewBox: "0 0 50 50", version: 1.1, xmlns: "http://www.w3.org/2000/svg", xmlnsXlink: "http://www.w3.org/1999/xlink", xmlSpace: "preserve", xmlnsSerif: "http://www.serif.com/", style: {
 				fillRule: "evenodd", clipRule: "evenodd", strokeLinejoin: "round", strokeMiterlimit: 2
-			} },
+			}
+		},
 		bocsEl(
 			'g',
-			{ transform: "matrix(1,0,0,1,-647.753,-303.839)"},
+			{ transform: "matrix(1,0,0,1,-647.753,-303.839)" },
 			bocsEl(
 				'g',
-				{transform: "matrix(1,0,0,1,-8.46249,-21.314)"},
+				{ transform: "matrix(1,0,0,1,-8.46249,-21.314)" },
 				bocsEl(
 					'path',
-					{ d: "M686.684,328.173C686.258,326.125 684.248,324.807 682.199,325.234L659.235,330.012C657.186,330.439 655.869,332.448 656.295,334.497L661.074,357.461C661.5,359.51 663.51,360.827 665.558,360.401L688.523,355.622C690.572,355.196 691.889,353.187 691.463,351.138L686.684,328.173ZM673.879,334.202C678.21,334.202 681.726,338.062 681.726,342.817C681.726,347.572 678.21,351.432 673.879,351.432C669.548,351.432 666.032,347.572 666.032,342.817C666.032,338.062 669.548,334.202 673.879,334.202Z", style: {
+					{
+						d: "M686.684,328.173C686.258,326.125 684.248,324.807 682.199,325.234L659.235,330.012C657.186,330.439 655.869,332.448 656.295,334.497L661.074,357.461C661.5,359.51 663.51,360.827 665.558,360.401L688.523,355.622C690.572,355.196 691.889,353.187 691.463,351.138L686.684,328.173ZM673.879,334.202C678.21,334.202 681.726,338.062 681.726,342.817C681.726,347.572 678.21,351.432 673.879,351.432C669.548,351.432 666.032,347.572 666.032,342.817C666.032,338.062 669.548,334.202 673.879,334.202Z", style: {
 							fill: "#00848B"
-						}}
+						}
+					}
 				)
 			)
 		)
@@ -55,17 +63,17 @@ const bocsIconMedium =
 let collectionsList = [];
 let bocsList = [];
 
-let collectionOptions = [{id: 'collection-0', name: "Please wait..."}];
-let bocsOptions = [{id: 'bocs-0', name: "Please wait..."}];
+let collectionOptions = [{ id: 'collection-0', name: "Please wait..." }];
+let bocsOptions = [{ id: 'bocs-0', name: "Please wait..." }];
 
-jQuery( async function ($){
+jQuery(async function ($) {
 
 	try {
 
-		if( bocs_widget_object.bocs_collections ){
+		if (bocs_widget_object.bocs_collections) {
 
 			collectionOptions = [];
-			bocs_widget_object.bocs_collections.forEach( (collection) => {
+			bocs_widget_object.bocs_collections.forEach((collection) => {
 				collectionOptions.push(
 					{
 						id: 'collection-' + collection['id'],
@@ -87,23 +95,23 @@ jQuery( async function ($){
 				}
 			});
 
-			await collectionsList.then( (collections) => {
+			await collectionsList.then((collections) => {
 				collectionOptions = [];
-				collections.data.forEach( (collection) => {
+				collections.data.forEach((collection) => {
 					collectionOptions.push(
 						{
-							id: 'collection-'+collection.collectionId,
-							name: collection.name === '' ? collection.collectionId : collection.name
+							id: 'collection-' + collection.id,
+							name: collection.name === '' ? collection.id : collection.name
 						}
 					);
 				});
 			});
 		}
 
-		if (bocs_widget_object.bocs_widgets){
+		if (bocs_widget_object.bocs_widgets) {
 
 			bocsOptions = [];
-			bocs_widget_object.bocs_widgets.forEach( (bocs) => {
+			bocs_widget_object.bocs_widgets.forEach((bocs) => {
 				bocsOptions.push(
 					{
 						id: 'bocs-' + bocs['id'],
@@ -125,19 +133,19 @@ jQuery( async function ($){
 				}
 			});
 
-			await bocsList.then( (bocs) => {
+			await bocsList.then((bocs) => {
 				bocsOptions = [];
-				bocs.data.forEach( (boc) => {
+				bocs.data.forEach((boc) => {
 					bocsOptions.push(
 						{
-							id: 'bocs-'+boc.bocsId,
-							name: boc.name === '' ? boc.bocsId : boc.name
+							id: 'bocs-' + boc.id,
+							name: boc.name === '' ? boc.id : boc.name
 						}
 					);
 				});
 			});
 		}
-	} catch (error){
+	} catch (error) {
 		console.error(error);
 	}
 
@@ -152,7 +160,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		collectionId: { type: 'string' }
 	},
 	description: "This block displays products from your ",
-	edit: function (props){
+	edit: function (props) {
 
 		let blockProps = blockEditor.useBlockProps();
 		var isSelected = props.isSelected;
@@ -160,13 +168,13 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		const hasSelected = bocs_widget_object.selected_id !== '';
 		let preLoadText = "";
 
-		if( bocs_widget_object.selected_id !== '' ){
+		if (bocs_widget_object.selected_id !== '') {
 			preLoadText = bocs_widget_object.selected_name;
 		}
 
-		function updateSelected(id, name){
+		function updateSelected(id, name) {
 
-			props.setAttributes({collectionId: id});
+			props.setAttributes({ collectionId: id });
 
 			// then update the view
 			jQuery('div.bocs-dropdown-menu-body').hide();
@@ -179,15 +187,15 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				type = 'collection';
 			}
 
-			if (type === 'bocs') jQuery( 'p.bocs-widget-selected-desc' ).html("<b>Bocs Widget:</b><span>Name: " + name + "</<span>");
-			else jQuery( 'p.bocs-widget-selected-desc' ).html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
+			if (type === 'bocs') jQuery('p.bocs-widget-selected-desc').html("<b>Bocs Widget:</b><span>Name: " + name + "</<span>");
+			else jQuery('p.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
 
 			var params = {
 				action: 'save_widget_options',
-					nonce: bocs_widget_object.nonce,   // The AJAX nonce value
-					selectedOption: id,
-					selectedOptionName: name,
-					postId: wp.data.select('core/editor').getCurrentPostId()
+				nonce: bocs_widget_object.nonce,   // The AJAX nonce value
+				selectedOption: id,
+				selectedOptionName: name,
+				postId: wp.data.select('core/editor').getCurrentPostId()
 			};
 
 			jQuery.ajax({
@@ -219,7 +227,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			isSelected && bocsEl(
 				BlockControls,
 				{ key: 'controls' },
-				bocsEl( ToolbarGroup, null,
+				bocsEl(ToolbarGroup, null,
 					bocsEl(
 						DropdownMenu,
 						{
@@ -247,12 +255,12 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			bocsIconMedium,
 			!hasSelected && bocsEl(
 				"p",
-				{className: 'bocs-widget-description'},
+				{ className: 'bocs-widget-description' },
 				"This block displays products from your Bocs widget. Click on Bocs or Collection to add the code to display your widget. Once added save your page and you should be able to view the widget on your site now."
 			),
 			!hasSelected && isSelected && bocsEl(
 				"div",
-				{className: "bocs-wrapper"},
+				{ className: "bocs-wrapper" },
 				bocsEl(
 					DropdownMenu,
 					{
@@ -278,12 +286,12 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			),
 			bocsEl(
 				"p",
-				{className: 'bocs-widget-selected-desc'},
+				{ className: 'bocs-widget-selected-desc' },
 				preLoadText
 			)
 		);
 	},
-	save: function (props){
+	save: function (props) {
 
 		let result = "";
 
@@ -301,18 +309,18 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		});
 
 
-		if (props.attributes.collectionId){
-			if (props.attributes.collectionId.includes('bocs-')){
+		if (props.attributes.collectionId) {
+			if (props.attributes.collectionId.includes('bocs-')) {
 				result = bocsEl("div", {
 					id: "bocs-widget",
 					"data-type": "bocs",
-					"data-id": props.attributes.collectionId.replace("bocs-","")
+					"data-id": props.attributes.collectionId.replace("bocs-", "")
 				});
-			} else if(props.attributes.collectionId.includes('collection-')){
-				result =  bocsEl("div", {
+			} else if (props.attributes.collectionId.includes('collection-')) {
+				result = bocsEl("div", {
 					id: "bocs-widget",
 					"data-type": "collections",
-					"data-id": props.attributes.collectionId.replace("collection-","")
+					"data-id": props.attributes.collectionId.replace("collection-", "")
 				});
 			}
 		}
