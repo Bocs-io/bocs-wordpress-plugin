@@ -1,3 +1,9 @@
+v0.0.53 04/18/2024
+* API related fixes for creating subscription
+
+v0.0.52 04/17/2024
+* fix for the admin.js related to the API
+
 v0.0.50 04/15/2024
 * updated the bocsId to id
 * updated the productId to id

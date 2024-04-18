@@ -55,8 +55,6 @@ jQuery(window).on("load", function () {
 
             try {
 
-
-
                 jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                     value: '',
                     text: 'Please wait...'
@@ -76,12 +74,19 @@ jQuery(window).on("load", function () {
                         }));
                     } else {
                         jQuery('#bocs-page-sidebar-collections').empty();
+
+                        jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
+                            value: '',
+                            text: 'Please select...'
+                        }));
+
                         ajax_object.bocs_collections.forEach((collection) => {
                             jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                                 value: collection['id'],
                                 text: collection['name'] == '' ? collection['id'] : collection['name']
                             }));
                         });
+
                     }
                 } else {
 
@@ -106,6 +111,11 @@ jQuery(window).on("load", function () {
                             }));
                         } else {
 
+                            jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
+                                value: '',
+                                text: 'Please select...'
+                            }));
+
                             collections.data.forEach((collection) => {
                                 jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                                     value: collection.id,
@@ -115,7 +125,8 @@ jQuery(window).on("load", function () {
 
                             jQuery('#bocs-page-sidebar-collections').on('change', function () {
 
-                                jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
+                                if (this.value != '') jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
+                                else jQuery('#bocs-shortcode-copy').html("");
 
                             });
                         }
@@ -135,6 +146,11 @@ jQuery(window).on("load", function () {
                     } else {
 
                         jQuery('#bocs-page-sidebar-bocs').empty();
+
+                        jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
+                            value: '',
+                            text: 'Please select...'
+                        }));
 
                         ajax_object.bocs_widgets.forEach((bocs) => {
                             jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
@@ -156,6 +172,8 @@ jQuery(window).on("load", function () {
                         }
                     });
 
+                    console.log(bocs_list);
+
                     await bocs_list.then((bocs) => {
 
                         jQuery('#bocs-page-sidebar-bocs').empty();
@@ -166,6 +184,11 @@ jQuery(window).on("load", function () {
                                 text: 'No Bocs...'
                             }));
                         } else {
+
+                            jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
+                                value: '',
+                                text: 'Please select...'
+                            }));
 
                             bocs.data.forEach((boc) => {
 
@@ -178,8 +201,8 @@ jQuery(window).on("load", function () {
 
                             jQuery('#bocs-page-sidebar-bocs').on('change', function () {
 
-                                jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
-
+                                if (this.value != '') jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
+                                else jQuery('#bocs-shortcode-copy').html("");
                             });
                         }
 

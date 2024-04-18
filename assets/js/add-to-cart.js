@@ -1,5 +1,8 @@
 
 async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProducts: products }) {
+
+	console.log(frequency);
+
 	const bocsId = id;
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 

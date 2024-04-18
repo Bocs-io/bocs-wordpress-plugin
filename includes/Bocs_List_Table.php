@@ -1,6 +1,7 @@
 <?php
 
-class Bocs_List_Table extends WP_List_Table {
+class Bocs_List_Table extends WP_List_Table
+{
 	// we will add some code here for the table list related to bocs
 
 	public function get_columns()
@@ -17,12 +18,13 @@ class Bocs_List_Table extends WP_List_Table {
 			"orders"            => "Orders"
 
 		);
-		
+
 		return $columns;
 	}
 
 	// Bind table with columns, data and all
-	public function prepare_items(){
+	public function prepare_items()
+	{
 		$columns = $this->get_columns();
 		$hidden = array();
 		$sortable = array();
@@ -32,7 +34,7 @@ class Bocs_List_Table extends WP_List_Table {
 
 	public function column_default($item, $column_name)
 	{
-		switch ($column_name){
+		switch ($column_name) {
 			case 'status':
 			case 'subscription':
 			case 'items':
@@ -44,7 +46,6 @@ class Bocs_List_Table extends WP_List_Table {
 			default:
 				return $item[$column_name];
 		}
-
 	}
 
 	public function column_cb($item)
@@ -56,9 +57,10 @@ class Bocs_List_Table extends WP_List_Table {
 	}
 
 	// Get table data
-	private function _get_table_data(){
+	private function _get_table_data()
+	{
 
-		global $wpdb;
+		/*global $wpdb;
 
 		$sql = $wpdb->prepare('SELECT * FROM ' . $wpdb->prefix . 'posts WHERE post_type = %s ORDER BY ID DESC', "bocs_subscription");
 		$subscriptions = $wpdb->get_results($sql);
@@ -131,6 +133,111 @@ class Bocs_List_Table extends WP_List_Table {
 			);
 
 		}
+
+		return $result;*/
+
+		// get the list of the subscriptions from the Bocs API
+		// error_reporting(E_ALL);
+
+		$currency_symbol = get_woocommerce_currency_symbol();
+
+		$result = array();
+
+		$options = get_option('bocs_plugin_options');
+		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+		$curl = curl_init();
+		curl_setopt_array($curl, array(
+			CURLOPT_URL => BOCS_API_URL . 'subscriptions',
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_ENCODING => '',
+			CURLOPT_MAXREDIRS => 10,
+			CURLOPT_TIMEOUT => 0,
+			CURLOPT_FOLLOWLOCATION => true,
+			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+			CURLOPT_CUSTOMREQUEST => 'GET',
+			CURLOPT_HTTPHEADER => array(
+				'Organization: ' . $options['bocs_headers']['organization'],
+				'Content-Type: application/json',
+				'Store: ' . $options['bocs_headers']['store'],
+				'Authorization: ' . $options['bocs_headers']['authorization']
+			),
+		));
+
+		$response = curl_exec($curl);
+		$object = json_decode($response);
+		curl_close($curl);
+		// error_log('bocs-subscriptions start');
+
+		if ($object) {
+			if (isset($object->data)) {
+				if (count($object->data) > 0) {
+					// error_log(print_r(json_encode($object->data), true));
+					foreach ($object->data as $subscription) {
+
+
+						$status = $subscription->status;
+						$subscription_price = $subscription->price;
+						$products = $subscription->products;
+						$name = $subscription->bocs->name;
+						$type = $subscription->bocs->type;
+						$contact_name = $subscription->contact->firstName . ' ' . $subscription->contact->lastName;
+						$frequency = $subscription->frequency->frequency . ' ' . $subscription->frequency->timeUnit;
+						if ($subscription->frequency->frequency == 1) {
+							$frequency = $subscription->frequency->timeUnit;
+							if (substr($frequency, -1) === 's') {
+								$frequency = substr($frequency, 0, -1);
+							}
+						}
+						$discount = $subscription->frequency->discount;
+						$discount_type = $subscription->frequency->discountType;
+
+						$date = new DateTime($subscription->nextOrderDate);
+						$next_order_date = $date->format('F j, Y, g:i a');
+
+						$activationDate = '';
+						if (!empty($subscription->createdAt)) {
+							$date = new DateTime($subscription->createdAt);
+							$activationDate = $date->format('F j, Y, g:i a');
+						}
+
+						$total_items = 0;
+
+						$total = 0;
+
+						foreach ($products as $product) {
+							$total_items += $product->quantity;
+							$total += $product->price * $product->quantity;
+						}
+
+						$final_price = $subscription_price;
+						if ($subscription_price == 0) {
+							$final_price = $total;
+						}
+
+						$final_price = number_format($final_price, 2, '.', ',');
+
+						$result[] = array(
+							"id" => $subscription->id,
+							"status" => $subscription->status,
+							"first_name" => $subscription->contact->firstName,
+							"last_name" => $subscription->contact->lastName,
+							"subscription" => $name . ' for ' . $subscription->contact->firstName . ' ' . $subscription->contact->lastName,
+							"items" => $total_items . ' items',
+							"total" => $currency_symbol . $final_price,
+							"start_date" => $activationDate,
+							"next_payment" => $next_order_date,
+							"last_order_date" => $activationDate,
+							"orders" => 1
+						);
+					}
+				}
+			}
+		}
+
+		// error_log('bocs-subscriptions end');
+
+		// error_reporting(0);
 
 		return $result;
 	}
