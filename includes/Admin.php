@@ -154,7 +154,7 @@ class Admin
 		$options = get_option('bocs_plugin_options');
 		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '20240417.1');
+		wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array('jquery'), '20240422.2');
 		wp_enqueue_script("bocs-admin-js");
 
 		// we will get the list of collections and widgets

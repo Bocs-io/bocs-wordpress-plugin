@@ -122,13 +122,6 @@ jQuery(window).on("load", function () {
                                     text: collection.name == '' ? collection.id : collection.name
                                 }));
                             });
-
-                            jQuery('#bocs-page-sidebar-collections').on('change', function () {
-
-                                if (this.value != '') jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
-                                else jQuery('#bocs-shortcode-copy').html("");
-
-                            });
                         }
 
 
@@ -198,12 +191,6 @@ jQuery(window).on("load", function () {
                                 }));
 
                             });
-
-                            jQuery('#bocs-page-sidebar-bocs').on('change', function () {
-
-                                if (this.value != '') jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
-                                else jQuery('#bocs-shortcode-copy').html("");
-                            });
                         }
 
                     });
@@ -216,4 +203,27 @@ jQuery(window).on("load", function () {
 
 
     }
+
+
+    if (jQuery("#bocs-page-sidebar-bocs").length > 0) {
+        jQuery('#bocs-page-sidebar-bocs').on('change', function () {
+
+            if (this.value != '') {
+                jQuery("#bocs-page-sidebar-collections").prop('selectedIndex', 0);
+                jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
+            } else jQuery('#bocs-shortcode-copy').html("");
+        });
+    }
+
+    if (jQuery("#bocs-page-sidebar-collections").length > 0) {
+        jQuery('#bocs-page-sidebar-collections').on('change', function () {
+
+            if (this.value != '') {
+                jQuery("#bocs-page-sidebar-bocs").prop('selectedIndex', 0);
+                jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
+            } else jQuery('#bocs-shortcode-copy').html("");
+
+        });
+    }
+
 });

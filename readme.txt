@@ -1,3 +1,6 @@
+v0.0.54 04/22/2024
+* Onchange fix on the selections for the collections and bocs
+
 v0.0.53 04/18/2024
 * API related fixes for creating subscription
 
