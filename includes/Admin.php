@@ -822,6 +822,7 @@ class Admin
 				},
 				"status": "active",
 				"contact": {
+					"id": "' . $bocs_customer_id . '",
 					"firstName": "' . $order->get_billing_first_name() . '",
 					"lastName":  "' . $order->get_billing_last_name() . '",
 					"address": {
@@ -856,6 +857,21 @@ class Admin
 					"id": "' . $bocs_customer_id . '",
 					"email":  "' . $order->get_billing_email() . '",
 					"externalSource": "WP"
+				},
+				"order": {
+					"total": ' . $order->get_total() . ',
+					"discount": ' . $order->get_discount_total() . ',
+					"shippingRate": 1,
+					"currency": "' . $order->get_currency() . '",
+					"payment_date": "' . $start_date . '",
+					"isPaid": true,
+					"platform": "woocommerce",
+					"customer" : {
+						"id": "' . $bocs_customer_id . '",
+						"email": "' . $order->get_billing_email() . '",
+						"firstName": "' . $order->get_billing_first_name() . '",
+						"lastName": "' . $order->get_billing_last_name() . '"
+					}
 				}
 			}';
 			error_log($post_data);
@@ -886,7 +902,6 @@ class Admin
 			$object = json_decode($response);
 			error_log('create subscription');
 			error_log(print_r($object->message, true));
-
 
 			curl_close($curl);
 

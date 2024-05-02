@@ -44,7 +44,7 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array(); ?>
 								<label>Authorization</label>
 							</th>
 							<td class="forminp forminp-text">
-								<input type="text" name="bocs_plugin_options[	][authorization]" id="bocsAuthorization" value="<?php echo $options['bocs_headers']['authorization'] ?? "" ?>" />
+								<input type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php echo $options['bocs_headers']['authorization'] ?? "" ?>" />
 							</td>
 						</tr>
 					</tbody>
