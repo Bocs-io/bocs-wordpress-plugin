@@ -1,3 +1,6 @@
+v0.0.55 05/02/2024
+* Authorization Settings fix
+
 v0.0.54 04/22/2024
 * Onchange fix on the selections for the collections and bocs
 
