@@ -1,3 +1,7 @@
+v0.0.56 05/08/2024
+* Check if WooCommerce is enabled before installing
+* Add Status settings like of the WooCommerce
+
 v0.0.55 05/02/2024
 * Authorization Settings fix
 
