@@ -1,3 +1,6 @@
+v0.0.57 05/14/2024
+* Fix on the auto adding of the bocs keys to woocommerce site
+
 v0.0.56 05/08/2024
 * Check if WooCommerce is enabled before installing
 * Add Status settings like of the WooCommerce
