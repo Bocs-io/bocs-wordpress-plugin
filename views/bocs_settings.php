@@ -141,7 +141,7 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 						</tr>
 					</tbody>
 				</table>
-
+				<br />
 				<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php
 
     echo wp_create_nonce("bocs_plugin_options");
@@ -296,6 +296,7 @@ $table->display();
 					</tr>
 				</tbody>
 			</table>
+			<br />
 			<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php
 
 echo wp_create_nonce("bocs_sync_options");
@@ -613,6 +614,7 @@ echo wp_create_nonce("bocs_sync_options");
             		</tr>
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -974,6 +976,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
+            <br />
             <table id="status-database" class="wc_status_table widefat" cellspacing="0">
             	<thead>
             	<tr>
@@ -1144,6 +1147,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
+            <br />
             <?php
 
             if ($post_type_counts) :
@@ -1177,6 +1181,7 @@ echo wp_create_nonce("bocs_sync_options");
                 ?>
             		</tbody>
             	</table>
+            	<br />
             <?php endif;
 
             ?>
@@ -1252,6 +1257,7 @@ echo wp_create_nonce("bocs_sync_options");
             		</tr>
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -1274,6 +1280,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -1296,6 +1303,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
+            <br />
             <?php
             if (0 < count($dropins_mu_plugins['dropins'])) :
                 ?>
@@ -1334,6 +1342,7 @@ echo wp_create_nonce("bocs_sync_options");
                 ?>
             		</tbody>
             	</table>
+            	<br />
             	<?php
             endif;
 
@@ -1380,6 +1389,7 @@ echo wp_create_nonce("bocs_sync_options");
                 ?>
             		</tbody>
             	</table>
+            	<br />
             <?php endif;
 
             ?>
@@ -1620,6 +1630,7 @@ echo wp_create_nonce("bocs_sync_options");
 
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -1677,6 +1688,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -1813,6 +1825,8 @@ echo wp_create_nonce("bocs_sync_options");
 
 
 
+
+
             		<tr>
             			<td data-export-label="WooCommerce Support"><?php
 
@@ -1834,6 +1848,7 @@ echo wp_create_nonce("bocs_sync_options");
             		</tr>
             	</tbody>
             </table>
+            <br />
             <table class="wc_status_table widefat" cellspacing="0">
             	<thead>
             		<tr>
@@ -1863,6 +1878,8 @@ echo wp_create_nonce("bocs_sync_options");
                 ?></td>
             		</tr>
             		<?php endif ?>
+
+
 
 
 
@@ -1944,7 +1961,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?>
             	</tbody>
             </table>
-
+			<br />
             <?php
 
             do_action('woocommerce_system_status_report');
