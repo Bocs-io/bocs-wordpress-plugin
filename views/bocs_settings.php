@@ -71,8 +71,6 @@ $database = $report['database'];
 $post_type_counts = isset($report['post_type_counts']) ? $report['post_type_counts'] : array();
 $active_plugins = $report['active_plugins'];
 
-error_log(print_r($active_plugins, true));
-
 $inactive_plugins = $report['inactive_plugins'];
 $dropins_mu_plugins = $report['dropins_mu_plugins'];
 $theme = $report['theme'];
@@ -1827,6 +1825,7 @@ echo wp_create_nonce("bocs_sync_options");
 
 
 
+
             		<tr>
             			<td data-export-label="WooCommerce Support"><?php
 
@@ -1878,6 +1877,7 @@ echo wp_create_nonce("bocs_sync_options");
                 ?></td>
             		</tr>
             		<?php endif ?>
+
 
 
 
