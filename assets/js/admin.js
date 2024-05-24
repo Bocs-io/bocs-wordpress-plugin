@@ -65,9 +65,9 @@ jQuery(window).on("load", function () {
                     text: 'Please wait...'
                 }));
 
-                if (ajax_object.bocs_collections) {
+                if (bocsAjaxObject.bocs_collections) {
 
-                    if (ajax_object.bocs_collections.length === 0) {
+                    if (bocsAjaxObject.bocs_collections.length === 0) {
                         jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                             value: '',
                             text: 'No Collections...'
@@ -80,7 +80,7 @@ jQuery(window).on("load", function () {
                             text: 'Please select...'
                         }));
 
-                        ajax_object.bocs_collections.forEach((collection) => {
+                        bocsAjaxObject.bocs_collections.forEach((collection) => {
                             jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
                                 value: collection['id'],
                                 text: collection['name'] == '' ? collection['id'] : collection['name']
@@ -91,13 +91,13 @@ jQuery(window).on("load", function () {
                 } else {
 
                     collections_list = $.ajax({
-                        url: ajax_object.collectionsURL,
+                        url: bocsAjaxObject.collectionsURL,
                         type: "GET",
                         contentType: "application/json; charset=utf-8",
                         headers: {
-                            'Organization': ajax_object.Organization,
-                            'Store': ajax_object.Store,
-                            'Authorization': ajax_object.Authorization
+                            'Organization': bocsAjaxObject.Organization,
+                            'Store': bocsAjaxObject.Store,
+                            'Authorization': bocsAjaxObject.Authorization
                         }
                     });
 
@@ -129,9 +129,9 @@ jQuery(window).on("load", function () {
                 }
 
 
-                if (ajax_object.bocs_widgets) {
+                if (bocsAjaxObject.bocs_widgets) {
 
-                    if (ajax_object.bocs_widgets.length === 0) {
+                    if (bocsAjaxObject.bocs_widgets.length === 0) {
                         jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
                             value: '',
                             text: 'No Bocs...'
@@ -145,7 +145,7 @@ jQuery(window).on("load", function () {
                             text: 'Please select...'
                         }));
 
-                        ajax_object.bocs_widgets.forEach((bocs) => {
+                        bocsAjaxObject.bocs_widgets.forEach((bocs) => {
                             jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
                                 value: bocs['id'],
                                 text: bocs['name'] == '' ? bocs['id'] : bocs['name']
@@ -155,13 +155,13 @@ jQuery(window).on("load", function () {
                 } else {
 
                     bocs_list = $.ajax({
-                        url: ajax_object.bocsURL,
+                        url: bocsAjaxObject.bocsURL,
                         type: "GET",
                         contentType: "application/json; charset=utf-8",
                         headers: {
-                            'Organization': ajax_object.Organization,
-                            'Store': ajax_object.Store,
-                            'Authorization': ajax_object.Authorization
+                            'Organization': bocsAjaxObject.Organization,
+                            'Store': bocsAjaxObject.Store,
+                            'Authorization': s.Authorization
                         }
                     });
 

@@ -1,3 +1,6 @@
+v0.0.60 05/24/2024
+* Ajax object name fix conflict with other plugins
+
 v0.0.57 05/14/2024
 * Fix on the auto adding of the bocs keys to woocommerce site
 

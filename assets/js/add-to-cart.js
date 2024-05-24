@@ -1,8 +1,6 @@
-
+	
 async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProducts: products }) {
-
-	console.log(frequency);
-
+	
 	const bocsId = id;
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -10,7 +8,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 		url: '/wp-json/wc/store/v1/cart/items',
 		method: 'DELETE',
 		beforeSend: function (xhr) {
-			xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
+			xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 		}
 	});
 
@@ -28,13 +26,13 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 
 	// we will get the details first regarding the bocsid
 	const bocsData = await jQuery.ajax({
-		url: ajax_object.bocsGetUrl + bocsId,
+		url: bocsAjaxObject.bocsGetUrl + bocsId,
 		type: 'GET',
 		beforeSend: function (xhr) {
 			xhr.setRequestHeader("Accept", "application/json");
-			xhr.setRequestHeader("Organization", ajax_object.orgId);
-			xhr.setRequestHeader("Store", ajax_object.storeId);
-			xhr.setRequestHeader("Authorization", ajax_object.authId);
+			xhr.setRequestHeader("Organization", bocsAjaxObject.orgId);
+			xhr.setRequestHeader("Store", bocsAjaxObject.storeId);
+			xhr.setRequestHeader("Authorization", bocsAjaxObject.authId);
 		}
 	});
 
@@ -51,7 +49,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 				// then we will search the product on WooCommerce
 				const params = {
 					action: 'search_product',
-					nonce: ajax_object.search_nonce,   // The AJAX nonce value
+					nonce: bocsAjaxObject.search_nonce,   // The AJAX nonce value
 					name: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',
 					bocs_frequency_id: frequency.id, // frequency id
 					bocs_bocs_id: bocsId,
@@ -61,7 +59,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 
 				// in case that the product does not exist, then we will search according to bocs_product_id or product name
 				const searchProduct = await jQuery.ajax({
-					url: ajax_object.ajax_url,
+					url: bocsAjaxObject.ajax_url,
 					type: 'POST',
 					data: params
 				});
@@ -81,11 +79,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 
 		// we will attempt to create the product
 		const createdProduct = await jQuery.ajax({
-			url: ajax_object.ajax_url,
+			url: bocsAjaxObject.ajax_url,
 			type: 'POST',
 			data: {
 				action: 'create_product',   // The AJAX action name to be handled by the server
-				nonce: ajax_object.nonce,   // The AJAX nonce value
+				nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
 				title: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
 				price: '0',             // Set the product price
 				bocs_product_discount: frequency.discount,
@@ -132,7 +130,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 			method: 'POST',
 			data: data,
 			beforeSend: function (xhr) {
-				xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
+				xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 			},
 			success: function (response) {
 				// console.success('Product added to cart:', response);
@@ -152,11 +150,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 
 		// we will search for the product according to the bocs_product_id and title
 		const searchProduct = await jQuery.ajax({
-			url: ajax_object.ajax_url,
+			url: bocsAjaxObject.ajax_url,
 			type: 'POST',
 			data: {
 				action: 'search_product',
-				nonce: ajax_object.search_nonce,   // The AJAX nonce value
+				nonce: bocsAjaxObject.search_nonce,   // The AJAX nonce value
 				name: product.name,
 				bocs_product_id: product.id,
 				is_bocs: 0
@@ -174,11 +172,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 
 			// we will attempt to create the product
 			const createdProduct = await jQuery.ajax({
-				url: ajax_object.ajax_url,
+				url: bocsAjaxObject.ajax_url,
 				type: 'POST',
 				data: {
 					action: 'create_product',   // The AJAX action name to be handled by the server
-					nonce: ajax_object.nonce,   // The AJAX nonce value
+					nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
 					title: product.name,        // Set the product title
 					price: product.price,             // Set the product price
 					sku: product.sku,
@@ -218,11 +216,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 				for (const variation of product.variations) {
 
 					const searchVariation = await jQuery.ajax({
-						url: ajax_object.ajax_url,
+						url: bocsAjaxObject.ajax_url,
 						type: 'POST',
 						data: {
 							action: 'search_product',
-							nonce: ajax_object.search_nonce,
+							nonce: bocsAjaxObject.search_nonce,
 							name: product.name,
 							bocs_product_id: variation.id,
 							is_bocs: 0
@@ -244,11 +242,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 					if( variationId === 0 ){
 						// we will create this product variation
 						const createdVariation = await jQuery.ajax({
-							url: ajax_object.ajax_url,
+							url: bocsAjaxObject.ajax_url,
 							type: 'POST',
 							data: {
 								action: 'create_product',   // The AJAX action name to be handled by the server
-								nonce: ajax_object.nonce,   // The AJAX nonce value
+								nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
 								title: product.name,        // Set the product title
 								price: product.price,             // Set the product price
 								sku: product.sku,
@@ -275,7 +273,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 				method: 'POST',
 				data: data,
 				beforeSend: function (xhr) {
-					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
+					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
 					// console.log('Product added to cart:', response);
@@ -291,11 +289,11 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 			if (product.id !== "") {
 				// we will try to update the bocs_product_id on the meta key
 				await jQuery.ajax({
-					url: ajax_object.ajax_url,
+					url: bocsAjaxObject.ajax_url,
 					type: 'POST',
 					data: {
 						action: 'update_product',   // The AJAX action name to be handled by the server
-						nonce: ajax_object.update_product_nonce,   // The AJAX nonce value
+						nonce: bocsAjaxObject.update_product_nonce,   // The AJAX nonce value
 						id: wcProductId,
 						bocs_product_id: product.id
 					}
@@ -329,18 +327,18 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 		// then we will try to add this coupon
 		var data = {
 			action: 'create_coupon',
-			nonce: ajax_object.couponNonce,
+			nonce: bocsAjaxObject.couponNonce,
 			coupon_code: couponCode,
 			discount_type: discountType,
 			amount: amount
 		}
 
 		const createdCoupon = await jQuery.ajax({
-			url: ajax_object.ajax_url,
+			url: bocsAjaxObject.ajax_url,
 			type: 'POST',
 			data: {
 				action: 'create_coupon',
-				nonce: ajax_object.couponNonce,
+				nonce: bocsAjaxObject.couponNonce,
 				coupon_code: couponCode,
 				discount_type: discountType,
 				amount: amount
@@ -358,7 +356,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 				method: 'POST',
 				data: data,
 				beforeSend: function (xhr) {
-					xhr.setRequestHeader('Nonce', ajax_object.cartNonce);
+					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
 					// console.log('Product added to cart:', response);
@@ -371,5 +369,5 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 	}
 
 	buttonCart.html('Redirecting to Cart...');
-	window.location.href = ajax_object.cartURL;
+	window.location.href = bocsAjaxObject.cartURL;
 }

@@ -123,6 +123,8 @@ class Bocs
 
         // require_once plugin_dir_path(dirname(__FILE__)).'libraries/action-scheduler/action-scheduler.php';
 
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
+
         $this->loader = new Loader();
     }
 
@@ -195,7 +197,7 @@ class Bocs
         $plugin_admin = new Admin();
 
         $this->loader->add_action('enqueue_block_editor_assets', $plugin_admin, 'bocs_widget_script_register');
-        $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        // $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'admin_enqueue_scripts');
 
         $this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
@@ -262,6 +264,12 @@ class Bocs
 
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
+
+        $bocs_cart = new Bocs_Cart();
+        $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
+
+        $plugin_admin = new Admin();
+        $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
     }
 
     /**

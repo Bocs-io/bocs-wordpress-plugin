@@ -158,7 +158,7 @@ class Admin
         $bocs_collections = get_option("bocs_collections");
         $bocs_widgets = get_option("bocs_widgets");
 
-        wp_localize_script('bocs-admin-js', 'ajax_object', array(
+        wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
             'bocsURL' => BOCS_API_URL . "bocs",
             'collectionsURL' => BOCS_API_URL . "collections",
             'Organization' => $options['bocs_headers']['organization'] ?? '',
@@ -187,13 +187,15 @@ class Admin
         }
 
         $redirect = wc_get_checkout_url();
+        $cart_nonce = wp_create_nonce('wc_store_api');
+        error_log('cart_nonce: ' . $cart_nonce);
 
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '0.0.76', true);
-        wp_localize_script('bocs-add-to-cart', 'ajax_object', array(
-            'cartNonce' => wp_create_nonce('wc_store_api'),
+        ), '0.0.80', true);
+        wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
+            'cartNonce' => $cart_nonce,
             'cartURL' => $redirect,
             'ajax_url' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('ajax-nonce'),
