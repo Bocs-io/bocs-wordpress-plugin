@@ -633,7 +633,7 @@ class Admin
                 $product_id = get_post_meta($item_data['product_id'], 'bocs_id', true);
             }
 
-            $subscription_line_items[] = '{"sku": "' . $product->get_sku() . '","price": "' . round($item->get_subtotal() / $quantity, 2) . '","quantity": ' . $quantity . ',"productId": "' . $product_id . '","total": "' . $item->get_total() . '","externalSourceId": "' . $product->get_id() . '"}';
+            $subscription_line_items[] = '{"sku": "' . $product->get_sku() . '","price": "' . round($product->get_regular_price(), 2) . '","quantity": ' . $quantity . ',"productId": "' . $product_id . '","total": "' . $item->get_total() . '","externalSourceId": "' . $product->get_id() . '"}';
         }
 
         if ($is_bocs) {
@@ -704,16 +704,17 @@ class Admin
                         'Authorization: ' . $options['bocs_headers']['authorization']
                     )
                 ));
-
+                error_log('== start create contact==');
                 $response = curl_exec($curl);
                 $object = json_decode($response);
 
+                error_log(print_r($object, true));
                 curl_close($curl);
+                error_log('== end create contact==');
 
                 if ($object) {
-                    error_log('create contact');
-                    error_log(print_r($object->message, true));
                     if (isset($object->data)) {
+                        error_log(print_r($object->data, true));
                         if (isset($object->data->id)) {
                             // add meta
                             update_user_meta($order->get_customer_id(), "bocs_user_id", $object->data->id);
@@ -722,71 +723,6 @@ class Admin
                     }
                 }
             }
-
-            /*
-             * // start CREATE ORDER
-             *
-             * $post_data = '{
-             * "total": ' . $order->get_total() . ',
-             * "discount": ' . $order->get_discount_total() . ',
-             * "shippingRate": 1,
-             * "currency": "' . $order->get_currency() . '",
-             * "paymentDate": "' . $order->get_date_paid() . '",
-             * "isPaid": true,
-             * "platform": "woocommerce",
-             * "customer" : {
-             * "customerId": "' . $bocs_customer_id . '",
-             * "email": "' . $order->get_billing_email() . '",
-             * "firstName": "' . $order->get_billing_first_name() . '",
-             * "lastName": "' . $order->get_billing_last_name() . '"
-             * }
-             * }';
-             *
-             * // then we will create an order
-             * $curl = curl_init();
-             *
-             * curl_setopt_array($curl, array(
-             * CURLOPT_URL => BOCS_API_URL . 'orders',
-             * CURLOPT_RETURNTRANSFER => true,
-             * CURLOPT_ENCODING => '',
-             * CURLOPT_MAXREDIRS => 10,
-             * CURLOPT_TIMEOUT => 0,
-             * CURLOPT_FOLLOWLOCATION => true,
-             * CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-             * CURLOPT_CUSTOMREQUEST => 'POST',
-             * CURLOPT_POSTFIELDS => $post_data,
-             * CURLOPT_HTTPHEADER => array(
-             * 'Organization: ' . $options['bocs_headers']['organization'],
-             * 'Content-Type: application/json',
-             * 'Store: ' . $options['bocs_headers']['store'],
-             * 'Authorization: ' . $options['bocs_headers']['authorization']
-             * ),
-             * ));
-             *
-             * $response = curl_exec($curl);
-             *
-             * //if (curl_errno($curl)) {
-             * // error_log('cURL Error:' . curl_error($curl));
-             * //}
-             *
-             * $object = json_decode($response);
-             *
-             * curl_close($curl);
-             *
-             * if ($object) {
-             * error_log('create order');
-             * error_log(print_r($object->message, true));
-             *
-             * if (isset($object->data)) {
-             * if (isset($object->data->orderId)) {
-             * // add meta
-             * update_post_meta($order->get_id(), "bocs_id", $object->data->orderId);
-             * }
-             * }
-             * }
-             *
-             * // end CREATE ORDER
-             */
 
             // start CREATE SUBSCRIPTION
             $timezoneString = get_option('timezone_string');
@@ -832,9 +768,13 @@ class Admin
                         "customer": {"id": "' . $bocs_customer_id . '","externalSourceId": "' . $customer_id . '"},
                         "lineItems": [' . implode(',', $subscription_line_items) . '],
                         "frequency": {"price": ' . $current_frequency['price'] . ',"discount": ' . $current_frequency['discount'] . ',"discountType": "' . $current_frequency['discountType'] . '","id": "' . $current_frequency['id'] . '","frequency": ' . $current_frequency['frequency'] . ',"timeUnit": "' . $current_frequency['timeUnit'] . '"},"startDateGmt": "' . $start_date . '",
-                        "order": ' . $this->get_order_data_as_json($order_id) . '}';
+                        "order": ' . $this->get_order_data_as_json($order_id) . ',
+                        "total": "' . $order->get_total() . '",
+                        "discountTotal": "' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . '"}';
 
-            error_log($this->get_order_data_as_json($order_id));
+            error_log('=== start post data ===');
+            error_log($post_data);
+            error_log('=== end post data ===');
 
             curl_setopt_array($curl, array(
                 CURLOPT_URL => BOCS_API_URL . 'subscriptions',
@@ -861,15 +801,11 @@ class Admin
             }
 
             $object = json_decode($response);
-            error_log('create subscription');
+            error_log('=== start create subscription ===');
             error_log(print_r($object, true));
+            error_log('=== end create subscription ===');
 
             curl_close($curl);
-
-            error_reporting(0);
-
-            // and create a subscription in woocommerce
-            $order_post_data = get_post($order_id);
         }
     }
 
