@@ -1,7 +1,11 @@
 	
-async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProducts: products }) {
+async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }) {
 	
 	const bocsId = id;
+	let bocsFrequency = frequency.frequency;
+	let bocsFrequencyUnit = frequency.timeUnit;
+	let bocsFrequencyId = frequency.id;
+	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
 	await jQuery.ajax({
@@ -24,124 +28,7 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 	let boxPrice = 0;
 	let bocsName = '';
 
-	// we will get the details first regarding the bocsid
-	const bocsData = await jQuery.ajax({
-		url: bocsAjaxObject.bocsGetUrl + bocsId,
-		type: 'GET',
-		beforeSend: function (xhr) {
-			xhr.setRequestHeader("Accept", "application/json");
-			xhr.setRequestHeader("Organization", bocsAjaxObject.orgId);
-			xhr.setRequestHeader("Store", bocsAjaxObject.storeId);
-			xhr.setRequestHeader("Authorization", bocsAjaxObject.authId);
-		}
-	});
-
-	if (bocsData) {
-		if (bocsData.data) {
-
-			if (bocsData.data.name) {
-
-				bocsType = bocsData.data.type;
-				bocsSku = bocsData.data.sku;
-				boxPrice = bocsData.data.boxPrice;
-				bocsName = bocsData.data.name;
-
-				// then we will search the product on WooCommerce
-				const params = {
-					action: 'search_product',
-					nonce: bocsAjaxObject.search_nonce,   // The AJAX nonce value
-					name: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',
-					bocs_frequency_id: frequency.id, // frequency id
-					bocs_bocs_id: bocsId,
-					bocs_sku: bocsSku,
-					is_bocs: 1
-				};
-
-				// in case that the product does not exist, then we will search according to bocs_product_id or product name
-				const searchProduct = await jQuery.ajax({
-					url: bocsAjaxObject.ajax_url,
-					type: 'POST',
-					data: params
-				});
-
-				if (searchProduct) {
-					if (searchProduct > 0) {
-						// there exists a product
-						wooCommerceProductId = searchProduct;
-					}
-				}
-			}
-		}
-	}
-
-	// we will create the product
-	if (wooCommerceProductId === 0) {
-
-		// we will attempt to create the product
-		const createdProduct = await jQuery.ajax({
-			url: bocsAjaxObject.ajax_url,
-			type: 'POST',
-			data: {
-				action: 'create_product',   // The AJAX action name to be handled by the server
-				nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
-				title: bocsName + ' (' + frequency.frequency + ' ' + frequency.timeUnit + ')',        // Set the product title
-				price: '0',             // Set the product price
-				bocs_product_discount: frequency.discount,
-				bocs_product_discount_type: frequency.discountType,
-				bocs_product_interval: frequency.timeUnit,
-				bocs_product_interval_count: frequency.frequency,
-				sku: frequency.sku,
-				bocs_frequency_id: frequency.id,
-				type: 'bocs',
-				bocs_bocs_id: bocsId,
-				// Add more product data as needed
-				bocs_type: bocsType,
-				bocs_sku: bocsSku,
-				bocs_price: boxPrice
-
-			}
-		});
-
-		if (createdProduct) {
-
-			wooCommerceProductId = createdProduct;
-
-		} else {
-
-			buttonCart.html('There is no WooCommerce Product found...');
-			buttonCart.addClass('ant-btn-dangerous');
-			buttonCart.removeAttr('disabled');
-			return;
-		}
-	}
-
-
-	if (wooCommerceProductId !== 0) {
-
-		// add to cart
-
-		var data = {
-			id: wooCommerceProductId,
-			quantity: 1,
-		};
-
-		await jQuery.ajax({
-			url: '/wp-json/wc/store/v1/cart/add-item',
-			method: 'POST',
-			data: data,
-			beforeSend: function (xhr) {
-				xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
-			},
-			success: function (response) {
-				// console.success('Product added to cart:', response);
-			},
-			error: function (error) {
-				console.error('Error adding product to cart:', error);
-			},
-		});
-	}
-
-	// then we will loop on the selected products
+	
 
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
@@ -206,66 +93,10 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 				// buttonCart.html('Product with Variations is NOT WORKING as of now...');
 			}
 
-			/* if( product.variations.length > 0 ){
-				// wcProductId = product.variations[0].externalSourceId;
-
-				// search first for each of the variations if there is already an existing tied record
-				let variationId = 0;
-				let selectedVariation = false;
-
-				for (const variation of product.variations) {
-
-					const searchVariation = await jQuery.ajax({
-						url: bocsAjaxObject.ajax_url,
-						type: 'POST',
-						data: {
-							action: 'search_product',
-							nonce: bocsAjaxObject.search_nonce,
-							name: product.name,
-							bocs_product_id: variation.id,
-							is_bocs: 0
-						}
-					});
-
-					if (searchVariation){
-						if (searchVariation > 0){
-							// there exists a product
-							variationId = searchVariation;
-						}
-					}
-
-					if (variationId !== 0 && selectedVariation === false){
-						wcProductId = variationId;
-						selectedVariation = true;
-					}
-
-					if( variationId === 0 ){
-						// we will create this product variation
-						const createdVariation = await jQuery.ajax({
-							url: bocsAjaxObject.ajax_url,
-							type: 'POST',
-							data: {
-								action: 'create_product',   // The AJAX action name to be handled by the server
-								nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
-								title: product.name,        // Set the product title
-								price: product.price,             // Set the product price
-								sku: product.sku,
-								bocs_product_id: variation.id,
-								type: 'variation',
-								parent_id: product.id,
-								option: variation.option
-								// Add more product data as needed
-							}
-						});
-					}
-				}
-			} */
-
-			// add to cart
 
 			var data = {
 				id: wcProductId,
-				quantity: product.quantity,
+				quantity: product.quantity
 			};
 
 			await jQuery.ajax({
@@ -276,29 +107,12 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
-					// console.log('Product added to cart:', response);
+					console.log('Product added to cart:', response);
 				},
 				error: function (error) {
 					console.error('Error adding product to cart:', error);
 				},
 			});
-		}
-
-		// we will update the woocommerce product in case the bocs_product_id was not in the meta
-		if (wcProductId !== 0 && product.id) {
-			if (product.id !== "") {
-				// we will try to update the bocs_product_id on the meta key
-				await jQuery.ajax({
-					url: bocsAjaxObject.ajax_url,
-					type: 'POST',
-					data: {
-						action: 'update_product',   // The AJAX action name to be handled by the server
-						nonce: bocsAjaxObject.update_product_nonce,   // The AJAX nonce value
-						id: wcProductId,
-						bocs_product_id: product.id
-					}
-				});
-			}
 		}
 
 	}
@@ -369,5 +183,27 @@ async function bocs_add_to_cart({ id, selectedFrequency: frequency, selectedProd
 	}
 
 	buttonCart.html('Redirecting to Cart...');
-	window.location.href = bocsAjaxObject.cartURL;
+	if( id == null) id = '';
+	if(collectionId == null) collectionId = '';
+	// create cookie
+	document.cookie = "__bocs_id="+id+"; path=/";
+	document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
+	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
+	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId;
+}
+
+function getCookie(cname) {
+  let name = cname + "=";
+  let decodedCookie = decodeURIComponent(document.cookie);
+  let ca = decodedCookie.split(';');
+  for(let i = 0; i <ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) == ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
 }

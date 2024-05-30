@@ -202,7 +202,8 @@ class Bocs
 
         $this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
 
-        $this->loader->add_action('init', $plugin_admin, 'register_bocs_product_type');
+        // @todo - add bocs product type
+        // $this->loader->add_action('init', $plugin_admin, 'register_bocs_product_type');
 
         $this->loader->add_action('init', $plugin_admin, 'update_widgets_collections');
 
@@ -228,6 +229,11 @@ class Bocs
         $this->loader->add_action('wp_ajax_nopriv_search_product', $plugin_admin, 'search_product_ajax_callback');
 
         // create bocs subscription and order if the order is in processing
+        // $this->loader->add_filter('woocommerce_store_api_add_to_cart_data', $plugin_admin, 'add_custom_to_cart_data', 10, 2);
+        // $this->loader->add_action('woocommerce_add_cart_item_data', $plugin_admin, 'add_custom_cart_item_data', 10, 3);
+        // $this->loader->add_action('woocommerce_checkout_create_order_line_item', $plugin_admin, 'add_cart_item_meta_to_order_items', 10, 4);
+
+        // $this->loader->add_action('woocommerce_checkout_create_order', $plugin_admin, 'add_custom_order_meta', 10, 2);
         $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
 
         // this is for the saving of the bocs and collections list
@@ -264,12 +270,14 @@ class Bocs
 
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
-
-        $bocs_cart = new Bocs_Cart();
-        $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
+        // @todo
+        // $bocs_cart = new Bocs_Cart();
+        // $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
 
         $plugin_admin = new Admin();
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
+        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter');
+        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
     }
 
     /**

@@ -1,3 +1,6 @@
+v0.0.61 05/28/2024
+* Removed the product like bocs type
+
 v0.0.60 05/24/2024
 * Ajax object name fix conflict with other plugins
 
