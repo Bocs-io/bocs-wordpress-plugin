@@ -1,3 +1,6 @@
+v0.0.62 05/30/2024
+* Fix on the add subscription to bocs after the payment
+
 v0.0.61 05/28/2024
 * Removed the product like bocs type
 
