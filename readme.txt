@@ -1,8 +1,9 @@
 v0.0.62 05/30/2024
 * Fix on the add subscription to bocs after the payment
+* Listing of the subscriptions fix (first page)
 
 v0.0.61 05/28/2024
-* Removed the product like bocs type
+* Removed the product type of bocs type
 
 v0.0.60 05/24/2024
 * Ajax object name fix conflict with other plugins
