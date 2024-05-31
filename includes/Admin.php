@@ -707,19 +707,16 @@ class Admin
                 error_log('== start create contact==');
                 $response = curl_exec($curl);
                 $object = json_decode($response);
-
-                error_log(print_r($object, true));
                 curl_close($curl);
+                error_log(print_r($object, true));
                 error_log('== end create contact==');
 
-                if ($object) {
-                    if (isset($object->data)) {
-                        error_log(print_r($object->data, true));
-                        if (isset($object->data->id)) {
-                            // add meta
-                            update_user_meta($order->get_customer_id(), "bocs_user_id", $object->data->id);
-                            $bocs_customer_id = $object->data->id;
-                        }
+                if (isset($object->data)) {
+                    error_log(print_r($object->data, true));
+                    if (isset($object->data->id)) {
+                        // add meta
+                        update_user_meta($order->get_customer_id(), "bocs_user_id", $object->data->id);
+                        $bocs_customer_id = $object->data->id;
                     }
                 }
             }
@@ -1566,5 +1563,50 @@ class Admin
 
         // Encode the data to JSON and return
         return json_encode($order_data, JSON_PRETTY_PRINT);
+    }
+
+    public function bocs_user_id_check($user_login, $user)
+    {
+        // Get the user's email address
+        $user_email = $user->user_email;
+        $bocs_user_id = get_user_meta($user->ID, 'bocs_user_id', true);
+
+        if (empty($bocs_user_id)) {
+            $options = get_option('bocs_plugin_options');
+            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+            if (! empty($options['bocs_headers']['organization']) && $options['bocs_headers']['store'] && $options['bocs_headers']['authorization']) {
+                $curl = curl_init();
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . $user_email,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'GET',
+                    CURLOPT_HTTPHEADER => array(
+                        'Organization: ' . $options['bocs_headers']['organization'],
+                        'Content-Type: application/json',
+                        'Store: ' . $options['bocs_headers']['store'],
+                        'Authorization: ' . $options['bocs_headers']['authorization']
+                    )
+                ));
+
+                $response = curl_exec($curl);
+                $object = json_decode($response);
+                curl_close($curl);
+                if (isset($object->data)) {
+                    if (count($object->data) > 0) {
+                        foreach ($object->data as $bocs_user) {
+                            update_user_meta($user->ID, 'bocs_user_id', $bocs_user->id);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -278,6 +278,7 @@ class Bocs
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
         $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter');
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
+        $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
     }
 
     /**
