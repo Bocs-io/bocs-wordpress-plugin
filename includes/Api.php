@@ -3,151 +3,147 @@
 class Api
 {
 
-	private $url = BOCS_API_URL;
+    private $url = BOCS_API_URL;
 
-	private $api_token;
+    private $api_token;
 
-	public function __construct()
-	{
-		$this->api_token = get_option(BOCS_SLUG . '_key');
-	}
+    public function __construct()
+    {
+        $this->api_token = get_option(BOCS_SLUG . '_key');
+    }
 
-	public function custom_api_routes()
-	{
+    public function custom_api_routes()
+    {
 
-		// registering router for the updating of the the collections
-		register_rest_route(
-			'bocs-woocommerce-api/' . CUSTOM_API_VERSION,
-			'update-collections',
-			array(
-				'methods' => 'POST',
-				'callback' => array($this, 'update_collections')
-			)
-		);
+        // registering router for the updating of the the collections
+        register_rest_route('bocs-woocommerce-api/' . CUSTOM_API_VERSION, 'update-collections', array(
+            'methods' => 'POST',
+            'callback' => array(
+                $this,
+                'update_collections'
+            )
+        ));
 
-		// registering router for the updating of the widgets
-		register_rest_route(
-			'bocs-woocommerce-api/' . CUSTOM_API_VERSION,
-			'update-widgets',
-			array(
-				'methods' => 'POST',
-				'callback' => array($this, 'update_widgets')
-			)
-		);
-	}
+        // registering router for the updating of the widgets
+        register_rest_route('bocs-woocommerce-api/' . CUSTOM_API_VERSION, 'update-widgets', array(
+            'methods' => 'POST',
+            'callback' => array(
+                $this,
+                'update_widgets'
+            )
+        ));
+    }
 
-	/**
-	 * 
-	 * Updated the collections list 
-	 * 
-	 * @param array $post
-	 * @return WP_REST_Response
-	 */
-	public function update_collections($post)
-	{
+    /**
+     *
+     * Updated the collections list
+     *
+     * @param array $post
+     * @return WP_REST_Response
+     */
+    public function update_collections($post)
+    {
+        $header_auth = isset($_SERVER['Authorization']) ? $_SERVER['Authorization'] : '';
 
-		$header_auth = isset($_SERVER['Authorization']) ? $_SERVER['Authorization'] : '';
+        $data = array(
+            'message' => 'failed',
+            'notes' => 'Not valid headers'
+        );
 
-		$data = array(
-			'message' => 'failed',
-			'notes' => 'Not valid headers'
-		);
+        if (empty($header_auth))
+            return new WP_REST_Response($data, 400);
 
-		if (empty($header_auth)) return new WP_REST_Response($data, 400);
+        // then check with our settings
+        $options = get_option('bocs_plugin_options');
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-		// then check with our settings
-		$options = get_option('bocs_plugin_options');
-		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+        if ($options['bocs_headers']['store'] !== $header_auth)
+            return new WP_REST_Response($data, 400);
 
-		if ($options['bocs_headers']['store'] !== $header_auth) return new WP_REST_Response($data, 400);
+        $data = array(
+            'message' => 'success',
+            'notes' => 'No data.'
+        );
 
+        // get all the collections posted
+        if (! empty($post['collections'])) {
+            // we will get all the collections and save it
 
-		$data = array(
-			'message' => 'success',
-			'notes' => 'No data.'
-		);
+            $active_collections = array();
 
-		// get all the collections posted
-		if (!empty($post['collections'])) {
-			// we will get all the collections and save it
+            foreach ($post['collections'] as $collection) {
 
-			$active_collections = array();
+                $active_collections[] = array(
+                    'id' => $collection['id'],
+                    'type' => $collection['type'],
+                    'name' => $collection['name'],
+                    'description' => $collection['description']
+                );
+            }
 
-			foreach ($post['collections'] as $collection) {
+            // update_option("bocs_collections", $active_collections);
+            // update_option("bocs_last_update_time", time());
 
-				$active_collections[] = array(
-					'id' => $collection['id'],
-					'type' => $collection['type'],
-					'name' => $collection['name'],
-					'description' => $collection['description']
-				);
-			}
+            $data = array(
+                'message' => 'success',
+                'notes' => 'Records retrieved.'
+            );
+        }
 
-			update_option("bocs_collections", $active_collections);
-			update_option("bocs_last_update_time", time());
+        return new WP_REST_Response($data, 200);
+    }
 
-			$data = array(
-				'message' => 'success',
-				'notes' => 'Records retrieved.'
-			);
-		}
+    public function update_widgets($post)
+    {
 
+        // check the headers
+        $header_auth = isset($_SERVER['Authorization']) ? $_SERVER['Authorization'] : '';
 
-		return new WP_REST_Response($data, 200);
-	}
+        $data = array(
+            'message' => 'failed',
+            'notes' => 'Not valid headers'
+        );
 
-	public function update_widgets($post)
-	{
+        if (empty($header_auth))
+            return new WP_REST_Response($data, 400);
 
+        // then check with our settings
+        $options = get_option('bocs_plugin_options');
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-		// check the headers
-		$header_auth = isset($_SERVER['Authorization']) ? $_SERVER['Authorization'] : '';
+        if ($options['bocs_headers']['store'] !== $header_auth)
+            return new WP_REST_Response($data, 400);
 
-		$data = array(
-			'message' => 'failed',
-			'notes' => 'Not valid headers'
-		);
+        $data = array(
+            'message' => 'success',
+            'notes' => 'No data.'
+        );
 
-		if (empty($header_auth)) return new WP_REST_Response($data, 400);
+        // get all the collections posted
+        if (! empty($post['bocs'])) {
+            // we will get all the collections and save it
 
-		// then check with our settings
-		$options = get_option('bocs_plugin_options');
-		$options['bocs_headers'] = $options['bocs_headers'] ?? array();
+            $active_widgets = array();
 
-		if ($options['bocs_headers']['store'] !== $header_auth) return new WP_REST_Response($data, 400);
+            foreach ($post['bocs'] as $bocs) {
 
+                $active_widgets[] = array(
+                    'id' => $bocs['id'],
+                    'type' => $bocs['type'],
+                    'name' => $bocs['name'],
+                    'description' => $bocs['description']
+                );
+            }
 
-		$data = array(
-			'message' => 'success',
-			'notes' => 'No data.'
-		);
+            // update_option("bocs_widgets", $active_widgets);
+            update_option("bocs_last_update_time", time());
 
-		// get all the collections posted
-		if (!empty($post['bocs'])) {
-			// we will get all the collections and save it
+            $data = array(
+                'message' => 'success',
+                'notes' => 'Records retrieved.'
+            );
+        }
 
-			$active_widgets = array();
-
-			foreach ($post['bocs'] as $bocs) {
-
-				$active_widgets[] = array(
-					'id' => $bocs['id'],
-					'type' => $bocs['type'],
-					'name' => $bocs['name'],
-					'description' => $bocs['description']
-				);
-			}
-
-			update_option("bocs_widgets", $active_widgets);
-			update_option("bocs_last_update_time", time());
-
-			$data = array(
-				'message' => 'success',
-				'notes' => 'Records retrieved.'
-			);
-		}
-
-
-		return new WP_REST_Response($data, 200);
-	}
+        return new WP_REST_Response($data, 200);
+    }
 }

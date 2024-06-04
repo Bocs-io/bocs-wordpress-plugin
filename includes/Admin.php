@@ -512,7 +512,6 @@ class Admin
         $bocs_product_id = isset($_POST['bocs_product_id']) ? $_POST['bocs_product_id'] : "";
         $parent_id = isset($_POST['parent_id']) ? $_POST['parent_id'] : 0;
         $variation_attributes = array();
-        error_log(print_r($_POST, true));
 
         // Create a new WooCommerce product
         $new_product = array(
@@ -580,9 +579,6 @@ class Admin
         if (empty($order_id))
             return false;
 
-        // Report all PHP errors
-        error_reporting(- 1);
-
         // get the order details
         $order = wc_get_order($order_id);
         $bocs_frequency_id = '';
@@ -603,9 +599,56 @@ class Admin
         $bocsid = $order->get_meta('__bocs_bocs_id');
         $collectionid = $order->get_meta('__bocs_collections_id');
         $frequency_id = $order->get_meta('__bocs_frequency_id');
+
+        if (empty($bocsid)) {
+            $bocs_value = WC()->session->get('bocs');
+
+            if (empty($bocs_value)) {
+                if (isset($_COOKIE['__bocs_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
+                }
+            }
+
+            if (! empty($bocs_value)) {
+                $bocsid = $bocs_value;
+                $order->update_meta_data('__bocs_bocs_id', $bocs_value);
+            }
+        }
+
+        if (empty($collectionid)) {
+            $bocs_value = WC()->session->get('bocs_collection');
+
+            if (empty($bocs_value)) {
+                if (isset($_COOKIE['__bocs_collection_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+                }
+            }
+
+            if (! empty($bocs_value)) {
+                $collectionid = $bocs_value;
+                $order->update_meta_data('__bocs_collection_id', $bocs_value);
+            }
+        }
+
+        if (empty($frequency_id)) {
+            $bocs_value = WC()->session->get('bocs_frequency');
+
+            if (empty($bocs_value)) {
+                if (isset($_COOKIE['__bocs_frequency_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+                }
+            }
+
+            if (! empty($bocs_value)) {
+                $frequency_id = $bocs_value;
+                $order->update_meta_data('__bocs_frequency_id', $bocs_value);
+            }
+        }
+
         $current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocsid);
         $bocs_name = '';
+
         if (isset($bocs_body['data']['name'])) {
             $is_bocs = true;
             $bocs_name = trim($bocs_body['data']['name']);
@@ -643,80 +686,47 @@ class Admin
 
             $customer_id = $order->get_customer_id();
             $bocs_customer_id = '';
+
             if (! empty($customer_id)) {
+
                 $bocs_customer_id = get_user_meta($customer_id, 'bocs_user_id', true);
-                // $bocs_customer_id = get_user_meta($customer_id, 'bocs_id', true);
-            }
 
-            if (empty($bocs_customer_id)) {
-                // $bocs_customer_id = "1ee14ce2-7e01-6740-83f0-9e114d6e82ff";
+                if (empty($bocs_customer_id)) {
 
-                // create customer
-                $curl = curl_init();
+                    $user_email = $order->get_billing_email();
+                    $curl = curl_init();
 
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => BOCS_API_URL . 'contacts',
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'POST',
-                    CURLOPT_POSTFIELDS => '{
-						"email": "' . $order->get_billing_email() . '",
-						"fullName": "' . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() . '",
-						"firstName": "' . $order->get_billing_first_name() . '",
-						"lastName": "' . $order->get_billing_last_name() . '",
-						"role": "customer",
-						"externalSource": "WP",
-						"externalSourceId": "' . $order->get_customer_id() . '",
-						"billing": {
-							"firstName": "' . $order->get_billing_first_name() . '",
-							"lastName":  "' . $order->get_billing_last_name() . '",
-							"company":  "' . $order->get_billing_company() . '",
-							"address1": "' . $order->get_billing_address_1() . '",
-							"address2": "' . $order->get_billing_address_2() . '",
-							"city": "' . $order->get_billing_city() . '",
-							"state":  "' . $order->get_billing_state() . '",
-							"country": "' . $order->get_billing_country() . '",
-							"postcode": "' . $order->get_billing_postcode() . '",
-							"phone":  "' . $order->get_billing_phone() . '",
-							"email":  "' . $order->get_billing_email() . '"
-						},
-						"shipping": {
-							"firstName": "' . $order->get_shipping_first_name() . '",
-							"lastName":  "' . $order->get_shipping_last_name() . '",
-							"company":  "' . $order->get_shipping_company() . '",
-							"address1": "' . $order->get_shipping_address_1() . '",
-							"address2": "' . $order->get_shipping_address_2() . '",
-							"city": "' . $order->get_shipping_city() . '",
-							"state":  "' . $order->get_shipping_state() . '",
-							"country": "' . $order->get_shipping_country() . '",
-							"postcode": "' . $order->get_shipping_postcode() . '",
-							"phone":  "' . $order->get_shipping_phone() . '"
-							}
-					}',
-                    CURLOPT_HTTPHEADER => array(
-                        'Organization: ' . $options['bocs_headers']['organization'],
-                        'Content-Type: application/json',
-                        'Store: ' . $options['bocs_headers']['store'],
-                        'Authorization: ' . $options['bocs_headers']['authorization']
-                    )
-                ));
-                error_log('== start create contact==');
-                $response = curl_exec($curl);
-                $object = json_decode($response);
-                curl_close($curl);
-                error_log(print_r($object, true));
-                error_log('== end create contact==');
+                    curl_setopt_array($curl, array(
+                        CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . $user_email,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_ENCODING => '',
+                        CURLOPT_MAXREDIRS => 10,
+                        CURLOPT_TIMEOUT => 0,
+                        CURLOPT_FOLLOWLOCATION => true,
+                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                        CURLOPT_CUSTOMREQUEST => 'GET',
+                        CURLOPT_HTTPHEADER => array(
+                            'Organization: ' . $options['bocs_headers']['organization'],
+                            'Content-Type: application/json',
+                            'Store: ' . $options['bocs_headers']['store'],
+                            'Authorization: ' . $options['bocs_headers']['authorization']
+                        )
+                    ));
 
-                if (isset($object->data)) {
-                    error_log(print_r($object->data, true));
-                    if (isset($object->data->id)) {
-                        // add meta
-                        update_user_meta($order->get_customer_id(), "bocs_user_id", $object->data->id);
-                        $bocs_customer_id = $object->data->id;
+                    $response = curl_exec($curl);
+                    $object = json_decode($response);
+                    curl_close($curl);
+
+                    if (isset($object->data)) {
+                        if (count($object->data) > 0) {
+                            foreach ($object->data as $bocs_user) {
+
+                                update_user_meta($customer_id, 'bocs_user_id', $bocs_user->id);
+                                $bocs_customer_id = $bocs_user->id;
+
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -769,10 +779,6 @@ class Admin
                         "total": "' . $order->get_total() . '",
                         "discountTotal": "' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . '"}';
 
-            error_log('=== start post data ===');
-            error_log($post_data);
-            error_log('=== end post data ===');
-
             curl_setopt_array($curl, array(
                 CURLOPT_URL => BOCS_API_URL . 'subscriptions',
                 CURLOPT_RETURNTRANSFER => true,
@@ -798,9 +804,6 @@ class Admin
             }
 
             $object = json_decode($response);
-            error_log('=== start create subscription ===');
-            error_log(print_r($object, true));
-            error_log('=== end create subscription ===');
 
             curl_close($curl);
         }
@@ -1118,108 +1121,7 @@ class Admin
      * @return void
      */
     public function update_widgets_collections()
-    {
-
-        // first check if we are at the admin page
-        if (! is_admin())
-            return;
-
-        // get the last update time
-        $last_update = get_option("bocs_last_update_time");
-
-        if (! empty($last_update)) {
-            // we will only allow if this is more than an hour
-            if ((time() - $last_update) / 3600 < 1)
-                return;
-        }
-
-        // get the keys needed to access the app
-        $options = get_option('bocs_plugin_options');
-        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
-
-        $organization_key = $options['bocs_headers']['organization'] ?? "";
-        $store_key = $options['bocs_headers']['store'] ?? "";
-        $auth_key = $options['bocs_headers']['authorization'] ?? "";
-
-        if (empty($organization_key) || empty($store_key) || empty($auth_key))
-            return;
-
-        $widgets_url = BOCS_API_URL . "bocs";
-        $collections_url = BOCS_API_URL . "collections";
-
-        $args = array(
-            'headers' => array(
-                'Organization' => $organization_key,
-                'Store' => $store_key,
-                'Authorization' => $auth_key
-            )
-        );
-
-        $widgets_response = wp_remote_request($widgets_url, $args);
-        $collections_response = wp_remote_request($collections_url, $args);
-
-        if (is_wp_error($widgets_response)) {
-            $error_message = $widgets_response->get_error_message();
-            error_log($error_message);
-            return;
-        }
-
-        if (is_wp_error($collections_response)) {
-            $error_message = $collections_response->get_error_message();
-            error_log($error_message);
-            return;
-        }
-
-        $widgets_body = wp_remote_retrieve_body($widgets_response);
-        $collections_body = wp_remote_retrieve_body($collections_response);
-
-        $widgets_data = json_decode($widgets_body, true);
-        $collections_data = json_decode($collections_body, true);
-
-        // then we will process and save the data
-        $active_widgets = array();
-        $active_collections = array();
-
-        if ($widgets_data['code'] == 200 || $widgets_data['message'] == 'success') {
-            // then get all the data
-
-            if ($widgets_data['data']) {
-                foreach ($widgets_data['data'] as $bocs) {
-                    if ($bocs['status'] == 'active') {
-                        $data = array(
-                            'id' => $bocs['id'],
-                            'type' => $bocs['type'],
-                            'name' => $bocs['name'],
-                            'description' => $bocs['description']
-                        );
-                        $active_widgets[] = $data;
-                    }
-                }
-            }
-        }
-
-        if ($collections_data['code'] == 200 || $collections_data['message'] == 'success') {
-            // then get all the data
-
-            if ($collections_data['data']) {
-                foreach ($collections_data['data'] as $collection) {
-                    if ($collection['status'] == 'active') {
-                        $data = array(
-                            'id' => $collection['id'],
-                            'type' => $collection['type'],
-                            'name' => $collection['name'],
-                            'description' => $collection['description']
-                        );
-                        $active_collections[] = $data;
-                    }
-                }
-            }
-        }
-
-        update_option("bocs_collections", $active_collections);
-        update_option("bocs_widgets", $active_widgets);
-        update_option("bocs_last_update_time", time());
-    }
+    {}
 
     /**
      * Adds sidebar to a product edit page
@@ -1259,11 +1161,8 @@ class Admin
 
     public function add_cart_item_meta_to_order_items($item, $cart_item_key, $values, $order)
     {
-        // __bocs_bocs_id, __bocs_collections_id
         $__bocs_bocs_id = '';
         $__bocs_collections_id = '';
-
-        // error_log('meta_data ' . print_r($values['meta_data'], true));
 
         // Check if cart item has meta data
         if (isset($values['meta_data']) && ! empty($values['meta_data'])) {
@@ -1283,10 +1182,6 @@ class Admin
             }
         }
 
-        // error_log($_GET['bocs']);
-        // error_log('$__bocs_bocs_id : ' . $__bocs_bocs_id);
-        // error_log('$__bocs_collections_id : ' . $__bocs_collections_id);
-
         if ($__bocs_bocs_id != '') {
             $order->update_meta_data('__bocs_bocs_id', $__bocs_bocs_id);
         }
@@ -1298,18 +1193,15 @@ class Admin
 
     public function add_custom_cart_item_data($cart_item_data, $product_id, $variation_id)
     {
-        // error_log($_GET['bocs']);
-        // error_log('cart_item_data ' . print_r($cart_item_data, true));
         return $cart_item_data;
     }
 
     public function add_custom_to_cart_data($add_to_cart_data, $request)
     {
-        // error_log(print_r($request, true));
         if (! empty($request['meta_data'])) {
             $add_to_cart_data['meta_data'] = sanitize_text_field($request['meta_data']);
         }
-        // error_log(json_encode($add_to_cart_data));
+
         return $add_to_cart_data;
     }
 
@@ -1327,7 +1219,6 @@ class Admin
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
                     if (! empty($bocs_value)) {
                         WC()->session->set('bocs', $bocs_value);
-                        setcookie('__bocs_id', '', time() - 3600, '/');
                     }
                 }
             }
@@ -1342,7 +1233,6 @@ class Admin
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
                     if (! empty($bocs_value)) {
                         WC()->session->set('bocs_collection', $bocs_value);
-                        setcookie('__bocs_collection_id', '', time() - 3600, '/');
                     }
                 }
             }
@@ -1357,7 +1247,6 @@ class Admin
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
                     if (! empty($bocs_value)) {
                         WC()->session->set('bocs_frequency', $bocs_value);
-                        setcookie('__bocs_frequency_id', '', time() - 3600, '/');
                     }
                 }
             }
@@ -1372,27 +1261,45 @@ class Admin
         // Example: Add a custom order meta
 
         $bocs_value = WC()->session->get('bocs');
+
+        if (empty($bocs_value)) {
+            if (isset($_COOKIE['__bocs_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
+            }
+        }
+
         if ($bocs_value) {
             $order->update_meta_data('__bocs_bocs_id', $bocs_value);
         }
 
         $bocs_value = WC()->session->get('bocs_collection');
+
+        if (empty($bocs_value)) {
+            if (isset($_COOKIE['__bocs_collection_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+            }
+        }
+
         if ($bocs_value) {
+
             $order->update_meta_data('__bocs_collections_id', $bocs_value);
         }
 
         $bocs_value = WC()->session->get('bocs_frequency');
+
+        if (empty($bocs_value)) {
+            if (isset($_COOKIE['__bocs_frequency_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+            }
+        }
+
         if ($bocs_value) {
+
             $order->update_meta_data('__bocs_frequency_id', $bocs_value);
         }
 
         // Save the order to ensure meta data is saved
         $order->save();
-
-        // Delete the session data
-        WC()->session->__unset('bocs');
-        WC()->session->__unset('bocs_collection');
-        WC()->session->__unset('bocs_frequency');
     }
 
     public function get_bocs_data_from_api($id)
@@ -1501,8 +1408,6 @@ class Admin
                 'price' => $product ? $product->get_price() : ''
             );
         }
-
-        error_log(json_encode($order_data['line_items']));
 
         // Get tax lines
         foreach ($order->get_tax_totals() as $tax) {

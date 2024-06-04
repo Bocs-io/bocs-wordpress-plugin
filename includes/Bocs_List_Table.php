@@ -94,7 +94,7 @@ class Bocs_List_Table extends WP_List_Table
         if ($object) {
             if (isset($object->data)) {
                 if (count($object->data) > 0) {
-                    // error_log(print_r(json_encode($object->data), true));
+
                     foreach ($object->data as $subscription) {
 
                         $status = $subscription->status;
@@ -155,10 +155,6 @@ class Bocs_List_Table extends WP_List_Table
                 }
             }
         }
-
-        // error_log('bocs-subscriptions end');
-
-        // error_reporting(0);
 
         return $result;
     }
