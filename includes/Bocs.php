@@ -90,7 +90,7 @@ class Bocs
          * The class responsible for defining all actions that occur in the admin area.
          */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Admin.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Account.php';
+        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Account.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_List_Table.php';
 
@@ -124,6 +124,8 @@ class Bocs
         // require_once plugin_dir_path(dirname(__FILE__)).'libraries/action-scheduler/action-scheduler.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
+
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
 
         $this->loader = new Loader();
     }
@@ -163,11 +165,17 @@ class Bocs
      */
     private function define_account_profile_hooks()
     {
-        $account = new Account();
+        $bocs_account = new Bocs_Account();
 
-        $this->loader->add_filter('woocommerce_account_menu_items', $account, 'add_bocs_menu');
-        $this->loader->add_action('init', $account, 'bocs_subscription_endpoint');
-        $this->loader->add_filter('woocommerce_account_bocs-subscription_endpoint', $account, 'bocs_subscription_endpoint_template');
+        // bocs subscriptions under My Account
+        $this->loader->add_filter('woocommerce_account_menu_items', $bocs_account, 'bocs_account_menu_item');
+        $this->loader->add_action('init', $bocs_account, 'register_bocs_account_endpoint');
+        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
+
+        // bocs subscription under My Account page
+        $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
+
+        $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
     }
 
     private function define_updater_hooks()
@@ -279,6 +287,9 @@ class Bocs
         $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter');
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
+
+        // $bocs_cart = new Bocs_Cart();
+        // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
     }
 
     /**

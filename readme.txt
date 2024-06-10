@@ -1,3 +1,10 @@
+v0.0.64 06/10/2024
+* Add renew, cancel subscription
+
+v0.0.63 05/30/2024
+* Fix on the add subscription to bocs after the payment
+* Listing of the subscriptions fix (first page)
+
 v0.0.62 05/30/2024
 * Fix on the add subscription to bocs after the payment
 * Listing of the subscriptions fix (first page)

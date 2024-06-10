@@ -1,21 +1,20 @@
 <?php
 
-class Account {
+class Account
+{
 
-	public function add_bocs_menu($items){
+    public function add_bocs_menu($items)
+    {
+        $items['bocs-subscriptions'] = "Bocs Subscriptions";
 
-		$items['bocs-subscription'] = "Bocs Subscription";
+        return $items;
+    }
 
-		return $items;
+    public function bocs_subscription_endpoint()
+    {
+        add_rewrite_endpoint('my-account/bocs-subscription', EP_ROOT | EP_PAGES);
+    }
 
-	}
-
-	public function bocs_subscription_endpoint(){
-		add_rewrite_endpoint( 'my-account/bocs-subscription', EP_ROOT | EP_PAGES );
-	}
-
-	public function bocs_subscription_endpoint_template(){
-
-	}
-
+    public function bocs_subscription_endpoint_template()
+    {}
 }

@@ -1580,7 +1580,7 @@ echo wp_create_nonce("bocs_sync_options");
             ?></td>
             			<td><?php
 
-            echo $settings['HPOS_feature_screen_enabled'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
+            echo isset($settings['HPOS_feature_screen_enabled']) ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
             		</tr>
             		<tr>
@@ -1826,6 +1826,7 @@ echo wp_create_nonce("bocs_sync_options");
 
 
 
+
             		<tr>
             			<td data-export-label="WooCommerce Support"><?php
 
@@ -1877,6 +1878,7 @@ echo wp_create_nonce("bocs_sync_options");
                 ?></td>
             		</tr>
             		<?php endif ?>
+
 
 
 

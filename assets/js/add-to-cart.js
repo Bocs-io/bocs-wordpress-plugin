@@ -1,9 +1,6 @@
 	
 async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }) {
-	
-	const bocsId = id;
-	let bocsFrequency = frequency.frequency;
-	let bocsFrequencyUnit = frequency.timeUnit;
+
 	let bocsFrequencyId = frequency.id;
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
@@ -18,17 +15,6 @@ async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: fr
 
 	buttonCart.prop('disabled', true);
 	buttonCart.html('Processing...');
-
-	/* adding the equivalent WooCommerce Product ID of the Bocs Product */
-
-	let wooCommerceProductId = 0;
-
-	let bocsType = '';
-	let bocsSku = '';
-	let boxPrice = 0;
-	let bocsName = '';
-
-	
 
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
@@ -139,14 +125,6 @@ async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: fr
 		couponCode = couponCode + "-" + now;
 
 		// then we will try to add this coupon
-		var data = {
-			action: 'create_coupon',
-			nonce: bocsAjaxObject.couponNonce,
-			coupon_code: couponCode,
-			discount_type: discountType,
-			amount: amount
-		}
-
 		const createdCoupon = await jQuery.ajax({
 			url: bocsAjaxObject.ajax_url,
 			type: 'POST',
@@ -187,8 +165,9 @@ async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: fr
 	if(collectionId == null) collectionId = '';
 	// create cookie
 	document.cookie = "__bocs_id="+id+"; path=/";
-	document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
+	if( collectionId != '' ) document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
 	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
+	console.log(id, collectionId, bocsFrequencyId);
 	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId;
 }
 
