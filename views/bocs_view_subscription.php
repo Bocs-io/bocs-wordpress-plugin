@@ -6,11 +6,11 @@
 		</tr>
 		<tr>
 			<td>Start date</td>
-			<td><?php
-				if (isset($subscription['data']['startDateGmt'])) {
-					$date = new DateTime($subscription['data']['startDateGmt']);
-					echo $date->format('F j, Y');
-				} ?>
+			<td id="subscriptionStatus"><?php
+										if (isset($subscription['data']['startDateGmt'])) {
+											$date = new DateTime($subscription['data']['startDateGmt']);
+											echo $date->format('F j, Y');
+										} ?>
 			</td>
 		</tr>
 		<tr>

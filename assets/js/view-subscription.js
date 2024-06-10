@@ -26,6 +26,7 @@ jQuery(document).ready(function ($) {
                 success: function (response) {
                     console.log('Cancel response', response);
                     buttonElement.text('Cancelled');
+                    $('td#subscriptionStatus').text('Cancelled');
                 },
                 error: function (error) {
                     console.error('Error cancel subscription', error);
@@ -97,6 +98,7 @@ jQuery(document).ready(function ($) {
             success: function (response) {
                 console.log('Pause response', response);
                 buttonElement.text('Paused');
+                $('td#subscriptionStatus').text('Paused');
             },
             error: function (error) {
                 console.error('Error pause subscription', error);
