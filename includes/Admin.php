@@ -228,7 +228,7 @@ class Admin
 
             wp_enqueue_script('view-subscription-js', plugin_dir_url(__FILE__) . '../assets/js/view-subscription.js', array(
                 'jquery'
-            ), '20240610.15', true);
+            ), '20240610.21', true);
             wp_localize_script('view-subscription-js', 'viewSubscriptionObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
