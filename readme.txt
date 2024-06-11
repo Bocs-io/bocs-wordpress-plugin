@@ -1,3 +1,7 @@
+v0.0.65 06/11/2024
+* default ticked for 'Save payment information to my account for future purchases'
+* add the subscriptions totals after the buttons
+
 v0.0.64 06/10/2024
 * Add renew, cancel subscription
 

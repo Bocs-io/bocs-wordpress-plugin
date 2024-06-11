@@ -2,15 +2,18 @@
 	<tbody>
 		<tr>
 			<td>Status</td>
-			<td><?php echo ucfirst($subscription['data']['subscriptionStatus']) ?></td>
+			<td>
+				<p id="subscriptionStatus"><?php echo ucfirst($subscription['data']['subscriptionStatus']) ?></p>
+			</td>
 		</tr>
 		<tr>
 			<td>Start date</td>
-			<td id="subscriptionStatus"><?php
-										if (isset($subscription['data']['startDateGmt'])) {
-											$date = new DateTime($subscription['data']['startDateGmt']);
-											echo $date->format('F j, Y');
-										} ?>
+			<td>
+				<?php
+				if (isset($subscription['data']['startDateGmt'])) {
+					$date = new DateTime($subscription['data']['startDateGmt']);
+					echo $date->format('F j, Y');
+				} ?>
 			</td>
 		</tr>
 		<tr>
@@ -46,4 +49,81 @@
 			</td>
 		</tr>
 	</tbody>
+</table>
+<br />
+<h2>Bocs Subscription Totals</h2>
+<table class="shop_table order_details">
+	<thead>
+		<tr>
+			<th class="product-name">Product</th>
+			<th class="product-total">Total</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr class="order_item">
+			<td class="product-name">
+				<?php
+				// get all the list of the products and its quantity
+				if ($subscription['data']['lineItems']) {
+					foreach ($subscription['data']['lineItems'] as $lineItem) {
+						// get the name of the product
+						$wc_id = $lineItem['externalSourceId'];
+						$product = wc_get_product($wc_id);
+						$product_name = '';
+						if ($product) {
+							$product_name =  $product->get_name();
+						}
+						$quantity = $lineItem['quantity'];
+				?>
+						<p><?php echo $product_name ?> <strong class="product-quantity">× <?php echo $quantity ?></strong> </p>
+				<?php
+					}
+				}
+				?>
+			</td>
+			<td class="product-total">
+				<span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span>
+				<?php
+
+				$billingInterval = 0;
+				$billingPeriod = '';
+
+				if (isset($subscription['data']['billingInterval'])) {
+					$billingInterval = $subscription['data']['billingInterval'];
+				}
+
+				if (empty($billingInterval) && isset($subscription['data']['frequency']['frequency'])) {
+					$billingInterval = $subscription['data']['frequency']['frequency'];
+				}
+
+				if (isset($subscription['data']['billingPeriod'])) {
+					$billingPeriod = $subscription['data']['billingPeriod'];
+				}
+
+				if (empty($billingPeriod) && isset($subscription['data']['frequency']['timeUnit'])) {
+					$billingPeriod = $subscription['data']['frequency']['timeUnit'];
+				}
+
+				$billingPeriod = $billingPeriod . 's';
+
+				if ($billingInterval <= 1) {
+					// Remove trailing 's' if it exists
+					$billingPeriod = rtrim($billingPeriod, 's');
+					$billingInterval = '';
+				}
+
+				?>every <?php echo trim($billingInterval . ' ' . $billingPeriod); ?>
+			</td>
+		</tr>
+	</tbody>
+	<tfoot>
+		<tr>
+			<th scope="row">Subtotal:</th>
+			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span></td>
+		</tr>
+		<tr>
+			<th scope="row">Total:</th>
+			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span> every <?php echo trim($billingInterval . ' ' . $billingPeriod); ?></td>
+		</tr>
+	</tfoot>
 </table>

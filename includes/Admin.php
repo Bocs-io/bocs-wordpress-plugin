@@ -228,7 +228,7 @@ class Admin
 
             wp_enqueue_script('view-subscription-js', plugin_dir_url(__FILE__) . '../assets/js/view-subscription.js', array(
                 'jquery'
-            ), '20240610.21', true);
+            ), '20240610.23', true);
             wp_localize_script('view-subscription-js', 'viewSubscriptionObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
@@ -237,6 +237,13 @@ class Admin
                 'orgId' => $options['bocs_headers']['organization'],
                 'authId' => $options['bocs_headers']['authorization']
             ));
+        }
+
+        if (is_checkout()) {
+            // checks the stripe checkbox and make it checked as default
+            wp_enqueue_script('bocs-stripe-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js', array(
+                'jquery'
+            ), '20240611.8', true);
         }
     }
 
