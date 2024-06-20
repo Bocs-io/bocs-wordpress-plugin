@@ -3,17 +3,19 @@
 		<tr>
 			<td>Status</td>
 			<td>
-				<p id="subscriptionStatus"><?php echo ucfirst($subscription['data']['subscriptionStatus']) ?></p>
+				<p id="subscriptionStatus"><?php
+    echo ucfirst($subscription['data']['subscriptionStatus'])?></p>
 			</td>
 		</tr>
 		<tr>
 			<td>Start date</td>
 			<td>
 				<?php
-				if (isset($subscription['data']['startDateGmt'])) {
-					$date = new DateTime($subscription['data']['startDateGmt']);
-					echo $date->format('F j, Y');
-				} ?>
+    if (isset($subscription['data']['startDateGmt'])) {
+        $date = new DateTime($subscription['data']['startDateGmt']);
+        echo $date->format('F j, Y');
+    }
+    ?>
 			</td>
 		</tr>
 		<tr>
@@ -23,10 +25,11 @@
 		<tr>
 			<td>Next payment date</td>
 			<td><?php
-				if (isset($subscription['data']['nextPaymentDateGmt'])) {
-					$date = new DateTime($subscription['data']['nextPaymentDateGmt']);
-					echo $date->format('F j, Y');
-				} ?>
+if (isset($subscription['data']['nextPaymentDateGmt'])) {
+    $date = new DateTime($subscription['data']['nextPaymentDateGmt']);
+    echo $date->format('F j, Y');
+}
+?>
 			</td>
 		</tr>
 		<tr>
@@ -36,13 +39,20 @@
 		<tr>
 			<td>Actions</td>
 			<td>
-				<a href="#" class="button bocs-button cancel wcs_block_ui_on_click<?php echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? ' disabled' : '' ?>"><?php echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? 'Cancelled' : 'Cancel' ?></a>
+				<a href="#" class="button bocs-button cancel wcs_block_ui_on_click<?php
+
+    echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? ' disabled' : ''?>"><?php
+
+    echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? 'Cancelled' : 'Cancel'?></a>
 				<a href="#" class="button bocs-button change_payment_method">Change payment</a>
 				<a href="#" class="button bocs-button subscription_renewal_early">Renew now</a>
 				<a href="#" class="button bocs-button subscription_pause">Pause</a>
 				<p id="next-payment-date-wrapper" style="display: none;">
 					<label for="next-payment-date">Next Payment (date and time):</label>
-					<input type="datetime-local" id="next-payment-date" name="next-payment-date" value="<?php echo str_replace('.000Z', '', $subscription['data']['nextPaymentDateGmt']); ?>">
+					<input type="datetime-local" id="next-payment-date" name="next-payment-date" value="<?php
+
+    echo str_replace('.000Z', '', $subscription['data']['nextPaymentDateGmt']);
+    ?>">
 					<input type="button" id="next-payment-date-confirm" value="Confirm">
 					<input type="button" id="next-payment-date-cancel" value="Cancel">
 				</p>
@@ -65,71 +75,90 @@
 		<tr class="order_item">
 			<td class="product-name">
 				<?php
-				// get all the list of the products and its quantity
-				if ($subscription['data']['lineItems']) {
-					foreach ($subscription['data']['lineItems'] as $lineItem) {
-						// get the name of the product
-						$wc_id = $lineItem['externalSourceId'];
-						$product = wc_get_product($wc_id);
-						$product_name = '';
-						if ($product) {
-							$product_name =  $product->get_name();
-						}
-						$quantity = $lineItem['quantity'];
-				?>
-						<p><?php echo $product_name ?> <strong class="product-quantity">× <?php echo $quantity ?></strong> </p>
+    // get all the list of the products and its quantity
+    if ($subscription['data']['lineItems']) {
+        foreach ($subscription['data']['lineItems'] as $lineItem) {
+            // get the name of the product
+            $wc_id = $lineItem['externalSourceId'];
+            $product = wc_get_product($wc_id);
+            $product_name = '';
+            if ($product) {
+                $product_name = $product->get_name();
+            }
+            $quantity = $lineItem['quantity'];
+            ?>
+						<p><?php
+
+            echo $product_name?> <strong class="product-quantity">× <?php
+
+            echo $quantity?></strong> </p>
 				<?php
-					}
-				}
-				?>
+        }
+    }
+    ?>
 			</td>
 			<td class="product-total">
-				<span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span>
+				<span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
+
+    echo $subscription['data']['total']?></span>
 				<?php
 
-				$billingInterval = 0;
-				$billingPeriod = '';
+    $billingInterval = 0;
+    $billingPeriod = '';
 
-				if (isset($subscription['data']['billingInterval'])) {
-					$billingInterval = $subscription['data']['billingInterval'];
-				}
+    if (isset($subscription['data']['billingInterval'])) {
+        $billingInterval = $subscription['data']['billingInterval'];
+    }
 
-				if (empty($billingInterval) && isset($subscription['data']['frequency']['frequency'])) {
-					$billingInterval = $subscription['data']['frequency']['frequency'];
-				}
+    if (empty($billingInterval) && isset($subscription['data']['frequency']['frequency'])) {
+        $billingInterval = $subscription['data']['frequency']['frequency'];
+    }
 
-				if (isset($subscription['data']['billingPeriod'])) {
-					$billingPeriod = $subscription['data']['billingPeriod'];
-				}
+    if (isset($subscription['data']['billingPeriod'])) {
+        $billingPeriod = $subscription['data']['billingPeriod'];
+    }
 
-				if (empty($billingPeriod) && isset($subscription['data']['frequency']['timeUnit'])) {
-					$billingPeriod = $subscription['data']['frequency']['timeUnit'];
-				}
+    if (empty($billingPeriod) && isset($subscription['data']['frequency']['timeUnit'])) {
+        $billingPeriod = $subscription['data']['frequency']['timeUnit'];
+    }
 
-				$billingPeriod = $billingPeriod . 's';
+    $billingPeriod = $billingPeriod . 's';
 
-				if ($billingInterval <= 1) {
-					// Remove trailing 's' if it exists
-					$billingPeriod = rtrim($billingPeriod, 's');
-					$billingInterval = '';
-				}
+    if ($billingInterval <= 1) {
+        // Remove trailing 's' if it exists
+        $billingPeriod = rtrim($billingPeriod, 's');
+        $billingInterval = '';
+    }
 
-				?>every <?php echo trim($billingInterval . ' ' . $billingPeriod); ?>
+    ?>every <?php
+
+    echo trim($billingInterval . ' ' . $billingPeriod);
+    ?>
 			</td>
 		</tr>
 	</tbody>
 	<tfoot>
 		<tr>
 			<th scope="row">Subtotal:</th>
-			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span></td>
+			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
+
+echo $subscription['data']['total']?></span></td>
 		</tr>
 		<tr>
 			<th scope="row">Total:</th>
-			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php echo $subscription['data']['total'] ?></span> every <?php echo trim($billingInterval . ' ' . $billingPeriod); ?></td>
+			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
+
+echo $subscription['data']['total']?></span> every <?php
+
+echo trim($billingInterval . ' ' . $billingPeriod);
+?></td>
 		</tr>
 	</tfoot>
 </table>
-<?php if (count($related_orders['data']) > 0) { ?>
+<?php
+
+if (count($related_orders['data']) > 0) {
+    ?>
 	<br />
 	<header>
 		<h2>Related Orders</h2>
@@ -147,121 +176,197 @@
 		</thead>
 
 		<tbody> <?php
-				foreach ($related_orders['data'] as $related_order) {
-					// get the woocommerce order id
-					$wc_order_id = 0;
-					if ($related_order['externalSourceId']) {
-						$wc_order_id = $related_order['externalSourceId'];
-					}
-					if ($wc_order_id == 0) continue;
 
-					$order = wc_get_order($wc_order_id);
+    $order_ids = [];
+    if (count($related_orders['data'])) {
+        foreach ($related_orders['data'] as $related_order) {
+            if ($related_order['externalSourceId']) {
+                $id = intval($related_order['externalSourceId']);
+                if ($id != 0) {
+                    $order_ids[] = $id;
+                }
+            }
+        }
+    }
 
-					if (!$order) {
-						continue;
-					}
+    if (count($related_order['order_ids'])) {
+        foreach ($related_order['order_ids'] as $order_id) {
+            $order_ids[] = intval($order_id);
+        }
+    }
 
-					$item_count = $order->get_item_count();
-					$order_date = $order->get_date_created();
+    $order_ids = array_unique($order_ids);
 
-				?>
-				<tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php echo esc_attr($order->get_status()); ?>">
-					<td class="order-number woocommerce-orders-table__cell woocommerce-orders-table__cell-order-number" data-title="<?php esc_attr_e('Order Number', 'woocommerce-subscriptions'); ?>">
-						<a href="<?php echo esc_url($order->get_view_order_url()); ?>">
-							<?php echo sprintf(esc_html_x('#%s', 'hash before order number', 'woocommerce-subscriptions'), esc_html($order->get_order_number())); ?>
+    foreach ($order_ids as $wc_order_id) {
+        // get the woocommerce order id
+
+        $order = wc_get_order($wc_order_id);
+
+        if (! $order) {
+            continue;
+        }
+
+        $item_count = $order->get_item_count();
+        $order_date = $order->get_date_created();
+
+        ?>
+				<tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php
+
+        echo esc_attr($order->get_status());
+        ?>">
+					<td class="order-number woocommerce-orders-table__cell woocommerce-orders-table__cell-order-number" data-title="<?php
+
+        esc_attr_e('Order Number', 'woocommerce-subscriptions');
+        ?>">
+						<a href="<?php
+
+        echo esc_url($order->get_view_order_url());
+        ?>">
+							<?php
+
+        echo sprintf(esc_html_x('#%s', 'hash before order number', 'woocommerce-subscriptions'), esc_html($order->get_order_number()));
+        ?>
 						</a>
 					</td>
-					<td class="order-date woocommerce-orders-table__cell woocommerce-orders-table__cell-order-date" data-title="<?php esc_attr_e('Date', 'woocommerce-subscriptions'); ?>">
-						<time datetime="<?php echo esc_attr($order_date->date('Y-m-d')); ?>" title="<?php echo esc_attr($order_date->getTimestamp()); ?>"><?php echo wp_kses_post($order_date->date_i18n(wc_date_format())); ?></time>
+					<td class="order-date woocommerce-orders-table__cell woocommerce-orders-table__cell-order-date" data-title="<?php
+
+        esc_attr_e('Date', 'woocommerce-subscriptions');
+        ?>">
+						<time datetime="<?php
+
+        echo esc_attr($order_date->date('Y-m-d'));
+        ?>" title="<?php
+
+        echo esc_attr($order_date->getTimestamp());
+        ?>"><?php
+
+        echo wp_kses_post($order_date->date_i18n(wc_date_format()));
+        ?></time>
 					</td>
-					<td class="order-status woocommerce-orders-table__cell woocommerce-orders-table__cell-order-status" data-title="<?php esc_attr_e('Status', 'woocommerce-subscriptions'); ?>" style="white-space:nowrap;">
-						<?php echo esc_html(wc_get_order_status_name($order->get_status())); ?>
-					</td>
-					<td class="order-total woocommerce-orders-table__cell woocommerce-orders-table__cell-order-total" data-title="<?php echo esc_attr_x('Total', 'Used in data attribute. Escaped', 'woocommerce-subscriptions'); ?>">
+					<td class="order-status woocommerce-orders-table__cell woocommerce-orders-table__cell-order-status" data-title="<?php
+
+        esc_attr_e('Status', 'woocommerce-subscriptions');
+        ?>" style="white-space:nowrap;">
 						<?php
-						// translators: $1: formatted order total for the order, $2: number of items bought
-						echo wp_kses_post(sprintf(_n('%1$s for %2$d item', '%1$s for %2$d items', $item_count, 'woocommerce-subscriptions'), $order->get_formatted_order_total(), $item_count));
-						?>
+
+        echo esc_html(wc_get_order_status_name($order->get_status()));
+        ?>
+					</td>
+					<td class="order-total woocommerce-orders-table__cell woocommerce-orders-table__cell-order-total" data-title="<?php
+
+        echo esc_attr_x('Total', 'Used in data attribute. Escaped', 'woocommerce-subscriptions');
+        ?>">
+						<?php
+        // translators: $1: formatted order total for the order, $2: number of items bought
+        echo wp_kses_post(sprintf(_n('%1$s for %2$d item', '%1$s for %2$d items', $item_count, 'woocommerce-subscriptions'), $order->get_formatted_order_total(), $item_count));
+        ?>
 					</td>
 					<td class="order-actions woocommerce-orders-table__cell woocommerce-orders-table__cell-order-actions">
-						<?php $actions = array();
+						<?php
 
-						/*if ($order->needs_payment() && wcs_get_objects_property($order, 'id') == $subscription->get_last_order('ids', 'any')) {
-							$actions['pay'] = array(
-								'url'  => $order->get_checkout_payment_url(),
-								'name' => esc_html_x('Pay', 'pay for a subscription', 'woocommerce-subscriptions'),
-							);
-						}*/
+        $actions = array();
 
-						/*if (in_array($order->get_status(), apply_filters('woocommerce_valid_order_statuses_for_cancel', array('pending', 'failed'), $order))) {
-							$redirect = wc_get_page_permalink('myaccount');
+        /*
+         * if ($order->needs_payment() && wcs_get_objects_property($order, 'id') == $subscription->get_last_order('ids', 'any')) {
+         * $actions['pay'] = array(
+         * 'url' => $order->get_checkout_payment_url(),
+         * 'name' => esc_html_x('Pay', 'pay for a subscription', 'woocommerce-subscriptions'),
+         * );
+         * }
+         */
 
-							if (wcs_is_view_subscription_page()) {
-								$redirect = $subscription->get_view_order_url();
-							}
+        /*
+         * if (in_array($order->get_status(), apply_filters('woocommerce_valid_order_statuses_for_cancel', array('pending', 'failed'), $order))) {
+         * $redirect = wc_get_page_permalink('myaccount');
+         *
+         * if (wcs_is_view_subscription_page()) {
+         * $redirect = $subscription->get_view_order_url();
+         * }
+         *
+         * $actions['cancel'] = array(
+         * 'url' => $order->get_cancel_order_url($redirect),
+         * 'name' => esc_html_x('Cancel', 'an action on a subscription', 'woocommerce-subscriptions'),
+         * );
+         * }
+         */
 
-							$actions['cancel'] = array(
-								'url'  => $order->get_cancel_order_url($redirect),
-								'name' => esc_html_x('Cancel', 'an action on a subscription', 'woocommerce-subscriptions'),
-							);
-						}*/
+        $actions['view'] = array(
+            'url' => $order->get_view_order_url(),
+            'name' => esc_html_x('View', 'view a subscription', 'woocommerce-subscriptions')
+        );
 
-						$actions['view'] = array(
-							'url'  => $order->get_view_order_url(),
-							'name' => esc_html_x('View', 'view a subscription', 'woocommerce-subscriptions'),
-						);
+        $actions = apply_filters('woocommerce_my_account_my_orders_actions', $actions, $order);
 
-						$actions = apply_filters('woocommerce_my_account_my_orders_actions', $actions, $order);
-
-						if ($actions) {
-							foreach ($actions as $key => $action) {
-								echo wp_kses_post('<a href="' . esc_url($action['url']) . '" class="woocommerce-button button ' . sanitize_html_class($key) . '">' . esc_html($action['name']) . '</a>');
-							}
-						}
-						?>
+        if ($actions) {
+            foreach ($actions as $key => $action) {
+                echo wp_kses_post('<a href="' . esc_url($action['url']) . '" class="woocommerce-button button ' . sanitize_html_class($key) . '">' . esc_html($action['name']) . '</a>');
+            }
+        }
+        ?>
 					</td>
 				</tr>
-			<?php } ?>
+			<?php
+    }
+    ?>
 		</tbody>
 	</table>
-<?php } ?>
+<?php
+}
+?>
 <section class="woocommerce-customer-details">
 	<h2 class="woocommerce-column__title">Billing address</h2>
 	<address>
 		<?php
-		echo $subscription['data']['billing']['firstName'] . ' ' . $subscription['data']['billing']['lastName'];
-		echo "<br />";
-		if (!empty($subscription['data']['billing']['company'])) {
-			echo $subscription['data']['billing']['company'];
-			echo "<br />";
-		}
-		if (!empty($subscription['data']['billing']['address1'])) {
-			echo $subscription['data']['billing']['address1'];
-		}
-		if (!empty($subscription['data']['billing']['address2'])) {
-			echo ' ' . $subscription['data']['billing']['address2'];
-		}
-		if (!empty($subscription['data']['billing']['city'])) {
-			echo ' ' . $subscription['data']['billing']['city'];
-		}
-		if (!empty($subscription['data']['billing']['state'])) {
-			echo ' ' . $subscription['data']['billing']['state'];
-		}
-		if (!empty($subscription['data']['billing']['postcode'])) {
-			echo ' ' . $subscription['data']['billing']['postcode'];
-		}
-		if (!empty($subscription['data']['billing']['country'])) {
-			echo ' ' . $subscription['data']['billing']['country'];
-		}
-		echo "<br />"; ?>
+echo $subscription['data']['billing']['firstName'] . ' ' . $subscription['data']['billing']['lastName'];
+echo "<br />";
+if (! empty($subscription['data']['billing']['company'])) {
+    echo $subscription['data']['billing']['company'];
+    echo "<br />";
+}
+if (! empty($subscription['data']['billing']['address1'])) {
+    echo $subscription['data']['billing']['address1'];
+}
+if (! empty($subscription['data']['billing']['address2'])) {
+    echo ' ' . $subscription['data']['billing']['address2'];
+}
+if (! empty($subscription['data']['billing']['city'])) {
+    echo ' ' . $subscription['data']['billing']['city'];
+}
+if (! empty($subscription['data']['billing']['state'])) {
+    echo ' ' . $subscription['data']['billing']['state'];
+}
+if (! empty($subscription['data']['billing']['postcode'])) {
+    echo ' ' . $subscription['data']['billing']['postcode'];
+}
+if (! empty($subscription['data']['billing']['country'])) {
+    echo ' ' . $subscription['data']['billing']['country'];
+}
+echo "<br />";
+?>
 
-		<?php if (!empty($subscription['data']['billing']['phone'])) : ?>
-			<p class="woocommerce-customer-details--phone"><?php echo esc_html($subscription['data']['billing']['phone']); ?></p>
-		<?php endif; ?>
+		<?php
 
-		<?php if (!empty($subscription['data']['billing']['email'])) : ?>
-			<p class="woocommerce-customer-details--email"><?php echo esc_html($subscription['data']['billing']['email']); ?></p>
-		<?php endif; ?>
+if (! empty($subscription['data']['billing']['phone'])) :
+    ?>
+			<p class="woocommerce-customer-details--phone"><?php
+
+    echo esc_html($subscription['data']['billing']['phone']);
+    ?></p>
+		<?php endif;
+
+?>
+
+		<?php
+
+if (! empty($subscription['data']['billing']['email'])) :
+    ?>
+			<p class="woocommerce-customer-details--email"><?php
+
+    echo esc_html($subscription['data']['billing']['email']);
+    ?></p>
+		<?php endif;
+
+?>
 	</address>
 
 </section>

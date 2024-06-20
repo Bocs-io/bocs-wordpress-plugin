@@ -1,8 +1,11 @@
 <?php
+use function Loader\add_filter;
 
 class Admin
 {
+
     private $headers;
+
     private $save_widget_nonce = '';
 
     public function __construct()
@@ -12,7 +15,7 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (!empty($options['bocs_headers']['organization']) && !empty($options['bocs_headers']['store']) && !empty($options['bocs_headers']['authorization'])) {
+        if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
             $this->headers = [
                 'Organization' => $options['bocs_headers']['organization'],
                 'Store' => $options['bocs_headers']['store'],
@@ -162,7 +165,7 @@ class Admin
 
         wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
             'jquery'
-        ), '20240422.2');
+        ), '20240617.1');
         wp_enqueue_script("bocs-admin-js");
 
         // we will get the list of collections and widgets
@@ -368,17 +371,17 @@ class Admin
      */
     public function bocs_render_plugin_settings_page()
     {
-?>
+        ?>
         <h2>Bocs Settings</h2>
         <form action="options.php" method="post">
             <?php
-            settings_fields('bocs_plugin_options');
-            do_settings_sections('bocs_plugin');
-            ?>
+        settings_fields('bocs_plugin_options');
+        do_settings_sections('bocs_plugin');
+        ?>
             <input name="submit" class="button button-primary" type="submit" value="<?php
 
-                                                                                    esc_attr_e('Save');
-                                                                                    ?>" />
+        esc_attr_e('Save');
+        ?>" />
         </form>
 <?php
     }
@@ -513,7 +516,7 @@ class Admin
     {
         if (isset($newinput['api_key'])) {
             $newinput['api_key'] = trim($input['api_key']);
-            if (!preg_match('/^[-a-z0-9]{36}$/i', $newinput['api_key'])) {
+            if (! preg_match('/^[-a-z0-9]{36}$/i', $newinput['api_key'])) {
                 $newinput['api_key'] = '';
             }
         }
@@ -538,7 +541,7 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-nonce')) {
+        if (! wp_verify_nonce($nonce, 'ajax-nonce')) {
             die('Invalid nonce');
         }
 
@@ -635,7 +638,7 @@ class Admin
         $collectionid = $order->get_meta('__bocs_collections_id');
         $frequency_id = $order->get_meta('__bocs_frequency_id');
 
-        if (empty($bocsid)) {
+        if (empty($bocsid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs');
 
             if (empty($bocs_value)) {
@@ -644,17 +647,17 @@ class Admin
                 }
             }
 
-            if (!empty($bocs_value)) {
+            if (! empty($bocs_value)) {
                 $bocsid = $bocs_value;
                 $order->update_meta_data('__bocs_bocs_id', $bocs_value);
             }
         }
 
-        $is_bocs = !empty($bocsid);
+        $is_bocs = ! empty($bocsid);
 
         error_log('BOCS ID: ' . $bocsid);
 
-        if (empty($collectionid)) {
+        if (empty($collectionid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_collection');
 
             if (empty($bocs_value)) {
@@ -663,7 +666,7 @@ class Admin
                 }
             }
 
-            if (!empty($bocs_value)) {
+            if (! empty($bocs_value)) {
                 $collectionid = $bocs_value;
                 $order->update_meta_data('__bocs_collection_id', $bocs_value);
             }
@@ -671,7 +674,7 @@ class Admin
 
         error_log('COLLECTION ID: ' . $collectionid);
 
-        if (empty($frequency_id)) {
+        if (empty($frequency_id) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_frequency');
 
             if (empty($bocs_value)) {
@@ -680,7 +683,7 @@ class Admin
                 }
             }
 
-            if (!empty($bocs_value)) {
+            if (! empty($bocs_value)) {
                 $frequency_id = $bocs_value;
                 $order->update_meta_data('__bocs_frequency_id', $bocs_value);
             }
@@ -727,7 +730,7 @@ class Admin
             $customer_id = $order->get_customer_id();
             $bocs_customer_id = '';
 
-            if (!empty($customer_id)) {
+            if (! empty($customer_id)) {
 
                 $bocs_customer_id = get_user_meta($customer_id, 'bocs_user_id', true);
 
@@ -817,7 +820,7 @@ class Admin
             $curl = curl_init();
             $post_data = '{"bocs":{"id": "' . $bocsid . '"},';
 
-            if (!empty($collectionid)) {
+            if (! empty($collectionid)) {
                 $post_data .= '"collection": {"id": "' . $collectionid . '"},';
             }
 
@@ -871,7 +874,7 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-search-nonce')) {
+        if (! wp_verify_nonce($nonce, 'ajax-search-nonce')) {
             die('Invalid nonce');
         }
 
@@ -894,7 +897,7 @@ class Admin
             $bocs_product_type = 'bocs_product_id';
         }
 
-        if (!empty($bocs_frequency_id) && !empty($bocs_bocs_id)) {
+        if (! empty($bocs_frequency_id) && ! empty($bocs_bocs_id)) {
             $prepare_query = $wpdb->prepare("SELECT pm1.post_id FROM " . $wpdb->prefix . "postmeta as pm1
 				INNER JOIN " . $wpdb->prefix . "postmeta as pm2 ON pm2.post_id = pm1.post_id
 				WHERE pm1.meta_key = %s AND pm1.meta_value = %s AND pm2.meta_key = %s AND pm2.meta_value = %s", 'bocs_frequency_id', $bocs_frequency_id, 'bocs_bocs_id', $bocs_bocs_id);
@@ -923,7 +926,7 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-update-product-nonce')) {
+        if (! wp_verify_nonce($nonce, 'ajax-update-product-nonce')) {
             die('Invalid nonce');
         }
 
@@ -946,7 +949,7 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'ajax-create-coupon-nonce')) {
+        if (! wp_verify_nonce($nonce, 'ajax-create-coupon-nonce')) {
             die('Invalid nonce');
         }
 
@@ -985,7 +988,7 @@ class Admin
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
 
-        if (!wp_verify_nonce($nonce, 'save-widget-nonce')) {
+        if (! wp_verify_nonce($nonce, 'save-widget-nonce')) {
             die('Invalid nonce');
         }
 
@@ -993,7 +996,7 @@ class Admin
         $selectedOptionName = isset($_POST['selectedOptionName']) ? $_POST['selectedOptionName'] : '';
         $postId = isset($_POST['postId']) ? $_POST['postId'] : '';
 
-        if (!empty($postId) && !empty($selectedOption)) {
+        if (! empty($postId) && ! empty($selectedOption)) {
             update_post_meta($postId, 'selected_bocs_widget_id', $selectedOption);
             update_post_meta($postId, 'selected_bocs_widget_name', $selectedOptionName);
             echo 'success';
@@ -1062,7 +1065,7 @@ class Admin
     {
 
         // if( !is_admin() || !$query->is_main_query() ) return;
-        if (!is_admin())
+        if (! is_admin())
             return;
 
         $current_source = isset($_GET['source']) ? $_GET['source'] : '';
@@ -1172,8 +1175,7 @@ class Admin
      * @return void
      */
     public function update_widgets_collections()
-    {
-    }
+    {}
 
     /**
      * Adds sidebar to a product edit page
@@ -1204,7 +1206,7 @@ class Admin
         $logs_class = new Bocs_Log_Handler();
         $comments = $logs_class->get_product_logs($post->ID);
 
-        if (!empty($comments)) {
+        if (! empty($comments)) {
             foreach ($comments as $comment) {
                 echo "<p>" . $comment['comment_content'] . "</p>";
             }
@@ -1217,7 +1219,7 @@ class Admin
         $__bocs_collections_id = '';
 
         // Check if cart item has meta data
-        if (isset($values['meta_data']) && !empty($values['meta_data'])) {
+        if (isset($values['meta_data']) && ! empty($values['meta_data'])) {
             foreach ($values['meta_data'] as $meta) {
 
                 if ($meta->key == '__bocs_bocs_id' && $__bocs_bocs_id == '') {
@@ -1250,7 +1252,7 @@ class Admin
 
     public function add_custom_to_cart_data($add_to_cart_data, $request)
     {
-        if (!empty($request['meta_data'])) {
+        if (! empty($request['meta_data'])) {
             $add_to_cart_data['meta_data'] = sanitize_text_field($request['meta_data']);
         }
 
@@ -1263,13 +1265,13 @@ class Admin
 
             if (isset($_GET['bocs'])) {
                 $bocs_value = sanitize_text_field($_GET['bocs']);
-                if (!empty($bocs_value))
+                if (! empty($bocs_value))
                     WC()->session->set('bocs', $bocs_value);
             } else {
                 // check the cookie
                 if (isset($_COOKIE['__bocs_id'])) {
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                    if (!empty($bocs_value)) {
+                    if (! empty($bocs_value)) {
                         WC()->session->set('bocs', $bocs_value);
                     }
                 }
@@ -1277,13 +1279,13 @@ class Admin
 
             if (isset($_GET['collection'])) {
                 $bocs_value = sanitize_text_field($_GET['collection']);
-                if (!empty($bocs_value))
+                if (! empty($bocs_value))
                     WC()->session->set('bocs_collection', $bocs_value);
             } else {
                 // check the cookie
                 if (isset($_COOKIE['__bocs_collection_id'])) {
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                    if (!empty($bocs_value)) {
+                    if (! empty($bocs_value)) {
                         WC()->session->set('bocs_collection', $bocs_value);
                     }
                 }
@@ -1291,13 +1293,13 @@ class Admin
 
             if (isset($_GET['frequency'])) {
                 $bocs_value = sanitize_text_field($_GET['frequency']);
-                if (!empty($bocs_value))
+                if (! empty($bocs_value))
                     WC()->session->set('bocs_frequency', $bocs_value);
             } else {
                 // check the cookie
                 if (isset($_COOKIE['__bocs_frequency_id'])) {
                     $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                    if (!empty($bocs_value)) {
+                    if (! empty($bocs_value)) {
                         WC()->session->set('bocs_frequency', $bocs_value);
                     }
                 }
@@ -1358,8 +1360,8 @@ class Admin
     {
         $url = BOCS_API_URL . "bocs/" . $id;
         $bocs_helper = new Bocs_Helper();
-        //error_log($url);
-        //error_log(print_r($this->headers, true));
+        // error_log($url);
+        // error_log(print_r($this->headers, true));
         $widgets_data = $bocs_helper->curl_request($url, 'GET', [], $this->headers);
 
         return $widgets_data;
@@ -1370,7 +1372,7 @@ class Admin
         // Get the order object
         $order = wc_get_order($order_id);
 
-        if (!$order) {
+        if (! $order) {
             return json_encode(array(
                 'error' => 'Order not found'
             ));
@@ -1508,7 +1510,7 @@ class Admin
             $options = get_option('bocs_plugin_options');
             $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-            if (!empty($options['bocs_headers']['organization']) && $options['bocs_headers']['store'] && $options['bocs_headers']['authorization']) {
+            if (! empty($options['bocs_headers']['organization']) && $options['bocs_headers']['store'] && $options['bocs_headers']['authorization']) {
                 $curl = curl_init();
 
                 curl_setopt_array($curl, array(
@@ -1541,5 +1543,190 @@ class Admin
                 }
             }
         }
+    }
+
+    public function show_related_orders()
+    {
+        $page = $_GET['page'];
+        $action = $_GET['action'];
+        $id = $_GET['id'];
+
+        if (! empty($page) && ! empty($action) && ! empty($id)) {
+            if ($page == 'wc-orders' && $action == 'edit' && $id > 0) {
+                // get order details
+                $order = wc_get_order($id);
+                if ($order) {
+                    error_log('show_related_orders');
+                    add_meta_box('bocs_order_meta_box', // Unique ID for the metabox
+                    'Bocs Related Orders', // Title of the metabox
+                    array(
+                        $this,
+                        'order_meta_box_content'
+                    ), // Callback function to display content
+                    NULL, // Post type where the metabox should appear
+                    'normal', // Context (normal, side, advanced)
+                    'low' // Priority (high, core, default, low)
+                    );
+                }
+            }
+        }
+    }
+
+    public function order_meta_box_content($post)
+    {
+        error_log('order_meta_box_content');
+        $order_id = $post->ID;
+        error_log($order_id);
+
+        $parent_subscription = $this->get_bocs_subscription($order_id);
+
+        $related_orders = $this->get_related_orders($order_id);
+
+        if (! empty($related_orders) || ! empty($parent_subscription)) {
+
+            echo '<table class="widefat fixed">';
+            echo '<thead>';
+            echo '<tr>';
+            echo '<th>Order Number</th>';
+            echo '<th>Relationship</th>';
+            echo '<th>Date</th>';
+            echo '<th>Status</th>';
+            echo '<th>Total</th>';
+            echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
+
+            if ($parent_subscription) {
+
+                $billingInterval = 0;
+                $billingPeriod = '';
+
+                if (isset($parent_subscription['billingInterval'])) {
+                    $billingInterval = $parent_subscription['billingInterval'];
+                }
+
+                if (empty($billingInterval) && isset($parent_subscription['frequency']['frequency'])) {
+                    $billingInterval = $parent_subscription['frequency']['frequency'];
+                }
+
+                if (isset($parent_subscription['billingPeriod'])) {
+                    $billingPeriod = $parent_subscription['billingPeriod'];
+                }
+
+                if (empty($billingPeriod) && isset($parent_subscription['frequency']['timeUnit'])) {
+                    $billingPeriod = $parent_subscription['frequency']['timeUnit'];
+                }
+
+                $billingPeriod = $billingPeriod . 's';
+
+                if ($billingInterval <= 1) {
+                    // Remove trailing 's' if it exists
+                    $billingPeriod = rtrim($billingPeriod, 's');
+                    $billingInterval = '';
+                }
+
+                $date_started = '';
+                if (isset($parent_subscription['startDateGmt'])) {
+                    $date = new DateTime($parent_subscription['startDateGmt']);
+                    $date_started = $date->format('F j, Y');
+                }
+
+                echo '<tr>';
+                echo '<td>' . $parent_subscription['id'] . '</td>';
+                echo '<td>Bocs Subscription</td>';
+                echo '<td>' . $date_started . '</td>';
+                echo '<td>' . ucfirst($parent_subscription['subscriptionStatus']) . '</td>';
+                echo '<td>' . $parent_subscription['total'] . ' every ' . trim($billingInterval . ' ' . $billingPeriod) . '</td>';
+                echo '</tr>';
+            }
+
+            foreach ($related_orders as $related_order) {
+                echo '<tr>';
+                echo '<td><a href="' . get_edit_post_link($related_order->get_id()) . '">' . $related_order->get_order_number() . '</a></td>';
+                echo '<td>' . $this->get_order_relationship($order_id, $related_order->get_id()) . '</td>';
+                echo '<td>' . $related_order->get_date_created()->date('Y-m-d H:i:s') . '</td>';
+                echo '<td>' . wc_get_order_status_name($related_order->get_status()) . '</td>';
+                echo '<td>' . $related_order->get_formatted_order_total() . '</td>';
+                echo '</tr>';
+            }
+
+            echo '</tbody>';
+            echo '</table>';
+        } else {
+            echo '<p>No related orders found.</p>';
+        }
+    }
+
+    /**
+     *
+     * @param integer $order_id
+     * @return boolean|boolean|string
+     */
+    public function get_bocs_subscription($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        if (! $order)
+            return FALSE;
+
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id', true);
+
+        if (empty($bocs_subscription_id))
+            return FALSE;
+
+        // get the details of the bocs subscription
+        $helper = new Bocs_Helper();
+        $url = BOCS_API_URL . 'subscriptions/' . $bocs_subscription_id;
+        $subscription = $helper->curl_request($url, 'GET', NULL, $this->headers);
+
+        return $subscription['data'];
+    }
+
+    public function get_related_orders($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        if (! $order)
+            return [];
+
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id', true);
+
+        if (empty($bocs_subscription_id))
+            return [];
+
+        error_log('get_related_orders ' . $bocs_subscription_id);
+
+        // Query for orders with the same meta value
+        $args = array(
+            'limit' => - 1,
+            'orderby' => 'id',
+            'order' => 'DESC',
+            'meta_key' => '__bocs_subscription_id',
+            'meta_value' => $bocs_subscription_id,
+            'meta_compare' => '=',
+            'return' => 'objects' // Return order objects
+        );
+
+        $query = new WC_Order_Query($args);
+        $orders = $query->get_orders();
+
+        // Exclude the current order from the results
+        return array_filter($orders, function ($order) use ($order_id) {
+            return $order->get_id() != $order_id;
+        });
+    }
+
+    public function has_related_orders($order_id)
+    {
+        $related_orders = $this->get_related_orders($order_id);
+        $parent_subscription = $this->get_bocs_subscription($order_id);
+        return ! empty($related_orders) || ! empty($parent_subscription['data']);
+    }
+
+    public function get_order_relationship($order_id, $related_order_id)
+    {
+        // Determine the relationship between orders. This is a placeholder.
+        // Implement your logic to determine the relationship between orders.
+        return 'Renewal Order';
     }
 }

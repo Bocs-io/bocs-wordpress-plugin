@@ -1,3 +1,8 @@
+v0.0.66 06/18/2024
+* Added related orders
+* Added email triggers for the renewal orders
+* Added the custom woocommerce rest api for email
+
 v0.0.65 06/11/2024
 * default ticked for 'Save payment information to my account for future purchases'
 * add the subscriptions totals after the buttons

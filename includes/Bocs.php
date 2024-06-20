@@ -51,9 +51,11 @@ class Bocs
         $this->define_updater_hooks();
         $this->define_admin_hooks();
         $this->define_public_hooks();
+        $this->define_email_hooks();
 
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
+        $this->define_bocs_email_api();
     }
 
     /**
@@ -126,6 +128,23 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
+
+        // email rest api
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
+
+        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
+
+        /*
+         * if (!class_exists('WC_Email')) {
+         * require_once WC_ABSPATH . 'includes/class-wc-emails.php';
+         * }
+         */
+
+        // emails
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
 
         $this->loader = new Loader();
     }
@@ -265,6 +284,9 @@ class Bocs
 
         // adding meta box on the product page
         $this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_product_sidebar_to_woocommerce_admin');
+
+        // adding meta box for the related orders
+        $this->loader->add_action('add_meta_boxes', $plugin_admin, 'show_related_orders');
     }
 
     /**
@@ -290,6 +312,43 @@ class Bocs
 
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
+    }
+
+    public function define_email_hooks()
+    {
+        $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
+        // $bocs_email = new Bocs_Email();
+
+        // $this->loader->add_filter('woocommerce_email_classes', $bocs_email, 'add_bocs_processing_renewal_email_class', 10, 1);
+
+        // $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_cancelled_to_processing', $processing_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_on-hold_to_processing', $processing_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_processing', $processing_orders, 'trigger', 10, 1);
+
+        $completed_orders = new WC_Bocs_Email_Completed_Renewal_Order();
+        // $this->loader->add_action('woocommerce_order_status_pending_to_completed', $completed_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_failed_to_completed', $completed_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_cancelled_to_completed', $completed_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_completed', $completed_orders, 'trigger', 10, 1);
+
+        $onhold_orders = new WC_Bocs_Email_On_Hold_Renewal_Order();
+        // $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_cancelled_to_on-hold', $onhold_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_on-hold', $onhold_orders, 'trigger', 10, 1);
+
+        $renewal_invoice = new WC_Bocs_Email_Customer_Renewal_Invoice();
+        $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
+        // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
+    }
+
+    public function define_bocs_email_api()
+    {
+        $email_api = new Bocs_Email_API();
+        $this->loader->add_action('rest_api_init', $email_api, 'register_routes');
     }
 
     /**

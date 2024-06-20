@@ -161,7 +161,7 @@ jQuery(window).on("load", function () {
                         headers: {
                             'Organization': bocsAjaxObject.Organization,
                             'Store': bocsAjaxObject.Store,
-                            'Authorization': s.Authorization
+                            'Authorization': bocsAjaxObject.Authorization
                         }
                     });
 

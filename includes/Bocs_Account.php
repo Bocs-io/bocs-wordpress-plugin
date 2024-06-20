@@ -10,7 +10,7 @@ class Bocs_Account
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (!empty($options['bocs_headers']['organization']) && !empty($options['bocs_headers']['store']) && !empty($options['bocs_headers']['authorization'])) {
+        if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
             $this->headers = [
                 'Organization' => $options['bocs_headers']['organization'],
                 'Store' => $options['bocs_headers']['store'],
@@ -47,12 +47,12 @@ class Bocs_Account
 
         $data = false;
 
-        if (!empty($user_id)) {
+        if (! empty($user_id)) {
             $bocs_customer_id = get_user_meta($user_id, 'bocs_user_id', true);
 
             $url = BOCS_API_URL . 'subscriptions';
 
-            if (!empty($bocs_customer_id)) {
+            if (! empty($bocs_customer_id)) {
                 $data = [
                     'customer.id' => $bocs_customer_id
                 ];
@@ -100,7 +100,6 @@ class Bocs_Account
 
         // Get the subscription ID from the URL
         $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
-        error_log('bocs_view_subscription_endpoint_content: ' . $bocs_subscription_id);
 
         // get the details of the subscription
         if ($bocs_subscription_id) {
@@ -113,7 +112,25 @@ class Bocs_Account
 
             // get the related orders
             $url = BOCS_API_URL . 'orders';
-            $related_orders = $helper->curl_request($url, 'GET', ['subscriptionId' => $bocs_subscription_id], $this->headers);
+            $related_orders = $helper->curl_request($url, 'GET', [
+                'subscriptionId' => $bocs_subscription_id
+            ], $this->headers);
+
+            // in case that the related orders not exists or there is none
+            if (! isset($related_orders['data']) || empty($related_orders['data'])) {
+                $args = array(
+                    'limit' => - 1, // Retrieve all orders
+                    'orderby' => 'date',
+                    'order' => 'DESC',
+                    'meta_key' => '__bocs_subscription_id',
+                    'meta_value' => $bocs_subscription_id,
+                    'meta_compare' => '=',
+                    'return' => 'ids' // Return only order IDs
+                );
+
+                $query = new WC_Order_Query($args);
+                $related_orders['order_ids'] = $query->get_orders();
+            }
 
             $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_view_subscription.php';
 
