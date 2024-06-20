@@ -52,6 +52,7 @@ class Bocs
         $this->define_admin_hooks();
         $this->define_public_hooks();
         $this->define_email_hooks();
+        $this->define_checkout_page_hooks();
 
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
@@ -343,6 +344,12 @@ class Bocs
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
+    }
+
+    public function define_checkout_page_hooks()
+    {
+        // $bocs_cart = new Bocs_Cart();
+        // $this->loader->add_action('woocommerce_review_order_after_cart_contents', $bocs_cart, 'bocs_review_order_after_cart_contents');
     }
 
     public function define_bocs_email_api()

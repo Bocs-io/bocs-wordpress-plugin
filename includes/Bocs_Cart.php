@@ -55,4 +55,10 @@ class Bocs_Cart
 		</div>
         <?php
     }
+
+    public function bocs_review_order_after_cart_contents()
+    {
+        error_log('bocs_review_order_after_cart_contents');
+        echo 'bocs_review_order_after_cart_contents';
+    }
 }

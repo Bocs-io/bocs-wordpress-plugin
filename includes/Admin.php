@@ -1643,7 +1643,7 @@ class Admin
             foreach ($related_orders as $related_order) {
                 echo '<tr>';
                 echo '<td><a href="' . get_edit_post_link($related_order->get_id()) . '">' . $related_order->get_order_number() . '</a></td>';
-                echo '<td>' . $this->get_order_relationship($order_id, $related_order->get_id()) . '</td>';
+                echo '<td>Renewal Order</td>';
                 echo '<td>' . $related_order->get_date_created()->date('Y-m-d H:i:s') . '</td>';
                 echo '<td>' . wc_get_order_status_name($related_order->get_status()) . '</td>';
                 echo '<td>' . $related_order->get_formatted_order_total() . '</td>';
