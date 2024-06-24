@@ -58,7 +58,18 @@ class Bocs_Cart
 
     public function bocs_review_order_after_cart_contents()
     {
-        error_log('bocs_review_order_after_cart_contents');
         echo 'bocs_review_order_after_cart_contents';
+    }
+
+    public function bocs_review_order_before_order_total()
+    {
+        error_log('bocs_review_order_before_order_total');
+        echo '<tr class="custom-text-before-subtotal"><th>Additional Info:</th><td>Your custom message here.</td></tr>';
+    }
+
+    public function bocs_cart_totals_before_order_total()
+    {
+        error_log('bocs_cart_totals_before_order_total');
+        echo '<tr class="custom-text-before-subtotal"><th>Additional Info:</th><td>Your custom message here.</td></tr>';
     }
 }

@@ -1,7 +1,4 @@
 jQuery(document).ready(function ($) {
-
-    console.log(viewSubscriptionObject);
-
     // disable the a.bocs-button by default
     $('a.bocs-button').on('click', function (e) {
         e.preventDefault();

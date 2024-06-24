@@ -1,3 +1,6 @@
+v0.0.67 06/24/2024
+* added the bocs subscription related for the cart and checkout page
+
 v0.0.66 06/18/2024
 * Added related orders
 * Added email triggers for the renewal orders

@@ -348,8 +348,9 @@ class Bocs
 
     public function define_checkout_page_hooks()
     {
-        // $bocs_cart = new Bocs_Cart();
-        // $this->loader->add_action('woocommerce_review_order_after_cart_contents', $bocs_cart, 'bocs_review_order_after_cart_contents');
+        $bocs_cart = new Bocs_Cart();
+        $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
+        $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
     }
 
     public function define_bocs_email_api()

@@ -10,7 +10,7 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.65
+ * Version:           0.0.67
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -20,34 +20,36 @@
  * Requires at least: 5.6.0
  * Requires PHP: 7.3.5
  */
-if (!defined('WPINC') || !defined('ABSPATH')) {
+use function Loader\add_action;
+
+if (! defined('WPINC') || ! defined('ABSPATH')) {
     die();
 }
 
-define('BOCS_VERSION', '0.0.65');
+define('BOCS_VERSION', '0.0.67');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
 
 // just in case the action scheduler is not yet installed in woommerce (or other plugins)
-if (!function_exists('as_has_scheduled_action')) {
-    require_once(plugin_dir_path(__FILE__) . '/libraries/action-scheduler/action-scheduler.php');
+if (! function_exists('as_has_scheduled_action')) {
+    require_once (plugin_dir_path(__FILE__) . '/libraries/action-scheduler/action-scheduler.php');
 }
 
 if (file_exists(dirname(__FILE__) . '/includes/vendor/autoload.php')) {
     require_once dirname(__FILE__) . '/includes/vendor/autoload.php';
 }
 
-if (!class_exists('WP_List_Table')) {
-    require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+if (! class_exists('WP_List_Table')) {
+    require_once (ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 
-if (!class_exists('Updater')) {
+if (! class_exists('Updater')) {
     require_once dirname(__FILE__) . '/includes/Updater.php';
 }
 
-if (!function_exists('wp_create_nonce')) {
-    require_once(ABSPATH . 'wp-includes/pluggable.php');
+if (! function_exists('wp_create_nonce')) {
+    require_once (ABSPATH . 'wp-includes/pluggable.php');
 }
 
 /**
@@ -62,7 +64,7 @@ require plugin_dir_path(__FILE__) . 'includes/Bocs_Account.php';
  */
 function activate_bocs_plugin()
 {
-    if (!class_exists('WooCommerce')) {
+    if (! class_exists('WooCommerce')) {
         // Deactivate the current plugin
         deactivate_plugins(plugin_basename(__FILE__));
 
@@ -112,19 +114,19 @@ register_activation_hook(__FILE__, 'activate_bocs_plugin');
 register_deactivation_hook(__FILE__, 'deactivate_bocs_plugin');
 run_plugin();
 
-if (!class_exists("Bocs\\Updater\\Repository\\AbstractRepository")) {
+if (! class_exists("Bocs\\Updater\\Repository\\AbstractRepository")) {
     require_once dirname(__FILE__) . '/includes/Updater/Repository/AbstractRepository.php';
 }
 
-if (!class_exists("Bocs\Updater\Repository\Github")) {
+if (! class_exists("Bocs\Updater\Repository\Github")) {
     require_once dirname(__FILE__) . '/includes/Updater/Repository/Github.php';
 }
 
-if (!class_exists("Bocs\Updater\Repository\BocsRepo")) {
+if (! class_exists("Bocs\Updater\Repository\BocsRepo")) {
     require_once dirname(__FILE__) . '/includes/Updater/Repository/BocsRepo.php';
 }
 
-if (!class_exists("Bocs\Updater\Updater")) {
+if (! class_exists("Bocs\Updater\Updater")) {
     require_once dirname(__FILE__) . '/includes/Updater/Updater.php';
 }
 

@@ -242,11 +242,83 @@ class Admin
             ));
         }
 
+        // get the current bocs subscription id
+        $bocs_id = ! empty($bocs_id) ? $bocs_id : '';
+
+        if (empty($bocs_id) && isset(WC()->session)) {
+            $bocs_id = WC()->session->get('bocs');
+
+            if (empty($bocs_id)) {
+                if (isset($_COOKIE['__bocs_id'])) {
+                    $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+                }
+            }
+        }
+
+        $frequency_id = ! empty($frequency_id) ? $frequency_id : '';
+
+        if (empty($frequency_id) && isset(WC()->session)) {
+            $bocs_value = WC()->session->get('bocs_frequency');
+
+            if (empty($bocs_value)) {
+                if (isset($_COOKIE['__bocs_frequency_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+                }
+            }
+
+            if (! empty($bocs_value)) {
+                $frequency_id = $bocs_value;
+            }
+        }
+
+        $current_frequency = null;
+        $bocs_body = $this->get_bocs_data_from_api($bocs_id);
+
+        if (isset($bocs_body['data']['priceAdjustment']['adjustments'])) {
+            foreach ($bocs_body['data']['priceAdjustment']['adjustments'] as $frequency) {
+                if ($frequency['id'] == $frequency_id) {
+                    $current_frequency = $frequency;
+                    break;
+                }
+            }
+        }
+
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
             wp_enqueue_script('bocs-stripe-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js', array(
                 'jquery'
             ), '20240611.8', true);
+
+            wp_enqueue_script('bocs-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js', array(
+                'jquery'
+            ), '20240624.1', true);
+
+            wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('ajax-nonce'),
+                'storeId' => $options['bocs_headers']['store'],
+                'orgId' => $options['bocs_headers']['organization'],
+                'authId' => $options['bocs_headers']['authorization'],
+                'frequency' => $current_frequency,
+                'bocs' => $bocs_body['data']
+            ));
+        }
+
+        if (is_cart()) {
+
+            wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
+                'jquery'
+            ), '20240624.21', true);
+
+            wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('ajax-nonce'),
+                'storeId' => $options['bocs_headers']['store'],
+                'orgId' => $options['bocs_headers']['organization'],
+                'authId' => $options['bocs_headers']['authorization'],
+                'frequency' => $current_frequency,
+                'bocs' => $bocs_body['data']
+            ));
         }
     }
 
