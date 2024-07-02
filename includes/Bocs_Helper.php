@@ -3,6 +3,15 @@
 class Bocs_Helper
 {
 
+    /**
+     * helper for curl requests
+     *
+     * @param unknown $url
+     * @param string $method
+     * @param array $data
+     * @param array $headers
+     * @return boolean[]|string[]|unknown
+     */
     public function curl_request($url, $method = 'GET', $data = [], $headers = [])
     {
         $ch = curl_init();
@@ -38,7 +47,7 @@ class Bocs_Helper
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             'Organization: ' . $headers['Organization'],
-	        'Content-Type: application/json',
+            'Content-Type: application/json',
             'Store: ' . $headers['Store'],
             'Authorization: ' . $headers['Authorization']
         ));

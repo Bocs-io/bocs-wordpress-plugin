@@ -305,10 +305,44 @@ class Admin
         }
 
         if (is_cart()) {
+            $product_ids = array();
+            if (empty($bocs_id)) {
+
+                // Check if WooCommerce is active and the cart is not empty
+                if (WC()->cart && ! WC()->cart->is_empty()) {
+                    // Loop through the cart items
+                    foreach (WC()->cart->get_cart() as $cart_item) {
+                        // Get the product ID and add it to the array
+                        $product_ids[] = $cart_item['product_id'];
+                    }
+                }
+
+                // get the list of available bocs
+                $bocs_class = new Bocs_Bocs();
+                $bocs_options = array();
+                $bocs_list = $bocs_class->get_all_bocs();
+                if (! empty($bocs_list) && ! empty($product_ids)) {
+
+                    foreach ($bocs_list as $bocs_item) {
+                        $bocs_wp_ids = array();
+                        // loop on its products
+                        if (! empty($bocs_item['products'])) {
+                            foreach ($bocs_item['products'] as $bocs_product) {
+                                $wp_id = $bocs_product['externalSourceId'];
+                                $bocs_wp_ids[] = $wp_id;
+                            }
+                        }
+                        if (empty(array_diff($product_ids, $bocs_wp_ids))) {
+                            // this bocs is can be an option
+                            $bocs_options[] = $bocs_item;
+                        }
+                    }
+                }
+            }
 
             wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
                 'jquery'
-            ), '20240624.21', true);
+            ), '20240702.1', true);
 
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -317,7 +351,8 @@ class Admin
                 'orgId' => $options['bocs_headers']['organization'],
                 'authId' => $options['bocs_headers']['authorization'],
                 'frequency' => $current_frequency,
-                'bocs' => $bocs_body['data']
+                'bocs' => $bocs_body['data'],
+                'bocsOptions' => ! empty($bocs_options) ? $bocs_options : $bocs_list
             ));
         }
     }

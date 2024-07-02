@@ -1,5 +1,5 @@
 jQuery(window).on('load', function() {
-	console.log(bocsCartObject);
+	
 	if(jQuery('div.wc-block-components-totals-wrapper').length > 0 && typeof bocsCartObject.bocs !== 'undefined' && typeof bocsCartObject.bocs !== undefined ){
 		
 		if(bocsCartObject.bocs['products'].length > 0){
@@ -36,6 +36,11 @@ jQuery(window).on('load', function() {
 		}
 		
 	}
+
+	/**
+	 * This will be auto detecting if we can make the product(s) as a bocs subscription
+	 */
+	console.log('bocsCartObject.bocsOptions', bocsCartObject.bocsOptions);
 	
 });
 
@@ -94,4 +99,19 @@ function getOrdinalSuffix(number) {
         return number + "rd";
     }
     return number + "th";
+}
+
+function getCookieValue(cookieName) {
+    var allCookies = document.cookie;
+    var cookieStart = allCookies.indexOf(cookieName + "=");
+    if (cookieStart === -1) {
+        return "";
+    }
+    var valueStart = cookieStart + cookieName.length + 1;
+    var valueEnd = allCookies.indexOf(";", valueStart);
+    if (valueEnd === -1) {
+        valueEnd = allCookies.length;
+    }
+    var cookieValue = allCookies.substring(valueStart, valueEnd);
+    return decodeURIComponent(cookieValue);
 }

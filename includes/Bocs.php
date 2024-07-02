@@ -147,6 +147,8 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
 
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
+
         $this->loader = new Loader();
     }
 
