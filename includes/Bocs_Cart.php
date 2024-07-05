@@ -5,29 +5,92 @@ class Bocs_Cart
 
     public function add_subscription_options_to_cart()
     {
-        ?>
-    <div class="subscription-options">
-        <h2>Make Your Cart a Subscription</h2>
-        <p>Select a frequency for your subscription:</p>
-        <form id="subscription-options-form" method="post">
-            <label>
-                <input type="radio" name="subscription_frequency" value="weekly" required> Weekly
-            </label>
-            <label>
-                <input type="radio" name="subscription_frequency" value="monthly" required> Monthly
-            </label>
-            <label>
-                <input type="radio" name="subscription_frequency" value="yearly" required> Yearly
-            </label>
-            <button type="submit" name="update_cart_to_subscription" value="1">Update to Subscription</button>
-        </form>
-    </div>
-    <?php
+        // echo 'add_subscription_options_to_cart';
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs-cart-convert-to-subscription.php';
+
+        $product_ids = array();
+
+        // get the current bocs subscription id
+        $bocs_id = ! empty($bocs_id) ? $bocs_id : '';
+
+        if (empty($bocs_id) && isset(WC()->session)) {
+            $bocs_id = WC()->session->get('bocs');
+
+            if (empty($bocs_id)) {
+                if (isset($_COOKIE['__bocs_id'])) {
+                    $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+                }
+            }
+        }
+
+        if (empty($bocs_id)) {
+
+            // Check if WooCommerce is active and the cart is not empty
+            if (WC()->cart && ! WC()->cart->is_empty()) {
+                // Loop through the cart items
+                foreach (WC()->cart->get_cart() as $cart_item) {
+                    // Get the product ID and add it to the array
+                    $product_ids[] = $cart_item['product_id'];
+                }
+            }
+
+            // get the list of available bocs
+            $bocs_class = new Bocs_Bocs();
+            $bocs_options = array();
+            $bocs_list = $bocs_class->get_all_bocs();
+            $total = 0;
+            if (! empty($bocs_list) && ! empty($product_ids)) {
+
+                foreach ($bocs_list as $bocs_item) {
+                    $bocs_wp_ids = array();
+                    // loop on its products
+                    if (! empty($bocs_item['products'])) {
+                        foreach ($bocs_item['products'] as $bocs_product) {
+                            $wp_id = $bocs_product['externalSourceId'];
+                            $bocs_wp_ids[] = $wp_id;
+                            $wc_product = wc_get_product($product_id);
+                            $total += $wc_product->get_regular_price();
+                        }
+                    }
+                    if (empty(array_diff($product_ids, $bocs_wp_ids))) {
+                        // this bocs is can be an option
+                        $bocs_options[] = $bocs_item;
+                    }
+                }
+
+                if (empty($bocs_options)) {
+                    foreach ($bocs_list as $bocs_item) {
+                        $bocs_item['products'] = [];
+                        foreach ($product_ids as $product_id) {
+                            $wc_product = wc_get_product($product_id);
+                            $bocs_item['products'][] = array(
+                                "description" => $wc_product->get_description(),
+                                "externalSource" => "WP",
+                                "externalSourceId" => $product_id,
+                                "id" => "", // get the bocs id
+                                "name" => $wc_product->get_name(), // get the woocoomerce product name
+                                "price" => $wc_product->get_regular_price(),
+                                "quantity" => 1,
+                                "regularPrice" => $wc_product->get_regular_price(),
+                                "salePrice" => $wc_product->get_price(),
+                                "sku" => $wc_product->get_sku(),
+                                "stockQuantity" => 0
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // get the list of the bocs that we can have for the choices/options
+
+        if (file_exists($template_path) && ! empty($bocs_options)) {
+            include $template_path;
+        }
     }
 
     public function bocs_cart_totals_before_shipping()
     {
-        error_log('bocs_cart_totals_before_shipping');
         // Output the custom message
         ?>
         <div class="wc-block-components-totals-wrapper slot-wrapper">

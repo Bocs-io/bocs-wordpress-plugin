@@ -303,9 +303,9 @@ class Bocs
 
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
-        // @todo
-        // $bocs_cart = new Bocs_Cart();
-        // $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
+
+        $bocs_cart = new Bocs_Cart();
+        $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
 
         $plugin_admin = new Admin();
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');

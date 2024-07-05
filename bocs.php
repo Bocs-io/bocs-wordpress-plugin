@@ -20,8 +20,6 @@
  * Requires at least: 5.6.0
  * Requires PHP: 7.3.5
  */
-use function Loader\add_action;
-
 if (! defined('WPINC') || ! defined('ABSPATH')) {
     die();
 }

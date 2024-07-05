@@ -305,7 +305,26 @@ class Admin
         }
 
         if (is_cart()) {
+
+            // this is for the Cart if there is no Bocs subscription or collections on it
+            // and it is using the WooCommerce' Blocks Template
             $product_ids = array();
+
+            // get the current bocs subscription id
+            $bocs_id = ! empty($bocs_id) ? $bocs_id : '';
+
+            if (empty($bocs_id) && isset(WC()->session)) {
+                $bocs_id = WC()->session->get('bocs');
+
+                if (empty($bocs_id)) {
+                    if (isset($_COOKIE['__bocs_id'])) {
+                        $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+                    }
+                }
+            }
+
+            $bocs_options = array();
+
             if (empty($bocs_id)) {
 
                 // Check if WooCommerce is active and the cart is not empty
@@ -319,8 +338,9 @@ class Admin
 
                 // get the list of available bocs
                 $bocs_class = new Bocs_Bocs();
-                $bocs_options = array();
+
                 $bocs_list = $bocs_class->get_all_bocs();
+                $bocs_conversion_total = 0;
                 if (! empty($bocs_list) && ! empty($product_ids)) {
 
                     foreach ($bocs_list as $bocs_item) {
@@ -330,10 +350,35 @@ class Admin
                             foreach ($bocs_item['products'] as $bocs_product) {
                                 $wp_id = $bocs_product['externalSourceId'];
                                 $bocs_wp_ids[] = $wp_id;
+                                $wc_product = wc_get_product($wp_id);
+                                $bocs_conversion_total += $wc_product->get_regular_price();
                             }
                         }
                         if (empty(array_diff($product_ids, $bocs_wp_ids))) {
                             // this bocs is can be an option
+                            $bocs_options[] = $bocs_item;
+                        }
+                    }
+
+                    if (empty($bocs_options)) {
+                        foreach ($bocs_list as $bocs_item) {
+                            $bocs_item['products'] = [];
+                            foreach ($product_ids as $product_id) {
+                                $wc_product = wc_get_product($product_id);
+                                $bocs_item['products'][] = array(
+                                    "description" => $wc_product->get_description(),
+                                    "externalSource" => "WP",
+                                    "externalSourceId" => $product_id,
+                                    "id" => "", // get the bocs id
+                                    "name" => $wc_product->get_name(), // get the woocoomerce product name
+                                    "price" => $wc_product->get_regular_price(),
+                                    "quantity" => 1,
+                                    "regularPrice" => $wc_product->get_regular_price(),
+                                    "salePrice" => $wc_product->get_price(),
+                                    "sku" => $wc_product->get_sku(),
+                                    "stockQuantity" => 0
+                                );
+                            }
                             $bocs_options[] = $bocs_item;
                         }
                     }
@@ -342,7 +387,7 @@ class Admin
 
             wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
                 'jquery'
-            ), '20240702.1', true);
+            ), '20240705.1', true);
 
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -352,7 +397,8 @@ class Admin
                 'authId' => $options['bocs_headers']['authorization'],
                 'frequency' => $current_frequency,
                 'bocs' => $bocs_body['data'],
-                'bocsOptions' => ! empty($bocs_options) ? $bocs_options : $bocs_list
+                'bocsConversion' => $bocs_options,
+                'bocsConversionTotal' => $bocs_conversion_total
             ));
         }
     }
@@ -724,9 +770,6 @@ class Admin
      */
     public function bocs_order_status_processing($order_id = 0)
     {
-        error_log('bocs_order_status_processing');
-        error_log(' ORDER ID: ' . $order_id);
-
         if (empty($order_id))
             return false;
 
@@ -762,8 +805,6 @@ class Admin
 
         $is_bocs = ! empty($bocsid);
 
-        error_log('BOCS ID: ' . $bocsid);
-
         if (empty($collectionid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_collection');
 
@@ -778,8 +819,6 @@ class Admin
                 $order->update_meta_data('__bocs_collection_id', $bocs_value);
             }
         }
-
-        error_log('COLLECTION ID: ' . $collectionid);
 
         if (empty($frequency_id) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_frequency');
@@ -796,12 +835,8 @@ class Admin
             }
         }
 
-        error_log('FREQUENCY ID: ' . $frequency_id);
-
         $current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocsid);
-
-        error_log(print_r($bocs_body, true));
 
         if (isset($bocs_body['data']['priceAdjustment']['adjustments'])) {
             foreach ($bocs_body['data']['priceAdjustment']['adjustments'] as $frequency) {
@@ -811,8 +846,6 @@ class Admin
                 }
             }
         }
-
-        error_log('current frequency ' . print_r($current_frequency, true));
 
         foreach ($order->get_items() as $item_id => $item) {
 

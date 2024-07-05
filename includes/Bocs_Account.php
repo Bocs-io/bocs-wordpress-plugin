@@ -95,7 +95,6 @@ class Bocs_Account
 
     public function bocs_view_subscription_endpoint_content()
     {
-        error_log('bocs_view_subscription_endpoint_content');
         global $wp;
 
         // Get the subscription ID from the URL
