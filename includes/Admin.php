@@ -166,7 +166,7 @@ class Admin
 
         wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
             'jquery'
-        ), '20240827.1');
+        ), '20240827.2');
         wp_enqueue_script("bocs-admin-js");
 
         // we will get the list of collections and widgets

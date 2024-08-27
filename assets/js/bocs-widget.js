@@ -72,116 +72,75 @@ jQuery(async function ($) {
 
 	try {
 
-		if (bocs_widget_object.bocs_collections) {
+		collectionsList = $.ajax({
+			url: bocs_widget_object.collectionsURL,
+			type: "GET",
+			contentType: "application/json; charset=utf-8",
+			headers: {
+				'Organization': bocs_widget_object.Organization,
+				'Store': bocs_widget_object.Store,
+				'Authorization': bocs_widget_object.Authorization
+			}
+		});
 
+		await collectionsList.then((collections) => {
 			collectionOptions = [];
-			bocs_widget_object.bocs_collections.forEach((collection) => {
+			collections.data.forEach((collection) => {
 				collectionOptions.push(
 					{
-						id: 'collection-' + collection['id'],
-						name: collection['name']
+						id: 'collection-' + collection.id,
+						name: collection.name === '' ? collection.id : collection.name
 					}
 				);
 			});
+		});
 
-		} else {
+		bocsList = $.ajax({
+			url: bocs_widget_object.bocsURL,
+			type: "GET",
+			contentType: "application/json; charset=utf-8",
+			headers: {
+				'Organization': bocs_widget_object.Organization,
+				'Store': bocs_widget_object.Store,
+				'Authorization': bocs_widget_object.Authorization
+			}
+		});
 
-			collectionsList = $.ajax({
-				url: bocs_widget_object.collectionsURL,
-				type: "GET",
-				contentType: "application/json; charset=utf-8",
-				headers: {
-					'Organization': bocs_widget_object.Organization,
-					'Store': bocs_widget_object.Store,
-					'Authorization': bocs_widget_object.Authorization
-				}
-			});
-
-			await collectionsList.then((collections) => {
-				collectionOptions = [];
-				collections.data.forEach((collection) => {
-					collectionOptions.push(
-						{
-							id: 'collection-' + collection.id,
-							name: collection.name === '' ? collection.id : collection.name
-						}
-					);
-				});
-			});
-		}
-
-		if (bocs_widget_object.bocs_widgets) {
-
+		await bocsList.then((bocs) => {
 			bocsOptions = [];
-			bocs_widget_object.bocs_widgets.forEach((bocs) => {
+			bocs.data.forEach((boc) => {
 				bocsOptions.push(
 					{
-						id: 'bocs-' + bocs['id'],
-						name: bocs['name']
+						id: 'bocs-' + boc.id,
+						name: boc.name === '' ? boc.id : boc.name
 					}
 				);
 			});
+		});
 
-		} else {
+		widgetsList = $.ajax({
+			url: bocs_widget_object.widgetsURL,
+			type: "GET",
+			contentType: "application/json; charset=utf-8",
+			headers: {
+				'Organization': bocs_widget_object.Organization,
+				'Store': bocs_widget_object.Store,
+				'Authorization': bocs_widget_object.Authorization
+			}
+		});
 
-			bocsList = $.ajax({
-				url: bocs_widget_object.bocsURL,
-				type: "GET",
-				contentType: "application/json; charset=utf-8",
-				headers: {
-					'Organization': bocs_widget_object.Organization,
-					'Store': bocs_widget_object.Store,
-					'Authorization': bocs_widget_object.Authorization
-				}
-			});
-
-			await bocsList.then((bocs) => {
-				bocsOptions = [];
-				bocs.data.forEach((boc) => {
-					bocsOptions.push(
-						{
-							id: 'bocs-' + boc.id,
-							name: boc.name === '' ? boc.id : boc.name
-						}
-					);
-				});
-			});
-		}
-
-		if (bocs_widget_object.bocs_widget_widgets) {
+		await widgetsList.then((widgets) => {
 			widgetOptions = [];
-			bocs_widget_object.bocs_widget_widgets.forEach((widget) => {
+			widgets.data.forEach((widget) => {
 				widgetOptions.push(
 					{
-						id: 'widget-' + widget['id'],
-						name: widget['name']
+						id: 'widget-' + widget.id,
+						name: widget.name === '' ? widget.id : widget.name
 					}
 				);
 			});
-		} else {
-			widgetsList = $.ajax({
-				url: bocs_widget_object.widgetsURL,
-				type: "GET",
-				contentType: "application/json; charset=utf-8",
-				headers: {
-					'Organization': bocs_widget_object.Organization,
-					'Store': bocs_widget_object.Store,
-					'Authorization': bocs_widget_object.Authorization
-				}
-			});
+		});
 
-			await widgetsList.then((widgets) => {
-				widgetOptions = [];
-				widgets.data.forEach((widget) => {
-					widgetOptions.push(
-						{
-							id: 'widget-' + widget.id,
-							name: widget.name === '' ? widget.id : widget.name
-						}
-					);
-				});
-			});
-		}
 	} catch (error) {
 		console.error(error);
 	}
