@@ -1,3 +1,7 @@
+v0.0.68 08/27/2024
+* updated bocs widget javascript file
+* added the widget
+
 v0.0.67 06/24/2024
 * added the bocs subscription related for the cart and checkout page
 

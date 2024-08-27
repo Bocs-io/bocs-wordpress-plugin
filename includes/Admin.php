@@ -166,7 +166,7 @@ class Admin
 
         wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
             'jquery'
-        ), '20240617.1');
+        ), '20240827.1');
         wp_enqueue_script("bocs-admin-js");
 
         // we will get the list of collections and widgets
@@ -176,6 +176,7 @@ class Admin
         wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
             'bocsURL' => BOCS_API_URL . "bocs",
             'collectionsURL' => BOCS_API_URL . "collections",
+            'widgetsURL' => BOCS_API_URL . "list-widgets",
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
             'Authorization' => $options['bocs_headers']['authorization'] ?? '',

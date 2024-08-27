@@ -62,9 +62,11 @@ const bocsIconMedium =
 
 let collectionsList = [];
 let bocsList = [];
+let widgetList = [];
 
 let collectionOptions = [{ id: 'collection-0', name: "Please wait..." }];
 let bocsOptions = [{ id: 'bocs-0', name: "Please wait..." }];
+let widgetOptions = [{ id: 'widget-0', name: "Please wait..." }];
 
 jQuery(async function ($) {
 
@@ -145,6 +147,41 @@ jQuery(async function ($) {
 				});
 			});
 		}
+
+		if (bocs_widget_object.bocs_widget_widgets) {
+			widgetOptions = [];
+			bocs_widget_object.bocs_widget_widgets.forEach((widget) => {
+				widgetOptions.push(
+					{
+						id: 'widget-' + widget['id'],
+						name: widget['name']
+					}
+				);
+			});
+		} else {
+			widgetsList = $.ajax({
+				url: bocs_widget_object.widgetsURL,
+				type: "GET",
+				contentType: "application/json; charset=utf-8",
+				headers: {
+					'Organization': bocs_widget_object.Organization,
+					'Store': bocs_widget_object.Store,
+					'Authorization': bocs_widget_object.Authorization
+				}
+			});
+
+			await widgetsList.then((widgets) => {
+				widgetOptions = [];
+				widgets.data.forEach((widget) => {
+					widgetOptions.push(
+						{
+							id: 'widget-' + widget.id,
+							name: widget.name === '' ? widget.id : widget.name
+						}
+					);
+				});
+			});
+		}
 	} catch (error) {
 		console.error(error);
 	}
@@ -174,21 +211,24 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		function updateSelected(id, name) {
 
-			props.setAttributes({ collectionId: id });
+			props.setAttributes({ widgetId: id });
 
 			// then update the view
 			jQuery('div.bocs-dropdown-menu-body').hide();
 			jQuery('p.bocs-widget-description').hide();
 			jQuery('div.bocs-wrapper').hide();
 
-			var type = 'bocs';
+			var type = 'widget';
 
 			if (id.indexOf('collection') !== -1) {
 				type = 'collection';
+			} else if (id.indexOf('bocs') !== -1) {
+				type = 'bocs';
 			}
 
 			if (type === 'bocs') jQuery('p.bocs-widget-selected-desc').html("<b>Bocs Widget:</b><span>Name: " + name + "</<span>");
-			else jQuery('p.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
+			else if (type === 'collection') jQuery('p.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
+			else jQuery('p.bocs-widget-selected-desc').html("<b>Widget:</b><span>Name: " + name + "</span>");
 
 			var params = {
 				action: 'save_widget_options',
@@ -208,6 +248,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 		let collectionMenuOptions = [];
 		let bocsMenuOptions = [];
+		let widgetMenuOptions = [];
 
 		collectionOptions.forEach((collection) => {
 			collectionMenuOptions.push(
@@ -218,6 +259,12 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		bocsOptions.forEach((bocs) => {
 			bocsMenuOptions.push(
 				{ label: bocs.name, value: bocs.id, title: bocs.name, onClick: () => updateSelected(bocs.id, bocs.name) }
+			);
+		});
+
+		widgetsOptions.forEach((widget) => {
+			widgetMenuOptions.push(
+				{ label: widget.name, value: widget.id, title: widget.name, onClick: () => updateSelected(widget.id, widget.name) }
 			);
 		});
 
@@ -245,6 +292,17 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 							label: 'Bocs',
 							text: 'Bocs',
 							controls: bocsMenuOptions,
+							isTertiary: true,
+							icon: false,
+							className: 'bocs-dropdown-menu'
+						}
+					),
+					bocsEl(
+						DropdownMenu,
+						{
+							label: 'Widgets',
+							text: 'Widgets',
+							controls: widgetMenuOptions,
 							isTertiary: true,
 							icon: false,
 							className: 'bocs-dropdown-menu'
@@ -278,6 +336,17 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 						label: 'Bocs',
 						text: 'Bocs',
 						controls: bocsMenuOptions,
+						isTertiary: true,
+						icon: false,
+						className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
+					}
+				),
+				bocsEl(
+					DropdownMenu,
+					{
+						label: 'Widgets',
+						text: 'Widgets',
+						controls: widgetMenuOptions,
 						isTertiary: true,
 						icon: false,
 						className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
@@ -321,6 +390,11 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					id: "bocs-widget",
 					"data-type": "collections",
 					"data-id": props.attributes.collectionId.replace("collection-", "")
+				});
+			} else {
+				result = bocsEl("div", {
+					id: "bocs-widget",
+					"data-id": props.attributes.widgetId.replace("widget-", "")
 				});
 			}
 		}
