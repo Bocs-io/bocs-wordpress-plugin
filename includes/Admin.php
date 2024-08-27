@@ -1,4 +1,5 @@
 <?php
+
 use function Loader\add_filter;
 
 class Admin
@@ -193,7 +194,7 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_script("bocs-widget-script", "https://feature-testing.app.bocs.io/widget/js/script.js", array(), '0.0.7', true);
+        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20240827.1', true);
 
         if (class_exists('woocommerce')) {
             wp_enqueue_script('wc-add-to-cart');
@@ -524,17 +525,17 @@ class Admin
      */
     public function bocs_render_plugin_settings_page()
     {
-        ?>
+?>
         <h2>Bocs Settings</h2>
         <form action="options.php" method="post">
             <?php
-        settings_fields('bocs_plugin_options');
-        do_settings_sections('bocs_plugin');
-        ?>
+            settings_fields('bocs_plugin_options');
+            do_settings_sections('bocs_plugin');
+            ?>
             <input name="submit" class="button button-primary" type="submit" value="<?php
 
-        esc_attr_e('Save');
-        ?>" />
+                                                                                    esc_attr_e('Save');
+                                                                                    ?>" />
         </form>
 <?php
     }
@@ -1314,8 +1315,7 @@ class Admin
      *
      * @return void
      */
-    public function update_widgets_collections()
-    {}
+    public function update_widgets_collections() {}
 
     /**
      * Adds sidebar to a product edit page
@@ -1697,15 +1697,16 @@ class Admin
                 $order = wc_get_order($id);
                 if ($order) {
                     error_log('show_related_orders');
-                    add_meta_box('bocs_order_meta_box', // Unique ID for the metabox
-                    'Bocs Related Orders', // Title of the metabox
-                    array(
-                        $this,
-                        'order_meta_box_content'
-                    ), // Callback function to display content
-                    NULL, // Post type where the metabox should appear
-                    'normal', // Context (normal, side, advanced)
-                    'low' // Priority (high, core, default, low)
+                    add_meta_box(
+                        'bocs_order_meta_box', // Unique ID for the metabox
+                        'Bocs Related Orders', // Title of the metabox
+                        array(
+                            $this,
+                            'order_meta_box_content'
+                        ), // Callback function to display content
+                        NULL, // Post type where the metabox should appear
+                        'normal', // Context (normal, side, advanced)
+                        'low' // Priority (high, core, default, low)
                     );
                 }
             }
@@ -1838,7 +1839,7 @@ class Admin
 
         // Query for orders with the same meta value
         $args = array(
-            'limit' => - 1,
+            'limit' => -1,
             'orderby' => 'id',
             'order' => 'DESC',
             'meta_key' => '__bocs_subscription_id',
