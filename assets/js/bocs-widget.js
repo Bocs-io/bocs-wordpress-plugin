@@ -132,14 +132,17 @@ jQuery(async function ($) {
 		await widgetsList.then((widgets) => {
 			widgetOptions = [];
 			widgets.data.forEach((widget) => {
+				console.log('widget', widget);
 				widgetOptions.push(
 					{
 						id: 'widget-' + widget.id,
-						name: widget.name === '' ? widget.id : widget.name
+						name: widget.title === '' ? widget.id : widget.title
 					}
 				);
 			});
 		});
+
+		console.log('widgetsList', widgetsList);
 
 	} catch (error) {
 		console.error(error);
