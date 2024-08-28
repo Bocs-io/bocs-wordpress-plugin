@@ -72,7 +72,7 @@ jQuery(async function ($) {
 
 	try {
 
-		collectionsList = $.ajax({
+		/*collectionsList = $.ajax({
 			url: bocs_widget_object.collectionsURL,
 			type: "GET",
 			contentType: "application/json; charset=utf-8",
@@ -116,7 +116,7 @@ jQuery(async function ($) {
 					}
 				);
 			});
-		});
+		});*/
 
 		widgetsList = $.ajax({
 			url: bocs_widget_object.widgetsURL,
@@ -158,7 +158,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	attributes: {
 		collectionId: { type: 'string' }
 	},
-	description: "This block displays products from your ",
+	description: "This block displays products from your stoer",
 	edit: function (props) {
 
 		let blockProps = blockEditor.useBlockProps();
@@ -182,15 +182,16 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 			var type = 'widget';
 
-			if (id.indexOf('collection') !== -1) {
+			/*if (id.indexOf('collection') !== -1) {
 				type = 'collection';
 			} else if (id.indexOf('bocs') !== -1) {
 				type = 'bocs';
 			}
 
 			if (type === 'bocs') jQuery('p.bocs-widget-selected-desc').html("<b>Bocs Widget:</b><span>Name: " + name + "</<span>");
-			else if (type === 'collection') jQuery('p.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
-			else jQuery('p.bocs-widget-selected-desc').html("<b>Widget:</b><span>Name: " + name + "</span>");
+			else if (type === 'collection') jQuery('p.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");*/
+
+			jQuery('p.bocs-widget-selected-desc').html("<b>Widget:</b><span>Name: " + name + "</span>");
 
 			var params = {
 				action: 'save_widget_options',
@@ -212,7 +213,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		let bocsMenuOptions = [];
 		let widgetMenuOptions = [];
 
-		collectionOptions.forEach((collection) => {
+		/*collectionOptions.forEach((collection) => {
 			collectionMenuOptions.push(
 				{ label: collection.name, value: collection.id, title: collection.name, onClick: () => updateSelected(collection.id, collection.name) }
 			);
@@ -222,7 +223,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			bocsMenuOptions.push(
 				{ label: bocs.name, value: bocs.id, title: bocs.name, onClick: () => updateSelected(bocs.id, bocs.name) }
 			);
-		});
+		});*/
 
 		widgetsOptions.forEach((widget) => {
 			widgetMenuOptions.push(
@@ -237,7 +238,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				BlockControls,
 				{ key: 'controls' },
 				bocsEl(ToolbarGroup, null,
-					bocsEl(
+					/*bocsEl(
 						DropdownMenu,
 						{
 							label: 'Collections',
@@ -258,7 +259,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 							icon: false,
 							className: 'bocs-dropdown-menu'
 						}
-					),
+					),*/
 					bocsEl(
 						DropdownMenu,
 						{
@@ -281,7 +282,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			!hasSelected && isSelected && bocsEl(
 				"div",
 				{ className: "bocs-wrapper" },
-				bocsEl(
+				/*bocsEl(
 					DropdownMenu,
 					{
 						label: 'Collections',
@@ -302,7 +303,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 						icon: false,
 						className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
 					}
-				),
+				),*/
 				bocsEl(
 					DropdownMenu,
 					{
@@ -341,7 +342,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 
 
 		if (props.attributes.collectionId) {
-			if (props.attributes.collectionId.includes('bocs-')) {
+			/* if (props.attributes.collectionId.includes('bocs-')) {
 				result = bocsEl("div", {
 					id: "bocs-widget",
 					"data-type": "bocs",
@@ -353,12 +354,12 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					"data-type": "collections",
 					"data-id": props.attributes.collectionId.replace("collection-", "")
 				});
-			} else {
-				result = bocsEl("div", {
-					id: "bocs-widget",
-					"data-id": props.attributes.widgetId.replace("widget-", "")
-				});
-			}
+			}*/
+
+			result = bocsEl("div", {
+				id: "bocs-widget",
+				"data-id": props.attributes.widgetId.replace("widget-", "")
+			});
 		}
 
 		// we will save it to this post id's meta
