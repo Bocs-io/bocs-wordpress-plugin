@@ -127,7 +127,7 @@ class Admin
             'wp-editor',
             'wp-data',
             'jquery'
-        ), '20240828.3');
+        ), '20240828.4');
 
         // get the current post id
         $post_id = get_the_ID();

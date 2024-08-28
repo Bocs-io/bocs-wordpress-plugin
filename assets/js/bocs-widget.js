@@ -71,7 +71,7 @@ jQuery(async function ($) {
 
 		console.log('widgetsList', widgetsList);
 
-		widgetsOptions = widgetsList.data.map((widget) => ({
+		widgetsOptions = widgetsList.data.data.map((widget) => ({
 			id: 'widget-' + widget.id,
 			name: widget.title || widget.id
 		}));
