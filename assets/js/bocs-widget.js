@@ -1,3 +1,5 @@
+console.log(bocs_widget_object);
+
 const el = wp.element.createElement;
 const { BlockControls, useBlockProps } = wp.blockEditor;
 const { Button, ToolbarGroup, DropdownMenu } = wp.components;
