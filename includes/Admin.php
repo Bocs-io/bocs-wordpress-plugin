@@ -127,7 +127,7 @@ class Admin
             'wp-editor',
             'wp-data',
             'jquery'
-        ), '20240527.1');
+        ), '20240828.1');
 
         // get the current post id
         $post_id = get_the_ID();
@@ -140,6 +140,7 @@ class Admin
 
         $params = array(
             'bocsURL' => BOCS_API_URL . "bocs",
+            'widgetsURL' => BOCS_API_URL . "list-widgets",
             'collectionsURL' => BOCS_API_URL . "collections",
             'Organization' => $options['bocs_headers']['organization'],
             'Store' => $options['bocs_headers']['store'],
@@ -166,7 +167,7 @@ class Admin
 
         wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
             'jquery'
-        ), '20240828.3');
+        ), '20240828.4');
         wp_enqueue_script("bocs-admin-js");
 
         // we will get the list of collections and widgets
