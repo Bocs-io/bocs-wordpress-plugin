@@ -24,10 +24,14 @@ class Shortcode
 
         $output = '<div id="bocs-widget"';
 
-        if (isset($atts['collection'])) {
+        /*if (isset($atts['collection'])) {
             $output .= ' data-type="collections" data-id="' . $atts['collection'] . '"';
         } else if (isset($atts['widget'])) {
             $output .= ' data-type="bocs" data-id="' . $atts['widget'] . '"';
+        }*/
+
+        if (isset($atts['widget'])) {
+            $output .= ' data-id="' . $atts['widget'] . '"';
         }
 
         $output .= '></div>';
