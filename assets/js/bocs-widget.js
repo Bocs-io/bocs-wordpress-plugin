@@ -66,7 +66,7 @@ let widgetList = [];
 
 let collectionOptions = [{ id: 'collection-0', name: "Please wait..." }];
 let bocsOptions = [{ id: 'bocs-0', name: "Please wait..." }];
-let widgetOptions = [{ id: 'widget-0', name: "Please wait..." }];
+let widgetsOptions = [{ id: 'widget-0', name: "Please wait..." }];
 
 jQuery(async function ($) {
 
@@ -130,10 +130,10 @@ jQuery(async function ($) {
 		});
 
 		await widgetsList.then((widgets) => {
-			widgetOptions = [];
+			widgetsOptions = [];
 			widgets.data.forEach((widget) => {
 				console.log('widget', widget);
-				widgetOptions.push(
+				widgetsOptions.push(
 					{
 						id: 'widget-' + widget.id,
 						name: widget.title === '' ? widget.id : widget.title
