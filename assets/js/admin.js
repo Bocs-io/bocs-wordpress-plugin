@@ -267,7 +267,7 @@ jQuery(window).on("load", function () {
                 jQuery("#bocs-page-sidebar-collections").prop('selectedIndex', 0);
                 jQuery("#bocs-page-sidebar-bocs").prop('selectedIndex', 0);
                 */
-                jQuery('#bocs-shortcode-copy').html("[bocs widget_id='" + this.value + "']");
+                jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
             } else {
                 jQuery('#bocs-shortcode-copy').html("");
             }
