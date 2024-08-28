@@ -167,7 +167,7 @@ class Admin
 
         wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
             'jquery'
-        ), '20240828.1');
+        ), '20240828.2');
         wp_enqueue_script("bocs-admin-js");
 
         // we will get the list of collections and widgets
@@ -175,14 +175,14 @@ class Admin
         $bocs_widgets = get_option("bocs_widgets");
 
         wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
-            'bocsURL' => BOCS_API_URL . "bocs",
-            'collectionsURL' => BOCS_API_URL . "collections",
+            //'bocsURL' => BOCS_API_URL . "bocs",
+            //'collectionsURL' => BOCS_API_URL . "collections",
             'widgetsURL' => BOCS_API_URL . "list-widgets",
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
             'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-            'bocs_collections' => $bocs_collections,
-            'bocs_widgets' => $bocs_widgets
+            //'bocs_collections' => $bocs_collections,
+            //'bocs_widgets' => $bocs_widgets
         ));
     }
 
@@ -1286,17 +1286,35 @@ class Admin
         }
     }
 
+    /**
+     * Display the Bocs Widget Metabox content.
+     *
+     * @param WP_Post $page The current page object.
+     * @return void
+     */
     public function bocs_widget_metabox_content($page)
     {
+        // Output the HTML structure for the metabox.
         echo "<div id='bocs-page-sidebar'>
-                <label>Collections</label><br /><select id='bocs-page-sidebar-collections' name='collections'></select><br />
-                <br /><label>Bocs</label><br /><select id='bocs-page-sidebar-bocs' name='bocs'></select><br />
-                <br />
-                <br />
-                <label><b>Copy the shortcode below</b></label><br />
-                <code id='bocs-shortcode-copy'></code>
-            </div>";
+            <!-- Label and select dropdown for Collections -->
+            <!-- <label for='bocs-page-sidebar-collections'>Collections</label><br /> -->
+            <!-- <select id='bocs-page-sidebar-collections' name='collections'></select><br /> -->
+
+            <!-- Label and select dropdown for Bocs -->
+            <!-- <br /><label for='bocs-page-sidebar-bocs'>Bocs</label><br /> -->
+            <!-- <select id='bocs-page-sidebar-bocs' name='bocs'></select><br /> -->
+
+            <!-- Label and select dropdown for Widget -->
+            <br /><label for='bocs-page-sidebar-widgets'>Widget</label><br />
+            <select id='bocs-page-sidebar-widgets' name='widgets'></select><br />
+
+            <!-- Code output section -->
+            <br />
+            <label><b>Copy the shortcode below</b></label><br />
+            <code id='bocs-shortcode-copy'></code>
+          </div>";
     }
+
 
     /**
      * Adds metabox on the right side of the Edit Page
