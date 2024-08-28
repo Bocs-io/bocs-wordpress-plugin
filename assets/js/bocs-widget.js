@@ -72,7 +72,7 @@ jQuery(async function ($) {
 		});
 
 		// Map the retrieved widgets data to the format required for the options.
-		widgetsOptions = widgetsList.data.map(widget => ({
+		widgetsOptions = widgetsList.data.data.map(widget => ({
 			id: `widget-${widget.id}`,
 			name: widget.title || widget.id
 		}));
