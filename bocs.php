@@ -10,7 +10,7 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.67
+ * Version:           0.0.68
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -24,14 +24,14 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
     die();
 }
 
-define('BOCS_VERSION', '0.0.67');
+define('BOCS_VERSION', '0.0.68');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
 
 // just in case the action scheduler is not yet installed in woommerce (or other plugins)
 if (! function_exists('as_has_scheduled_action')) {
-    require_once (plugin_dir_path(__FILE__) . '/libraries/action-scheduler/action-scheduler.php');
+    require_once(plugin_dir_path(__FILE__) . '/libraries/action-scheduler/action-scheduler.php');
 }
 
 if (file_exists(dirname(__FILE__) . '/includes/vendor/autoload.php')) {
@@ -39,7 +39,7 @@ if (file_exists(dirname(__FILE__) . '/includes/vendor/autoload.php')) {
 }
 
 if (! class_exists('WP_List_Table')) {
-    require_once (ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+    require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
 }
 
 if (! class_exists('Updater')) {
@@ -47,7 +47,7 @@ if (! class_exists('Updater')) {
 }
 
 if (! function_exists('wp_create_nonce')) {
-    require_once (ABSPATH . 'wp-includes/pluggable.php');
+    require_once(ABSPATH . 'wp-includes/pluggable.php');
 }
 
 /**
