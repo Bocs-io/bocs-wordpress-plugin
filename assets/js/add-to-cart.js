@@ -2,6 +2,8 @@
 async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }) {
 
 	let bocsFrequencyId = frequency.id;
+	var dataId = jQuery('div#bocs-widget').data('id');
+	if(id == null) id = dataId;
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -72,13 +74,13 @@ async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: fr
 		}
 
 		if (wcProductId !== 0) {
-
-			// before adding to cart, we will check if it has variations
-			if (product.variations.length > 0) {
-				console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
-				// buttonCart.html('Product with Variations is NOT WORKING as of now...');
+			if(product.variations){
+				// before adding to cart, we will check if it has variations
+				if (product.variations.length > 0) {
+					console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
+					// buttonCart.html('Product with Variations is NOT WORKING as of now...');
+				}
 			}
-
 
 			var data = {
 				id: wcProductId,

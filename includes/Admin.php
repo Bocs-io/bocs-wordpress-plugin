@@ -196,7 +196,7 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20240827.1', true);
+        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241003.1', true);
 
         if (class_exists('woocommerce')) {
             wp_enqueue_script('wc-add-to-cart');
@@ -209,7 +209,7 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '20240607.1', true);
+        ), '20241003.4', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'cartNonce' => $cart_nonce,

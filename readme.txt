@@ -1,3 +1,7 @@
+v0.0.69 10/03/2024
+* updates on the add-to-cart.js
+* added getting of the bocs id
+
 v0.0.68 08/27/2024
 * updated bocs widget javascript file
 * added the widget
