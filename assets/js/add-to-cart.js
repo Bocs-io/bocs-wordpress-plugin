@@ -1,6 +1,7 @@
 	
-async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }) {
-
+async function bocs_add_to_cart(params) {
+	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
+	console.log('bocs_add_to_cart params', params);
 	let bocsFrequencyId = frequency.id;
 	var dataId = jQuery('div#bocs-widget').data('id');
 	if(id == null) id = dataId;
@@ -165,12 +166,14 @@ async function bocs_add_to_cart({ bocsId:id, collectionId, selectedFrequency: fr
 	buttonCart.html('Redirecting to Cart...');
 	if( id == null) id = '';
 	if(collectionId == null) collectionId = '';
+
 	// create cookie
 	document.cookie = "__bocs_id="+id+"; path=/";
 	if( collectionId != '' ) document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
 	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
 	console.log(id, collectionId, bocsFrequencyId);
 	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId;
+
 }
 
 function getCookie(cname) {

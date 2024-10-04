@@ -186,6 +186,11 @@ class Admin
         ));
     }
 
+    /**
+     * Enqueue the scripts for the frontend
+     *
+     * @return void
+     */
     public function enqueue_scripts()
     {
 
@@ -209,7 +214,7 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '20241003.4', true);
+        ), '20241004.1', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'cartNonce' => $cart_nonce,
@@ -277,14 +282,41 @@ class Admin
         $current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocs_id);
 
-        if (isset($bocs_body['data']['priceAdjustment']['adjustments'])) {
-            foreach ($bocs_body['data']['priceAdjustment']['adjustments'] as $frequency) {
-                if ($frequency['id'] == $frequency_id) {
-                    $current_frequency = $frequency;
-                    break;
+        // Navigate to the zones
+
+        try {
+
+            if (!isset($bocs_body['data']['body']['zones'])) {
+                throw new Exception('Zones data is missing in the response.');
+            } else {
+                $zones = $bocs_body['data']['body']['zones'];
+
+                // Loop through each zone
+                foreach ($zones as $zone) {
+                    // Each zone can have multiple elements, loop through them
+                    foreach ($zone as $element) {
+                        // Check if the element has a 'props' key with a 'template' containing 'frequencies'
+                        if (isset($element['props']['template']['frequencies'])) {
+                            $frequencies = $element['props']['template']['frequencies'];
+                            
+                            // Loop through the frequencies
+                            foreach ($frequencies as $frequency) {
+                                if ($frequency['id'] == $frequency_id) {
+                                    $current_frequency = $frequency;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
+            
+        } catch (Exception $e) {
+            error_log('Error accessing zones: ' . $e->getMessage());
+            // return false; // or handle the error as needed
         }
+
+        
 
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
@@ -773,11 +805,21 @@ class Admin
      */
     public function bocs_order_status_processing($order_id = 0)
     {
-        if (empty($order_id))
+        if (empty($order_id)) {
+            error_log('Order ID is empty. Exiting bocs_order_status_processing.');
             return false;
+        }
+
+        error_log('Processing order with ID: ' . $order_id);
 
         // get the order details
         $order = wc_get_order($order_id);
+
+        if (!$order) {
+            error_log('Order not found for ID: ' . $order_id);
+            return false;
+        }
+
         $bocs_product_interval = 'month';
         $bocs_product_interval_count = 1;
 
@@ -791,6 +833,8 @@ class Admin
         $collectionid = $order->get_meta('__bocs_collections_id');
         $frequency_id = $order->get_meta('__bocs_frequency_id');
 
+        error_log('Initial BOCS data: bocsid=' . $bocsid . ', collectionid=' . $collectionid . ', frequency_id=' . $frequency_id);
+
         if (empty($bocsid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs');
 
@@ -803,6 +847,7 @@ class Admin
             if (! empty($bocs_value)) {
                 $bocsid = $bocs_value;
                 $order->update_meta_data('__bocs_bocs_id', $bocs_value);
+                error_log('Updated BOCS ID from session or cookie: ' . $bocsid);
             }
         }
 
@@ -820,6 +865,7 @@ class Admin
             if (! empty($bocs_value)) {
                 $collectionid = $bocs_value;
                 $order->update_meta_data('__bocs_collection_id', $bocs_value);
+                error_log('Updated Collection ID from session or cookie: ' . $collectionid);
             }
         }
 
@@ -835,17 +881,33 @@ class Admin
             if (! empty($bocs_value)) {
                 $frequency_id = $bocs_value;
                 $order->update_meta_data('__bocs_frequency_id', $bocs_value);
+                error_log('Updated Frequency ID from session or cookie: ' . $frequency_id);
             }
         }
 
         $current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocsid);
+        error_log('frequency_id: ' . print_r($frequency_id, true));
 
-        if (isset($bocs_body['data']['priceAdjustment']['adjustments'])) {
-            foreach ($bocs_body['data']['priceAdjustment']['adjustments'] as $frequency) {
-                if ($frequency['id'] == $frequency_id) {
-                    $current_frequency = $frequency;
-                    break;
+        // Navigate to the zones
+        $zones = $bocs_body['data']['body']['zones'];
+
+        // Loop through each zone
+        foreach ($zones as $zone) {
+            // Each zone can have multiple elements, loop through them
+            foreach ($zone as $element) {
+                // Check if the element has a 'props' key with a 'template' containing 'frequencies'
+                if (isset($element['props']['template']['frequencies'])) {
+                    $frequencies = $element['props']['template']['frequencies'];
+                    
+                    // Loop through the frequencies
+                    foreach ($frequencies as $frequency) {
+                        if ($frequency['id'] == $frequency_id) {
+                            $current_frequency = $frequency;
+                            error_log('Found matching frequency: ' . print_r($current_frequency, true));
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -866,6 +928,7 @@ class Admin
         }
 
         if ($is_bocs) {
+            error_log('Order is a BOCS order. Proceeding with subscription creation.');
 
             $options = get_option('bocs_plugin_options');
             $options['bocs_headers'] = $options['bocs_headers'] ?? array();
@@ -922,7 +985,7 @@ class Admin
 
                                 update_user_meta($customer_id, 'bocs_user_id', $bocs_user->id);
                                 $bocs_customer_id = $bocs_user->id;
-
+                                error_log('Found BOCS user ID: ' . $bocs_customer_id . ' for customer ID: ' . $customer_id);
                                 break;
                             }
                         }
@@ -967,6 +1030,13 @@ class Admin
                 $post_data .= '"collection": {"id": "' . $collectionid . '"},';
             }
 
+            // frequency price
+            // discount 
+            // discount type
+            // id
+            // frequency
+            // timeframe
+
             $post_data .= '"billing": {"firstName": "' . $order->get_billing_first_name() . '","lastName":  "' . $order->get_billing_last_name() . '","company":  "' . $order->get_billing_company() . '","address1": "' . $order->get_billing_address_1() . '","city": "' . $order->get_billing_city() . '","state":  "' . $order->get_billing_state() . '","country": "' . $order->get_billing_country() . '","postcode": "' . $order->get_billing_postcode() . '","phone":  "' . $order->get_billing_phone() . '","email":  "' . $order->get_billing_email() . '"},
                         "shipping": {"firstName": "' . $order->get_shipping_first_name() . '","lastName":  "' . $order->get_shipping_last_name() . '","company":  "' . $order->get_shipping_company() . '","address1": "' . $order->get_shipping_address_1() . '","city": "' . $order->get_shipping_city() . '","state":  "' . $order->get_shipping_state() . '","country": "' . $order->get_shipping_country() . '","postcode": "' . $order->get_shipping_postcode() . '","phone": "","email":  ""},
                         "customer": {"id": "' . $bocs_customer_id . '","externalSourceId": "' . $customer_id . '"},
@@ -976,7 +1046,8 @@ class Admin
                         "total": "' . $order->get_total() . '",
                         "discountTotal": "' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . '"}';
 
-            error_log('post_data: ' . $post_data);
+            error_log('Subscription post data: ' . $post_data);
+
 
             curl_setopt_array($curl, array(
                 CURLOPT_URL => BOCS_API_URL . 'subscriptions',
@@ -996,23 +1067,20 @@ class Admin
                 )
             ));
 
-            curl_exec($curl);
+            $response = curl_exec($curl);
 
             if (curl_errno($curl)) {
-                error_log('curl_error' . curl_error($curl));
+                error_log('Curl error: ' . curl_error($curl));
+            } else {
+                error_log('Subscription creation response: ' . $response);
             }
 
             curl_close($curl);
         }
     }
-
-    /**
-     * Search for the product
-     *
-     * @return void
-     */
-    public function search_product_ajax_callback()
-    {
+    
+    
+    public function search_product_ajax_callback(){
 
         // Verify the AJAX nonce
         $nonce = $_POST['nonce'];
@@ -1516,14 +1584,21 @@ class Admin
         $order->save();
     }
 
+    /**
+     * Fetches BOCS data from the API for a given ID.
+     *
+     * This method constructs a URL using the provided ID and sends a GET request
+     * to the BOCS API to retrieve widget data. The request is made using the
+     * Bocs_Helper class, which handles the cURL request.
+     *
+     * @param string $id The ID of the BOCS widget to fetch data for.
+     * @return array The data returned from the BOCS API.
+     */
     public function get_bocs_data_from_api($id)
     {
-        $url = BOCS_API_URL . "bocs/" . $id;
+        $url = BOCS_LIST_WIDGETS_URL . $id;
         $bocs_helper = new Bocs_Helper();
-        // error_log($url);
-        // error_log(print_r($this->headers, true));
         $widgets_data = $bocs_helper->curl_request($url, 'GET', [], $this->headers);
-
         return $widgets_data;
     }
 

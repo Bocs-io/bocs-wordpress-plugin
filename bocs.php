@@ -28,6 +28,7 @@ define('BOCS_VERSION', '0.0.69');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
+define("BOCS_LIST_WIDGETS_URL", BOCS_API_URL. "list-widgets/");
 
 // just in case the action scheduler is not yet installed in woommerce (or other plugins)
 if (! function_exists('as_has_scheduled_action')) {
