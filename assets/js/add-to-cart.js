@@ -1,10 +1,10 @@
 	
-async function bocs_add_to_cart(params) {
+async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
 	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
-	console.log('bocs_add_to_cart params', params);
+	// console.log('bocs_add_to_cart params', params);
+	
 	let bocsFrequencyId = frequency.id;
-	var dataId = jQuery('div#bocs-widget').data('id');
-	if(id == null) id = dataId;
+	var id = jQuery('div#bocs-widget').data('id');
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -107,18 +107,24 @@ async function bocs_add_to_cart(params) {
 	}
 
 	// then we will try to add the coupon if there is a discount
-	if (frequency.discount > 0) {
+	if (discount > 0) {
 
-		let discountType = "percent";
-		const amount = frequency.discount;
+		let discountType = "fixed_cart";
+		let amount = discount;
+
+		if (frequency && !isNaN(parseFloat(frequency.discount))) {
+			amount = parseFloat(frequency.discount);
+		}
+		
 		let couponCode = "bocs-" + amount;
 
-		if (frequency.discountType === 'dollar') {
-			discountType = "fixed_cart";
+		if (frequency && frequency.discountType !== '') {
+			discountType = frequency.discountType;
 		}
 
 		if (discountType === "percent") {
 			couponCode = couponCode + "percent";
+			discountType = "percent";
 		} else {
 			couponCode = couponCode + "off";
 		}
@@ -165,14 +171,21 @@ async function bocs_add_to_cart(params) {
 
 	buttonCart.html('Redirecting to Cart...');
 	if( id == null) id = '';
-	if(collectionId == null) collectionId = '';
+	const collectionId = '';
+	// if(collectionId == null) collectionId = '';
 
 	// create cookie
 	document.cookie = "__bocs_id="+id+"; path=/";
 	if( collectionId != '' ) document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
 	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
-	console.log(id, collectionId, bocsFrequencyId);
-	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId;
+	document.cookie = "__bocs_frequency_time_unit="+frequency.timeUnit+"; path=/";
+	document.cookie = "__bocs_frequency_interval="+frequency.frequency+"; path=/";
+	document.cookie = "__bocs_discount_type="+frequency.discountType+"; path=/";
+	document.cookie = "__bocs_total="+total+"; path=/";
+	document.cookie = "__bocs_discount="+discount+"; path=/";
+	document.cookie = "__bocs_subtotal="+price+"; path=/";
+	// console.log(id, collectionId, bocsFrequencyId);
+	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 
 }
 

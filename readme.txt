@@ -1,3 +1,6 @@
+v0.0.70 10/04/2024
+* applied fixes on adding subscription and order on the bocs end
+
 v0.0.69 10/03/2024
 * updates on the add-to-cart.js
 * added getting of the bocs id
