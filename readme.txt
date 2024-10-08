@@ -1,3 +1,6 @@
+v0.0.71 10/08/2024
+* Fixed on bocs list table not showing data
+
 v0.0.70 10/04/2024
 * applied fixes on adding subscription and order on the bocs end
 
