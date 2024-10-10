@@ -4,21 +4,24 @@ class Curl
 {
 
     /**
-     * Do the processes
+     * Process the curl request
      *
-     * @param
-     *            $url
-     * @param
-     *            $method
-     * @param
-     *            $data
-     *
+     * @param string $url
+     * @param string $method
+     * @param string $data
+     * @param string $module
+     * @param string $id
      * @return array|object
      */
     private function process($url, $method = "GET", $data = "", $module = '', $id = '')
     {
+        $result = array();
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+        if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+            return $result;
+        }
 
         if (isset($options['bocs_headers']['organization']) && isset($options['bocs_headers']['store']) && isset($options['bocs_headers']['authorization'])) {
             $curl = curl_init();

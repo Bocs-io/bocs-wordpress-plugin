@@ -12,9 +12,9 @@ class Bocs_Account
 
         if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
             $this->headers = [
-                'Organization' => $options['bocs_headers']['organization'],
-                'Store' => $options['bocs_headers']['store'],
-                'Authorization' => $options['bocs_headers']['authorization'],
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
                 'Content-Type' => 'application/json'
             ];
         }

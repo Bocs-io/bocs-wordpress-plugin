@@ -14,6 +14,14 @@ class Bocs_Helper
      */
     public function curl_request($url, $method = 'GET', $data = [], $headers = [])
     {
+        // check if the headers are set 
+        if (empty($headers['Organization']) || empty($headers['Store']) || empty($headers['Authorization'])) {
+            return [
+                'error' => true,
+                'message' => 'Bocs headers are not set.'
+            ];
+        }
+
         $ch = curl_init();
 
         switch (strtoupper($method)) {

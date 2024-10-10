@@ -142,9 +142,9 @@ class Admin
             'bocsURL' => BOCS_API_URL . "bocs",
             'widgetsURL' => BOCS_API_URL . "list-widgets",
             'collectionsURL' => BOCS_API_URL . "collections",
-            'Organization' => $options['bocs_headers']['organization'],
-            'Store' => $options['bocs_headers']['store'],
-            'Authorization' => $options['bocs_headers']['authorization'],
+            'Organization' => $options['bocs_headers']['organization'] ?? '',
+            'Store' => $options['bocs_headers']['store'] ?? '',
+            'Authorization' => $options['bocs_headers']['authorization'] ?? '',
             'nonce' => $this->save_widget_nonce,
             'ajax_url' => admin_url('admin-ajax.php'),
             'selected_id' => $selected_widget_id,
@@ -223,9 +223,9 @@ class Admin
             'nonce' => wp_create_nonce('ajax-nonce'),
             'search_nonce' => wp_create_nonce('ajax-search-nonce'),
             'bocsGetUrl' => BOCS_API_URL . 'bocs/',
-            'storeId' => $options['bocs_headers']['store'],
-            'orgId' => $options['bocs_headers']['organization'],
-            'authId' => $options['bocs_headers']['authorization'],
+            'storeId' => $options['bocs_headers']['store'] ?? '',
+            'orgId' => $options['bocs_headers']['organization'] ?? '',
+            'authId' => $options['bocs_headers']['authorization'] ?? '',
             'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
             'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
         ));
@@ -244,9 +244,9 @@ class Admin
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
                 'updateSubscriptionUrl' => BOCS_API_URL . 'subscriptions/' . $bocs_subscription_id,
-                'storeId' => $options['bocs_headers']['store'],
-                'orgId' => $options['bocs_headers']['organization'],
-                'authId' => $options['bocs_headers']['authorization']
+                'storeId' => $options['bocs_headers']['store'] ?? '',
+                'orgId' => $options['bocs_headers']['organization'] ?? '',
+                'authId' => $options['bocs_headers']['authorization'] ?? ''
             ));
         }
 
@@ -295,9 +295,9 @@ class Admin
             wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
-                'storeId' => $options['bocs_headers']['store'],
-                'orgId' => $options['bocs_headers']['organization'],
-                'authId' => $options['bocs_headers']['authorization'],
+                'storeId' => $options['bocs_headers']['store'] ?? '',
+                'orgId' => $options['bocs_headers']['organization'] ?? '',
+                'authId' => $options['bocs_headers']['authorization'] ?? '',
                 'frequency' => $current_frequency,
                 'bocs' => $bocs_body['data']
             ));
@@ -391,9 +391,9 @@ class Admin
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
-                'storeId' => $options['bocs_headers']['store'],
-                'orgId' => $options['bocs_headers']['organization'],
-                'authId' => $options['bocs_headers']['authorization'],
+                'storeId' => $options['bocs_headers']['store'] ?? '',
+                'orgId' => $options['bocs_headers']['organization'] ?? '',
+                'authId' => $options['bocs_headers']['authorization'] ?? '',
                 'frequency' => $current_frequency,
                 'bocs' => $bocs_body['data'],
                 'bocsConversion' => $bocs_options,
@@ -404,7 +404,8 @@ class Admin
 
     public function bocs_homepage()
     {
-        require_once dirname(__FILE__) . '/../views/bocs_homepage.php';
+        echo "";
+        // require_once dirname(__FILE__) . '/../views/bocs_homepage.php';
     }
 
     public function bocs_tags()
@@ -769,6 +770,14 @@ class Admin
      */
     public function bocs_order_status_processing($order_id = 0)
     {
+        $options = get_option('bocs_plugin_options');
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+        if (empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+            error_log('Bocs headers are not set. Exiting bocs_order_status_processing.');
+            return false;
+        }
+
         if (empty($order_id)) {
             error_log('Order ID is empty. Exiting bocs_order_status_processing.');
             return false;
@@ -920,11 +929,7 @@ class Admin
         }
 
         if ($is_bocs) {
-            //error_log('Order is a BOCS order. Proceeding with subscription creation.');
-
-            $options = get_option('bocs_plugin_options');
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
-
+            
             $customer_id = $order->get_customer_id();
             $bocs_customer_id = '';
 
@@ -1734,15 +1739,31 @@ class Admin
         return json_encode($order_data, JSON_PRETTY_PRINT);
     }
 
+    /**
+     * Check if the user has a Bocs user ID and create one if it doesn't exist.
+     *
+     * This method retrieves the Bocs headers from the plugin options, checks if the user has a Bocs user ID,
+     * and creates one if it doesn't exist. It uses the Bocs API to fetch the user's data and update the user meta.
+     *
+     * @param string $user_login The user's login name.
+     * @param WP_User $user The user object.
+     * @return void
+     */
     public function bocs_user_id_check($user_login, $user)
     {
+        $options = get_option('bocs_plugin_options');
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+        if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+            return;
+        }
+
         // Get the user's email address
         $user_email = $user->user_email;
         $bocs_user_id = get_user_meta($user->ID, 'bocs_user_id', true);
 
         if (empty($bocs_user_id)) {
-            $options = get_option('bocs_plugin_options');
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+            
 
             if (! empty($options['bocs_headers']['organization']) && $options['bocs_headers']['store'] && $options['bocs_headers']['authorization']) {
                 $curl = curl_init();

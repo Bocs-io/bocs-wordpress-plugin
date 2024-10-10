@@ -10,7 +10,7 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.71
+ * Version:           0.0.72
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -24,7 +24,7 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
     die();
 }
 
-define('BOCS_VERSION', '0.0.71');
+define('BOCS_VERSION', '0.0.72');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
 define("BOCS_API_URL", "https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev/");
@@ -85,7 +85,7 @@ function deactivate_bocs_plugin()
 }
 
 /**
- * The code that runs when the plugin is activate.
+ * The code that runs when the plugin is activated.
  */
 function action_bocs_plugin($links)
 {

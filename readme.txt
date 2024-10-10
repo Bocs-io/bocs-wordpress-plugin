@@ -1,3 +1,7 @@
+v0.0.72 10/10/2024
+* Hide old bocs page
+* empty bocs headers error traps
+
 v0.0.71 10/08/2024
 * Fixed on bocs list table not showing data
 

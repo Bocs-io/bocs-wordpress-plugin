@@ -63,14 +63,19 @@ class Bocs_List_Table extends WP_List_Table
      */
     private function _get_table_data()
     {
-        // Retrieve the list of subscriptions from the Bocs API
-        $currency_symbol = get_woocommerce_currency_symbol(); // Get the currency symbol for WooCommerce
-
+        
         $result = array(); // Initialize an empty array to store subscription data
-
+        
         // Retrieve Bocs plugin options and headers
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+        if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+            return $result;
+        }
+
+        // Retrieve the list of subscriptions from the Bocs API
+        $currency_symbol = get_woocommerce_currency_symbol(); // Get the currency symbol for WooCommerce
 
         // Initialize cURL session
         $curl = curl_init();
