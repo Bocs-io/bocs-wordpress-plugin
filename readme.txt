@@ -1,3 +1,6 @@
+v0.0.73 10/16/2024
+* My profile subscriptions list fix
+
 v0.0.72 10/10/2024
 * Hide old bocs page
 * empty bocs headers error traps

@@ -12,8 +12,8 @@
 
     <tbody>
         <?php
-        if (count($subscriptions['data'])) {
-            foreach ($subscriptions['data'] as $subscription) {
+        if (count($subscriptions['data']['data'])) {
+            foreach ($subscriptions['data']['data'] as $subscription) {
         ?>
                 <tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php
 
@@ -24,7 +24,7 @@
                                     echo wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
                                     ?>"><?php
 
-                echo $subscription['bocs']['name'] ?></a>
+                echo !empty(trim($subscription['bocs']['name'])) ? $subscription['bocs']['name'] : 'Subscription #' . $subscription['subscriptionNumber'] ?></a>
                     </td>
                     <td class="subscription-status order-status woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-status woocommerce-orders-table__cell-order-status" data-title="Status"><?php
 

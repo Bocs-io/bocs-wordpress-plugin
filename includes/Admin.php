@@ -201,7 +201,7 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241003.1', true);
+        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241015.1', true);
 
         if (class_exists('woocommerce')) {
             wp_enqueue_script('wc-add-to-cart');
@@ -290,7 +290,7 @@ class Admin
 
             wp_enqueue_script('bocs-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js', array(
                 'jquery'
-            ), '20240624.1', true);
+            ), '20241015.1', true);
 
             wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -1037,7 +1037,7 @@ class Admin
             $order_data = $this->get_order_data_as_json($order_id);
             $post_data .= '"billing": {"firstName": "' . $order->get_billing_first_name() . '","lastName":  "' . $order->get_billing_last_name() . '","company":  "' . $order->get_billing_company() . '","address1": "' . $order->get_billing_address_1() . '","city": "' . $order->get_billing_city() . '","state":  "' . $order->get_billing_state() . '","country": "' . $order->get_billing_country() . '","postcode": "' . $order->get_billing_postcode() . '","phone":  "' . $order->get_billing_phone() . '","email":  "' . $order->get_billing_email() . '"},
                         "shipping": {"firstName": "' . $order->get_shipping_first_name() . '","lastName":  "' . $order->get_shipping_last_name() . '","company":  "' . $order->get_shipping_company() . '","address1": "' . $order->get_shipping_address_1() . '","city": "' . $order->get_shipping_city() . '","state":  "' . $order->get_shipping_state() . '","country": "' . $order->get_shipping_country() . '","postcode": "' . $order->get_shipping_postcode() . '","phone": "","email":  ""},
-                        "customer": {"id": "' . $bocs_customer_id . '","externalSourceId": "' . $customer_id . '"},
+                        "customer": {"id": "' . $bocs_customer_id . '","externalSourceId": "' . $customer_id . '","firstName": "' . $order->get_billing_first_name() . '","lastName":  "' . $order->get_billing_last_name() . '","company":  "' . $order->get_billing_company() . '","address1": "' . $order->get_billing_address_1() . '","city": "' . $order->get_billing_city() . '","state":  "' . $order->get_billing_state() . '","country": "' . $order->get_billing_country() . '","postcode": "' . $order->get_billing_postcode() . '","phone":  "' . $order->get_billing_phone() . '","email":  "' . $order->get_billing_email() . '"},
                         "lineItems": [' . implode(',', $subscription_line_items) . '],
                         "frequency": {"price": ' . $order->get_total() . ',"discount": ' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . ',"discountType": "' . $bocs_discount_type . '","id": "' . $frequency_id . '","frequency": ' . $bocs_frequency_interval . ',"timeUnit": "' . $bocs_frequency_time_unit . '"},"startDateGmt": "' . $start_date . '",
                         "order": ' . $order_data . ',
