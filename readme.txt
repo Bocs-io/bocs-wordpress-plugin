@@ -1,3 +1,6 @@
+v0.0.76 11/06/2024
+* Bug fixes and added developer mode
+
 v0.0.75 11/06/2024
 * updated bocs widget javascript url's version
 

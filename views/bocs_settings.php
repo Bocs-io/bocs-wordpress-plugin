@@ -85,6 +85,7 @@ $bocs->auto_add_bocs_keys();
 
 $options = get_option('bocs_plugin_options');
 $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+$options['developer_mode'] = $options['developer_mode'] ?? 'off';
 ?>
 
 <div class="tabset">
@@ -100,6 +101,9 @@ $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 	<!-- Tab 4 -->
 	<input type="radio" name="tabset" id="tab4" aria-controls="site-status">
 	<label for="tab4">Site Status</label>
+	<!-- Tab 5 -->
+	<input type="radio" name="tabset" id="tab5" aria-controls="developer-mode">
+	<label for="tab5">Test</label>
 
 	<div class="tab-panels">
 		<section id="marzen" class="tab-panel">
@@ -367,15 +371,7 @@ echo wp_create_nonce("bocs_sync_options");
             echo wc_help_tip(esc_html__('The WooCommerce REST API package running on your site.', 'woocommerce'));
             ?></td>
             			<td>
-            				<?php
-                $version = wc()->api->get_rest_api_package_version();
-
-                if (! is_null($version)) {
-                    echo '<mark class="yes"><span class="dashicons dashicons-yes"></span> ' . esc_html($version) . ' <code class="private">' . esc_html(wc()->api->get_rest_api_package_path()) . '</code></mark> ';
-                } else {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Unable to detect the REST API package.', 'woocommerce') . '</mark>';
-                }
-                ?>
+							
             			</td>
             		</tr>
             		<tr>
@@ -1996,6 +1992,23 @@ echo wp_create_nonce("bocs_sync_options");
             	</tr>
             	</tbody>
             </table>
+		</section>
+		<section id="developer-mode" class="tab-panel">
+			<h2>Test</h2>
+			<div class="notice notice-warning">
+				<p><strong>For Bocs developers only</strong></p>
+				<p>
+					<form method="post">
+						<label>
+							<input type="checkbox" id="developer_mode" name="developer_mode" <?php echo $options['developer_mode'] === 'on' ? 'checked' : ''; ?>>
+							Developer Mode
+						</label>
+						<input type="hidden" name="action" value="update">
+						<input type="hidden" name="option_page" value="developer_mode">
+						<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
+					</form>
+				</p>
+			</div>
 		</section>
 	</div>
 </div>

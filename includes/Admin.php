@@ -457,6 +457,16 @@ class Admin
                 $options['bocs_headers']['organization'] = $_POST["bocs_plugin_options"]["bocs_headers"]['organization'];
                 $options['bocs_headers']['authorization'] = $_POST["bocs_plugin_options"]["bocs_headers"]['authorization'];
             }
+
+            if (isset($_POST["option_page"]) && $_POST["option_page"] === 'developer_mode' && isset($_POST["action"]) && $_POST["action"] === 'update') {
+                $options['developer_mode'] = 'off';
+                if (isset($_POST["developer_mode"])) {
+                    $options['developer_mode'] = $_POST["developer_mode"] == 'on' ? 'on' : 'off';
+                }    
+            }
+
+
+            
         }
 
         update_option('bocs_plugin_options', $options);
@@ -1752,25 +1762,30 @@ class Admin
      */
     public function bocs_user_id_check($user_login, $user)
     {
-        $options = get_option('bocs_plugin_options');
-        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+        try {
+            $options = get_option('bocs_plugin_options');
+            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
-            return;
-        }
+            if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+                return;
+            }
 
-        // Get the user's email address
-        $user_email = $user->user_email;
-        $bocs_user_id = get_user_meta($user->ID, 'bocs_user_id', true);
+            // Get the user's email address
+            $user_email = $user->user_email;
+            $bocs_user_id = get_user_meta($user->ID, 'bocs_user_id', true);
 
-        if (empty($bocs_user_id)) {
-            
-
-            if (! empty($options['bocs_headers']['organization']) && $options['bocs_headers']['store'] && $options['bocs_headers']['authorization']) {
+            if (empty($bocs_user_id) && 
+                !empty($options['bocs_headers']['organization']) && 
+                $options['bocs_headers']['store'] && 
+                $options['bocs_headers']['authorization']) {
+                
                 $curl = curl_init();
+                if ($curl === false) {
+                    throw new Exception('Failed to initialize cURL');
+                }
 
                 curl_setopt_array($curl, array(
-                    CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . $user_email,
+                    CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . urlencode($user_email),
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 10,
@@ -1787,17 +1802,63 @@ class Admin
                 ));
 
                 $response = curl_exec($curl);
-                $object = json_decode($response);
+                
+                if ($response === false) {
+                    $error = curl_error($curl);
+                    curl_close($curl);
+                    throw new Exception('cURL request failed: ' . $error);
+                }
+
+                $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
                 curl_close($curl);
-                if (isset($object->data)) {
-                    if (count($object->data) > 0) {
-                        foreach ($object->data as $bocs_user) {
+
+                if ($http_code !== 200) {
+                    throw new Exception('API request failed with status code: ' . $http_code);
+                }
+
+                $object = json_decode($response);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new Exception('Failed to decode JSON response: ' . json_last_error_msg());
+                }
+
+                // Log the decoded object structure
+                error_log('Decoded response structure: ' . print_r($object, true));
+
+                $bocs_users = null;
+                
+                // Check $object->data->data first
+                if (isset($object->data->data) && is_array($object->data->data)) {
+                    $bocs_users = $object->data->data;
+                } 
+                // Fallback to checking $object->data if the first check fails
+                elseif (isset($object->data) && is_array($object->data)) {
+                    $bocs_users = $object->data;
+                }
+
+                if ($bocs_users) {
+                    foreach ($bocs_users as $bocs_user) {
+                        if (!empty($bocs_user->id)) {
                             update_user_meta($user->ID, 'bocs_user_id', $bocs_user->id);
+                            error_log('Updated user ' . $user->ID . ' with bocs_user_id: ' . $bocs_user->id);
                             break;
                         }
                     }
+                } else {
+                    error_log('No valid users data found in response');
                 }
             }
+        } catch (Exception $e) {
+            // Log the error
+            error_log('Bocs user ID check error: ' . $e->getMessage());
+            
+            // Optionally, you could add the error to WordPress admin notices
+            add_action('admin_notices', function() use ($e) {
+                ?>
+                <div class="notice notice-error is-dismissible">
+                    <p><?php echo esc_html('Error checking Bocs user ID: ' . $e->getMessage()); ?></p>
+                </div>
+                <?php
+            });
         }
     }
 
