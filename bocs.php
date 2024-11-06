@@ -10,7 +10,7 @@
  * Plugin Name:       Bocs
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.74
+ * Version:           0.0.75
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -24,11 +24,25 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
     die();
 }
 
-define('BOCS_VERSION', '0.0.74');
+define('BOCS_VERSION', '0.0.75');
 define('BOCS_NAME', 'Bocs');
 define('BOCS_SLUG', 'bocs');
-define("BOCS_API_URL", "https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod/");
-define("BOCS_LIST_WIDGETS_URL", BOCS_API_URL. "list-widgets/");
+
+// API Configuration
+define('BOCS_API_ENDPOINTS', [
+    'dev'  => 'https://9nelk4erd7.execute-api.ap-southeast-2.amazonaws.com/dev',
+    'prod' => 'https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod'
+]);
+
+define('BOCS_ENVIRONMENT', 'prod'); // Change to 'dev' for development
+
+$api_base = BOCS_API_ENDPOINTS[BOCS_ENVIRONMENT];
+
+// Define all API-related constants
+define('BOCS_API_URL', $api_base . '/');
+define('VITE_API_EXTERNAL_URL', $api_base);
+define('NEXT_PUBLIC_API_EXTERNAL_URL', $api_base);
+define('BOCS_LIST_WIDGETS_URL', BOCS_API_URL . 'list-widgets/');
 
 // just in case the action scheduler is not yet installed in woommerce (or other plugins)
 if (! function_exists('as_has_scheduled_action')) {

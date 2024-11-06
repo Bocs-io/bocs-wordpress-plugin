@@ -1,3 +1,9 @@
+v0.0.75 11/06/2024
+* updated bocs widget javascript url's version
+
+v0.0.74 11/05/2024
+* updated to production link for the api
+
 v0.0.73 10/16/2024
 * My profile subscriptions list fix
 

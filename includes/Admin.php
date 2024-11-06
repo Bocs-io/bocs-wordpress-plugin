@@ -127,7 +127,7 @@ class Admin
             'wp-editor',
             'wp-data',
             'jquery'
-        ), '20240828.6');
+        ), '20241105.4');
 
         // get the current post id
         $post_id = get_the_ID();
@@ -139,8 +139,9 @@ class Admin
         $bocs_widgets = get_option("bocs_widgets");
 
         $params = array(
+            'dataURL' => NEXT_PUBLIC_API_EXTERNAL_URL,
             'bocsURL' => BOCS_API_URL . "bocs",
-            'widgetsURL' => BOCS_API_URL . "list-widgets",
+            'widgetsURL' => BOCS_LIST_WIDGETS_URL,
             'collectionsURL' => BOCS_API_URL . "collections",
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
@@ -177,7 +178,7 @@ class Admin
         wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
             //'bocsURL' => BOCS_API_URL . "bocs",
             //'collectionsURL' => BOCS_API_URL . "collections",
-            'widgetsURL' => BOCS_API_URL . "list-widgets",
+            'widgetsURL' => BOCS_LIST_WIDGETS_URL,
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
             'Authorization' => $options['bocs_headers']['authorization'] ?? '',
@@ -201,7 +202,7 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241015.1', true);
+        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241106.1', true);
 
         if (class_exists('woocommerce')) {
             wp_enqueue_script('wc-add-to-cart');
@@ -290,7 +291,7 @@ class Admin
 
             wp_enqueue_script('bocs-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js', array(
                 'jquery'
-            ), '20241015.1', true);
+            ), '20241105.1', true);
 
             wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),

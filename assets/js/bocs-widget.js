@@ -177,7 +177,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		// Save the block's content with the selected widget ID.
 		return props.attributes.widgetId ? el("div", {
 			id: "bocs-widget",
-			"data-id": props.attributes.widgetId.replace("widget-", "")
+			"data-id": props.attributes.widgetId.replace("widget-", ""),
+			"data-url": bocs_widget_object.dataURL
 		}) : null;
 	}
 });

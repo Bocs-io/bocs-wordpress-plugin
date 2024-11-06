@@ -31,7 +31,7 @@ class Shortcode
         }*/
 
         if (isset($atts['widget'])) {
-            $output .= ' data-id="' . $atts['widget'] . '"';
+            $output .= ' data-id="' . $atts['widget'] . '" data-url="' . NEXT_PUBLIC_API_EXTERNAL_URL . '"';
         }
 
         $output .= '></div>';
