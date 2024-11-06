@@ -1803,29 +1803,46 @@ class Admin
 
     public function show_related_orders()
     {
-        $page = $_GET['page'];
-        $action = $_GET['action'];
-        $id = $_GET['id'];
+        try {
+            // Check if required GET parameters exist
+            if (!isset($_GET['page']) || !isset($_GET['action']) || !isset($_GET['id'])) {
+                return;
+            }
 
-        if (! empty($page) && ! empty($action) && ! empty($id)) {
-            if ($page == 'wc-orders' && $action == 'edit' && $id > 0) {
-                // get order details
+            $page = sanitize_text_field($_GET['page']);
+            $action = sanitize_text_field($_GET['action']);
+            $id = absint($_GET['id']);
+
+            // Validate parameters
+            if (empty($page) || empty($action) || empty($id)) {
+                return;
+            }
+
+            // Check if we're on the correct page and action
+            if ($page === 'wc-orders' && $action === 'edit') {
+                // Verify WooCommerce is active and function exists
+                if (!function_exists('wc_get_order')) {
+                    return;
+                }
+
+                // Get order details
                 $order = wc_get_order($id);
-                if ($order) {
-                    error_log('show_related_orders');
+                
+                // Verify order exists and is valid
+                if ($order && !is_wp_error($order)) {
                     add_meta_box(
-                        'bocs_order_meta_box', // Unique ID for the metabox
-                        'Bocs Related Orders', // Title of the metabox
-                        array(
-                            $this,
-                            'order_meta_box_content'
-                        ), // Callback function to display content
-                        NULL, // Post type where the metabox should appear
-                        'normal', // Context (normal, side, advanced)
-                        'low' // Priority (high, core, default, low)
+                        'bocs_order_meta_box',
+                        'Bocs Related Orders',
+                        array($this, 'order_meta_box_content'),
+                        NULL,
+                        'normal',
+                        'low'
                     );
                 }
             }
+        } catch (Exception $e) {
+            // Log the error but don't display it to users
+            error_log('Bocs show_related_orders error: ' . $e->getMessage());
         }
     }
 
