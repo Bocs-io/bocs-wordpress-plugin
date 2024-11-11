@@ -1,3 +1,6 @@
+v0.0.78 11/11/2024
+* Added (alpha) to the plugin name
+
 v0.0.77 11/11/2024
 * Fix on the developer mode switch as the frontend was not updating
 
