@@ -1,3 +1,6 @@
+v0.0.77 11/11/2024
+* Fix on the developer mode switch as the frontend was not updating
+
 v0.0.76 11/06/2024
 * Bug fixes and added developer mode
 

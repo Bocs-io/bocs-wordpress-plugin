@@ -2003,6 +2003,9 @@ echo wp_create_nonce("bocs_sync_options");
 							<input type="checkbox" id="developer_mode" name="developer_mode" <?php echo $options['developer_mode'] === 'on' ? 'checked' : ''; ?>>
 							Developer Mode
 						</label>
+						<br />
+						<span>Please resave any  or update any page the widget is on once checked.</span>
+						<br />
 						<input type="hidden" name="action" value="update">
 						<input type="hidden" name="option_page" value="developer_mode">
 						<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
