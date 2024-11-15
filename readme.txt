@@ -1,3 +1,7 @@
+v0.0.79 11/15/2024
+* Fix the issue on the duplicate products when the product is added to the cart
+* Fix the issue Cancel, Pause, Renew subscription buttons on the subscription page
+
 v0.0.78 11/11/2024
 * Added (alpha) to the plugin name
 
