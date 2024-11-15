@@ -1,4 +1,13 @@
-	
+/**
+ * Adds products to WooCommerce cart with subscription frequency and discount handling
+ * @async
+ * @param {Object} params - Cart parameters
+ * @param {number} params.price - Subtotal price before discount
+ * @param {number} params.discount - Discount amount to apply
+ * @param {Object} params.selectedFrequency - Subscription frequency details
+ * @param {Array} params.selectedProducts - Array of products to add to cart
+ * @param {number} params.total - Total price after discount
+ */
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
 	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
 	// console.log('bocs_add_to_cart params', params);
@@ -19,90 +28,60 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	buttonCart.prop('disabled', true);
 	buttonCart.html('Processing...');
 
+	console.log('products', products);
+
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
 
-		let wcProductId = 0;
+		if(product.externalSource != "WP" || product.externalSourceId == 0) continue;
 
-		// we will search for the product according to the bocs_product_id and title
-		const searchProduct = await jQuery.ajax({
-			url: bocsAjaxObject.ajax_url,
-			type: 'POST',
-			data: {
-				action: 'search_product',
-				nonce: bocsAjaxObject.search_nonce,   // The AJAX nonce value
-				name: product.name,
-				bocs_product_id: product.id,
-				is_bocs: 0
+		let wcProductId = product.externalSourceId;
+
+		if(product.variations){
+			// we will get the variations
+			let variationIds = [];
+			for (const bocsVariationId of product.variations) {
+				// get the details of the variation
+				const variation = await jQuery.ajax({
+					url: bocsAjaxObject.productUrl + bocsVariationId,
+					type: "GET",
+					contentType: "application/json; charset=utf-8",
+					headers: {
+						'Organization': bocsAjaxObject.orgId,
+						'Store': bocsAjaxObject.storeId,
+						'Authorization': bocsAjaxObject.authId
+					}
+				});
+
+				// Add the variation's externalSourceId to the array
+				variationIds.push(variation.data.externalSourceId);
+				
 			}
+
+			 // Get the minimum variation ID as the default product ID
+			 wcProductId = Math.min(...variationIds);
+
+		}
+
+		var data = {
+			id: wcProductId,
+			quantity: product.quantity
+		};
+
+		await jQuery.ajax({
+			url: '/wp-json/wc/store/v1/cart/add-item',
+			method: 'POST',
+			data: data,
+			beforeSend: function (xhr) {
+				xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
+			},
+			success: function (response) {
+				console.log('Product added to cart:', response);
+			},
+			error: function (error) {
+				console.error('Error adding product to cart:', error);
+			},
 		});
-
-		if (searchProduct) {
-			if (searchProduct > 0) {
-				// there exists a product
-				wcProductId = searchProduct;
-			}
-		}
-
-		if (wcProductId === 0) {
-
-			// we will attempt to create the product
-			const createdProduct = await jQuery.ajax({
-				url: bocsAjaxObject.ajax_url,
-				type: 'POST',
-				data: {
-					action: 'create_product',   // The AJAX action name to be handled by the server
-					nonce: bocsAjaxObject.nonce,   // The AJAX nonce value
-					title: product.name,        // Set the product title
-					price: product.price,             // Set the product price
-					sku: product.sku,
-					bocs_product_id: product.id,
-					type: 'product'
-					// Add more product data as needed
-				}
-			});
-
-			if (createdProduct) {
-				wcProductId = createdProduct;
-			} else {
-
-				buttonCart.html('There is no WooCommerce Product found...');
-				buttonCart.addClass('ant-btn-dangerous');
-				buttonCart.removeAttr('disabled');
-				return;
-			}
-
-		}
-
-		if (wcProductId !== 0) {
-			if(product.variations){
-				// before adding to cart, we will check if it has variations
-				if (product.variations.length > 0) {
-					console.error('Error adding product to cart. Product with Variations is NOT WORKING as of now...');
-					// buttonCart.html('Product with Variations is NOT WORKING as of now...');
-				}
-			}
-
-			var data = {
-				id: wcProductId,
-				quantity: product.quantity
-			};
-
-			await jQuery.ajax({
-				url: '/wp-json/wc/store/v1/cart/add-item',
-				method: 'POST',
-				data: data,
-				beforeSend: function (xhr) {
-					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
-				},
-				success: function (response) {
-					console.log('Product added to cart:', response);
-				},
-				error: function (error) {
-					console.error('Error adding product to cart:', error);
-				},
-			});
-		}
 
 	}
 
@@ -189,6 +168,11 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 
 }
 
+/**
+ * Retrieves a cookie value by name
+ * @param {string} cname - Name of the cookie to retrieve
+ * @returns {string} Cookie value or empty string if not found
+ */
 function getCookie(cname) {
   let name = cname + "=";
   let decodedCookie = decodeURIComponent(document.cookie);

@@ -2,11 +2,24 @@
 
 use function Loader\add_filter;
 
+/**
+ * Admin Class
+ * 
+ * Handles all WordPress admin functionality for the Bocs plugin including:
+ * - Product management
+ * - Order processing
+ * - Widget integration
+ * - Settings pages
+ * - User management
+ * - API communication
+ */
 class Admin
 {
 
+    /** @var array API headers for Bocs authentication */
     private $headers;
 
+    /** @var string Nonce for widget saving operations */
     private $save_widget_nonce = '';
 
     public function __construct()
@@ -16,7 +29,10 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
+        // Set up API authentication headers if credentials exist
+        if (! empty($options['bocs_headers']['organization']) && 
+            ! empty($options['bocs_headers']['store']) && 
+            ! empty($options['bocs_headers']['authorization'])) {
             $this->headers = [
                 'Organization' => $options['bocs_headers']['organization'],
                 'Store' => $options['bocs_headers']['store'],
@@ -27,24 +43,25 @@ class Admin
     }
 
     /**
-     * added bocs log handler
+     * Register custom log handler for Bocs operations
+     *
+     * @param array $handlers Existing log handlers
+     * @return array Modified array of handlers including Bocs handler
      */
     public function bocs_register_log_handlers($handlers)
     {
         array_push($handlers, new Bocs_Log_Handler());
-
         return $handlers;
     }
 
     /**
-     * Updates the bocs product based on the app parameters
+     * Process and save Bocs-specific product meta data
      *
-     * @param
-     *            $post_id
-     * @return void
+     * @param int $post_id Product post ID
      */
     public function bocs_process_product_meta($post_id)
     {
+        // Save subscription interval settings
         if (isset($_POST['bocs_product_interval'])) {
             update_post_meta($post_id, 'bocs_product_interval', esc_attr(trim($_POST['bocs_product_interval'])));
         }
@@ -215,9 +232,10 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '20241004.7', true);
+        ), '2024.11.15.6', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
+            'productUrl' => BOCS_API_URL . 'products/',
             'cartNonce' => $cart_nonce,
             'cartURL' => $redirect,
             'ajax_url' => admin_url('admin-ajax.php'),
@@ -231,16 +249,15 @@ class Admin
             'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
         ));
 
-        if (is_account_page() && isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'my-account/bocs-view-subscription/') !== false) {
+        global $wp;
 
-            global $wp;
-
-            // Get the subscription ID from the URL
-            $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
-
+        // Get the subscription ID from the URL
+        $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
+        error_log('bocs_subscription_id: ' . $bocs_subscription_id);
+        if (! empty($bocs_subscription_id)) {
             wp_enqueue_script('view-subscription-js', plugin_dir_url(__FILE__) . '../assets/js/view-subscription.js', array(
                 'jquery'
-            ), '20240610.23', true);
+            ), '2024.11.15.0', true);
             wp_localize_script('view-subscription-js', 'viewSubscriptionObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
@@ -772,19 +789,26 @@ class Admin
     }
 
     /**
+     * Process WooCommerce order when status changes to processing
+     * 
+     * Creates corresponding subscription in Bocs system including:
+     * - Customer data sync
+     * - Subscription details
+     * - Payment processing
+     * - Order item handling
      *
-     * Creates an order and a subscription on Bocs
-     * once the WooCommerce order is in processing mode
-     *
-     * @param integer $order_id
-     * @return false|void
+     * @param int $order_id WooCommerce order ID
+     * @return bool|void False on failure, void on success
      */
     public function bocs_order_status_processing($order_id = 0)
     {
+        // Validate required credentials
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+        if (empty($options['bocs_headers']['organization']) || 
+            empty($options['bocs_headers']['store']) || 
+            empty($options['bocs_headers']['authorization'])) {
             error_log('Bocs headers are not set. Exiting bocs_order_status_processing.');
             return false;
         }

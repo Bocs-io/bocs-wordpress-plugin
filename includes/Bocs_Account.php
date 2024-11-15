@@ -110,13 +110,20 @@ class Bocs_Account
             $subscription = $helper->curl_request($url, 'GET', [], $this->headers);
 
             // get the related orders
-            $url = BOCS_API_URL . 'orders';
-            $related_orders = $helper->curl_request($url, 'GET', [
-                'subscriptionId' => $bocs_subscription_id
-            ], $this->headers);
+            $url = BOCS_API_URL . 'orders?query=subscriptionId:' . $bocs_subscription_id;
+            $related_orders = $helper->curl_request($url, 'GET',[], $this->headers);
+            
+            if(isset($related_orders['data'])) {
+                if( $related_orders['data'] == 'Internal server error.' ) {
+                    $related_orders['data'] = [];
+                }
+            } else {
+                $related_orders['data'] = [];
+            }
 
             // in case that the related orders not exists or there is none
             if (! isset($related_orders['data']) || empty($related_orders['data'])) {
+                
                 $args = array(
                     'limit' => - 1, // Retrieve all orders
                     'orderby' => 'date',

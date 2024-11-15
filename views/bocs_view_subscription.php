@@ -157,7 +157,9 @@ echo trim($billingInterval . ' ' . $billingPeriod);
 </table>
 <?php
 
-if (count($related_orders['data']) > 0) {
+error_log('related_orders: ' . json_encode($related_orders));
+
+if (isset($related_orders['data']) && !empty($related_orders['data'])) {
     ?>
 	<br />
 	<header>
