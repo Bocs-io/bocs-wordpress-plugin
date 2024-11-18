@@ -12,8 +12,8 @@
 			<td>
 				<?php
     if (isset($subscription['data']['startDateGmt'])) {
-        $date = new DateTime($subscription['data']['startDateGmt']);
-        echo $date->format('F j, Y');
+        $startDate = new DateTime($subscription['data']['startDateGmt']);
+        echo $startDate->format('F j, Y');
     }
     ?>
 			</td>
@@ -26,13 +26,14 @@
 			<td>Next payment date</td>
 			<td><?php
 if (isset($subscription['data']['nextPaymentDateGmt'])) {
-    $date = new DateTime($subscription['data']['nextPaymentDateGmt']);
-    echo $date->format('F j, Y');
+    $nextPaymentDate = new DateTime($subscription['data']['nextPaymentDateGmt']);
+    echo $nextPaymentDate->format('F j, Y');
 }
 ?>
                 <br />
                 <input type="date" id="updated-next-payment-date" name="updated-next-payment-date" style="display: none;">
-                <button id="next-payment-date-button" data-subscription-id="<?php echo $subscription['data']['id']; ?>">Set Next Payment Date</button>
+                <br />
+                <button class="button bocs-button" id="next-payment-date-button" data-subscription-id="<?php echo $subscription['data']['id']; ?>">Set Next Payment Date</button>
 			</td>
 		</tr>
 		<tr>
@@ -78,10 +79,11 @@ if (isset($subscription['data']['nextPaymentDateGmt'])) {
 		<tr class="order_item">
 			<td class="product-name">
 				<?php
-    // get all the list of the products and its quantity
+    // Display subscription line items
+    // Iterate through each product in the subscription and display its details
     if ($subscription['data']['lineItems']) {
         foreach ($subscription['data']['lineItems'] as $lineItem) {
-            // get the name of the product
+            // Retrieve WooCommerce product details using the external source ID
             $wc_id = $lineItem['externalSourceId'];
             $product = wc_get_product($wc_id);
             $product_name = '';
@@ -89,7 +91,7 @@ if (isset($subscription['data']['nextPaymentDateGmt'])) {
                 $product_name = $product->get_name();
             }
             $quantity = $lineItem['quantity'];
-            ?>
+?>
 						<p><?php
 
             echo $product_name?> <strong class="product-quantity">× <?php
@@ -106,36 +108,35 @@ if (isset($subscription['data']['nextPaymentDateGmt'])) {
     echo $subscription['data']['total']?></span>
 				<?php
 
-    $billingInterval = 0;
-    $billingPeriod = '';
+    // Calculate and format billing interval and period
+    // Initialize billing variables
+    $subscriptionBillingInterval = 0;
+    $subscriptionBillingPeriod = '';
 
+    // Get billing interval from either direct property or frequency object
     if (isset($subscription['data']['billingInterval'])) {
-        $billingInterval = $subscription['data']['billingInterval'];
+        $subscriptionBillingInterval = $subscription['data']['billingInterval'];
+    } else if (isset($subscription['data']['frequency']['frequency'])) {
+        $subscriptionBillingInterval = $subscription['data']['frequency']['frequency'];
     }
 
-    if (empty($billingInterval) && isset($subscription['data']['frequency']['frequency'])) {
-        $billingInterval = $subscription['data']['frequency']['frequency'];
-    }
-
+    // Get billing period from either direct property or frequency object
     if (isset($subscription['data']['billingPeriod'])) {
-        $billingPeriod = $subscription['data']['billingPeriod'];
+        $subscriptionBillingPeriod = $subscription['data']['billingPeriod'];
+    } else if (isset($subscription['data']['frequency']['timeUnit'])) {
+        $subscriptionBillingPeriod = $subscription['data']['frequency']['timeUnit'];
     }
 
-    if (empty($billingPeriod) && isset($subscription['data']['frequency']['timeUnit'])) {
-        $billingPeriod = $subscription['data']['frequency']['timeUnit'];
-    }
-
-    $billingPeriod = $billingPeriod . 's';
-
-    if ($billingInterval <= 1) {
-        // Remove trailing 's' if it exists
-        $billingPeriod = rtrim($billingPeriod, 's');
-        $billingInterval = '';
+    // Format billing period string (handle pluralization)
+    $subscriptionBillingPeriod = $subscriptionBillingPeriod . 's';
+    if ($subscriptionBillingInterval <= 1) {
+        $subscriptionBillingPeriod = rtrim($subscriptionBillingPeriod, 's');
+        $subscriptionBillingInterval = '';
     }
 
     ?>every <?php
 
-    echo trim($billingInterval . ' ' . $billingPeriod);
+    echo trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod);
     ?>
 			</td>
 		</tr>
@@ -153,7 +154,7 @@ echo $subscription['data']['total']?></span></td>
 
 echo $subscription['data']['total']?></span> every <?php
 
-echo trim($billingInterval . ' ' . $billingPeriod);
+echo trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod);
 ?></td>
 		</tr>
 	</tfoot>
@@ -162,6 +163,18 @@ echo trim($billingInterval . ' ' . $billingPeriod);
 
 error_log('related_orders: ' . json_encode($related_orders));
 
+/**
+ * Related Orders Section
+ * Displays all orders associated with this subscription.
+ * Each order shows:
+ * - Order number
+ * - Date
+ * - Status
+ * - Total amount
+ * - Available actions
+ *
+ * @param array $related_orders Array of orders linked to this subscription
+ */
 if (isset($related_orders['data']) && !empty($related_orders['data'])) {
     ?>
 	<br />
@@ -182,13 +195,13 @@ if (isset($related_orders['data']) && !empty($related_orders['data'])) {
 
 		<tbody> <?php
 
-    $order_ids = [];
+    $woocommerceOrderIds = [];
     if (count($related_orders['data'])) {
-        foreach ($related_orders['data'] as $related_order) {
-            if ($related_order['externalSourceId']) {
-                $id = intval($related_order['externalSourceId']);
-                if ($id != 0) {
-                    $order_ids[] = $id;
+        foreach ($related_orders['data'] as $relatedOrder) {
+            if ($relatedOrder['externalSourceId']) {
+                $orderId = intval($relatedOrder['externalSourceId']);
+                if ($orderId != 0) {
+                    $woocommerceOrderIds[] = $orderId;
                 }
             }
         }
@@ -196,13 +209,13 @@ if (isset($related_orders['data']) && !empty($related_orders['data'])) {
 
     if (count($related_order['order_ids'])) {
         foreach ($related_order['order_ids'] as $order_id) {
-            $order_ids[] = intval($order_id);
+            $woocommerceOrderIds[] = intval($order_id);
         }
     }
 
-    $order_ids = array_unique($order_ids);
+    $woocommerceOrderIds = array_unique($woocommerceOrderIds);
 
-    foreach ($order_ids as $wc_order_id) {
+    foreach ($woocommerceOrderIds as $wc_order_id) {
         // get the woocommerce order id
 
         $order = wc_get_order($wc_order_id);
@@ -375,23 +388,135 @@ if (! empty($subscription['data']['billing']['email'])) :
 	</address>
 
 </section>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const dateInput = document.getElementById('updated-next-payment-date');
-    const toggleButton = document.getElementById('next-payment-date-button');
-    let isEditing = false;
+<?php
+/**
+ * BOCS API Integration Script
+ * Handles the next payment date modification functionality.
+ * 
+ * Features:
+ * - Date picker for selecting new payment date
+ * - API integration for updating subscription details
+ * - Error handling and validation
+ * - User feedback through alerts
+ * 
+ * Required Configuration:
+ * - BOCS API URL
+ * - Organization header
+ * - Store header
+ * - Authorization header
+ * 
+ * @requires WordPress option 'bocs_plugin_options' with valid API headers
+ */
+$options = get_option('bocs_plugin_options');
+$options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-    toggleButton.addEventListener('click', function() {
-        if (!isEditing) {
-            // Show date input and change button text
-            dateInput.style.display = 'inline-block';
-            toggleButton.textContent = 'Update';
-        } else {
-            // Hide date input and revert button text
-            dateInput.style.display = 'none';
-            toggleButton.textContent = 'Set Next Payment Date';
-        }
-        isEditing = !isEditing;
-    });
-});
-</script>
+// Validate required API headers
+$required_headers = ['organization', 'store', 'authorization'];
+$missing_headers = [];
+
+foreach ($required_headers as $header) {
+    if (empty($options['bocs_headers'][$header])) {
+        $missing_headers[] = ucfirst($header);
+    }
+}
+
+if (!empty($missing_headers)) {
+    error_log('BOCS API Error: Missing required headers: ' . implode(', ', $missing_headers));
+} else {
+?>
+    <script>
+        /**
+         * BOCS API Configuration Object
+         * Contains the API endpoint and required headers for authentication
+         */
+        const bocsApiConfig = {
+            apiUrl: '<?php echo BOCS_API_URL; ?>',
+            headers: {
+                Organization: '<?php echo $options['bocs_headers']['organization']; ?>',
+                Store: '<?php echo $options['bocs_headers']['store']; ?>',
+                Authorization: '<?php echo $options['bocs_headers']['authorization']; ?>'
+            }
+        };
+        
+        /**
+         * Next Payment Date Update Handler
+         * Manages the UI and API interaction for updating subscription payment dates.
+         * 
+         * Features:
+         * - Toggle between view/edit modes
+         * - Date validation
+         * - API error handling
+         * - User feedback
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('updated-next-payment-date');
+            const toggleButton = document.getElementById('next-payment-date-button');
+            let isEditing = false;
+
+            toggleButton.addEventListener('click', function() {
+                if (!isEditing) {
+                    // Enter edit mode
+                    dateInput.style.display = 'inline-block';
+                    toggleButton.textContent = 'Update';
+                } else {
+                    // Process the update
+                    const selectedDate = dateInput.value;
+                    
+                    if (selectedDate) {
+                        // Format date for API
+                        const formattedDate = new Date(selectedDate).toISOString();
+                        const subscriptionId = toggleButton.dataset.subscriptionId;
+                        
+                        if (!subscriptionId) {
+                            console.error('Subscription ID is missing');
+                            alert('Error: Unable to update subscription. Missing subscription ID.');
+                            return;
+                        }
+                        
+                        // Send update request to BOCS API
+                        updateNextPaymentDate(subscriptionId, formattedDate);
+                    }
+
+                    // Exit edit mode
+                    dateInput.style.display = 'none';
+                    toggleButton.textContent = 'Set Next Payment Date';
+                }
+                isEditing = !isEditing;
+            });
+
+            /**
+             * Sends an API request to update the next payment date
+             * @param {string} subscriptionId - The ID of the subscription to update
+             * @param {string} formattedDate - The new payment date in ISO format
+             */
+            function updateNextPaymentDate(subscriptionId, formattedDate) {
+                fetch(`${bocsApiConfig.apiUrl}subscriptions/${subscriptionId}`, {
+                    method: 'PUT',
+                    headers: {
+                        ...bocsApiConfig.headers,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nextPaymentDateGmt: formattedDate
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    alert('Next payment date updated successfully!');
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error: Failed to update next payment date. Please try again.');
+                });
+            }
+        });
+    </script>
+<?php
+}
+?>
