@@ -30,6 +30,9 @@ if (isset($subscription['data']['nextPaymentDateGmt'])) {
     echo $date->format('F j, Y');
 }
 ?>
+                <br />
+                <input type="date" id="updated-next-payment-date" name="updated-next-payment-date" style="display: none;">
+                <button id="next-payment-date-button" data-subscription-id="<?php echo $subscription['data']['id']; ?>">Set Next Payment Date</button>
 			</td>
 		</tr>
 		<tr>
@@ -372,3 +375,23 @@ if (! empty($subscription['data']['billing']['email'])) :
 	</address>
 
 </section>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('updated-next-payment-date');
+    const toggleButton = document.getElementById('next-payment-date-button');
+    let isEditing = false;
+
+    toggleButton.addEventListener('click', function() {
+        if (!isEditing) {
+            // Show date input and change button text
+            dateInput.style.display = 'inline-block';
+            toggleButton.textContent = 'Update';
+        } else {
+            // Hide date input and revert button text
+            dateInput.style.display = 'none';
+            toggleButton.textContent = 'Set Next Payment Date';
+        }
+        isEditing = !isEditing;
+    });
+});
+</script>
