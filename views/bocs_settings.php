@@ -86,6 +86,10 @@ $bocs->auto_add_bocs_keys();
 $options = get_option('bocs_plugin_options');
 $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 $options['developer_mode'] = $options['developer_mode'] ?? 'off';
+$stripe_settings = $options['stripe'] ?? array();
+$is_test_mode = ($stripe_settings['test_mode'] ?? 'no') === 'yes';
+$publishable_key = $stripe_settings['publishable_key'] ?? '';
+$secret_key = $stripe_settings['secret_key'] ?? '';
 ?>
 
 <div class="tabset">
@@ -116,7 +120,7 @@ $options['developer_mode'] = $options['developer_mode'] ?? 'off';
 								<label>Store ID</label>
 							</th>
 							<td class="forminp forminp-text">
-								<input type="text" name="bocs_plugin_options[bocs_headers][store]" id="bocsStore" value="<?php
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][store]" id="bocsStore" value="<?php
 
         echo $options['bocs_headers']['store'] ?? ""?>" />
 							</td>
@@ -126,7 +130,7 @@ $options['developer_mode'] = $options['developer_mode'] ?? 'off';
 								<label>Organization ID</label>
 							</th>
 							<td class="forminp forminp-text">
-								<input type="text" name="bocs_plugin_options[bocs_headers][organization]" id="bocsOrganization" value="<?php
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][organization]" id="bocsOrganization" value="<?php
 
         echo $options['bocs_headers']['organization'] ?? ""?>" />
 							</td>
@@ -136,7 +140,7 @@ $options['developer_mode'] = $options['developer_mode'] ?? 'off';
 								<label>Authorization</label>
 							</th>
 							<td class="forminp forminp-text">
-								<input type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php
 
         echo $options['bocs_headers']['authorization'] ?? ""?>" />
 							</td>
@@ -144,14 +148,101 @@ $options['developer_mode'] = $options['developer_mode'] ?? 'off';
 					</tbody>
 				</table>
 				<br />
-				<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php
+				
+			
 
-    echo wp_create_nonce("bocs_plugin_options");
-    ?>">
-				<input type="hidden" name="action" value="update">
-				<input type="hidden" name="option_page" value="bocs_plugin_options">
+			<h2>Stripe Settings</h2>
+			<table class="form-table">
+				<tr>
+					<th scope="row">Test Mode</th>
+					<td>
+						<label>
+							<input type="checkbox" name="bocs_plugin_options[stripe][test_mode]" 
+								value="yes" <?php checked($stripe_settings['test_mode'], 'yes'); ?>>
+							Enable Test Mode
+						</label>
+						<p class="description">Check this box to use Stripe test API keys instead of live API keys.</p>
+					</td>
+				</tr>
+				
+				<!-- Live Keys Section -->
+				<tr class="live-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? 'hidden' : ''; ?>">
+					<th scope="row">Live Publishable Key</th>
+					<td>
+						<input type="text" name="bocs_plugin_options[stripe][live_publishable_key]" 
+							value="<?php echo esc_attr($stripe_settings['live_publishable_key'] ?? ''); ?>" class="regular-text">
+						<p class="description">
+							Enter your Stripe Live Publishable Key
+							<br>
+							<small>Format: pk_live_51ABC...XYZ</small>
+						</p>
+					</td>
+				</tr>
+				<tr class="live-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? 'hidden' : ''; ?>">
+					<th scope="row">Live Secret Key</th>
+					<td>
+						<input type="password" name="bocs_plugin_options[stripe][live_secret_key]" 
+							value="<?php echo esc_attr($stripe_settings['live_secret_key'] ?? ''); ?>" class="regular-text">
+						<p class="description">
+							Enter your Stripe Live Secret Key
+							<br>
+							<small>Format: sk_live_51ABC...XYZ</small>
+						</p>
+					</td>
+				</tr>
+
+				<!-- Test Keys Section -->
+				<tr class="test-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? '' : 'hidden'; ?>">
+					<th scope="row">Test Publishable Key</th>
+					<td>
+						<input type="text" name="bocs_plugin_options[stripe][test_publishable_key]" 
+							value="<?php echo esc_attr($stripe_settings['test_publishable_key'] ?? ''); ?>" 
+							class="regular-text">
+						<p class="description">
+							Enter your Stripe Test Publishable Key
+							<br>
+							<small>Format: pk_test_51ABC...XYZ</small>
+						</p>
+					</td>
+				</tr>
+				<tr class="test-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? '' : 'hidden'; ?>">
+					<th scope="row">Test Secret Key</th>
+					<td>
+						<input type="password" name="bocs_plugin_options[stripe][test_secret_key]" 
+							value="<?php echo esc_attr($stripe_settings['test_secret_key'] ?? ''); ?>" 
+							class="regular-text">
+						<p class="description">
+							Enter your Stripe Test Secret Key
+							<br>
+							<small>Format: sk_test_51ABC...XYZ</small>
+						</p>
+					</td>
+				</tr>
+			</table>
+
+			<div class="stripe-keys-help">
+				<h3>How to get your Stripe API Keys</h3>
+				<ol>
+					<li>Log in to your <a href="https://dashboard.stripe.com/apikeys" target="_blank">Stripe Dashboard</a></li>
+					<li>In the left sidebar, click on "Developers" → "API keys"</li>
+					<li>You'll find both your Publishable and Secret keys here</li>
+					<li>Toggle "View test data" in the Stripe dashboard to switch between live and test keys</li>
+				</ol>
+				<p><strong>Note:</strong> Test mode uses pre-configured test keys. You only need to enter your live keys.</p>
+				<p><strong>Warning:</strong> Never share your Secret key publicly or commit it to version control.</p>
+			</div>
+
+			<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php 
+				echo wp_create_nonce("bocs_plugin_options");
+			?>">
+			<input type="hidden" name="action" value="update">
+			<input type="hidden" name="option_page" value="bocs_plugin_options">
+			
+			<p class="submit">
 				<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
-			</form>
+			</p>
+			
+		</form>
 		</section>
 		<section id="rauchbier" class="tab-panel">
 			<h2>Sync Logs</h2>
@@ -2094,4 +2185,41 @@ echo wp_create_nonce("bocs_sync_options");
 		}
 
 	});
+</script>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+    // Toggle test/live sections
+    $('input[name="bocs_plugin_options[stripe][test_mode]"]').change(function() {
+        var isTestMode = $(this).is(':checked');
+        
+        if (isTestMode) {
+            $('.test-keys').removeClass('hidden');
+            $('.live-keys').addClass('hidden');
+        } else {
+            $('.test-keys').addClass('hidden');
+            $('.live-keys').removeClass('hidden');
+        }
+    });
+
+    // Add show/hide password functionality
+    $('.test-keys input[type="password"], .live-keys input[type="password"]').each(function() {
+        var $input = $(this);
+        var $td = $input.closest('td');
+        
+        // Add show/hide toggle button
+        var $toggle = $('<button type="button" class="button button-secondary show-hide-key">Show</button>');
+        $td.find('.description').append('<br>').append($toggle);
+
+        $toggle.click(function(e) {
+            e.preventDefault();
+            if ($input.attr('type') === 'password') {
+                $input.attr('type', 'text');
+                $toggle.text('Hide');
+            } else {
+                $input.attr('type', 'password');
+                $toggle.text('Show');
+            }
+        });
+    });
+});
 </script>

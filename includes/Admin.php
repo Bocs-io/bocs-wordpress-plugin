@@ -475,15 +475,33 @@ class Admin
                 $options['bocs_headers']['authorization'] = $_POST["bocs_plugin_options"]["bocs_headers"]['authorization'];
             }
 
+            // Add Stripe settings handling
+            if (isset($_POST["bocs_plugin_options"]['stripe'])) {
+                $test_mode = isset($_POST["bocs_plugin_options"]["stripe"]['test_mode']) ? 'yes' : 'no';
+                
+                // Store both live and test keys
+                $options['stripe']['live_publishable_key'] = sanitize_text_field($_POST["bocs_plugin_options"]["stripe"]['live_publishable_key'] ?? '');
+                $options['stripe']['live_secret_key'] = sanitize_text_field($_POST["bocs_plugin_options"]["stripe"]['live_secret_key'] ?? '');
+                $options['stripe']['test_publishable_key'] = sanitize_text_field($_POST["bocs_plugin_options"]["stripe"]['test_publishable_key'] ?? '');
+                $options['stripe']['test_secret_key'] = sanitize_text_field($_POST["bocs_plugin_options"]["stripe"]['test_secret_key'] ?? '');
+                $options['stripe']['test_mode'] = $test_mode;
+                
+                // Set current keys based on mode
+                $options['stripe']['publishable_key'] = $test_mode === 'yes' 
+                    ? $options['stripe']['test_publishable_key']
+                    : $options['stripe']['live_publishable_key'];
+                    
+                $options['stripe']['secret_key'] = $test_mode === 'yes'
+                    ? $options['stripe']['test_secret_key']
+                    : $options['stripe']['live_secret_key'];
+            }
+
             if (isset($_POST["option_page"]) && $_POST["option_page"] === 'developer_mode' && isset($_POST["action"]) && $_POST["action"] === 'update') {
                 $options['developer_mode'] = 'off';
                 if (isset($_POST["developer_mode"])) {
                     $options['developer_mode'] = $_POST["developer_mode"] == 'on' ? 'on' : 'off';
                 }    
             }
-
-
-            
         }
 
         update_option('bocs_plugin_options', $options);
@@ -513,6 +531,16 @@ class Admin
     public function bocs_settings_page()
     {
         $this->_bocs_post_headers_settings();
+        
+        // Get current options
+        $options = get_option('bocs_plugin_options');
+        $stripe_settings = isset($options['stripe']) ? $options['stripe'] : array(
+            'publishable_key' => '',
+            'secret_key' => '',
+            'test_mode' => 'no'
+        );
+        
+        // Include the settings view
         require_once dirname(__FILE__) . '/../views/bocs_settings.php';
     }
 
