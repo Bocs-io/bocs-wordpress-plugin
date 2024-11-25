@@ -219,7 +219,18 @@ class Admin
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_script("bocs-widget-script", "https://bocs-widget-bocs.vercel.app/script/index.js", array(), '20241106.1', true);
+        // Get the appropriate widget URL based on developer mode
+        $widget_url = BOCS_ENVIRONMENT === 'dev' 
+            ? "https://dev.widget.v2.bocs.io/script/index.js"
+            : "https://widget.v2.bocs.io/script/index.js";
+
+        wp_enqueue_script(
+            "bocs-widget-script", 
+            $widget_url, 
+            array(), 
+            '20241125.1', 
+            true
+        );
 
         if (class_exists('woocommerce')) {
             wp_enqueue_script('wc-add-to-cart');
