@@ -1,3 +1,7 @@
+v0.0.81 11/26/2024
+* Added the developer mode switch for the widget URL
+* Added the stripe keys settings
+
 v0.0.80 11/18/2024
 * Add the updating of the next payment date on the subscription page
 
