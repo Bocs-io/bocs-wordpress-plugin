@@ -1,8 +1,14 @@
-const { createElement: el } = wp.element; // Alias wp.element.createElement to el for easier usage.
-const { BlockControls, useBlockProps } = wp.blockEditor; // Destructure BlockControls and useBlockProps from wp.blockEditor.
-const { ToolbarGroup, DropdownMenu } = wp.components; // Destructure ToolbarGroup and DropdownMenu from wp.components.
+// WordPress core dependencies
+const { createElement: el } = wp.element; // Create React elements using WordPress's element API
+const { BlockControls, useBlockProps } = wp.blockEditor; // Block editor components for toolbar controls
+const { ToolbarGroup, DropdownMenu } = wp.components; // UI components for block toolbar
 
-// Define the main icon for the block as an SVG element.
+/**
+ * SVG Icon Definitions
+ * These icons are used to represent the Bocs Widget in different contexts
+ */
+
+// Small icon (24x24) used in block inserter and toolbar
 const bocsIcon = el(
 	'svg',
 	{
@@ -28,7 +34,7 @@ const bocsIcon = el(
 	)
 );
 
-// Define a medium-sized icon for use elsewhere in the block.
+// Medium icon (50x50) used in block preview and edit interface
 const bocsIconMedium = el(
 	'svg',
 	{
@@ -54,11 +60,19 @@ const bocsIconMedium = el(
 	)
 );
 
-// Initialize the widgets options with a default loading message.
+/**
+ * Global State Management
+ * Initialize arrays to store widget and collection options fetched from the API
+ */
 let widgetsOptions = [{ id: 'widget-0', name: "Please wait..." }];
+let collectionsOptions = [{ id: 'collection-0', name: "Please wait..." }];
 
-// Fetch widget options via AJAX and update widgetsOptions.
+/**
+ * Data Fetching
+ * Fetch available widgets and collections when the page loads
+ */
 jQuery(async function ($) {
+	// Fetch widgets list
 	try {
 		const widgetsList = await $.ajax({
 			url: bocs_widget_object.widgetsURL,
@@ -71,10 +85,32 @@ jQuery(async function ($) {
 			}
 		});
 
-		// Map the retrieved widgets data to the format required for the options.
+		// Transform API response into format needed for dropdown options
 		widgetsOptions = widgetsList.data.data.map(widget => ({
 			id: `widget-${widget.id}`,
-			name: widget.title || widget.id
+			name: widget.title || widget.id // Fallback to ID if title is not available
+		}));
+
+	} catch (error) {
+		console.error('Failed to fetch widgets:', error);
+	}
+
+	try {
+		const collectionsList = await $.ajax({
+			url: bocs_widget_object.collectionsURL,
+			type: "GET",
+			contentType: "application/json; charset=utf-8",
+			headers: {
+				'Organization': bocs_widget_object.Organization,
+				'Store': bocs_widget_object.Store,
+				'Authorization': bocs_widget_object.Authorization
+			}
+		});
+
+		// Map the retrieved collections data to the format required for the options.
+		collectionsOptions = collectionsList.data.data.map(collection => ({
+			id: `collection-${collection.id}`,
+			name: collection.name || collection.id
 		}));
 
 	} catch (error) {
@@ -83,21 +119,40 @@ jQuery(async function ($) {
 	}
 });
 
-// Register a new block type for the WooCommerce Bocs Widget.
+/**
+ * Block Registration
+ * Register the Bocs Widget block type with WordPress
+ */
 wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
-	title: 'Bocs Widget', // The title of the block.
-	icon: bocsIcon, // The icon used for the block.
-	category: 'widgets', // The category under which the block appears.
+	title: 'Bocs Widget',
+	icon: bocsIcon,
+	category: 'widgets',
 	attributes: {
-		widgetId: { type: 'string' } // Attribute to store the selected widget ID.
+		widgetId: { 
+			type: 'string',
+			description: 'Stores the selected widget or collection ID'
+		}
 	},
-	description: "This block displays products from your store", // Block description.
+	description: "This block displays products from your store using Bocs widgets or collections",
+	
+	/**
+	 * Edit Component
+	 * Renders the block's edit interface in the Gutenberg editor
+	 * 
+	 * @param {Object} props Block properties including attributes and setAttributes
+	 * @returns {Element} Block edit interface
+	 */
 	edit: function (props) {
-		const blockProps = useBlockProps(); // Get block properties for the wrapper div.
-		const isSelected = props.isSelected; // Check if the block is selected.
-		const preLoadText = bocs_widget_object.selected_id ? bocs_widget_object.selected_name : ""; // Preload text if a widget is selected.
+		const blockProps = useBlockProps();
+		const isSelected = props.isSelected;
+		const preLoadText = bocs_widget_object.selected_id ? bocs_widget_object.selected_name : "";
 
-		// Function to handle updating the selected widget.
+		/**
+		 * Updates the selected widget/collection and saves the selection
+		 * 
+		 * @param {string} id The ID of the selected widget/collection
+		 * @param {string} name The display name of the selected widget/collection
+		 */
 		function updateSelected(id, name) {
 			// Update the block attributes with the selected widget ID.
 			props.setAttributes({ widgetId: id });
@@ -105,8 +160,16 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			// Hide dropdown menus and descriptions.
 			jQuery('.bocs-dropdown-menu-body, .bocs-widget-description, .bocs-wrapper').hide();
 
+			var type = 'widget';
+			
+			if (id.indexOf('collection') !== -1) {
+				type = 'collection';
+			}
+
 			// Update the description with the selected widget name.
 			jQuery('.bocs-widget-selected-desc').html(`<b>Widget:</b><span>Name: ${name}</span>`);
+			if (type === 'collection') jQuery('.bocs-widget-selected-desc').html("<b>Collections Widget:</b><span>Name: " + name + "</span>");
+
 
 			// Send the selected widget data to the server via AJAX.
 			jQuery.ajax({
@@ -122,13 +185,25 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			});
 		}
 
-		// Map the widgets options to be used in the dropdown menu.
-		const widgetMenuOptions = widgetsOptions.map(widget => ({
-			label: widget.name,
-			value: widget.id,
-			title: widget.name,
-			onClick: () => updateSelected(widget.id, widget.name)
-		}));
+		// Transform widget data into dropdown menu options
+		const widgetMenuOptions = widgetsOptions
+			.filter(widget => widget.name)
+			.map(widget => ({
+				label: widget.name,
+				value: widget.id,
+				title: widget.name,
+				onClick: () => updateSelected(widget.id, widget.name)
+			}));
+
+		// Map the collection  options to be used in the dropdown menu.
+		const collectionMenuOptions = collectionsOptions
+			.filter(collection => collection.name) // Only include collections with a non-empty name
+			.map(collection => ({
+				label: collection.name,
+				value: collection.id,
+				title: collection.name,
+				onClick: () => updateSelected(collection.id, collection.name)
+			}));
 
 		// Return the block's edit interface.
 		return el(
@@ -138,6 +213,14 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				BlockControls,
 				{ key: 'controls' },
 				el(ToolbarGroup, null,
+					el(DropdownMenu, {
+						label: 'Collections',
+						text: 'Collections',
+						controls: collectionMenuOptions,
+						isTertiary: true,
+						icon: false,
+						className: 'bocs-dropdown-menu'
+					}),
 					el(DropdownMenu, {
 						label: 'Widgets',
 						text: 'Widgets',
@@ -158,6 +241,14 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 				"div",
 				{ className: "bocs-wrapper" },
 				el(DropdownMenu, {
+					label: 'Collections',
+					text: 'Collections',
+					controls: collectionMenuOptions,
+					isTertiary: true,
+					icon: false,
+					className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
+				}),
+				el(DropdownMenu, {
 					label: 'Widgets',
 					text: 'Widgets',
 					controls: widgetMenuOptions,
@@ -173,12 +264,30 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			)
 		);
 	},
+	
+	/**
+	 * Save Component
+	 * Defines how the block should be saved to post content
+	 * 
+	 * @param {Object} props Block properties
+	 * @returns {Element} Saved block content
+	 */
 	save: function (props) {
-		// Save the block's content with the selected widget ID.
-		return props.attributes.widgetId ? el("div", {
+		// Extract the numeric ID from the widget/collection ID string
+		var dataId = '';
+		if (props.attributes.widgetId) {
+			dataId = props.attributes.widgetId
+				.replace("widget-", "")
+				.replace("collection-", "");
+		} else if (props.attributes.collectionId) {
+			dataId = props.attributes.collectionId.replace("collection-", "");
+		}
+
+		// Return the container div with necessary data attributes
+		return el("div", {
 			id: "bocs-widget",
-			"data-id": props.attributes.widgetId.replace("widget-", ""),
+			"data-id": dataId,
 			"data-url": bocs_widget_object.dataURL
-		}) : null;
+		});
 	}
 });
