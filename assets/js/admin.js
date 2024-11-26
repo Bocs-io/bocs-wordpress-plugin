@@ -1,277 +1,147 @@
 jQuery(function ($) {
 
-    // Event handler for the "change" button
-    $('input#changeit').click(function (e) {
-        if ($('select#source').length > 0 && $('input#changeit').length > 0) {
-            const selectedSource = $('select#source').val();
-            if (selectedSource.length) {
-                if (selectedSource === 'bocs' || selectedSource === 'wordpress' || selectedSource === 'both') {
+    /**
+     * Handles URL redirection based on the selected source filter
+     * Used to filter content between BOCS, WordPress, or both sources
+     * @param {string} selectedSource - The source to redirect to ('bocs', 'wordpress', or 'both')
+     */
+    function redirectToSource(selectedSource) {
+        // Construct base URL without query parameters
+        const baseUrl = window.location.origin + window.location.pathname;
+        // If 'both' is selected, use base URL, otherwise append source parameter
+        window.location.href = selectedSource === 'both' 
+            ? baseUrl 
+            : `${baseUrl}?source=${selectedSource}`;
+    }
+
+    // Initialize DOM elements for source filtering
+    const $sourceSelect = $('select#source');
+    const $changeButton = $('input#changeit');
+
+    // Set up event handlers for source selection
+    if ($sourceSelect.length > 0) {
+        if ($changeButton.length > 0) {
+            // If change button exists, handle click events
+            $changeButton.click(function(e) {
+                const selectedSource = $sourceSelect.val();
+                // Validate selected source before redirecting
+                if (selectedSource && ['bocs', 'wordpress', 'both'].includes(selectedSource)) {
                     e.preventDefault();
-
-                    // Redirect based on selected source
-                    if (selectedSource === 'bocs' || selectedSource === 'wordpress') {
-                        window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
-                    } else {
-                        window.location.href = window.location.origin + window.location.pathname;
-                    }
+                    redirectToSource(selectedSource);
                 }
-            }
+            });
+        } else {
+            // If no change button, handle direct select changes
+            $sourceSelect.change(function(e) {
+                e.preventDefault();
+                redirectToSource($(this).val());
+            });
         }
-    });
-
-    // Event handler for changing the source selection
-    if ($('select#source').length > 0 && $('input#changeit').length == 0) {
-        $('select#source').change(function (e) {
-            e.preventDefault();
-            const selectedSource = $(this).val();
-
-            // Redirect based on selected source
-            if (selectedSource === 'bocs' || selectedSource === 'wordpress') {
-                window.location.href = window.location.origin + window.location.pathname + '?source=' + selectedSource;
-            } else {
-                window.location.href = window.location.origin + window.location.pathname;
-            }
-        });
     }
 });
 
-let collections_list = [];
-let bocs_list = [];
-let widgets_list = [];
+/**
+ * Makes an API call to the BOCS backend to fetch widget data
+ * @param {string} url - The endpoint to query (e.g., 'collection' or 'bocs')
+ * @returns {Promise<Object>} The API response containing widget data
+ * @throws Will throw an error if the API call fails
+ */
+async function fetchBocsData(url) {
+    return jQuery.ajax({
+        url: `${bocsAjaxObject.widgetsURL}/?query=widgetType:${url}`,
+        type: "GET",
+        contentType: "application/json; charset=utf-8",
+        headers: {
+            'Organization': bocsAjaxObject.Organization,
+            'Store': bocsAjaxObject.Store,
+            'Authorization': bocsAjaxObject.Authorization
+        }
+    });
+}
 
-let collection_options = [];
-let bocs_options = [];
-let widgets_options = [];
+/**
+ * Populates a select element with options based on provided data
+ * Handles empty states and standardizes option text/value creation
+ * @param {jQuery} $select - jQuery select element to populate
+ * @param {Array} data - Array of objects containing option data
+ * @param {string} [noDataMessage='No items...'] - Message to display when no data is available
+ */
+function populateSelect($select, data, noDataMessage = 'No items...') {
+    // Clear existing options
+    $select.empty();
+    
+    // Handle empty or invalid data
+    if (!data || data.length === 0) {
+        $select.append(new Option(noDataMessage, ''));
+        return;
+    }
 
-jQuery(window).on("load", function () {
-    if (jQuery("#bocs-page-sidebar").length > 0) {
+    // Add default option
+    $select.append(new Option('Please select...', ''));
+    // Create options from data, using title, name, or id as display text
+    data.forEach(item => {
+        $select.append(new Option(
+            item.title || item.name || item.id,
+            item.id
+        ));
+    });
+}
 
-        jQuery(async function ($) {
+/**
+ * Updates the shortcode display element with the selected widget ID
+ * Generates a BOCS shortcode in the format [bocs widget='widget_id']
+ * @param {string} value - The widget ID to include in the shortcode
+ */
+function updateShortcode(value) {
+    const $shortcodeCopy = jQuery('#bocs-shortcode-copy');
+    $shortcodeCopy.html(value ? `[bocs widget='${value}']` : '');
+}
 
-            try {
-                // Commented out: Populate the Collections dropdown
-                /*
-                jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                    value: '',
-                    text: 'Please wait...'
-                }));
-                */
+/**
+ * Main initialization function for the BOCS sidebar
+ * Sets up the collections and widgets dropdowns with data from the BOCS API
+ * Implements mutual exclusivity between collections and widgets selection
+ * @throws Will log an error if API calls or initialization fails
+ */
+jQuery(window).on("load", async function() {
+    const $sidebar = jQuery("#bocs-page-sidebar");
+    if (!$sidebar.length) return;
 
-                // Commented out: Populate the Bocs dropdown
-                /*
-                jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                    value: '',
-                    text: 'Please wait...'
-                }));
-                */
+    try {
+        // Initialize select elements
+        const $collectionsSelect = jQuery('#bocs-page-sidebar-collections');
+        const $widgetsSelect = jQuery('#bocs-page-sidebar-widgets');
 
-                // Populate the Widgets dropdown
-                jQuery('#bocs-page-sidebar-widgets').append(jQuery('<option>', {
-                    value: '',
-                    text: 'Please wait...'
-                }));
+        // Show loading state
+        [$collectionsSelect, $widgetsSelect].forEach($select => {
+            $select.append(new Option('Please wait...', ''));
+        });
 
-                // Commented out: Handle collections
-                /*
-                if (bocsAjaxObject.bocs_collections) {
-                    if (bocsAjaxObject.bocs_collections.length === 0) {
-                        jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                            value: '',
-                            text: 'No Collections...'
-                        }));
-                    } else {
-                        jQuery('#bocs-page-sidebar-collections').empty();
-                        jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                            value: '',
-                            text: 'Please select...'
-                        }));
-                        bocsAjaxObject.bocs_collections.forEach((collection) => {
-                            jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                                value: collection['id'],
-                                text: collection['name'] === '' ? collection['id'] : collection['name']
-                            }));
-                        });
-                    }
-                } else {
-                    collections_list = $.ajax({
-                        url: bocsAjaxObject.collectionsURL,
-                        type: "GET",
-                        contentType: "application/json; charset=utf-8",
-                        headers: {
-                            'Organization': bocsAjaxObject.Organization,
-                            'Store': bocsAjaxObject.Store,
-                            'Authorization': bocsAjaxObject.Authorization
-                        }
-                    });
+        // Load collections - either from pre-loaded data or API
+        if (bocsAjaxObject.bocs_collections) {
+            populateSelect($collectionsSelect, bocsAjaxObject.bocs_collections, 'No Collections...');
+        } else {
+            const collections = await fetchBocsData('collection');
+            populateSelect($collectionsSelect, collections.data.data, 'No Collections...');
+        }
 
-                    await collections_list.then((collections) => {
-                        jQuery('#bocs-page-sidebar-collections').empty();
+        // Load widgets from API
+        const widgets = await fetchBocsData('bocs');
+        populateSelect($widgetsSelect, widgets.data.data, 'No Widgets...');
 
-                        if (collections.data.length === 0) {
-                            jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                                value: '',
-                                text: 'No Collections...'
-                            }));
-                        } else {
-                            jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                                value: '',
-                                text: 'Please select...'
-                            }));
-
-                            collections.data.forEach((collection) => {
-                                jQuery('#bocs-page-sidebar-collections').append(jQuery('<option>', {
-                                    value: collection.id,
-                                    text: collection.name === '' ? collection.id : collection.name
-                                }));
-                            });
-                        }
-                    });
+        // Set up mutual exclusivity between dropdowns
+        [$collectionsSelect, $widgetsSelect].forEach($select => {
+            $select.on('change', function() {
+                // Reset other dropdown when this one changes
+                const otherSelect = this === $collectionsSelect[0] ? $widgetsSelect : $collectionsSelect;
+                if (this.value) {
+                    otherSelect.prop('selectedIndex', 0);
                 }
-                */
-
-                // Commented out: Handle Bocs
-                /*
-                if (bocsAjaxObject.bocs_widgets) {
-                    if (bocsAjaxObject.bocs_widgets.length === 0) {
-                        jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                            value: '',
-                            text: 'No Bocs...'
-                        }));
-                    } else {
-                        jQuery('#bocs-page-sidebar-bocs').empty();
-                        jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                            value: '',
-                            text: 'Please select...'
-                        }));
-                        bocsAjaxObject.bocs_widgets.forEach((bocs) => {
-                            jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                                value: bocs['id'],
-                                text: bocs['name'] === '' ? bocs['id'] : bocs['name']
-                            }));
-                        });
-                    }
-                } else {
-                    bocs_list = $.ajax({
-                        url: bocsAjaxObject.bocsURL,
-                        type: "GET",
-                        contentType: "application/json; charset=utf-8",
-                        headers: {
-                            'Organization': bocsAjaxObject.Organization,
-                            'Store': bocsAjaxObject.Store,
-                            'Authorization': bocsAjaxObject.Authorization
-                        }
-                    });
-
-                    await bocs_list.then((bocs) => {
-                        jQuery('#bocs-page-sidebar-bocs').empty();
-
-                        if (bocs.data.length === 0) {
-                            jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                                value: '',
-                                text: 'No Bocs...'
-                            }));
-                        } else {
-                            jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                                value: '',
-                                text: 'Please select...'
-                            }));
-
-                            bocs.data.forEach((boc) => {
-                                jQuery('#bocs-page-sidebar-bocs').append(jQuery('<option>', {
-                                    value: boc.id,
-                                    text: boc.name === '' ? boc.id : boc.name
-                                }));
-                            });
-                        }
-                    });
-                }
-                */
-
-                // Handle Widgets
-                widgets_list = $.ajax({
-                    url: bocsAjaxObject.widgetsURL,
-                    type: "GET",
-                    contentType: "application/json; charset=utf-8",
-                    headers: {
-                        'Organization': bocsAjaxObject.Organization,
-                        'Store': bocsAjaxObject.Store,
-                        'Authorization': bocsAjaxObject.Authorization
-                    }
-                });
-
-                await widgets_list.then((widgets) => {
-                    jQuery('#bocs-page-sidebar-widgets').empty();
-
-                    if (widgets.data.data.length === 0) {
-                        jQuery('#bocs-page-sidebar-widgets').append(jQuery('<option>', {
-                            value: '',
-                            text: 'No Widgets...'
-                        }));
-                    } else {
-                        jQuery('#bocs-page-sidebar-widgets').append(jQuery('<option>', {
-                            value: '',
-                            text: 'Please select...'
-                        }));
-
-                        widgets.data.data.forEach((widget) => {
-                            jQuery('#bocs-page-sidebar-widgets').append(jQuery('<option>', {
-                                value: widget.id,
-                                text: widget.title === '' ? widget.id : widget.title
-                            }));
-                        });
-                    }
-                });
-
-            } catch (error) {
-                console.error(error);
-            }
+                updateShortcode(this.value);
+            });
         });
-    }
 
-    // Commented out: Event handler for changing Bocs selection
-    /*
-    if (jQuery("#bocs-page-sidebar-bocs").length > 0) {
-        jQuery('#bocs-page-sidebar-bocs').on('change', function () {
-            if (this.value !== '') {
-                jQuery("#bocs-page-sidebar-collections").prop('selectedIndex', 0);
-                jQuery("#bocs-page-sidebar-widgets").prop('selectedIndex', 0);
-                jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
-            } else {
-                jQuery('#bocs-shortcode-copy').html("");
-            }
-        });
+    } catch (error) {
+        console.error('Error initializing BOCS sidebar:', error);
     }
-    */
-
-    // Commented out: Event handler for changing Collections selection
-    /*
-    if (jQuery("#bocs-page-sidebar-collections").length > 0) {
-        jQuery('#bocs-page-sidebar-collections').on('change', function () {
-            if (this.value !== '') {
-                jQuery("#bocs-page-sidebar-bocs").prop('selectedIndex', 0);
-                jQuery("#bocs-page-sidebar-widgets").prop('selectedIndex', 0);
-                jQuery('#bocs-shortcode-copy').html("[bocs collection='" + this.value + "']");
-            } else {
-                jQuery('#bocs-shortcode-copy').html("");
-            }
-        });
-    }
-    */
-
-    // Event handler for changing Widgets selection
-    if (jQuery("#bocs-page-sidebar-widgets").length > 0) {
-        jQuery('#bocs-page-sidebar-widgets').on('change', function () {
-            if (this.value !== '') {
-                // Commented out: Reset other dropdowns
-                /*
-                jQuery("#bocs-page-sidebar-collections").prop('selectedIndex', 0);
-                jQuery("#bocs-page-sidebar-bocs").prop('selectedIndex', 0);
-                */
-                jQuery('#bocs-shortcode-copy').html("[bocs widget='" + this.value + "']");
-            } else {
-                jQuery('#bocs-shortcode-copy').html("");
-            }
-        });
-    }
-
 });

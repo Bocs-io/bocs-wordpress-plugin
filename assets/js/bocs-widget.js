@@ -1,7 +1,65 @@
-// WordPress core dependencies
-const { createElement: el } = wp.element; // Create React elements using WordPress's element API
-const { BlockControls, useBlockProps } = wp.blockEditor; // Block editor components for toolbar controls
-const { ToolbarGroup, DropdownMenu } = wp.components; // UI components for block toolbar
+/**
+ * Bocs Widget Gutenberg Block
+ * 
+ * @file Implements a custom Gutenberg block for displaying Bocs widgets and collections
+ * in WordPress posts and pages.
+ * 
+ * @requires wp.element
+ * @requires wp.blockEditor
+ * @requires wp.components
+ * @requires jQuery
+ * 
+ * @typedef {Object} BocsWidgetObject
+ * @property {string} widgetsURL - API endpoint for fetching widgets
+ * @property {string} collectionsURL - API endpoint for fetching collections
+ * @property {string} Organization - Organization identifier for API requests
+ * @property {string} Store - Store identifier for API requests
+ * @property {string} Authorization - Authorization token for API requests
+ * @property {string} ajax_url - WordPress AJAX URL
+ * @property {string} nonce - WordPress security nonce
+ * @property {string} selected_id - Currently selected widget/collection ID
+ * @property {string} selected_name - Currently selected widget/collection name
+ * @property {string} dataURL - URL for widget data
+ * 
+ * @global {BocsWidgetObject} bocs_widget_object - Global object containing configuration and state
+ * 
+ * Features:
+ * - Displays Bocs widgets and collections in WordPress posts/pages
+ * - Provides dropdown menus for selecting widgets and collections
+ * - Supports real-time preview in the Gutenberg editor
+ * - Persists widget/collection selection via WordPress AJAX
+ * - Includes custom SVG icons for the block
+ * 
+ * Usage:
+ * 1. Add the block to a post/page using the Gutenberg editor
+ * 2. Select either a widget or collection from the dropdown menus
+ * 3. Save the post/page to display the selected widget/collection
+ * 
+ * @since 1.0.0
+ */
+
+/**
+ * WordPress core dependencies for creating elements and accessing block editor functionality
+ * @const {Function} createElement - WordPress element creation function, aliased as 'el'
+ * @see {@link https://developer.wordpress.org/block-editor/reference-guides/packages/packages-element/}
+ */
+const { createElement: el } = wp.element;
+
+/**
+ * Block editor components for handling block controls and properties
+ * @const {Object} BlockControls - Component for adding controls to block toolbar
+ * @const {Function} useBlockProps - Hook to get props for the block wrapper element
+ * @see {@link https://developer.wordpress.org/block-editor/reference-guides/packages/packages-block-editor/}
+ */
+const { BlockControls, useBlockProps } = wp.blockEditor;
+
+/**
+ * WordPress components for building the user interface
+ * @const {Object} ToolbarGroup - Container for grouping toolbar controls
+ * @const {Object} DropdownMenu - Component for creating dropdown menus
+ * @see {@link https://developer.wordpress.org/block-editor/reference-guides/components/}
+ */
+const { ToolbarGroup, DropdownMenu } = wp.components;
 
 /**
  * SVG Icon Definitions
@@ -62,16 +120,22 @@ const bocsIconMedium = el(
 
 /**
  * Global State Management
- * Initialize arrays to store widget and collection options fetched from the API
+ * Initialize arrays to store widget and collection options fetched from the API.
+ * These arrays act as a cache for the dropdown menu options and are populated
+ * when the page loads. The initial "Please wait..." message provides feedback
+ * to users while data is being fetched.
  */
 let widgetsOptions = [{ id: 'widget-0', name: "Please wait..." }];
 let collectionsOptions = [{ id: 'collection-0', name: "Please wait..." }];
 
 /**
  * Data Fetching
- * Fetch available widgets and collections when the page loads
+ * Initializes the widget by fetching available widgets and collections when the page loads.
+ * Uses jQuery's AJAX functionality to make API calls with proper authentication headers.
+ * The fetched data is transformed into a format suitable for dropdown menu options.
  */
 jQuery(async function ($) {
+
 	// Fetch widgets list
 	try {
 		const widgetsList = await $.ajax({
@@ -84,7 +148,7 @@ jQuery(async function ($) {
 				'Authorization': bocs_widget_object.Authorization
 			}
 		});
-
+		
 		// Transform API response into format needed for dropdown options
 		widgetsOptions = widgetsList.data.data.map(widget => ({
 			id: `widget-${widget.id}`,
@@ -110,7 +174,7 @@ jQuery(async function ($) {
 		// Map the retrieved collections data to the format required for the options.
 		collectionsOptions = collectionsList.data.data.map(collection => ({
 			id: `collection-${collection.id}`,
-			name: collection.name || collection.id
+			name: collection.title || collection.id
 		}));
 
 	} catch (error) {
@@ -122,6 +186,21 @@ jQuery(async function ($) {
 /**
  * Block Registration
  * Register the Bocs Widget block type with WordPress
+ */
+/**
+ * Register the Bocs Widget block type
+ * @see {@link https://developer.wordpress.org/block-editor/reference-guides/block-api/block-registration/}
+ * 
+ * @typedef {Object} BlockConfig
+ * @property {string} title - The display title of the block
+ * @property {Element} icon - The block's icon
+ * @property {string} category - The block category (e.g., 'widgets')
+ * @property {Object} attributes - Block attributes configuration
+ * @property {string} description - Block description
+ * @property {Function} edit - Component for the editor interface
+ * @property {Function} save - Component for saving block content
+ * 
+ * @type {BlockConfig}
  */
 wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	title: 'Bocs Widget',
@@ -148,10 +227,15 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		const preLoadText = bocs_widget_object.selected_id ? bocs_widget_object.selected_name : "";
 
 		/**
-		 * Updates the selected widget/collection and saves the selection
+		 * Updates the selected widget/collection and persists the selection
 		 * 
-		 * @param {string} id The ID of the selected widget/collection
+		 * @param {string} id The ID of the selected widget/collection (format: 'widget-123' or 'collection-123')
 		 * @param {string} name The display name of the selected widget/collection
+		 * 
+		 * This function:
+		 * 1. Updates block attributes
+		 * 2. Updates UI elements
+		 * 3. Persists selection via AJAX to WordPress backend
 		 */
 		function updateSelected(id, name) {
 			// Update the block attributes with the selected widget ID.
@@ -185,25 +269,41 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 			});
 		}
 
-		// Transform widget data into dropdown menu options
+		/**
+		 * Transform widget and collection data into dropdown menu options
+		 * Each option includes:
+		 * - label: Display text in dropdown
+		 * - value: Unique identifier
+		 * - title: Tooltip text
+		 * - onClick: Handler for selection
+		 */
 		const widgetMenuOptions = widgetsOptions
-			.filter(widget => widget.name)
-			.map(widget => ({
-				label: widget.name,
-				value: widget.id,
-				title: widget.name,
-				onClick: () => updateSelected(widget.id, widget.name)
-			}));
+			.filter(widget => widget.name || widget.title)
+			.map(widget => {
+				const displayName = widget.name || widget.title;
+				return {
+					label: displayName,
+					value: widget.id,
+					title: displayName,
+					onClick: () => updateSelected(widget.id, displayName)
+				};
+			});
 
-		// Map the collection  options to be used in the dropdown menu.
+		// Map the collection options to be used in the dropdown menu.
 		const collectionMenuOptions = collectionsOptions
-			.filter(collection => collection.name) // Only include collections with a non-empty name
-			.map(collection => ({
-				label: collection.name,
-				value: collection.id,
-				title: collection.name,
-				onClick: () => updateSelected(collection.id, collection.name)
-			}));
+			.filter(collection => collection.name || collection.title)
+			.map(collection => {
+				const displayName = collection.name || collection.title;
+				return {
+					label: displayName,
+					value: collection.id,
+					title: displayName,
+					onClick: () => {
+						console.log('Collection ID:', collection.id);
+						updateSelected(collection.id, displayName)
+					}
+				};
+			});
 
 		// Return the block's edit interface.
 		return el(
@@ -267,10 +367,13 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 	
 	/**
 	 * Save Component
-	 * Defines how the block should be saved to post content
+	 * Defines how the block should be saved to post content.
+	 * Processes the widget/collection ID to strip prefixes and
+	 * creates a container div with necessary data attributes for
+	 * frontend rendering.
 	 * 
 	 * @param {Object} props Block properties
-	 * @returns {Element} Saved block content
+	 * @returns {Element} Saved block content with data attributes for frontend processing
 	 */
 	save: function (props) {
 		// Extract the numeric ID from the widget/collection ID string

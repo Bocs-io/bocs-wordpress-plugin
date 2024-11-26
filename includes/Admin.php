@@ -121,78 +121,147 @@ class Admin
         return $types;
     }
 
+    /**
+     * Register and enqueue scripts and styles for the Bocs Widget functionality
+     * 
+     * This method handles the initialization and setup of all required assets for the Bocs Widget,
+     * including:
+     * 1. API key validation and initialization
+     * 2. Loading required stylesheets (Font Awesome and custom styles)
+     * 3. Loading JavaScript dependencies and custom scripts
+     * 4. Setting up widget configuration parameters
+     * 5. Passing data from PHP to JavaScript
+     * 
+     * @since 1.0.0
+     * @return void
+     */
     public function bocs_widget_script_register()
     {
-        // this to make sure that the keys were added or updated
+        // Initialize Bocs instance and ensure API keys are set up
         $bocs = new Bocs();
         $bocs->auto_add_bocs_keys();
 
-        // get the settings
+        // Retrieve plugin settings and ensure headers array exists
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_enqueue_style('font-awesome', plugin_dir_url(__FILE__) . '../assets/css/font-awesome.min.css', null, '0.0.1');
-        wp_enqueue_style("bocs-custom-block-css", plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', null, '0.0.15');
+        // Enqueue required stylesheets
+        wp_enqueue_style(
+            'font-awesome', 
+            plugin_dir_url(__FILE__) . '../assets/css/font-awesome.min.css', 
+            null, 
+            '0.0.1'
+        );
+        wp_enqueue_style(
+            "bocs-custom-block-css", 
+            plugin_dir_url(__FILE__) . '../assets/css/bocs-widget.css', 
+            null, 
+            '0.0.15'
+        );
 
+        // Ensure jQuery is loaded as it's required for our widget
         wp_enqueue_script('jquery');
 
-        wp_register_script("bocs-custom-block", plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', array(
-            'wp-components',
-            'wp-block-editor',
-            'wp-blocks',
-            'wp-i18n',
-            'wp-editor',
-            'wp-data',
-            'jquery'
-        ), '20241105.4');
+        // Register the main widget script with all required WordPress dependencies
+        wp_register_script(
+            "bocs-custom-block", 
+            plugin_dir_url(__FILE__) . '../assets/js/bocs-widget.js', 
+            array(
+                'wp-components',    // WordPress UI components
+                'wp-block-editor', // Block editor functionality
+                'wp-blocks',       // Block registration API
+                'wp-i18n',        // Internationalization
+                'wp-editor',      // WordPress editor functionality
+                'wp-data',        // Data management
+                'jquery'          // jQuery library
+            ), 
+            '20241126.20'         // Version number for cache busting
+        );
 
-        // get the current post id
+        // Get current post context and any previously selected widget data
         $post_id = get_the_ID();
         $selected_widget_id = get_post_meta($post_id, 'selected_bocs_widget_id', true);
         $selected_widget_name = get_post_meta($post_id, 'selected_bocs_widget_name', true);
 
-        // we will get the list of collections and widgets
+        // Retrieve stored collections and widgets data
         $bocs_collections = get_option("bocs_collections");
         $bocs_widgets = get_option("bocs_widgets");
 
+        // Prepare parameters for JavaScript initialization
         $params = array(
+            // API endpoints
             'dataURL' => NEXT_PUBLIC_API_EXTERNAL_URL,
             'bocsURL' => BOCS_API_URL . "bocs",
-            'widgetsURL' => BOCS_LIST_WIDGETS_URL,
-            'collectionsURL' => BOCS_API_URL . "collections",
+            'widgetsURL' => BOCS_API_URL . 'list-widgets/?query=widgetType:bocs',
+            'collectionsURL' => BOCS_API_URL . 'list-widgets/?query=widgetType:collection',
+            
+            // Authentication headers
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
             'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-            'nonce' => $this->save_widget_nonce,
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'selected_id' => $selected_widget_id,
-            'selected_name' => $selected_widget_name,
-            'bocs_collections' => $bocs_collections,
-            'bocs_widgets' => $bocs_widgets
+            
+            // WordPress integration data
+            'nonce' => $this->save_widget_nonce,        // Security nonce
+            'ajax_url' => admin_url('admin-ajax.php'),  // WordPress AJAX endpoint
+            
+            // Widget state data
+            'selected_id' => $selected_widget_id,       // Currently selected widget
+            'selected_name' => $selected_widget_name,   // Name of selected widget
+            'bocs_collections' => $bocs_collections,    // Available collections
+            'bocs_widgets' => $bocs_widgets            // Available widgets
         );
 
+        // Enqueue the script and localize the data
         wp_enqueue_script("bocs-custom-block");
         wp_localize_script('bocs-custom-block', 'bocs_widget_object', $params);
     }
 
+    /**
+     * Enqueue admin-specific scripts and styles
+     * 
+     * This method handles the loading of assets specifically for the WordPress admin area.
+     * It includes:
+     * 1. Admin-specific CSS styles
+     * 2. Admin JavaScript functionality
+     * 3. Configuration data for AJAX operations
+     * 
+     * The method ensures that all necessary resources are available for the admin
+     * interface to function properly, including API authentication details and
+     * endpoint URLs.
+     * 
+     * @since 1.0.0
+     * @return void
+     */
     public function admin_enqueue_scripts()
     {
-        wp_enqueue_style("bocs-admin-css", plugin_dir_url(__FILE__) . '../assets/css/admin.css', null, '0.0.2');
+        // Enqueue admin-specific CSS
+        wp_enqueue_style(
+            "bocs-admin-css", 
+            plugin_dir_url(__FILE__) . '../assets/css/admin.css', 
+            null, 
+            '0.0.2'
+        );
 
-        // get the settings
+        // Retrieve plugin settings and ensure headers exist
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        wp_register_script("bocs-admin-js", plugin_dir_url(__FILE__) . '../assets/js/admin.js', array(
-            'jquery'
-        ), '20240828.3');
+        // Register and enqueue admin JavaScript
+        wp_register_script(
+            "bocs-admin-js", 
+            plugin_dir_url(__FILE__) . '../assets/js/admin.js', 
+            array('jquery'), 
+            '20241126.4'
+        );
         wp_enqueue_script("bocs-admin-js");
 
-        // we will get the list of collections and widgets
+        // Get collections and widgets data (currently unused but available)
         $bocs_collections = get_option("bocs_collections");
         $bocs_widgets = get_option("bocs_widgets");
 
+        // Pass configuration data to JavaScript
         wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
+            // Note: Commented endpoints are preserved for potential future use
             //'bocsURL' => BOCS_API_URL . "bocs",
             //'collectionsURL' => BOCS_API_URL . "collections",
             'widgetsURL' => BOCS_LIST_WIDGETS_URL,
@@ -1443,12 +1512,8 @@ class Admin
         // Output the HTML structure for the metabox.
         echo "<div id='bocs-page-sidebar'>
             <!-- Label and select dropdown for Collections -->
-            <!-- <label for='bocs-page-sidebar-collections'>Collections</label><br /> -->
-            <!-- <select id='bocs-page-sidebar-collections' name='collections'></select><br /> -->
-
-            <!-- Label and select dropdown for Bocs -->
-            <!-- <br /><label for='bocs-page-sidebar-bocs'>Bocs</label><br /> -->
-            <!-- <select id='bocs-page-sidebar-bocs' name='bocs'></select><br /> -->
+            <label for='bocs-page-sidebar-collections'>Collections</label><br /> 
+            <select id='bocs-page-sidebar-collections' name='collections'></select><br />
 
             <!-- Label and select dropdown for Widget -->
             <br /><label for='bocs-page-sidebar-widgets'>Widget</label><br />
