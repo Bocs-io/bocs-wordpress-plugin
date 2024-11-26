@@ -1,5 +1,7 @@
-v0.0.81 11/26/2024
+v0.0.82 11/26/2024
 * Added the developer mode switch for the widget URL
+
+v0.0.81 11/19/2024
 * Added the stripe keys settings
 
 v0.0.80 11/18/2024
