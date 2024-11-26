@@ -47,24 +47,34 @@ class Updater {
 	}
 
 	private function get_repository_info() {
-		if ( is_null( $this->github_response ) ) { // Do we have a response?
-			$args = array();
-			// $request_uri = sprintf( 'https://api.github.com/repos/%s/%s/releases', $this->username, $this->repository ); // Build URI
-			$request_uri = sprintf('https://b84gp25mke.execute-api.ap-southeast-2.amazonaws.com/dev/cru-wordpress-plugins-repository-get-latest-version?plugin=%s', 'bocs');
+		if ( is_null( $this->github_response ) ) {
+			$request_uri = sprintf(
+				'https://b84gp25mke.execute-api.ap-southeast-2.amazonaws.com/dev/cru-wordpress-plugins-repository-get-latest-version?plugin=%s&environment=%s&release_type=%s',
+				'bocs',
+				BOCS_ENVIRONMENT,
+				BOCS_ENVIRONMENT === 'dev' ? 'pre-release' : 'release'
+			);
 
 			$args = array();
 
-			if( $this->authorize_token ) { // Is there an access token?
-				$args['headers']['Authorization'] = "bearer {$this->authorize_token}"; // Set the headers
+			if( $this->authorize_token ) {
+				$args['headers']['Authorization'] = "bearer {$this->authorize_token}";
 			}
 
-			$response = json_decode( wp_remote_retrieve_body( wp_remote_get( $request_uri, $args ) ), true ); // Get JSON and parse it
-
-			if( is_array( $response ) ) { // If it is an array
-				$response = current( $response ); // Get the first item
+			$response = wp_remote_get( $request_uri, $args );
+			if ( is_wp_error( $response ) ) {
+				return;
 			}
 
-			$this->github_response = $response; // Set it to our property
+			$response = json_decode( wp_remote_retrieve_body( $response ), true );
+
+			if( is_array( $response ) ) {
+				$response = current( $response );
+			}
+
+			if ( !empty($response) && isset($response['tag_name']) ) {
+				$this->github_response = $response;
+			}
 		}
 	}
 
@@ -84,37 +94,42 @@ class Updater {
 	}
 
 	public function modify_transient( $transient ) {
+		if( property_exists( $transient, 'checked') ) {
+			if( $checked = $transient->checked ) {
+				$this->get_repository_info();
 
-		if( property_exists( $transient, 'checked') ) { // Check if transient has a checked property
-
-			if( $checked = $transient->checked ) { // Did Wordpress check for updates?
-
-				$this->get_repository_info(); // Get the repo info
+				if ( empty($this->github_response) ) {
+					return $transient;
+				}
 
 				$version = $this->github_response['tag_name'] ?? null;
 				$version = ltrim($version, 'v');
 
-				$out_of_date = version_compare( $version, $checked[ $this->basename ], 'gt' ); // Check if we're out of date
+				if ($version) {
+					$current_version = $checked[ $this->basename ];
+					$out_of_date = version_compare( $version, $current_version, 'gt' );
 
-				if( $out_of_date ) {
+					if( $out_of_date ) {
+						$new_files = $this->github_response['zipball_url'];
+						$slug = current( explode('/', $this->basename ) );
 
-					$new_files = $this->github_response['zipball_url']; // Get the ZIP
+						$plugin = array(
+							'url' => $this->plugin["PluginURI"],
+							'slug' => $slug,
+							'package' => $new_files,
+							'new_version' => $version,
+							'tested' => $this->github_response['tested'] ?? '',
+							'requires' => $this->github_response['requires'] ?? '',
+							'compatibility' => true
+						);
 
-					$slug = current( explode('/', $this->basename ) ); // Create valid slug
-
-					$plugin = array( // setup our plugin info
-						'url' => $this->plugin["PluginURI"],
-						'slug' => $slug,
-						'package' => $new_files,
-						'new_version' => $version
-					);
-
-					$transient->response[$this->basename] = (object) $plugin; // Return it in response
+						$transient->response[$this->basename] = (object) $plugin;
+					}
 				}
 			}
 		}
 
-		return $transient; // Return filtered transient
+		return $transient;
 	}
 
 	public function plugin_popup( $result, $action, $args ) {
