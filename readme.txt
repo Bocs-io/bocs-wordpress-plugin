@@ -1,3 +1,9 @@
+v0.0.83 11/26/2024
+* Added collection and widget list on the widget editor
+* Improved documentation on the widget editor
+* refactored the widget editor javascript
+* added the updater for the plugin for pre-release and release
+
 v0.0.82 11/26/2024
 * Added the developer mode switch for the widget URL
 
