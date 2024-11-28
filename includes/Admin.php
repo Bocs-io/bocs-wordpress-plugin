@@ -328,7 +328,7 @@ class Admin
 
         // Get the subscription ID from the URL
         $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
-        error_log('bocs_subscription_id: ' . $bocs_subscription_id);
+        
         if (! empty($bocs_subscription_id)) {
             wp_enqueue_script('view-subscription-js', plugin_dir_url(__FILE__) . '../assets/js/view-subscription.js', array(
                 'jquery'

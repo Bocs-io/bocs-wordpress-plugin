@@ -1,8 +1,7 @@
 jQuery(window).on('load', function() {
 	
-	if(jQuery('div.wc-block-components-totals-wrapper').length > 0 && typeof bocsCartObject.bocs !== 'undefined' && typeof bocsCartObject.bocs !== undefined ){
-		if( typeof bocsCartObject.bocs['products'] !== 'undefined' && typeof bocsCartObject.bocs['products'] !== undefined){
-			if(bocsCartObject.bocs['products'].length > 0){
+	if(jQuery('div.wc-block-components-totals-wrapper').length > 0 && typeof bocsCartObject.bocs !== 'undefined' && typeof bocsCartObject.bocs !== "undefined" ){
+		if( typeof bocsCartObject.bocs['products'] !== 'undefined' && typeof bocsCartObject.bocs['products'] !== "undefined"){			if(bocsCartObject.bocs['products'].length > 0){
 				// Create a new Date object for today's date
 		        var today = new Date();
 
