@@ -14,10 +14,10 @@ jQuery(document).ready(function ($){
 		$.ajax({
 			type: "POST",
 			dataType: "json",
-			url: ajax_object.ajax_url,
+			url: bocsAjaxObject.ajax_url,
 			data: {
 				'action': 'sync_contacts_to_bocs',
-				'sync_enabled': ajax_object.syncEnabled,
+				'sync_enabled': bocsAjaxObject.syncEnabled,
 				'_nonce' : wpnonce
 			},
 			success: function(response){
@@ -41,10 +41,10 @@ jQuery(document).ready(function ($){
 		$.ajax({
 			type: "POST",
 			dataType: "json",
-			url: ajax_object.ajax_url,
+			url: bocsAjaxObject.ajax_url,
 			data: {
 				'action': 'force_sync_contact_to_bocs',
-				'sync_enabled': ajax_object.syncEnabled,
+				'sync_enabled': bocsAjaxObject.syncEnabled,
 				'user_id': userID,
 				'_nonce' : wpnonce
 			},
@@ -53,7 +53,7 @@ jQuery(document).ready(function ($){
 				currentButton.removeAttr('disabled');
 			},
 			error : function(error){
-				console.log(error);
+				console.error(error);
 			}
 		});
 	});
