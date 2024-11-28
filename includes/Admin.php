@@ -192,8 +192,8 @@ class Admin
             // API endpoints
             'dataURL' => NEXT_PUBLIC_API_EXTERNAL_URL,
             'bocsURL' => BOCS_API_URL . "bocs",
-            'widgetsURL' => BOCS_API_URL . 'list-widgets/?query=widgetType:bocs',
-            'collectionsURL' => BOCS_API_URL . 'list-widgets/?query=widgetType:collection',
+            'widgetsURL' => BOCS_LIST_WIDGETS_URL . '?query=widgetType:bocs',
+            'collectionsURL' => BOCS_LIST_WIDGETS_URL . '?query=widgetType:collection',
             
             // Authentication headers
             'Organization' => $options['bocs_headers']['organization'] ?? '',
@@ -261,15 +261,10 @@ class Admin
 
         // Pass configuration data to JavaScript
         wp_localize_script('bocs-admin-js', 'bocsAjaxObject', array(
-            // Note: Commented endpoints are preserved for potential future use
-            //'bocsURL' => BOCS_API_URL . "bocs",
-            //'collectionsURL' => BOCS_API_URL . "collections",
             'widgetsURL' => BOCS_LIST_WIDGETS_URL,
             'Organization' => $options['bocs_headers']['organization'] ?? '',
             'Store' => $options['bocs_headers']['store'] ?? '',
-            'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-            //'bocs_collections' => $bocs_collections,
-            //'bocs_widgets' => $bocs_widgets
+            'Authorization' => $options['bocs_headers']['authorization'] ?? ''
         ));
     }
 
@@ -1879,107 +1874,268 @@ class Admin
     }
 
     /**
-     * Check if the user has a Bocs user ID and create one if it doesn't exist.
+     * Checks and synchronizes user IDs between WordPress and Bocs systems.
+     * 
+     * This method is triggered when a user logs in and performs the following:
+     * 1. Validates required Bocs API credentials
+     * 2. Checks if the user already has a Bocs ID in WordPress
+     * 3. If no Bocs ID exists, queries the Bocs API to find matching user
+     * 4. Updates WordPress user meta with Bocs ID if found
      *
-     * This method retrieves the Bocs headers from the plugin options, checks if the user has a Bocs user ID,
-     * and creates one if it doesn't exist. It uses the Bocs API to fetch the user's data and update the user meta.
+     * API Response Structure:
+     * The method expects one of two possible response structures from Bocs API:
+     * - object->data->data[]: Paginated response format
+     * - object->data[]: Direct array response format
      *
-     * @param string $user_login The user's login name.
-     * @param WP_User $user The user object.
+     * Error Handling:
+     * - Validates API credentials before making request
+     * - Handles cURL initialization and execution errors
+     * - Validates HTTP response codes
+     * - Handles JSON parsing errors
+     * - Logs all errors and optionally displays admin notices
+     *
+     * @param string   $user_login WordPress username of the logging in user
+     * @param WP_User  $user       WordPress user object containing user data
+     * 
+     * @throws Exception On API communication or data processing errors
+     * 
      * @return void
+     *
+     * @since 1.0.0
+     * @access public
+     *
+     * @uses get_option()           To retrieve plugin settings
+     * @uses get_user_meta()        To check existing Bocs ID
+     * @uses update_user_meta()     To store Bocs ID
+     * @uses curl_init()            To initialize API request
+     * @uses curl_setopt_array()    To configure API request
+     * @uses curl_exec()            To execute API request
+     * @uses error_log()            To log processing information and errors
+     *
+     * @example
+     * // The method is typically hooked to WordPress login action
+     * add_action('wp_login', array($this, 'bocs_user_id_check'), 10, 2);
+     *
+     * Meta Keys Used:
+     * - bocs_user_id: Stores the Bocs system user ID
      */
-    public function bocs_user_id_check($user_login, $user)
+    public function bocs_user_id_check($user_login, $user) 
     {
-        try {
-            $options = get_option('bocs_plugin_options');
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+        if (!$user instanceof WP_User) {
+            error_log('[Bocs][ERROR] Invalid user object provided');
+            return;
+        }
 
-            if(empty($options['bocs_headers']['organization']) || empty($options['bocs_headers']['store']) || empty($options['bocs_headers']['authorization'])) {
+        try {
+            // Rate limiting to prevent API abuse
+            $rate_limit_key = 'bocs_api_check_' . $user->ID;
+            if (get_transient($rate_limit_key)) {
+                error_log('[Bocs][INFO] Rate limit hit for user ' . $user->ID);
+                return;
+            }
+            set_transient($rate_limit_key, true, HOUR_IN_SECONDS);
+
+            // Validate and sanitize inputs
+            $user_id = absint($user->ID);
+            $user_email = sanitize_email($user->user_email);
+            
+            if (!is_email($user_email)) {
+                throw new Exception('Invalid email format');
+            }
+
+            // Get cached Bocs ID first
+            $bocs_user_id = get_user_meta($user_id, 'bocs_user_id', true);
+            if (!empty($bocs_user_id)) {
+                $this->log_debug("User $user_id already has Bocs ID: $bocs_user_id");
                 return;
             }
 
-            // Get the user's email address
-            $user_email = $user->user_email;
-            $bocs_user_id = get_user_meta($user->ID, 'bocs_user_id', true);
+            // Get and validate API credentials
+            $credentials = $this->get_api_credentials();
+            if (!$credentials) {
+                return;
+            }
 
-            if (empty($bocs_user_id) && 
-                !empty($options['bocs_headers']['organization']) && 
-                $options['bocs_headers']['store'] && 
-                $options['bocs_headers']['authorization']) {
+            // Prepare API request
+            $api_client = $this->get_api_client();
+            $response = $this->make_api_request($api_client, $user_email, $credentials);
+            
+            // Process response
+            $this->process_api_response($response, $user_id);
+
+        } catch (Exception $e) {
+            $this->handle_error($e);
+        }
+    }
+
+    /**
+     * Gets API credentials from WordPress options
+     *
+     * @return array|false Array of credentials or false if invalid
+     */
+    private function get_api_credentials() 
+    {
+        $options = get_option('bocs_plugin_options', []);
+        $headers = $options['bocs_headers'] ?? [];
+
+        $required_fields = ['organization', 'store', 'authorization'];
+        foreach ($required_fields as $field) {
+            if (empty($headers[$field])) {
+                $this->log_error("Missing required API credential: $field");
+                return false;
+            }
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Creates and configures API client
+     *
+     * @return CurlHandle|false
+     */
+    private function get_api_client() 
+    {
+        $curl = curl_init();
+        if ($curl === false) {
+            throw new Exception('Failed to initialize cURL');
+        }
+
+        // Set default cURL options
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30, // Reduced from unlimited
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET'
+        ]);
+
+        return $curl;
+    }
+
+    /**
+     * Makes API request to Bocs
+     *
+     * @param CurlHandle $curl
+     * @param string $email
+     * @param array $credentials
+     * @return array Response data
+     */
+    private function make_api_request($curl, $email, $credentials) 
+    {
+        // URL encode email for safety
+        $encoded_email = urlencode($email);
+        $api_url = BOCS_API_URL . "contacts?query=email:\"$encoded_email\"";
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $api_url,
+            CURLOPT_HTTPHEADER => [
+                'Organization: ' . $credentials['organization'],
+                'Content-Type: application/json',
+                'Store: ' . $credentials['store'],
+                'Authorization: ' . $credentials['authorization']
+            ]
+        ]);
+
+        // Add request logging with unique ID for tracing
+        $request_id = uniqid('bocs_');
+        $this->log_debug("[$request_id] API Request - URL: $api_url");
+
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $total_time = curl_getinfo($curl, CURLINFO_TOTAL_TIME);
+
+        curl_close($curl);
+
+        if ($response === false) {
+            throw new Exception("cURL request failed: $error");
+        }
+
+        $this->log_debug("[$request_id] API Response - Status: $http_code, Time: {$total_time}s");
+
+        if ($http_code !== 200) {
+            throw new Exception("API request failed with status code: $http_code");
+        }
+
+        return json_decode($response, false);
+    }
+
+    /**
+     * Processes API response and updates user meta
+     *
+     * @param object $response
+     * @param int $user_id
+     * @return void
+     */
+    private function process_api_response($response, $user_id) 
+    {
+        if (!$response) {
+            throw new Exception('Invalid API response format');
+        }
+
+        $bocs_users = $this->extract_users_from_response($response);
+        if (empty($bocs_users)) {
+            $this->log_warning("No valid users found for user ID: $user_id");
+            return;
+        }
+
+        foreach ($bocs_users as $bocs_user) {
+            if (!empty($bocs_user->id)) {
+                // Use update_user_meta with a third parameter for better performance
+                $updated = update_user_meta($user_id, 'bocs_user_id', $bocs_user->id, '');
                 
-                $curl = curl_init();
-                if ($curl === false) {
-                    throw new Exception('Failed to initialize cURL');
-                }
-
-                curl_setopt_array($curl, array(
-                    CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . urlencode($user_email),
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                    CURLOPT_CUSTOMREQUEST => 'GET',
-                    CURLOPT_HTTPHEADER => array(
-                        'Organization: ' . $options['bocs_headers']['organization'],
-                        'Content-Type: application/json',
-                        'Store: ' . $options['bocs_headers']['store'],
-                        'Authorization: ' . $options['bocs_headers']['authorization']
-                    )
-                ));
-
-                $response = curl_exec($curl);
-                
-                if ($response === false) {
-                    $error = curl_error($curl);
-                    curl_close($curl);
-                    throw new Exception('cURL request failed: ' . $error);
-                }
-
-                $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-                curl_close($curl);
-
-                if ($http_code !== 200) {
-                    throw new Exception('API request failed with status code: ' . $http_code);
-                }
-
-                $object = json_decode($response);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new Exception('Failed to decode JSON response: ' . json_last_error_msg());
-                }
-
-                // Log the decoded object structure
-                error_log('Decoded response structure: ' . print_r($object, true));
-
-                $bocs_users = null;
-                
-                // Check $object->data->data first
-                if (isset($object->data->data) && is_array($object->data->data)) {
-                    $bocs_users = $object->data->data;
-                } 
-                // Fallback to checking $object->data if the first check fails
-                elseif (isset($object->data) && is_array($object->data)) {
-                    $bocs_users = $object->data;
-                }
-
-                if ($bocs_users) {
-                    foreach ($bocs_users as $bocs_user) {
-                        if (!empty($bocs_user->id)) {
-                            update_user_meta($user->ID, 'bocs_user_id', $bocs_user->id);
-                            error_log('Updated user ' . $user->ID . ' with bocs_user_id: ' . $bocs_user->id);
-                            break;
-                        }
-                    }
-                } else {
-                    error_log('No valid users data found in response');
+                if ($updated) {
+                    $this->log_info("Updated user $user_id with bocs_user_id: {$bocs_user->id}");
+                    
+                    // Trigger action for other plugins
+                    do_action('bocs_user_id_updated', $user_id, $bocs_user->id);
+                    
+                    break;
                 }
             }
-        } catch (Exception $e) {
-            // Log the error
-            error_log('Bocs user ID check error: ' . $e->getMessage());
-            
-            // Optionally, you could add the error to WordPress admin notices
+        }
+    }
+
+    /**
+     * Extracts user data from API response
+     *
+     * @param object $response
+     * @return array
+     */
+    private function extract_users_from_response($response) 
+    {
+        if (isset($response->data->data) && is_array($response->data->data)) {
+            return $response->data->data;
+        }
+        
+        if (isset($response->data) && is_array($response->data)) {
+            return $response->data;
+        }
+        
+        return [];
+    }
+
+    /**
+     * Handles errors consistently
+     *
+     * @param Exception $e
+     * @return void
+     */
+    private function handle_error(Exception $e) 
+    {
+        $error_message = sprintf(
+            '[Bocs][ERROR] %s in %s:%d',
+            $e->getMessage(),
+            basename($e->getFile()),
+            $e->getLine()
+        );
+        
+        error_log($error_message);
+        
+        if (current_user_can('manage_options')) {
             add_action('admin_notices', function() use ($e) {
                 ?>
                 <div class="notice notice-error is-dismissible">
@@ -1988,6 +2144,25 @@ class Admin
                 <?php
             });
         }
+    }
+
+    /**
+     * Logging helpers with consistent formatting
+     */
+    private function log_debug($message) {
+        error_log("[Bocs][DEBUG] $message");
+    }
+
+    private function log_info($message) {
+        error_log("[Bocs][INFO] $message");
+    }
+
+    private function log_warning($message) {
+        error_log("[Bocs][WARNING] $message");
+    }
+
+    private function log_error($message) {
+        error_log("[Bocs][ERROR] $message");
     }
 
     public function show_related_orders()

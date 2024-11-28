@@ -589,68 +589,128 @@ class Sync
 	}
 
 	/**
-	 * Hook for user_register
-	 * It will create a user on bocs end if the user does not exist
-	 * otherwise update the meta on woocommerce end
+	 * Synchronizes a newly registered WordPress user with the Bocs application.
 	 * 
-	 * @param int $user_id
+	 * This method is hooked to WordPress's 'user_register' action and performs the following:
+	 * 1. Checks if a user with the same email exists in Bocs
+	 * 2. If found, stores the Bocs contact ID in WordPress user meta
+	 * 3. If not found, creates a new user in Bocs with the WordPress user's details
 	 * 
+	 * @param int $user_id The WordPress user ID of the newly registered user
+	 * 
+	 * @uses WP_User
+	 * @uses add_user_meta()
+	 * @uses Curl For making API requests to Bocs
+	 * 
+	 * @throws None - Errors are logged using error_log()
 	 * @return void
+	 * 
+	 * @since 1.0.0
 	 */
-	public function bocs_user_register($user_id)
-	{
-
+	public function bocs_user_register($user_id) {
+		// Create WP_User object from the provided user ID
 		$user = new WP_User($user_id);
 
-		if ($user) {
+		if (!$user || !$user->exists()) {
+			error_log('[Bocs Sync][ERROR] Invalid user ID: ' . $user_id);
+			return;
+		}
 
-			$bocs_contact_id = '';
-			// get the email address
-			$email = $user->get_user_email();
+		error_log('[Bocs Sync][INFO] Starting user registration sync for user ID: ' . $user_id);
+		
+		// Initialize Bocs contact ID as empty
+		$bocs_contact_id = '';
+		
+		// Retrieve user's email address from WordPress
+		$email = $user->user_email;
+		if (empty($email)) {
+			error_log('[Bocs Sync][ERROR] User email is empty for user ID: ' . $user_id);
+			return;
+		}
 
-			// search if the user exist using email
-			$url = 'contacts?query=email:' . $email;
+		error_log('[Bocs Sync][DEBUG] Processing user: ' . $email);
 
-			$curl = new Curl();
-			error_log('getting bocs user with email ' . $email);
-			$get_user = $curl->get($url, 'contacts', $user_id);
+		// Construct API query URL to search for existing user in Bocs
+		$url = 'contacts?query=email:"' . $email . '"';
 
-			if (isset($get_user->data)) {
-				if ($get_user->data && count($get_user->data) > 0) {
-					error_log('Bocs user FOUND');
-					$bocs_contact_id = $get_user->data[0]->id;
-					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
-				} else {
-					error_log('bocs user not found');
-				}
+		// Initialize Curl object for API communication
+		$curl = new Curl();
+		error_log('[Bocs Sync][INFO] Checking if user exists in Bocs: ' . $email);
+		
+		// Make GET request to Bocs API to check if user exists
+		$get_user = $curl->get($url, 'contacts', $user_id);
+
+		if (!$get_user) {
+			error_log('[Bocs Sync][ERROR] API request failed for email: ' . $email);
+			return;
+		}
+
+		// Check if user exists in Bocs
+		if (isset($get_user->data->data) && is_array($get_user->data->data) && count($get_user->data->data) > 0) {
+			error_log('[Bocs Sync][INFO] Existing Bocs user found for email: ' . $email);
+			
+			// Store Bocs contact ID from first matching result
+			$bocs_contact_id = $get_user->data->data[0]->id;
+			error_log('[Bocs Sync][DEBUG] Bocs contact ID: ' . $bocs_contact_id);
+			
+			// Save Bocs contact ID in WordPress user meta
+			$meta_result = add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			if ($meta_result) {
+				error_log('[Bocs Sync][INFO] Successfully stored Bocs contact ID in user meta');
 			} else {
-				error_log('bocs user not found');
+				error_log('[Bocs Sync][WARNING] Failed to store Bocs contact ID in user meta');
+			}
+		} else {
+			error_log('[Bocs Sync][INFO] No existing Bocs user found, proceeding with creation');
+		}
+
+		// If no existing Bocs user was found, create a new one
+		if (empty($bocs_contact_id)) {
+			// Set default role as 'customer'
+			$role = 'customer';
+			
+			// Get user's WordPress roles
+			$roles = $user->roles;
+			error_log('[Bocs Sync][DEBUG] User roles: ' . print_r($roles, true));
+			
+			// Use first assigned role if available
+			if (!empty($roles) && is_array($roles) && count($roles) > 0) {
+				$role = $roles[0];
+				error_log('[Bocs Sync][DEBUG] Using role: ' . $role);
 			}
 
-			// we will add the user to the bocs app
-			if (empty($bocs_contact_id)) {
-
-				$role = 'customer';
-				$roles = $user->get_roles();
-				if (!empty($roles)) {
-					if (is_array($roles)) {
-						if (count($roles)) {
-							$role = $roles[0];
-						}
-					}
-				}
-
-				$params = array(
-					'email' => $email,
-					'first_name' => $user->get_user_firstname(),
-					'last_name' => $user->get_user_lastname(),
-					'role' => $role,
-					'id' => $user_id,
-					'username' => $user->get_user_login()
-				);
-				error_log('creating bocs user');
-				$this->_createUser($params);
+			// Prepare user data for Bocs API
+			$params = array(
+				'email' => $email,
+				'first_name' => $user->first_name,
+				'last_name' => $user->last_name,
+				'role' => $role,
+				'id' => $user_id,
+				'username' => $user->user_login
+			);
+			
+			error_log('[Bocs Sync][INFO] Creating new Bocs user with params: ' . print_r($params, true));
+			
+			// Create new user in Bocs via API
+			$created_user = $this->_createUser($params);
+			
+			if ($created_user && 
+				((isset($created_user->data) && isset($created_user->data->id)) || 
+				(isset($created_user->data->data) && isset($created_user->data->data->id)))
+			) {
+				$bocs_contact_id = isset($created_user->data->id) ? 
+					$created_user->data->id : 
+					$created_user->data->data->id;
+					
+				error_log('[Bocs Sync][INFO] Successfully created Bocs user with ID: ' . $bocs_contact_id);
+				
+				// Store the Bocs contact ID in user meta
+				add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+			} else {
+				error_log('[Bocs Sync][ERROR] Failed to create Bocs user');
 			}
 		}
+
+		error_log('[Bocs Sync][INFO] Completed user registration sync for: ' . $email);
 	}
 }
