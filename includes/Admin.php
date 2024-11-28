@@ -892,336 +892,341 @@ class Admin
     }
 
     /**
-     * Process WooCommerce order when status changes to processing
+     * Process WooCommerce order when status changes to processing and create corresponding Bocs subscription
      * 
-     * Creates corresponding subscription in Bocs system including:
-     * - Customer data sync
-     * - Subscription details
-     * - Payment processing
-     * - Order item handling
+     * This method handles the creation of a subscription in the Bocs system when a WooCommerce order
+     * transitions to "processing" status. It performs the following key operations:
+     * 
+     * 1. Validates API credentials and order data
+     * 2. Retrieves order details and subscription parameters
+     * 3. Synchronizes customer data between WooCommerce and Bocs
+     * 4. Creates subscription with line items, billing/shipping info
+     * 5. Handles frequency and payment scheduling
+     * 
+     * Logging Levels:
+     * - DEBUG: Detailed flow information and data states
+     * - INFO: Successful operations and state transitions
+     * - WARNING: Non-critical issues that might need attention
+     * - ERROR: Critical failures that prevent subscription creation
      *
-     * @param int $order_id WooCommerce order ID
-     * @return bool|void False on failure, void on success
+     * @param int $order_id WooCommerce order ID to process
+     * @return bool|void False on validation failure, void on success/error
+     * @throws Exception When critical API operations fail
+     * 
+     * @since 1.0.0
      */
-    public function bocs_order_status_processing($order_id = 0)
+    public function bocs_order_status_processing($order_id = 0) 
     {
-        // Validate required credentials
+        // Initialize logging context
+        $log_context = ['order_id' => $order_id];
+        
+        // SECTION: Initial Validation
+        // Validate required credentials and order data
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (empty($options['bocs_headers']['organization']) || 
-            empty($options['bocs_headers']['store']) || 
-            empty($options['bocs_headers']['authorization'])) {
-            error_log('Bocs headers are not set. Exiting bocs_order_status_processing.');
-            return false;
+        $required_headers = ['organization', 'store', 'authorization'];
+        foreach ($required_headers as $header) {
+            if (empty($options['bocs_headers'][$header])) {
+                error_log("ERROR: Missing required Bocs header: {$header}");
+                return false;
+            }
         }
 
         if (empty($order_id)) {
-            error_log('Order ID is empty. Exiting bocs_order_status_processing.');
+            error_log("ERROR: Invalid order ID provided");
             return false;
         }
 
-        //error_log('Processing order with ID: ' . $order_id);
-
-        // get the order details
+        // SECTION: Order Data Retrieval
         $order = wc_get_order($order_id);
-
-        $order_total = $order->get_total();
-        $order_subtotal = $order->get_subtotal();
-        $order_discount = $order->get_discount_total();
-
         if (!$order) {
-            error_log('Order not found for ID: ' . $order_id);
+            error_log("ERROR: Order not found for ID: {$order_id}");
             return false;
         }
 
-        $bocs_product_interval = 'month';
-        $bocs_product_interval_count = 1;
-
-        $sub_items = [];
-        $subscription_line_items = [];
-
-        $is_bocs = false;
-
-        // get bocs data
-        $bocsid = $order->get_meta('__bocs_bocs_id');
-        $collectionid = $order->get_meta('__bocs_collections_id');
-        $frequency_id = $order->get_meta('__bocs_frequency_id');
-
-        //error_log('Initial BOCS data: bocsid=' . $bocsid . ', collectionid=' . $collectionid . ', frequency_id=' . $frequency_id);
-
-        if (empty($bocsid) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $bocsid = $bocs_value;
-                $order->update_meta_data('__bocs_bocs_id', $bocs_value);
-                //error_log('Updated BOCS ID from session or cookie: ' . $bocsid);
-            }
+        // Debug logging of order totals
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log("DEBUG: Order totals - Total: {$order->get_total()}, Subtotal: {$order->get_subtotal()}, Discount: {$order->get_discount_total()}");
         }
 
-        $is_bocs = ! empty($bocsid);
+        // SECTION: Subscription Parameters
+        // Initialize subscription parameters with defaults
+        $subscription_params = [
+            'interval' => 'month',
+            'interval_count' => 1,
+            'items' => [],
+            'line_items' => []
+        ];
 
-        if (empty($collectionid) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs_collection');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_collection_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $collectionid = $bocs_value;
-                $order->update_meta_data('__bocs_collection_id', $bocs_value);
-                error_log('Updated Collection ID from session or cookie: ' . $collectionid);
-            }
-        }
-
-        if (empty($frequency_id) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs_frequency');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $frequency_id = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_id', $bocs_value);
-                // error_log('Updated Frequency ID from session or cookie: ' . $frequency_id);
-            }
-        }
-
-        $bocs_frequency_time_unit = "";
-
-        if(isset(WC()->session)){
-            $bocs_value = WC()->session->get('bocs_frequency_time_unit');
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_time_unit'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $bocs_frequency_time_unit = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_time_unit', $bocs_value);
-            }
-        }
+        // SECTION: Bocs Data Collection
+        // Retrieve Bocs-specific identifiers from order meta or session
+        $bocs_identifiers = $this->get_bocs_identifiers($order);
         
-        $bocs_frequency_interval = "";
-
-        if(isset(WC()->session)){
-            $bocs_value = WC()->session->get('bocs_frequency_interval');
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_interval'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_interval']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $bocs_frequency_interval = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_interval', $bocs_value);
-            }
-        }
-        
-        $bocs_discount_type = "";
-
-        if(isset(WC()->session)){
-            $bocs_value = WC()->session->get('bocs_discount_type');
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_discount_type'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_discount_type']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $bocs_discount_type = $bocs_value;
-                $order->update_meta_data('__bocs_discount_type', $bocs_value);
-            }
+        // Early return if not a Bocs order
+        if (!$bocs_identifiers['is_bocs']) {
+            error_log("INFO: Not a Bocs order, skipping subscription creation");
+            return;
         }
 
-        $current_frequency = null;
-        $bocs_body = $this->get_bocs_data_from_api($bocsid);
+        // SECTION: Customer Synchronization
+        $customer_data = $this->sync_bocs_customer($order, $options['bocs_headers']);
+        if (!$customer_data) {
+            error_log("ERROR: Failed to sync customer data with Bocs");
+            return false;
+        }
 
-        foreach ($order->get_items() as $item_id => $item) {
+        // SECTION: Subscription Creation
+        try {
+            $subscription_data = $this->prepare_subscription_data(
+                $order,
+                $bocs_identifiers,
+                $customer_data,
+                $subscription_params
+            );
+            
+            $response = $this->create_bocs_subscription($subscription_data, $options['bocs_headers']);
+            
+            if ($response['success']) {
+                error_log("INFO: Successfully created Bocs subscription for order {$order_id}");
+                $order->add_order_note("Bocs subscription created successfully");
+            } else {
+                error_log("ERROR: Failed to create Bocs subscription: " . $response['message']);
+                $order->add_order_note("Failed to create Bocs subscription: " . $response['message']);
+            }
+            
+        } catch (Exception $e) {
+            error_log("ERROR: Exception during subscription creation: " . $e->getMessage());
+            return false;
+        }
+    }
 
-            $item_data = $item->get_data();
+    /**
+     * Helper method to retrieve Bocs identifiers from various sources
+     * 
+     * @param WC_Order $order
+     * @return array
+     */
+    private function get_bocs_identifiers($order) {
+        $identifiers = [
+            'bocs_id' => $order->get_meta('__bocs_bocs_id'),
+            'collection_id' => $order->get_meta('__bocs_collections_id'),
+            'frequency_id' => $order->get_meta('__bocs_frequency_id'),
+            'is_bocs' => false
+        ];
 
-            $quantity = $item->get_quantity();
+        // Try to get from session if not in meta
+        if (isset(WC()->session)) {
+            foreach (['bocs' => 'bocs_id', 
+                     'bocs_collection' => 'collection_id',
+                     'bocs_frequency' => 'frequency_id'] as $session_key => $id_key) {
+                if (empty($identifiers[$id_key])) {
+                    $identifiers[$id_key] = $this->get_from_session_or_cookie($session_key);
+                }
+            }
+        }
+
+        $identifiers['is_bocs'] = !empty($identifiers['bocs_id']);
+        return $identifiers;
+    }
+
+    /**
+     * Helper method to get value from session or cookie
+     * 
+     * @param string $key
+     * @return string|null
+     */
+    private function get_from_session_or_cookie($key) {
+        $value = WC()->session->get($key);
+        if (empty($value) && isset($_COOKIE["__${key}_id"])) {
+            $value = sanitize_text_field($_COOKIE["__${key}_id"]);
+        }
+        return $value;
+    }
+
+    /**
+     * Prepare subscription data for API request
+     * 
+     * @param WC_Order $order WooCommerce order object
+     * @param array $identifiers Bocs identifiers (bocs_id, collection_id, frequency_id)
+     * @param array $customer_data Customer information from Bocs
+     * @param array $params Additional subscription parameters
+     * @return array Formatted subscription data for API request
+     */
+    private function prepare_subscription_data($order, $identifiers, $customer_data, $params) {
+        // Basic subscription details
+        $subscription_data = [
+            'bocsId' => $identifiers['bocs_id'],
+            'collectionId' => $identifiers['collection_id'],
+            'frequencyId' => $identifiers['frequency_id'],
+            'customerId' => $customer_data['id'],
+            'status' => 'active',
+            'orderNumber' => $order->get_order_number(),
+            'orderExternalId' => $order->get_id(),
+            'currency' => $order->get_currency(),
+            
+            // Payment details
+            'paymentMethod' => $order->get_payment_method(),
+            'paymentMethodTitle' => $order->get_payment_method_title(),
+            'transactionId' => $order->get_transaction_id(),
+            
+            // Totals
+            'subtotal' => $order->get_subtotal(),
+            'total' => $order->get_total(),
+            'taxTotal' => $order->get_total_tax(),
+            'shippingTotal' => $order->get_shipping_total(),
+            'discountTotal' => $order->get_discount_total(),
+            
+            // Addresses
+            'billingAddress' => [
+                'firstName' => $order->get_billing_first_name(),
+                'lastName' => $order->get_billing_last_name(),
+                'company' => $order->get_billing_company(),
+                'address1' => $order->get_billing_address_1(),
+                'address2' => $order->get_billing_address_2(),
+                'city' => $order->get_billing_city(),
+                'state' => $order->get_billing_state(),
+                'postcode' => $order->get_billing_postcode(),
+                'country' => $order->get_billing_country(),
+                'email' => $order->get_billing_email(),
+                'phone' => $order->get_billing_phone()
+            ],
+            'shippingAddress' => [
+                'firstName' => $order->get_shipping_first_name(),
+                'lastName' => $order->get_shipping_last_name(),
+                'company' => $order->get_shipping_company(),
+                'address1' => $order->get_shipping_address_1(),
+                'address2' => $order->get_shipping_address_2(),
+                'city' => $order->get_shipping_city(),
+                'state' => $order->get_shipping_state(),
+                'postcode' => $order->get_shipping_postcode(),
+                'country' => $order->get_shipping_country()
+            ],
+            
+            // Line items
+            'items' => []
+        ];
+
+        // Add line items
+        foreach ($order->get_items() as $item) {
             $product = $item->get_product();
+            if (!$product) continue;
 
-            $product_id = get_post_meta($item_data['product_id'], 'bocs_product_id', true);
-
-            if (empty($product_id)) {
-                $product_id = get_post_meta($item_data['product_id'], 'bocs_id', true);
-            }
-            $subscription_line_items[] = '{"sku": "' . $product->get_sku() . '","price": ' . round($product->get_regular_price(), 2) . ',"quantity": ' . $quantity . ',"productId": "' . $product_id . '","total": ' . round($item->get_total(), 2).',"externalSourceId": "' . $product->get_id() . '"}';
+            $subscription_data['items'][] = [
+                'productId' => $product->get_id(),
+                'name' => $item->get_name(),
+                'sku' => $product->get_sku(),
+                'quantity' => $item->get_quantity(),
+                'price' => $item->get_total() / $item->get_quantity(), // Unit price
+                'total' => $item->get_total(),
+                'taxTotal' => $item->get_total_tax(),
+                'metadata' => [
+                    'productType' => $product->get_type(),
+                    'taxClass' => $item->get_tax_class(),
+                    'taxStatus' => $product->get_tax_status()
+                ]
+            ];
         }
 
-        if ($is_bocs) {
-            
-            $customer_id = $order->get_customer_id();
-            $bocs_customer_id = '';
+        // Add applied coupons
+        if ($order->get_coupon_codes()) {
+            $subscription_data['coupons'] = array_map(function($code) {
+                return ['code' => $code];
+            }, $order->get_coupon_codes());
+        }
 
-            if (! empty($customer_id)) {
+        // Add any additional metadata
+        $subscription_data['metadata'] = [
+            'source' => 'woocommerce',
+            'sourceVersion' => WC()->version,
+            'orderCreatedDate' => $order->get_date_created()->format('c'),
+            'customerNote' => $order->get_customer_note()
+        ];
 
-                $bocs_customer_id = get_user_meta($customer_id, 'bocs_user_id', true);
+        return $subscription_data;
+    }
 
-                if (empty($bocs_customer_id)) {
-                    $user_email = false;
-                    $current_user = wp_get_current_user();
-                    // Check if the user is logged in and get the email address
-                    if ($current_user->exists()) {
-                        $user_email = esc_html($current_user->user_email);
-                    }
-
-                    if ($user_email === false) {
-                        $user_email = $order->get_billing_email();
-                    }
-
-                    if ($user_email === false) {
-                        error_log('No email address found');
-                    }
-
-                    $curl = curl_init();
-
-                    curl_setopt_array($curl, array(
-                        CURLOPT_URL => BOCS_API_URL . 'contacts?email=' . $user_email,
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_ENCODING => '',
-                        CURLOPT_MAXREDIRS => 10,
-                        CURLOPT_TIMEOUT => 0,
-                        CURLOPT_FOLLOWLOCATION => true,
-                        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                        CURLOPT_CUSTOMREQUEST => 'GET',
-                        CURLOPT_HTTPHEADER => array(
-                            'Organization: ' . $options['bocs_headers']['organization'],
-                            'Content-Type: application/json',
-                            'Store: ' . $options['bocs_headers']['store'],
-                            'Authorization: ' . $options['bocs_headers']['authorization']
-                        )
-                    ));
-
-                    $response = curl_exec($curl);
-                    $object = json_decode($response);
-                    curl_close($curl);
-
-                    if (isset($object->data)) {
-                        if (count($object->data) > 0) {
-                            foreach ($object->data as $bocs_user) {
-
-                                update_user_meta($customer_id, 'bocs_user_id', $bocs_user->id);
-                                $bocs_customer_id = $bocs_user->id;
-                                //error_log('Found BOCS user ID: ' . $bocs_customer_id . ' for customer ID: ' . $customer_id);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // start CREATE SUBSCRIPTION
-            $timezoneString = get_option('timezone_string');
-            // Fallback for sites that set a manual offset instead of a timezone string
-            if (empty($timezoneString)) {
-                $offset = get_option('gmt_offset');
-                $timezoneString = timezone_name_from_abbr('', $offset * 3600, false);
-            }
-
-            $start_date = $order->get_date_paid();
-
-            // Create a DateTimeZone object with the WordPress timezone
-            $timezone = new DateTimeZone($timezoneString);
-
-            // Create a DateTime object from the original string with the WordPress timezone
-            $dateTime = new DateTime($start_date, $timezone);
-
-            // Format the DateTime object to ISO 8601 with milliseconds and convert it to UTC
-            $dateTime->setTimezone(new DateTimeZone('UTC'));
-            $next_payment_date = $dateTime;
-
-            $add_time = 'P' . $bocs_product_interval_count;
-            if ($bocs_product_interval == 'day' || $bocs_product_interval == 'days')
-                $add_time = $add_time . 'D';
-            else if ($bocs_product_interval == 'month' || $bocs_product_interval == 'months')
-                $add_time = $add_time . 'M';
-            else if ($bocs_product_interval == 'year' || $bocs_product_interval == 'years')
-                $add_time = $add_time . 'Y';
-
-            $start_date = $dateTime->format('Y-m-d\TH:i:s') . '.000Z'; // Simulating milliseconds as .000
-
+    /**
+     * Create subscription via Bocs API
+     * 
+     * @param array $subscription_data Formatted subscription data
+     * @param array $headers API authentication headers
+     * @return array Response with success status and message
+     */
+    private function create_bocs_subscription($subscription_data, $headers) {
+        try {
+            // Initialize cURL request
             $curl = curl_init();
-            $post_data = '{"bocs":{"id": "' . $bocsid . '"},';
-            
-
-            if (! empty($collectionid)) {
-                $post_data .= '"collection": {"id": "' . $collectionid . '"},';
+            if (!$curl) {
+                throw new Exception('Failed to initialize cURL');
             }
 
-            // frequency price
-            // discount 
-            // discount type
-            // id
-            // frequency
-            // timeframe
-            $order_data = $this->get_order_data_as_json($order_id);
-            $post_data .= '"billing": {"firstName": "' . $order->get_billing_first_name() . '","lastName":  "' . $order->get_billing_last_name() . '","company":  "' . $order->get_billing_company() . '","address1": "' . $order->get_billing_address_1() . '","city": "' . $order->get_billing_city() . '","state":  "' . $order->get_billing_state() . '","country": "' . $order->get_billing_country() . '","postcode": "' . $order->get_billing_postcode() . '","phone":  "' . $order->get_billing_phone() . '","email":  "' . $order->get_billing_email() . '"},
-                        "shipping": {"firstName": "' . $order->get_shipping_first_name() . '","lastName":  "' . $order->get_shipping_last_name() . '","company":  "' . $order->get_shipping_company() . '","address1": "' . $order->get_shipping_address_1() . '","city": "' . $order->get_shipping_city() . '","state":  "' . $order->get_shipping_state() . '","country": "' . $order->get_shipping_country() . '","postcode": "' . $order->get_shipping_postcode() . '","phone": "","email":  ""},
-                        "customer": {"id": "' . $bocs_customer_id . '","externalSourceId": "' . $customer_id . '","firstName": "' . $order->get_billing_first_name() . '","lastName":  "' . $order->get_billing_last_name() . '","company":  "' . $order->get_billing_company() . '","address1": "' . $order->get_billing_address_1() . '","city": "' . $order->get_billing_city() . '","state":  "' . $order->get_billing_state() . '","country": "' . $order->get_billing_country() . '","postcode": "' . $order->get_billing_postcode() . '","phone":  "' . $order->get_billing_phone() . '","email":  "' . $order->get_billing_email() . '"},
-                        "lineItems": [' . implode(',', $subscription_line_items) . '],
-                        "frequency": {"price": ' . $order->get_total() . ',"discount": ' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . ',"discountType": "' . $bocs_discount_type . '","id": "' . $frequency_id . '","frequency": ' . $bocs_frequency_interval . ',"timeUnit": "' . $bocs_frequency_time_unit . '"},"startDateGmt": "' . $start_date . '",
-                        "order": ' . $order_data . ',
-                        "total": "' . $order->get_total() . '",
-                        "subscriptionNumber": ' . $order_id . ',
-                        "discountTotal": "' . round($order->get_discount_total() + $order->get_discount_tax(), 2) . '"}';
+            // Set up the API endpoint
+            $api_url = BOCS_API_URL . 'subscriptions';
 
-            curl_setopt_array($curl, array(
-                CURLOPT_URL => BOCS_API_URL . 'subscriptions',
+            // Configure cURL options
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $api_url,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 0,
-                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT => 30,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_CUSTOMREQUEST => 'POST',
-                CURLOPT_POSTFIELDS => $post_data,
-                CURLOPT_HTTPHEADER => array(
-                    'Organization: ' . $options['bocs_headers']['organization'],
-                    'Content-Type: application/json',
-                    'Store: ' . $options['bocs_headers']['store'],
-                    'Authorization: ' . $options['bocs_headers']['authorization']
-                )
-            ));
+                CURLOPT_POSTFIELDS => json_encode($subscription_data),
+                CURLOPT_HTTPHEADER => [
+                    'Organization: ' . $headers['organization'],
+                    'Store: ' . $headers['store'], 
+                    'Authorization: ' . $headers['authorization'],
+                    'Content-Type: application/json'
+                ]
+            ]);
 
+            // Execute request and get response
             $response = curl_exec($curl);
+            $err = curl_error($curl);
+            $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-            if (curl_errno($curl)) {
-                $error_message = curl_error($curl);
-                error_log('Curl error: ' . $error_message);
-                // Optionally, handle the error further, e.g., by returning a response or throwing an exception
-            } else {
-                $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-                if ($http_code >= 200 && $http_code < 300) {
-                    error_log('Subscription creation successful: ' . print_r($response, true));
-                } else {
-                    error_log('Subscription creation failed with HTTP code ' . $http_code . ': ' . print_r($response, true));
-                    // Optionally, handle the failure further
-                }
+            // Clean up
+            curl_close($curl);
+
+            // Handle errors
+            if ($err) {
+                throw new Exception('cURL Error: ' . $err);
             }
 
-            curl_close($curl);
+            // Parse response
+            $result = json_decode($response, true);
+            if (!$result) {
+                throw new Exception('Failed to parse API response');
+            }
+
+            // Check for successful response (usually 201 Created)
+            if ($http_code !== 201 && $http_code !== 200) {
+                $error_message = isset($result['message']) ? $result['message'] : 'Unknown error';
+                throw new Exception('API Error: ' . $error_message);
+            }
+
+            // Return success response
+            return [
+                'success' => true,
+                'data' => $result,
+                'message' => 'Subscription created successfully'
+            ];
+
+        } catch (Exception $e) {
+            // Log the error
+            error_log('[Bocs][ERROR] Failed to create subscription: ' . $e->getMessage());
+            
+            // Return error response
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'data' => null
+            ];
         }
     }
-    
-    
+
     public function search_product_ajax_callback(){
 
         // Verify the AJAX nonce

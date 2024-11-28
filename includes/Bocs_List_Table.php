@@ -130,11 +130,15 @@ class Bocs_List_Table extends WP_List_Table
                 throw new Exception('Invalid JSON response: ' . json_last_error_msg());
             }
 
-            if (!$object || !isset($object->data->data)) {
+            if (!$object) {
                 return $result;
             }
 
-            foreach ($object->data->data as $subscription) {
+            // Check for nested data structure, fallback to direct data if needed
+            $subscriptions = isset($object->data->data) ? $object->data->data : 
+                           (isset($object->data) ? $object->data : []);
+
+            foreach ($subscriptions as $subscription) {
                 try {
                     // Validate required subscription properties
                     if (!isset($subscription->id) || 
