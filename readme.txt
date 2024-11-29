@@ -1,3 +1,6 @@
+v0.0.84 11/29/2024
+* Fixes on the API endpoints (e.g. from data to data->data)
+
 v0.0.83 11/26/2024
 * Added collection and widget list on the widget editor
 * Improved documentation on the widget editor
