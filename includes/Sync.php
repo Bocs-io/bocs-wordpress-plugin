@@ -142,7 +142,7 @@ class Sync
 
 			if (empty($bocs_contact_id)) {
 				// search if the user exist using email
-				$url = 'contacts?query=email:' . $userdata['user_email'];
+				$url = 'contacts?query=email:"' . $userdata['user_email'] . '"';
 				$this->logMessage('DEBUG', "Searching for existing Bocs contact", [
 					'email' => $userdata['user_email']
 				]);
@@ -530,7 +530,7 @@ class Sync
 
 		// Search for existing Bocs user if no contact ID
 		if (empty($bocs_contact_id)) {
-			$url = 'contacts?query=email:' . urlencode($email);
+			$url = 'contacts?query=email:"' . $email . '"';
 			$this->logMessage('DEBUG', "Searching for Bocs user by email", [
 				'email' => $email,
 				'url' => $url
@@ -859,7 +859,7 @@ class Sync
 		]);
 		
 		// Construct API query with proper email escaping
-		$url = 'contacts?query=email:"' . addslashes($user->user_email) . '"';
+		$url = 'contacts?query=email:"' . $user->user_email . '"';
 		$response = $curl->get($url, 'contacts', $user->ID);
 		
 		// Validate API response
