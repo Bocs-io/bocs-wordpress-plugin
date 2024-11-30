@@ -1,3 +1,6 @@
+v0.0.85 11/30/2024
+* Fixes on the API endpoints related to the contacts
+
 v0.0.84 11/29/2024
 * Fixes on the API endpoints (e.g. from data to data->data)
 
