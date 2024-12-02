@@ -27,15 +27,8 @@ class Sync
 	 */
 	private function _createUser($user)
 	{
-
 		$curl = new Curl();
-
 		$result = false;
-
-		$this->logMessage('DEBUG', "Creating new Bocs user", [
-			'email' => $user['email'],
-			'external_id' => $user['id']
-		]);
 
 		$params = array();
 		$params[] = '"email": "' . $user['email'] . '"';
@@ -51,36 +44,24 @@ class Sync
 		$params[] = '"externalSourceId": "' . $user['id'] . '"';
 		$params[] = '"username": "' . $user['username'] . '"';
 
-		$data = '{';
-		$data .= implode(',', $params);
-
-		$data .= '}';
+		$data = '{' . implode(',', $params) . '}';
 
 		$url = 'contacts';
 		$result = $curl->post($url, $data, 'contacts', $user['id']);
 
 		if ($result->data && 
-            ((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-             (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
-            
-            $bocs_contact_id = isset($result->data->data) ? 
-                             (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-                             (is_array($result->data) ? $result->data[0]->id : $result->data->id);
-            
-            $this->logMessage('INFO', "Successfully created Bocs user", [
-                'user_id' => $user->ID,
-                'bocs_id' => $bocs_contact_id
-            ]);
+			((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
+			 (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
+			
+			$bocs_contact_id = isset($result->data->data) ? 
+							 (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
+							 (is_array($result->data) ? $result->data[0]->id : $result->data->id);
+			
+			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+			return $bocs_contact_id;
+		}
 
-            add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-            return $bocs_contact_id;
-        }
-
-        $this->logMessage('ERROR', "Failed to create Bocs user", [
-            'user_id' => $user->ID,
-            'response' => $result
-        ]);
-        throw new Exception("Failed to create Bocs user for ID: {$user->ID}");
+		throw new Exception("Failed to create Bocs user for ID: {$user->ID}");
 	}
 
 	/**

@@ -369,7 +369,8 @@ class Contact
                             if ($result) {
                                 if (isset($result['body'])) {
                                     $bocs_contact = json_decode($result['body'], 2);
-                                    $bocs_contact = isset($bocs_contact['data']) ? $bocs_contact['data'] : false;
+                                    $bocs_contact = isset($bocs_contact['data']['data']) ? $bocs_contact['data']['data'] : 
+                                                  (isset($bocs_contact['data']) ? $bocs_contact['data'] : false);
                                     $date_modified_bocs = strtotime($bocs_contact['dateModifiedGMT']);
                                 }
                             }
@@ -511,12 +512,15 @@ class Contact
             if (isset($contacts['body'])) {
                 $contacts = json_decode($contacts['body'], 2);
 
-                if (isset($contacts['nextPageLink'])) {
+                // Check for nextPageLink in both possible locations
+                if (isset($contacts['data']['nextPageLink'])) {
+                    $list_url = $contacts['data']['nextPageLink'];
+                } elseif (isset($contacts['nextPageLink'])) {
                     $list_url = $contacts['nextPageLink'];
                 }
 
                 if (isset($contacts['data'])) {
-                    $contacts = $contacts['data'];
+                    $contacts = isset($contacts['data']['data']) ? $contacts['data']['data'] : $contacts['data'];
 
                     $total_contacts = count($contacts);
                     if ($total_contacts > 0) {
