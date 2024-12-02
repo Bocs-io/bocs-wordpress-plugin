@@ -1,3 +1,6 @@
+v0.0.86 12/02/2024
+* Fixes return output on the other API endpoints
+
 v0.0.85 11/30/2024
 * Fixes on the API endpoints related to the contacts
 
