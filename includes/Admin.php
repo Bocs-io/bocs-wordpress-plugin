@@ -292,7 +292,7 @@ class Admin
             "bocs-widget-script", 
             $widget_url, 
             array(), 
-            '20241125.1', 
+            '20241203.0', 
             true
         );
 

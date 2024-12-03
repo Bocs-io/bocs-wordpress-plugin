@@ -1,3 +1,6 @@
+v0.0.87 12/03/2024
+* Updated the widget javascript file
+
 v0.0.86 12/02/2024
 * Fixes return output on the other API endpoints
 
