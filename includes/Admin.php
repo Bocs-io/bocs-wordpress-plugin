@@ -24,6 +24,9 @@ class Admin
 
     public function __construct()
     {
+        // Add this line to register the query var
+        add_filter('query_vars', [$this, 'add_bocs_query_vars']);
+        
         $this->save_widget_nonce = wp_create_nonce('save-widget-nonce');
 
         $options = get_option('bocs_plugin_options');
@@ -276,6 +279,8 @@ class Admin
     public function enqueue_scripts()
     {
 
+        global $wp;
+
         // this to make sure that the keys were added or updated
         $bocs = new Bocs();
         $bocs->auto_add_bocs_keys();
@@ -324,12 +329,10 @@ class Admin
             'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
         ));
 
-        global $wp;
-
-        // Get the subscription ID from the URL
-        $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
+        // Get the subscription ID from the URL - now safely using get_query_var()
+        $bocs_subscription_id = get_query_var('bocs-view-subscription', '');
         
-        if (! empty($bocs_subscription_id)) {
+        if (!empty($bocs_subscription_id)) {
             wp_enqueue_script('view-subscription-js', plugin_dir_url(__FILE__) . '../assets/js/view-subscription.js', array(
                 'jquery'
             ), '2024.11.15.0', true);
@@ -2371,5 +2374,17 @@ class Admin
         // Determine the relationship between orders. This is a placeholder.
         // Implement your logic to determine the relationship between orders.
         return 'Renewal Order';
+    }
+
+    /**
+     * Register custom query variables for Bocs
+     *
+     * @param array $vars Existing query variables
+     * @return array Modified query variables
+     */
+    public function add_bocs_query_vars($vars) 
+    {
+        $vars[] = 'bocs-view-subscription';
+        return $vars;
     }
 }
