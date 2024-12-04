@@ -1,6 +1,6 @@
 <?php
 
-use function Loader\add_filter;
+// use function Loader\add_filter;
 
 /**
  * Admin Class
@@ -2386,5 +2386,65 @@ class Admin
     {
         $vars[] = 'bocs-view-subscription';
         return $vars;
+    }
+
+    /**
+     * Sync customer data between WooCommerce and Bocs system.
+     *
+     * @param WC_Order $order WooCommerce order object.
+     * @param array    $headers API authentication headers for Bocs.
+     * @return array|false Customer data from Bocs on success, false on failure.
+     */
+    public function sync_bocs_customer($order, $headers) {
+        // Validate headers
+        foreach (['Organization', 'Store', 'Authorization'] as $key) {
+            if (empty($headers[$key])) {
+                error_log("[Bocs][ERROR] Missing required API header: $key");
+                return false;
+            }
+        }
+
+        // Construct customer data payload
+        $customer_data = [
+            'email' => $order->get_billing_email(),
+            'firstName' => $order->get_billing_first_name(),
+            'lastName' => $order->get_billing_last_name(),
+            'phone' => $order->get_billing_phone(),
+            'address' => [
+                'line1' => $order->get_billing_address_1(),
+                'line2' => $order->get_billing_address_2(),
+                'city' => $order->get_billing_city(),
+                'state' => $order->get_billing_state(),
+                'postcode' => $order->get_billing_postcode(),
+                'country' => $order->get_billing_country(),
+            ]
+        ];
+
+        // Prepare API request
+        $url = BOCS_API_URL . 'customers';
+        $response = wp_remote_post($url, [
+            'headers' => [
+                'Organization' => $headers['Organization'],
+                'Store' => $headers['Store'],
+                'Authorization' => $headers['Authorization'],
+                'Content-Type' => 'application/json',
+            ],
+            'body' => json_encode($customer_data),
+            'timeout' => 30,
+        ]);
+
+        // Handle response
+        if (is_wp_error($response)) {
+            error_log("[Bocs][ERROR] Failed to sync customer: " . $response->get_error_message());
+            return false;
+        }
+
+        $response_body = json_decode(wp_remote_retrieve_body($response), true);
+        if (isset($response_body['data'])) {
+            return $response_body['data'];
+        }
+
+        error_log("[Bocs][ERROR] Unexpected response from Bocs API: " . wp_remote_retrieve_body($response));
+        return false;
     }
 }
