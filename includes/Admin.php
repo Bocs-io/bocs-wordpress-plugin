@@ -911,10 +911,7 @@ class Admin
         $order = wc_get_order($order_id);
         $bocs_product_interval = 'month';
         $bocs_product_interval_count = 1;
-
-        $sub_items = [];
         $subscription_line_items = [];
-
         $is_bocs = false;
 
         // get bocs data
@@ -977,7 +974,7 @@ class Admin
             $body_data = json_decode($bocs_body['data']['body'], true);
 
             if (isset($body_data['zones'])) {
-                foreach ($body_data['zones'] as $zone_key => $zone_items) {
+                foreach ($body_data['zones'] as $zone_items) {
                     foreach ($zone_items as $zone_item) {
                         if ($zone_item['type'] === 'BocsStep5' && isset($zone_item['props']['selected'])) {
                             $selected_items = $zone_item['props']['selected'];
@@ -1003,7 +1000,7 @@ class Admin
             }
         }
         
-        foreach ($order->get_items() as $item_id => $item) {
+        foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
             $quantity = $item->get_quantity();
             $product = $item->get_product();
@@ -1108,8 +1105,7 @@ class Admin
 
             // Format the DateTime object to ISO 8601 with milliseconds and convert it to UTC
             $dateTime->setTimezone(new DateTimeZone('UTC'));
-            $next_payment_date = $dateTime;
-
+            
             $add_time = 'P' . $bocs_product_interval_count;
             if ($bocs_product_interval == 'day' || $bocs_product_interval == 'days' || $bocs_product_interval == 'Day' || $bocs_product_interval == 'Days')
                 $add_time = $add_time . 'D';
