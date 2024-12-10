@@ -1,74 +1,207 @@
-<table class="my_account_subscriptions my_account_orders woocommerce-orders-table woocommerce-MyAccount-subscriptions shop_table shop_table_responsive woocommerce-orders-table--subscriptions">
+<div class="account-info-section">
+    <div class="account-info-header">
+        <h2>ACCOUNT INFO</h2>
+        <a href="#" class="edit-link">Edit</a>
+    </div>
+    <p class="account-description">This account information is tied directly to your subscriptions.</p>
+    
+    <div class="account-details">
+        <div class="account-detail-group">
+            <div class="detail-label">Name</div>
+            <div class="detail-value"><?php echo esc_html($customer['name'] ?? ''); ?></div>
+        </div>
+        
+        <div class="account-detail-group">
+            <div class="detail-label">Email address</div>
+            <div class="detail-value"><?php echo esc_html($customer['email'] ?? ''); ?></div>
+        </div>
+        
+        <div class="account-detail-group">
+            <div class="detail-label">Phone number</div>
+            <div class="detail-value"><?php echo esc_html($customer['phone'] ?? ''); ?></div>
+        </div>
+    </div>
+</div>
 
-    <thead>
-        <tr>
-            <th class="subscription-id order-number woocommerce-orders-table__header woocommerce-orders-table__header-order-number woocommerce-orders-table__header-subscription-id"><span class="nobr">Subscription</span></th>
-            <th class="subscription-status order-status woocommerce-orders-table__header woocommerce-orders-table__header-order-status woocommerce-orders-table__header-subscription-status"><span class="nobr">Status</span></th>
-            <th class="subscription-next-payment order-date woocommerce-orders-table__header woocommerce-orders-table__header-order-date woocommerce-orders-table__header-subscription-next-payment"><span class="nobr">Next payment</span></th>
-            <th class="subscription-total order-total woocommerce-orders-table__header woocommerce-orders-table__header-order-total woocommerce-orders-table__header-subscription-total"><span class="nobr">Total</span></th>
-            <th class="subscription-actions order-actions woocommerce-orders-table__header woocommerce-orders-table__header-order-actions woocommerce-orders-table__header-subscription-actions">&nbsp;</th>
-        </tr>
-    </thead>
+<div class="my_account_subscriptions my_account_orders woocommerce-orders-table">
+    <!-- Header Row -->
+    <div class="subscription-header-row">
+        <div class="subscription-header-cell">
+            <span class="nobr">Subscription</span>
+        </div>
+        <div class="subscription-header-cell">
+            <span class="nobr">Status</span>
+        </div>
+        <div class="subscription-header-cell">
+            <span class="nobr">Next payment</span>
+        </div>
+        <div class="subscription-header-cell">
+            <span class="nobr">Total</span>
+        </div>
+        <div class="subscription-header-cell">
+            &nbsp;
+        </div>
+    </div>
 
-    <tbody>
-        <?php
-        if (count($subscriptions['data']['data'])) {
-            foreach ($subscriptions['data']['data'] as $subscription) {
-        ?>
-                <tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php
+    <!-- Subscription Rows -->
+    <?php if (count($subscriptions['data']['data'])) : ?>
+        <?php foreach ($subscriptions['data']['data'] as $subscription) : ?>
+            <div class="subscription-row status-<?php echo esc_attr($subscription['status']); ?>">
+                <div class="subscription-cell" data-title="ID">
+                    <a href="<?php echo esc_url(wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'))); ?>">
+                        <?php echo esc_html(!empty(trim($subscription['bocs']['name'])) ? $subscription['bocs']['name'] : 'Subscription #' . $subscription['subscriptionNumber']); ?>
+                    </a>
+                </div>
+                <div class="subscription-cell" data-title="Status">
+                    <?php echo esc_html(ucfirst($subscription['subscriptionStatus'])); ?>
+                </div>
+                <div class="subscription-cell" data-title="Next Payment">
+                    <?php 
+                    $date = new DateTime($subscription['nextPaymentDateGmt']);
+                    echo esc_html($date->format('F j, Y')); 
+                    ?>
+                </div>
+                <div class="subscription-cell" data-title="Total">
+                    <span class="woocommerce-Price-amount amount">
+                        <span class="woocommerce-Price-currencySymbol">$</span><?php echo esc_html($subscription['total']); ?>
+                    </span>
+                    every 
+                    <?php
+                    $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : '';
+                    if (!empty($subscription['billingInterval']) && $frequency == '') {
+                        $frequency = $subscription['billingInterval'];
+                    }
+                    $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
+                    if (!empty($subscription['billingPeriod']) && $period == '') {
+                        $period = $subscription['billingPeriod'];
+                    }
 
-                                                                                                        echo $subscription['status'] ?>">
-                    <td class="subscription-id order-number woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-id woocommerce-orders-table__cell-order-number" data-title="ID">
-                        <a href="<?php
+                    if ($frequency > 1) {
+                        $period = rtrim($period, 's') . 's';
+                    } else {
+                        $period = rtrim($period, 's');
+                        $frequency = '';
+                    }
 
-                                    echo wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
-                                    ?>"><?php
+                    echo esc_html($frequency . ' ' . $period);
+                    ?>
+                </div>
+                <div class="subscription-cell" data-title="Actions">
+                    <a href="<?php echo esc_url(wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'))); ?>" class="woocommerce-button button view">View</a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
 
-                echo !empty(trim($subscription['bocs']['name'])) ? $subscription['bocs']['name'] : 'Subscription #' . $subscription['subscriptionNumber'] ?></a>
-                    </td>
-                    <td class="subscription-status order-status woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-status woocommerce-orders-table__cell-order-status" data-title="Status"><?php
+<style>
+.my_account_subscriptions {
+    width: 100%;
+    margin-bottom: 2em;
+}
 
-                                                                                                                                                                                                                    echo ucfirst($subscription['subscriptionStatus']) ?></td>
-                    <td class="subscription-next-payment order-date woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-next-payment woocommerce-orders-table__cell-order-date" data-title="Next Payment"><?php
+.subscription-header-row {
+    display: flex;
+    background-color: #f8f8f8;
+    padding: 1em;
+    font-weight: 600;
+    border-bottom: 2px solid #ececec;
+}
 
-                                                                                                                                                                                                                                    $date = new DateTime($subscription['nextPaymentDateGmt']);
-                                                                                                                                                                                                                                    echo $date->format('F j, Y') ?></td>
-                    <td class="subscription-total order-total woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-total woocommerce-orders-table__cell-order-total" data-title="Total">
-                        <span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
+.subscription-row {
+    display: flex;
+    padding: 1em;
+    border-bottom: 1px solid #ececec;
+    transition: background-color 0.2s ease;
+}
 
-                                                                                                                                echo $subscription['total'] ?></span> every <?php
-                                                    $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : '';
-                                                    if (!empty($subscription['billingInterval']) && $frequency == '') {
-                                                        $frequency = $subscription['billingInterval'];
-                                                    }
-                                                    $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
-                                                    if (!empty($subscription['billingPeriod']) && $period == '') {
-                                                        $period = $subscription['billingPeriod'];
-                                                    }
+.subscription-row:hover {
+    background-color: #fafafa;
+}
 
-                                                    if ($frequency > 1) {
-                                                        // Remove any trailing 's' and then add one 's'
-                                                        $period = rtrim($period, 's') . 's';
-                                                    } else {
-                                                        // If frequency is 1, ensure there is no trailing 's'
-                                                        $period = rtrim($period, 's');
-                                                        $frequency = '';
-                                                    }
+.subscription-header-cell,
+.subscription-cell {
+    flex: 1;
+    padding: 0.5em;
+}
 
-                                                    echo $frequency . ' ' . $period;
-                                                    ?>
-                    </td>
-                    <td class="subscription-actions order-actions woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-actions woocommerce-orders-table__cell-order-actions">
-                        <a href="<?php
+/* Responsive styles */
+@media screen and (max-width: 768px) {
+    .subscription-header-row {
+        display: none;
+    }
 
-                                    echo wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
-                                    ?>" class="woocommerce-button button view">View</a>
-                    </td>
-                </tr>
-        <?php
-            }
-        }
-        ?>
-    </tbody>
+    .subscription-row {
+        flex-direction: column;
+        padding: 1em 0;
+    }
 
-</table>
+    .subscription-cell {
+        padding: 0.5em 1em;
+    }
+
+    .subscription-cell:before {
+        content: attr(data-title);
+        font-weight: 600;
+        display: inline-block;
+        min-width: 120px;
+    }
+}
+
+.account-info-section {
+    background: #fff;
+    padding: 2em;
+    margin-bottom: 2em;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.account-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+
+.account-info-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.edit-link {
+    color: #6366f1;
+    text-decoration: none;
+}
+
+.account-description {
+    color: #6b7280;
+    margin-bottom: 2em;
+}
+
+.account-details {
+    display: flex;
+    gap: 2em;
+    flex-wrap: wrap;
+}
+
+.account-detail-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.detail-label {
+    font-weight: 600;
+    margin-bottom: 0.5em;
+}
+
+.detail-value {
+    color: #6b7280;
+}
+
+@media screen and (max-width: 768px) {
+    .account-detail-group {
+        flex: 100%;
+        margin-bottom: 1em;
+    }
+}
+</style>

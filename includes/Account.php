@@ -5,7 +5,7 @@ class Account
 
     public function add_bocs_menu($items)
     {
-        $items['bocs-subscriptions'] = "Bocs Subscriptions";
+        $items['bocs-subscriptions'] = "Manage Subscriptions";
 
         return $items;
     }

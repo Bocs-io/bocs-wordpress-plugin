@@ -25,7 +25,7 @@ class Bocs_Account
     // bocs subscriptions under My Account
     public function bocs_account_menu_item($items)
     {
-        $items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-subscriptions');
+        $items['bocs-subscriptions'] = __('Manage Subscriptions', 'bocs-subscriptions');
         return $items;
     }
 
