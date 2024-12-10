@@ -97,8 +97,10 @@ class Bocs_Account
     {
         global $wp;
 
-        // Get the subscription ID from the URL
-        $bocs_subscription_id = $wp->query_vars['bocs-view-subscription'];
+        // Safely get the subscription ID from the URL
+        $bocs_subscription_id = isset($wp->query_vars['bocs-view-subscription']) 
+            ? $wp->query_vars['bocs-view-subscription'] 
+            : '';
 
         // get the details of the subscription
         if ($bocs_subscription_id) {

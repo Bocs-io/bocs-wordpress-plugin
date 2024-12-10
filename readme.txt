@@ -1,3 +1,6 @@
+v0.0.88 12/10/2024
+* Undefined array key "bocs-view-subscription" fix
+
 v0.0.87 12/03/2024
 * Updated the widget javascript file
 
