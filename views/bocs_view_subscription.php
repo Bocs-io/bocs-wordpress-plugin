@@ -207,8 +207,8 @@ if (isset($related_orders['data']) && !empty($related_orders['data'])) {
         }
     }
 
-    if (count($related_order['order_ids'])) {
-        foreach ($related_order['order_ids'] as $order_id) {
+    if (isset($related_orders['order_ids']) && is_array($related_orders['order_ids'])) {
+        foreach ($related_orders['order_ids'] as $order_id) {
             $woocommerceOrderIds[] = intval($order_id);
         }
     }
