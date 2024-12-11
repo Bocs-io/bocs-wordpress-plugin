@@ -158,7 +158,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 					<td>
 						<label>
 							<input type="checkbox" name="bocs_plugin_options[stripe][test_mode]" 
-								value="yes" <?php checked($stripe_settings['test_mode'], 'yes'); ?>>
+								value="yes" <?php checked($stripe_settings['test_mode'] ?? 'no', 'yes'); ?>>
 							Enable Test Mode
 						</label>
 						<p class="description">Check this box to use Stripe test API keys instead of live API keys.</p>
@@ -166,7 +166,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 				</tr>
 				
 				<!-- Live Keys Section -->
-				<tr class="live-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? 'hidden' : ''; ?>">
+				<tr class="live-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? 'hidden' : ''; ?>">
 					<th scope="row">Live Publishable Key</th>
 					<td>
 						<input type="text" name="bocs_plugin_options[stripe][live_publishable_key]" 
@@ -178,7 +178,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 						</p>
 					</td>
 				</tr>
-				<tr class="live-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? 'hidden' : ''; ?>">
+				<tr class="live-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? 'hidden' : ''; ?>">
 					<th scope="row">Live Secret Key</th>
 					<td>
 						<input type="password" name="bocs_plugin_options[stripe][live_secret_key]" 
@@ -192,7 +192,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 				</tr>
 
 				<!-- Test Keys Section -->
-				<tr class="test-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? '' : 'hidden'; ?>">
+				<tr class="test-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? '' : 'hidden'; ?>">
 					<th scope="row">Test Publishable Key</th>
 					<td>
 						<input type="text" name="bocs_plugin_options[stripe][test_publishable_key]" 
@@ -205,7 +205,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 						</p>
 					</td>
 				</tr>
-				<tr class="test-keys <?php echo $stripe_settings['test_mode'] === 'yes' ? '' : 'hidden'; ?>">
+				<tr class="test-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? '' : 'hidden'; ?>">
 					<th scope="row">Test Secret Key</th>
 					<td>
 						<input type="password" name="bocs_plugin_options[stripe][test_secret_key]" 
