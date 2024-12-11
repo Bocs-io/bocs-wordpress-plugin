@@ -1153,7 +1153,7 @@ class Admin
                 'lineItems' => $subscription_line_items,
                 'frequency' => $current_frequency,
                 'startDateGmt' => $start_date,
-                // 'order' => json_decode($this->get_order_data_as_json($order_id), true),
+                'order' => json_decode($this->get_order_data_as_json($order_id), true),
                 'total' => number_format((float)$order->get_total(), 2, '.', ''),
                 'discountTotal' => round($order->get_discount_total() + $order->get_discount_tax(), 2)
             ];
