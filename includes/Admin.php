@@ -388,6 +388,12 @@ class Admin
                 'jquery'
             ), '20241105.1', true);
 
+            // Prepare bocs data with error checking
+            $bocs_data = null;
+            if (is_array($bocs_body) && isset($bocs_body['data'])) {
+                $bocs_data = $bocs_body['data'];
+            }
+
             wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('ajax-nonce'),
@@ -395,7 +401,7 @@ class Admin
                 'orgId' => $options['bocs_headers']['organization'] ?? '',
                 'authId' => $options['bocs_headers']['authorization'] ?? '',
                 'frequency' => $current_frequency,
-                'bocs' => $bocs_body['data']
+                'bocs' => $bocs_data
             ));
         }
 
