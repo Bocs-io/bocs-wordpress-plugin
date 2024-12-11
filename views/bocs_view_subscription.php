@@ -198,7 +198,7 @@ if (isset($related_orders['data']) && !empty($related_orders['data'])) {
     $woocommerceOrderIds = [];
     if (count($related_orders['data'])) {
         foreach ($related_orders['data'] as $relatedOrder) {
-            if ($relatedOrder['externalSourceId']) {
+            if (isset($relatedOrder['externalSourceId']) && $relatedOrder['externalSourceId']) {
                 $orderId = intval($relatedOrder['externalSourceId']);
                 if ($orderId != 0) {
                     $woocommerceOrderIds[] = $orderId;
