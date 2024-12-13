@@ -312,7 +312,7 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '2024.11.15.6', true);
+        ), '2024.12.13.0', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'productUrl' => BOCS_API_URL . 'products/',
@@ -326,7 +326,9 @@ class Admin
             'orgId' => $options['bocs_headers']['organization'] ?? '',
             'authId' => $options['bocs_headers']['authorization'] ?? '',
             'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
-            'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
+            'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce'),
+            'isLoggedIn' => is_user_logged_in() ? '1' : '0',
+            'loginURL' => wp_login_url()
         ));
 
         // Get the subscription ID from the URL - now safely using get_query_var()
@@ -2671,4 +2673,40 @@ class Admin
         error_log("[Bocs][ERROR] Unexpected response from Bocs API: " . wp_remote_retrieve_body($response));
         return false;
     }
+
+    /**
+     * Displays a login-related message to users based on URL parameters.
+     * 
+     * This method checks for a 'login_message' parameter in the URL query string and 
+     * displays it as a sanitized message within a styled div container. The message
+     * is sanitized using WordPress's sanitize_text_field() function to prevent XSS attacks.
+     *
+     * @since 0.0.88
+     * @access public
+     *
+     * Usage example:
+     * - URL: example.com/login?login_message=Welcome+back
+     * Will display: <div class="bocs-login-message"><p class="message">Welcome back</p></div>
+     *
+     * Security features:
+     * - Uses sanitize_text_field() to clean input
+     * - Uses esc_html() to escape the output HTML
+     * - Only processes messages passed via GET parameter
+     *
+     * @uses sanitize_text_field() To sanitize the message parameter
+     * @uses esc_html() To escape the output HTML
+     *
+     * @return string HTML formatted message if login_message parameter exists, empty string otherwise
+     */
+    public function display_bocs_login_message() {
+        $result = '';
+        if (isset($_GET['login_message'])) {
+            $message = sanitize_text_field($_GET['login_message']);
+            $result = '<div class="bocs-login-message" style="background: #fff; border-left: 4px solid #00848b; box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); margin: 0 0 20px; padding: 12px;">';
+            $result .= '<p class="message" style="margin: 0; color: #000;">' . esc_html($message) . '</p>';
+            $result .= '</div>';
+        }
+        return $result;
+    }
 }
+

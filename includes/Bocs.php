@@ -313,6 +313,8 @@ class Bocs
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
+        $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
+
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
     }

@@ -163,9 +163,18 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	document.cookie = "__bocs_total="+total+"; path=/";
 	document.cookie = "__bocs_discount="+discount+"; path=/";
 	document.cookie = "__bocs_subtotal="+price+"; path=/";
-	// console.log(id, collectionId, bocsFrequencyId);
-	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 
+	// Check if user is logged in
+	const isLoggedIn = bocsAjaxObject.isLoggedIn === '1' || bocsAjaxObject.isLoggedIn === true;
+	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
+	
+	if (!isLoggedIn) {
+		window.location.href = bocsAjaxObject.loginURL + 
+			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
+			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.');
+	} else {
+		window.location.href = redirectUrl;
+	}
 }
 
 /**
