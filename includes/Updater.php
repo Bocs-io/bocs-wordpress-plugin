@@ -133,17 +133,17 @@ class Updater {
 	}
 
 	public function plugin_popup( $result, $action, $args ) {
+		if( ! empty( $args->slug ) ) {
+			if( $args->slug == current( explode( '/' , $this->basename ) ) ) {
+				$this->get_repository_info();
 
-		if( ! empty( $args->slug ) ) { // If there is a slug
-
-			if( $args->slug == current( explode( '/' , $this->basename ) ) ) { // And it's our slug
-
-				$this->get_repository_info(); // Get our repo info
+				if (empty($this->github_response)) {
+					return $result;
+				}
 
 				$version = $this->github_response['tag_name'] ?? null;
 				$version = ltrim($version, 'v');
 
-				// Set it to an array
 				$plugin = array(
 					'name'				=> $this->plugin["Name"],
 					'slug'				=> $this->basename,
@@ -156,21 +156,20 @@ class Updater {
 					'version'			=> $version,
 					'author'			=> $this->plugin["AuthorName"],
 					'author_profile'	=> $this->plugin["AuthorURI"],
-					'last_updated'		=> $this->github_response['published_at'],
+					'last_updated'		=> $this->github_response['published_at'] ?? '',
 					'homepage'			=> $this->plugin["PluginURI"],
 					'short_description' => $this->plugin["Description"],
 					'sections'			=> array(
 						'Description'	=> $this->plugin["Description"],
-						'Updates'		=> $this->github_response['body'],
+						'Updates'		=> $this->github_response['body'] ?? '',
 					),
-					'download_link'		=> $this->github_response['zipball_url']
+					'download_link'		=> $this->github_response['zipball_url'] ?? ''
 				);
 
-				return (object) $plugin; // Return the data
+				return (object) $plugin;
 			}
-
 		}
-		return $result; // Otherwise return default
+		return $result;
 	}
 
 	public function download_package( $args, $url ) {
