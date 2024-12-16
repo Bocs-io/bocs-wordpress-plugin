@@ -1,5 +1,5 @@
 /**
- * @global
+ * Global BOCS configuration object injected by WordPress
  * @typedef {Object} bocsAjaxObject
  * @property {string} cartNonce - Cart nonce for authentication
  * @property {string} productUrl - URL for product endpoints
@@ -24,6 +24,7 @@
  * @param {Array} params.selectedProducts - Array of products to add to cart
  * @param {number} params.total - Total price after discount
  */
+/* exported bocs_add_to_cart */
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
 	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
 	// console.log('bocs_add_to_cart params', params);
@@ -143,7 +144,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 
 		if (createdCoupon) {
 			// add to cart the created coupon
-			var data = {
+			data = {
 				code: couponCode
 			};
 

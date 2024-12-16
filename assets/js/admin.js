@@ -1,3 +1,18 @@
+/**
+ * Global BOCS configuration object injected by WordPress
+ * @typedef {Object} bocsAjaxObject
+ * @property {string} widgetsURL - Base URL for the BOCS widgets API
+ * @property {string} Organization - Organization identifier for API requests
+ * @property {string} Store - Store identifier for API requests
+ * @property {string} Authorization - Authorization token for API requests
+ * @property {Array<Object>} [bocs_collections] - Optional pre-loaded collection data
+ * @property {string} bocs_collections[].id - Collection identifier
+ * @property {string} bocs_collections[].title - Collection title
+ * @property {string} [bocs_collections[].name] - Optional collection name
+ */
+/* global bocsAjaxObject */
+
+
 jQuery(function ($) {
 
     /**
