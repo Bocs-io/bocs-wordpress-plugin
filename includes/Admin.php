@@ -312,7 +312,7 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '2024.12.13.0', true);
+        ), '2024.12.16.0', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'productUrl' => BOCS_API_URL . 'products/',

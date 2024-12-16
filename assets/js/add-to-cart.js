@@ -1,4 +1,20 @@
 /**
+ * @global
+ * @typedef {Object} bocsAjaxObject
+ * @property {string} cartNonce - Cart nonce for authentication
+ * @property {string} productUrl - URL for product endpoints
+ * @property {string} orgId - Organization ID
+ * @property {string} storeId - Store ID
+ * @property {string} authId - Authorization ID
+ * @property {string} ajax_url - AJAX URL
+ * @property {string} couponNonce - Coupon nonce for authentication
+ * @property {string} cartURL - Cart URL
+ * @property {string} loginURL - Login URL
+ * @property {string|boolean} isLoggedIn - User login status
+ */
+/* global bocsAjaxObject */
+
+/**
  * Adds products to WooCommerce cart with subscription frequency and discount handling
  * @async
  * @param {Object} params - Cart parameters
