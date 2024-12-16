@@ -186,10 +186,30 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 	
 	if (!isLoggedIn) {
-		window.location.href = bocsAjaxObject.loginURL + 
+		window.location.href = escapeUrl(bocsAjaxObject.loginURL + 
 			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
-			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.');
+			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.'));
 	} else {
-		window.location.href = redirectUrl;
+		window.location.href = escapeUrl(redirectUrl);
+	}
+}
+
+function escapeUrl(url) {
+	// Use encodeURI for the base URL and encodeURIComponent for parameters
+	try {
+		const [baseUrl, params] = url.split('?');
+		if (!params) return encodeURI(url);
+		
+		const sanitizedParams = params.split('&')
+			.map(param => {
+				const [key, value] = param.split('=');
+				return `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`;
+			})
+			.join('&');
+			
+		return `${encodeURI(baseUrl)}?${sanitizedParams}`;
+	} catch (e) {
+		console.error('Error escaping URL:', e);
+		return '';
 	}
 }
