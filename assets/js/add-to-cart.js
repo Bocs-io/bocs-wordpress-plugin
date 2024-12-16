@@ -155,7 +155,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
-					// console.log('Product added to cart:', response);
+					console.log('Product added to cart:', response);
 				},
 				error: function (error) {
 					console.error('Error adding product to cart:', error);
