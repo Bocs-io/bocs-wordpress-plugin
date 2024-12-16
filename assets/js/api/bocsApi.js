@@ -1,3 +1,15 @@
+/**
+ * @typedef {Object} bocs_widget_object
+ * @property {string} widgetsURL - The URL endpoint for fetching widgets
+ * @property {string} collectionsURL - The URL endpoint for fetching collections
+ * @property {string} Organization - The organization identifier header value
+ * @property {string} Store - The store identifier header value
+ * @property {string} Authorization - The authorization header value
+ * @property {string} ajax_url - WordPress AJAX URL endpoint
+ * @property {string} nonce - WordPress security nonce
+ */
+/* global bocs_widget_object */
+
 window.bocsApi = {
     fetchWidgets: async () => {
         try {
