@@ -1,4 +1,20 @@
 /**
+ * Global BOCS configuration object injected by WordPress
+ * @typedef {Object} bocsAjaxObject
+ * @property {string} cartNonce - Cart nonce for authentication
+ * @property {string} productUrl - URL for product endpoints
+ * @property {string} orgId - Organization ID
+ * @property {string} storeId - Store ID
+ * @property {string} authId - Authorization ID
+ * @property {string} ajax_url - AJAX URL
+ * @property {string} couponNonce - Coupon nonce for authentication
+ * @property {string} cartURL - Cart URL
+ * @property {string} loginURL - Login URL
+ * @property {string|boolean} isLoggedIn - User login status
+ */
+/* global bocsAjaxObject */
+
+/**
  * Adds products to WooCommerce cart with subscription frequency and discount handling
  * @async
  * @param {Object} params - Cart parameters
@@ -9,9 +25,7 @@
  * @param {number} params.total - Total price after discount
  */
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
-	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
-	// console.log('bocs_add_to_cart params', params);
-	
+
 	let bocsFrequencyId = frequency.id;
 	var id = jQuery('div#bocs-widget').data('id');
 	
@@ -33,7 +47,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
 
-		if(product.externalSource != "WP" || product.externalSourceId == 0) continue;
+		if (!product.externalSourceId) continue;
 
 		let wcProductId = product.externalSourceId;
 
@@ -127,7 +141,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 
 		if (createdCoupon) {
 			// add to cart the created coupon
-			var data = {
+			data = {
 				code: couponCode
 			};
 
@@ -139,7 +153,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
-					// console.log('Product added to cart:', response);
+					console.log('Product added to cart:', response);
 				},
 				error: function (error) {
 					console.error('Error adding product to cart:', error);
@@ -163,28 +177,36 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	document.cookie = "__bocs_total="+total+"; path=/";
 	document.cookie = "__bocs_discount="+discount+"; path=/";
 	document.cookie = "__bocs_subtotal="+price+"; path=/";
-	// console.log(id, collectionId, bocsFrequencyId);
-	window.location.href = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 
+	// Check if user is logged in
+	const isLoggedIn = bocsAjaxObject.isLoggedIn === '1' || bocsAjaxObject.isLoggedIn === true;
+	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
+	
+	if (!isLoggedIn) {
+		window.location.href = escape(escapeUrl(bocsAjaxObject.loginURL + 
+			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
+			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.')));
+	} else {
+		window.location.href = escape(escapeUrl(redirectUrl));
+	}
 }
 
-/**
- * Retrieves a cookie value by name
- * @param {string} cname - Name of the cookie to retrieve
- * @returns {string} Cookie value or empty string if not found
- */
-function getCookie(cname) {
-  let name = cname + "=";
-  let decodedCookie = decodeURIComponent(document.cookie);
-  let ca = decodedCookie.split(';');
-  for(let i = 0; i <ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) == ' ') {
-      c = c.substring(1);
-    }
-    if (c.indexOf(name) == 0) {
-      return c.substring(name.length, c.length);
-    }
-  }
-  return "";
+function escapeUrl(url) {
+	// Use encodeURI for the base URL and encodeURIComponent for parameters
+	try {
+		const [baseUrl, params] = url.split('?');
+		if (!params) return encodeURI(url);
+		
+		const sanitizedParams = params.split('&')
+			.map(param => {
+				const [key, value] = param.split('=');
+				return `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`;
+			})
+			.join('&');
+			
+		return `${encodeURI(baseUrl)}?${sanitizedParams}`;
+	} catch (e) {
+		console.error('Error escaping URL:', e);
+		return '';
+	}
 }

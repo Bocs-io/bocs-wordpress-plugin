@@ -313,6 +313,8 @@ class Bocs
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
+        $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
+
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
     }
@@ -362,151 +364,146 @@ class Bocs
     }
 
     /**
-     * Activates the plugin
+     * Activates the plugin and migrates API credentials from user meta to plugin settings
+     * 
+     * This method handles the initial plugin activation process, specifically focusing on
+     * migrating Bocs API credentials from a service account's user meta to the plugin's
+     * centralized settings. This ensures proper credential management and backwards
+     * compatibility with older plugin versions.
      *
+     * The following credentials are processed:
+     * - Store ID: Unique identifier for the Bocs store
+     * - Organization: Organization identifier in Bocs system
+     * - Authorization: API authorization token
+     * - WooCommerce Key: WooCommerce API consumer key
+     * - WooCommerce Secret: WooCommerce API consumer secret
+     *
+     * @since 1.0.0
+     * @access public
+     * @static
+     * 
      * @return void
      */
-    public static function activate()
+    public static function activate() 
     {
-        // Activate registration required
-        // we will check if the api@bocs.io user is created
-        $bocs_account = get_user_by('email', 'api@bocs.io');
+        // Look for the Bocs service account using its designated email
+        // This account is created during initial Bocs setup and stores temporary credentials
+        $serviceAccount = get_user_by('email', 'api@bocs.io');
+        if (!$serviceAccount) {
+            return; // Exit if service account doesn't exist - nothing to migrate
+        }
 
-        if ($bocs_account) {
+        // Define the mapping between user meta fields and their corresponding plugin setting keys
+        // This mapping ensures consistent credential migration and storage
+        $credentialMappings = [
+            'bocs_store' => 'store',             // Store identifier
+            'bocs_organization' => 'organization', // Organization identifier
+            'bocs_authorization' => 'authorization', // Auth token
+            'bocs_wookey' => 'woocommerce_key',     // WooCommerce API key
+            'bocs_woosecret' => 'woocommerce_secret' // WooCommerce API secret
+        ];
 
-            // get will get the user meta
-            $bocs_store_id = get_user_meta($bocs_account->ID, 'bocs_store', true);
-            $bocs_organization = get_user_meta($bocs_account->ID, 'bocs_organization', true);
-            $bocs_authorization = get_user_meta($bocs_account->ID, 'bocs_authorization', true);
-            $bocs_woocommerce_key = get_user_meta($bocs_account->ID, 'bocs_wookey', true);
-            $bocs_woocommerce_secret = get_user_meta($bocs_account->ID, 'bocs_woosecret', true);
+        // Retrieve existing plugin settings or initialize if none exist
+        // The bocs_plugin_options stores all plugin-related settings
+        $pluginSettings = get_option('bocs_plugin_options', []);
+        
+        // Initialize or ensure headers configuration exists
+        // Headers are used for API communication with Bocs services
+        $pluginSettings['bocs_headers'] = $pluginSettings['bocs_headers'] ?? [];
+        
+        // Track whether any credentials were actually migrated
+        // This prevents unnecessary database updates
+        $hasCredentialChanges = false;
 
-            // then we well update bocs settings
-            $options = get_option('bocs_plugin_options');
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
-
-            $settings_counter = 0;
-
-            if ($bocs_organization !== false) {
-                if (trim($bocs_organization) !== "") {
-                    $options['bocs_headers']['organization'] = $bocs_organization;
-                    $settings_counter ++;
-                }
+        // Iterate through each credential mapping and process migrations
+        foreach ($credentialMappings as $metaKeyName => $settingKeyName) {
+            // Retrieve the credential value from user meta
+            $credentialValue = get_user_meta($serviceAccount->ID, $metaKeyName, true);
+            
+            // Only process credentials that have actual values
+            // This prevents storing empty or invalid credentials
+            if (!empty(trim($credentialValue))) {
+                // Store the credential in plugin settings under appropriate key
+                $pluginSettings['bocs_headers'][$settingKeyName] = trim($credentialValue);
+                $hasCredentialChanges = true;
+                
+                // Clean up by removing the credential from user meta
+                // This prevents duplicate processing in future activations
+                delete_user_meta($serviceAccount->ID, $metaKeyName);
             }
+        }
 
-            if ($bocs_authorization !== false) {
-                if (trim($bocs_authorization) !== "") {
-                    $options['bocs_headers']['authorization'] = $bocs_authorization;
-                    $settings_counter ++;
-                }
-            }
-
-            if ($bocs_store_id !== false) {
-                if (trim($bocs_store_id) !== "") {
-                    $options['bocs_headers']['store'] = $bocs_store_id;
-                    $settings_counter ++;
-                }
-            }
-
-            if ($bocs_woocommerce_key !== false) {
-                if (trim($bocs_woocommerce_key) !== "") {
-                    $options['bocs_headers']['woocommerce_key'] = $bocs_woocommerce_key;
-                    $settings_counter ++;
-                }
-            }
-
-            if ($bocs_woocommerce_secret !== false) {
-                if (trim($bocs_woocommerce_secret) !== "") {
-                    $options['bocs_headers']['woocommerce_secret'] = $bocs_woocommerce_secret;
-                    $settings_counter ++;
-                }
-            }
-
-            // then save the bocs settings
-            update_option('bocs_plugin_options', $options);
-
-            // and once it was saved, we will delete the user meta
-            // will be only delete if the 5 meta values were created/added
-            if ($settings_counter === 5) {
-                delete_user_meta($bocs_account->ID, 'bocs_store');
-                delete_user_meta($bocs_account->ID, 'bocs_organization');
-                delete_user_meta($bocs_account->ID, 'bocs_authorization');
-                delete_user_meta($bocs_account->ID, 'bocs_wookey');
-                delete_user_meta($bocs_account->ID, 'bocs_woosecret');
-            }
+        // Only update plugin settings if actual changes were made
+        // This prevents unnecessary database writes
+        if ($hasCredentialChanges) {
+            update_option('bocs_plugin_options', $pluginSettings);
         }
     }
 
     /**
-     * This is to auto add the keys need on the site's end
-     * in order to access the data from the app
-     *
+     * Auto-adds API keys and credentials from user meta to plugin options
+     * 
+     * This method handles the automatic migration of Bocs API credentials from user meta 
+     * to plugin options. It specifically looks for a user with email 'api@bocs.io' and
+     * transfers their stored credentials to the plugin's settings.
+     * 
+     * The following credentials are processed:
+     * - Store ID
+     * - Organization
+     * - Authorization
+     * - WooCommerce API Key
+     * - WooCommerce API Secret
+     * 
+     * After successful transfer, the original user meta entries are deleted to prevent
+     * duplicate processing and maintain data cleanliness.
+     * 
+     * @since 1.0.0
+     * @access public
      * @return void
      */
-    public function auto_add_bocs_keys()
+    public function auto_add_bocs_keys() 
     {
-        // we will check if the api@bocs.io user is created
-        $bocs_account = get_user_by('email', 'api@bocs.io');
+        // Check for the Bocs API service account
+        $serviceAccount = get_user_by('email', 'api@bocs.io');
+        if (!$serviceAccount) {
+            return;
+        }
 
-        if ($bocs_account) {
+        // Map user meta keys to their corresponding plugin settings keys
+        $credentialMappings = [
+            'bocs_store' => 'store',             
+            'bocs_organization' => 'organization', 
+            'bocs_authorization' => 'authorization', 
+            'bocs_wookey' => 'woocommerce_key',     
+            'bocs_woosecret' => 'woocommerce_secret' 
+        ];
 
-            // get will get the user meta
-            $bocs_store_id = get_user_meta($bocs_account->ID, 'bocs_store', true);
-            $bocs_organization = get_user_meta($bocs_account->ID, 'bocs_organization', true);
-            $bocs_authorization = get_user_meta($bocs_account->ID, 'bocs_authorization', true);
-            $bocs_woocommerce_key = get_user_meta($bocs_account->ID, 'bocs_wookey', true);
-            $bocs_woocommerce_secret = get_user_meta($bocs_account->ID, 'bocs_woosecret', true);
+        // Get existing plugin settings
+        $pluginSettings = get_option('bocs_plugin_options', []);
+        
+        // Initialize headers configuration
+        $pluginSettings['bocs_headers'] = $pluginSettings['bocs_headers'] ?? [];
+        
+        $hasUpdates = false;
 
-            // then we well update bocs settings
-            $options = get_option('bocs_plugin_options');
-            $options['bocs_headers'] = $options['bocs_headers'] ?? array();
-
-            $settings_counter = 0;
-
-            $bocs_organization = trim($bocs_organization);
-            $bocs_authorization = trim($bocs_authorization);
-            $bocs_store_id = trim($bocs_store_id);
-            $bocs_woocommerce_key = trim($bocs_woocommerce_key);
-            $bocs_woocommerce_secret = trim($bocs_woocommerce_secret);
-
-            if (trim($bocs_organization) != '') {
-                $options['bocs_headers']['organization'] = $bocs_organization;
-                $settings_counter ++;
+        // Transfer credentials from user meta to plugin settings
+        foreach ($credentialMappings as $metaKey => $settingKey) {
+            $credentialValue = get_user_meta($serviceAccount->ID, $metaKey, true);
+            
+            if (!empty(trim($credentialValue))) {
+                // Store credential in plugin settings
+                $pluginSettings['bocs_headers'][$settingKey] = trim($credentialValue);
+                
+                // Clean up user meta
+                delete_user_meta($serviceAccount->ID, $metaKey);
+                
+                $hasUpdates = true;
             }
+        }
 
-            if (trim($bocs_authorization) != '') {
-                $options['bocs_headers']['authorization'] = $bocs_authorization;
-                $settings_counter ++;
-            }
-
-            if (trim($bocs_store_id) != '') {
-                $options['bocs_headers']['store'] = $bocs_store_id;
-                $settings_counter ++;
-            }
-
-            if (trim($bocs_woocommerce_key) != '') {
-                $options['bocs_headers']['woocommerce_key'] = $bocs_woocommerce_key;
-                $settings_counter ++;
-            }
-
-            if (trim($bocs_woocommerce_secret) != '') {
-                $options['bocs_headers']['woocommerce_secret'] = $bocs_woocommerce_secret;
-                $settings_counter ++;
-            }
-
-            // and once it was saved, we will delete the user meta
-            // will be only delete if the 5 meta values were created/added
-            if ($settings_counter >= 3) {
-
-                // then save the bocs settings
-                update_option('bocs_plugin_options', $options);
-
-                delete_user_meta($bocs_account->ID, 'bocs_store');
-                delete_user_meta($bocs_account->ID, 'bocs_organization');
-                delete_user_meta($bocs_account->ID, 'bocs_authorization');
-                delete_user_meta($bocs_account->ID, 'bocs_wookey');
-                delete_user_meta($bocs_account->ID, 'bocs_woosecret');
-            }
+        // Save updates if any credentials were transferred
+        if ($hasUpdates) {
+            update_option('bocs_plugin_options', $pluginSettings);
         }
     }
 

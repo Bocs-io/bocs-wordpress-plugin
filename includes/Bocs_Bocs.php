@@ -51,6 +51,11 @@ class Bocs_Bocs
             $this->headers
         );
 
+        // Check if the response is valid and has data
+        if (!is_array($api_response) || !isset($api_response['data'])) {
+            throw new Exception('Invalid API response: Missing data');
+        }
+
         // Handle nested data structure in API response
         // Some endpoints return data in data.data, others directly in data
         return isset($api_response['data']['data']) 

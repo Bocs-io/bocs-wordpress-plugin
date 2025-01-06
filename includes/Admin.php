@@ -178,8 +178,8 @@ class Admin
                 'wp-data',        // Data management
                 'jquery'          // jQuery library
             ), 
-            '20241126.20'         // Version number for cache busting
-        );
+            '20250106.0'         // Version number for cache busting
+        );  // Closing parenthesis on its own line
 
         // Get current post context and any previously selected widget data
         $post_id = get_the_ID();
@@ -280,6 +280,7 @@ class Admin
     {
 
         global $wp;
+        $bocs_conversion_total = 0;
 
         // this to make sure that the keys were added or updated
         $bocs = new Bocs();
@@ -297,7 +298,7 @@ class Admin
             "bocs-widget-script", 
             $widget_url, 
             array(), 
-            '20241203.0', 
+            '20250106.0', 
             true
         );
 
@@ -309,10 +310,16 @@ class Admin
         $redirect = wc_get_checkout_url();
         $cart_nonce = wp_create_nonce('wc_store_api');
 
-        wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
-            'jquery',
-            'bocs-widget-script'
-        ), '2024.11.15.6', true);
+        wp_enqueue_script(
+            "bocs-add-to-cart",
+            plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js',
+            array(
+                'jquery',
+                'bocs-widget-script'
+            ),
+            '2025.01.06.1',
+            true
+        );
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'productUrl' => BOCS_API_URL . 'products/',
@@ -326,7 +333,9 @@ class Admin
             'orgId' => $options['bocs_headers']['organization'] ?? '',
             'authId' => $options['bocs_headers']['authorization'] ?? '',
             'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
-            'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce')
+            'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce'),
+            'isLoggedIn' => is_user_logged_in() ? '1' : '0',
+            'loginURL' => wp_login_url()
         ));
 
         // Get the subscription ID from the URL - now safely using get_query_var()
@@ -380,13 +389,27 @@ class Admin
 
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
-            wp_enqueue_script('bocs-stripe-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js', array(
-                'jquery'
-            ), '20240611.8', true);
+            wp_enqueue_script(
+                'bocs-stripe-checkout-js',
+                plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
+                array('jquery'),
+                '20240611.8',
+                true
+            );
 
-            wp_enqueue_script('bocs-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js', array(
-                'jquery'
-            ), '20241105.1', true);
+            wp_enqueue_script(
+                'bocs-checkout-js', 
+                plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
+                array('jquery'),
+                '20241105.1',
+                true
+            );
+
+            // Prepare bocs data with error checking
+            $bocs_data = null;
+            if (is_array($bocs_body) && isset($bocs_body['data'])) {
+                $bocs_data = $bocs_body['data'];
+            }
 
             wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -395,7 +418,7 @@ class Admin
                 'orgId' => $options['bocs_headers']['organization'] ?? '',
                 'authId' => $options['bocs_headers']['authorization'] ?? '',
                 'frequency' => $current_frequency,
-                'bocs' => $bocs_body['data']
+                'bocs' => $bocs_data
             ));
         }
 
@@ -435,7 +458,6 @@ class Admin
                 $bocs_class = new Bocs_Bocs();
 
                 $bocs_list = $bocs_class->get_all_bocs();
-                $bocs_conversion_total = 0;
                 if (! empty($bocs_list) && ! empty($product_ids)) {
 
                     foreach ($bocs_list as $bocs_item) {
@@ -480,9 +502,13 @@ class Admin
                 }
             }
 
-            wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
-                'jquery'
-            ), '20240705.1', true);
+            wp_enqueue_script(
+                'bocs-cart-js',
+                plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js',
+                array('jquery'),
+                '20250106.1',
+                true
+            );
 
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
@@ -911,10 +937,7 @@ class Admin
         $order = wc_get_order($order_id);
         $bocs_product_interval = 'month';
         $bocs_product_interval_count = 1;
-
-        $sub_items = [];
         $subscription_line_items = [];
-
         $is_bocs = false;
 
         // get bocs data
@@ -977,7 +1000,7 @@ class Admin
             $body_data = json_decode($bocs_body['data']['body'], true);
 
             if (isset($body_data['zones'])) {
-                foreach ($body_data['zones'] as $zone_key => $zone_items) {
+                foreach ($body_data['zones'] as $zone_items) {
                     foreach ($zone_items as $zone_item) {
                         if ($zone_item['type'] === 'BocsStep5' && isset($zone_item['props']['selected'])) {
                             $selected_items = $zone_item['props']['selected'];
@@ -1003,7 +1026,7 @@ class Admin
             }
         }
         
-        foreach ($order->get_items() as $item_id => $item) {
+        foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
             $quantity = $item->get_quantity();
             $product = $item->get_product();
@@ -1108,8 +1131,7 @@ class Admin
 
             // Format the DateTime object to ISO 8601 with milliseconds and convert it to UTC
             $dateTime->setTimezone(new DateTimeZone('UTC'));
-            $next_payment_date = $dateTime;
-
+            
             $add_time = 'P' . $bocs_product_interval_count;
             if ($bocs_product_interval == 'day' || $bocs_product_interval == 'days' || $bocs_product_interval == 'Day' || $bocs_product_interval == 'Days')
                 $add_time = $add_time . 'D';
@@ -1157,7 +1179,7 @@ class Admin
                 'lineItems' => $subscription_line_items,
                 'frequency' => $current_frequency,
                 'startDateGmt' => $start_date,
-                // 'order' => json_decode($this->get_order_data_as_json($order_id), true),
+                'order' => json_decode($this->get_order_data_as_json($order_id), true),
                 'total' => number_format((float)$order->get_total(), 2, '.', ''),
                 'discountTotal' => round($order->get_discount_total() + $order->get_discount_tax(), 2)
             ];
@@ -2669,4 +2691,40 @@ class Admin
         error_log("[Bocs][ERROR] Unexpected response from Bocs API: " . wp_remote_retrieve_body($response));
         return false;
     }
+
+    /**
+     * Displays a login-related message to users based on URL parameters.
+     * 
+     * This method checks for a 'login_message' parameter in the URL query string and 
+     * displays it as a sanitized message within a styled div container. The message
+     * is sanitized using WordPress's sanitize_text_field() function to prevent XSS attacks.
+     *
+     * @since 0.0.88
+     * @access public
+     *
+     * Usage example:
+     * - URL: example.com/login?login_message=Welcome+back
+     * Will display: <div class="bocs-login-message"><p class="message">Welcome back</p></div>
+     *
+     * Security features:
+     * - Uses sanitize_text_field() to clean input
+     * - Uses esc_html() to escape the output HTML
+     * - Only processes messages passed via GET parameter
+     *
+     * @uses sanitize_text_field() To sanitize the message parameter
+     * @uses esc_html() To escape the output HTML
+     *
+     * @return string HTML formatted message if login_message parameter exists, empty string otherwise
+     */
+    public function display_bocs_login_message() {
+        $result = '';
+        if (isset($_GET['login_message'])) {
+            $message = sanitize_text_field($_GET['login_message']);
+            $result = '<div class="bocs-login-message" style="background: #fff; border-left: 4px solid #00848b; box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); margin: 0 0 20px; padding: 12px;">';
+            $result .= '<p class="message" style="margin: 0; color: #000;">' . esc_html($message) . '</p>';
+            $result .= '</div>';
+        }
+        return $result;
+    }
 }
+

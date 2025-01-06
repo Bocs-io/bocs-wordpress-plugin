@@ -1,4 +1,32 @@
+/**
+ * @typedef {Object} BocsProduct
+ * @property {number} quantity - The quantity of the product
+ * @property {number} regularPrice - The regular price of the product
+ */
+
+/**
+ * @typedef {Object} BocsFrequency
+ * @property {number} frequency - The frequency number (e.g., 1, 2, 3)
+ * @property {string} timeUnit - The time unit (e.g., 'days', 'weeks', 'months', 'years')
+ */
+
+/**
+ * @typedef {Object} bocsCartObject
+ * @property {Object} bocs - The main BOCS (Buy Once, Subscribe) configuration
+ * @property {string} bocs.type - The type of subscription (e.g., 'fixed')
+ * @property {BocsProduct[]} bocs.products - Array of products in the cart
+ * @property {BocsFrequency} frequency - The subscription frequency settings
+ * @property {number} [bocsConversionTotal] - Optional conversion total amount
+ * @property {string} [bocsConversion] - Optional conversion details
+ */
+/* global bocsCartObject */
+
 jQuery(window).on('load', function() {
+	// Check if bocsCartObject exists in the global scope
+	if (typeof window.bocsCartObject === 'undefined') {
+		console.warn('bocsCartObject is not defined');
+		return;
+	}
 	
 	if(jQuery('div.wc-block-components-totals-wrapper').length > 0 && typeof bocsCartObject.bocs !== 'undefined' && typeof bocsCartObject.bocs !== "undefined" ){
 		if( typeof bocsCartObject.bocs['products'] !== 'undefined' && typeof bocsCartObject.bocs['products'] !== "undefined"){			if(bocsCartObject.bocs['products'].length > 0){
@@ -36,8 +64,9 @@ jQuery(window).on('load', function() {
 		}
 	}
 	
-	console.log(bocsCartObject.bocsConversionTotal,bocsCartObject.bocsConversion );
-	
+	if (bocsCartObject.bocsConversionTotal !== undefined && bocsCartObject.bocsConversion !== undefined) {
+		console.log(bocsCartObject.bocsConversionTotal, bocsCartObject.bocsConversion);
+	}
 });
 
 
@@ -85,13 +114,13 @@ function formatFrequency(frequency, timeUnit) {
 function getOrdinalSuffix(number) {
     const j = number % 10,
           k = number % 100;
-    if (j == 1 && k != 11) {
+    if (j === 1 && k !== 11) {
         return number + "st";
     }
-    if (j == 2 && k != 12) {
+    if (j === 2 && k !== 12) {
         return number + "nd";
     }
-    if (j == 3 && k != 13) {
+    if (j === 3 && k !== 13) {
         return number + "rd";
     }
     return number + "th";

@@ -1,3 +1,22 @@
+/**
+ * WordPress global object
+ * @typedef {Object} wp
+ * @property {Object} data - WordPress data layer
+ * @property {Object} data.select - Function to select data store
+ */
+
+/**
+ * @typedef {Object} bocs_widget_object
+ * @property {string} widgetsURL - The URL endpoint for fetching widgets
+ * @property {string} collectionsURL - The URL endpoint for fetching collections
+ * @property {string} Organization - The organization identifier header value
+ * @property {string} Store - The store identifier header value
+ * @property {string} Authorization - The authorization header value
+ * @property {string} ajax_url - WordPress AJAX URL endpoint
+ * @property {string} nonce - WordPress security nonce
+ */
+/* global bocs_widget_object, wp */
+
 window.bocsApi = {
     fetchWidgets: async () => {
         try {
@@ -46,6 +65,10 @@ window.bocsApi = {
     },
 
     saveWidgetSelection: async (id, name) => {
+        const postId = (typeof wp !== 'undefined' && typeof wp.data !== 'undefined')
+            ? wp.data.select('core/editor')?.getCurrentPostId()
+            : null;
+
         return jQuery.ajax({
             url: bocs_widget_object.ajax_url,
             type: 'POST',
@@ -54,7 +77,7 @@ window.bocsApi = {
                 nonce: bocs_widget_object.nonce,
                 selectedOption: id,
                 selectedOptionName: name,
-                postId: wp.data.select('core/editor').getCurrentPostId()
+                postId: postId
             }
         });
     }
