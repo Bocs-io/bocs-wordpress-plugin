@@ -1,4 +1,11 @@
 /**
+ * WordPress global object
+ * @typedef {Object} wp
+ * @property {Object} data - WordPress data layer
+ * @property {Object} data.select - Function to select data store
+ */
+
+/**
  * @typedef {Object} bocs_widget_object
  * @property {string} widgetsURL - The URL endpoint for fetching widgets
  * @property {string} collectionsURL - The URL endpoint for fetching collections
@@ -8,7 +15,7 @@
  * @property {string} ajax_url - WordPress AJAX URL endpoint
  * @property {string} nonce - WordPress security nonce
  */
-/* global bocs_widget_object */
+/* global bocs_widget_object, wp */
 
 window.bocsApi = {
     fetchWidgets: async () => {

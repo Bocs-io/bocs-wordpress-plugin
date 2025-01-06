@@ -178,8 +178,8 @@ class Admin
                 'wp-data',        // Data management
                 'jquery'          // jQuery library
             ), 
-            '20241126.20'         // Version number for cache busting
-        );
+            '20250106.0'         // Version number for cache busting
+        );  // Closing parenthesis on its own line
 
         // Get current post context and any previously selected widget data
         $post_id = get_the_ID();

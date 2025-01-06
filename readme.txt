@@ -1,3 +1,6 @@
+v0.0.91 01/06/2025
+* Added the wp's js documentation
+
 v0.0.90 01/06/2025
 * Added the bocsCartObject's js documentation to the bocs-cart.js
 
