@@ -1,3 +1,6 @@
+v0.0.90 01/06/2025
+* Added the bocsCartObject's js documentation to the bocs-cart.js
+
 v0.0.89 01/06/2025
 * pull request fix for the add-to-cart.js
 * add to cart fix
