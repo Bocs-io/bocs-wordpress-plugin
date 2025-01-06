@@ -310,10 +310,16 @@ class Admin
         $redirect = wc_get_checkout_url();
         $cart_nonce = wp_create_nonce('wc_store_api');
 
-        wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
-            'jquery',
-            'bocs-widget-script'
-        ), '2025.01.06.1', true);
+        wp_enqueue_script(
+            "bocs-add-to-cart",
+            plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js',
+            array(
+                'jquery',
+                'bocs-widget-script'
+            ),
+            '2025.01.06.1',
+            true
+        );
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'productUrl' => BOCS_API_URL . 'products/',
@@ -383,13 +389,21 @@ class Admin
 
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
-            wp_enqueue_script('bocs-stripe-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js', array(
-                'jquery'
-            ), '20240611.8', true);
+            wp_enqueue_script(
+                'bocs-stripe-checkout-js',
+                plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
+                array('jquery'),
+                '20240611.8',
+                true
+            );
 
-            wp_enqueue_script('bocs-checkout-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js', array(
-                'jquery'
-            ), '20241105.1', true);
+            wp_enqueue_script(
+                'bocs-checkout-js', 
+                plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
+                array('jquery'),
+                '20241105.1',
+                true
+            );
 
             // Prepare bocs data with error checking
             $bocs_data = null;
@@ -488,9 +502,13 @@ class Admin
                 }
             }
 
-            wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
-                'jquery'
-            ), '20250106.1', true);
+            wp_enqueue_script(
+                'bocs-cart-js',
+                plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js',
+                array('jquery'),
+                '20250106.1',
+                true
+            );
 
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),

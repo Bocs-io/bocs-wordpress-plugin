@@ -1,3 +1,6 @@
+v0.0.92 01/06/2025
+* Closing parenthesis of a multi-line function call must be on a line by itself
+
 v0.0.91 01/06/2025
 * Added the wp's js documentation
 
