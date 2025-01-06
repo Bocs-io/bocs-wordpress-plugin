@@ -42,8 +42,6 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	buttonCart.prop('disabled', true);
 	buttonCart.html('Processing...');
 
-	console.log('products', products);
-
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
 
@@ -90,7 +88,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 				xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 			},
 			success: function (response) {
-				console.log('Product added to cart:', response);
+				// console.log('Product added to cart:', response);
 			},
 			error: function (error) {
 				console.error('Error adding product to cart:', error);
@@ -153,7 +151,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 				},
 				success: function (response) {
-					console.log('Product added to cart:', response);
+					// console.log('Product added to cart:', response);
 				},
 				error: function (error) {
 					console.error('Error adding product to cart:', error);

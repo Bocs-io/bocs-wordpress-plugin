@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.06.1',
+            '2025.01.06.4',
             true
         );
 
@@ -506,7 +506,7 @@ class Admin
                 'bocs-cart-js',
                 plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js',
                 array('jquery'),
-                '20250106.1',
+                '20250106.2',
                 true
             );
 
@@ -992,8 +992,11 @@ class Admin
             }
         }
 
-        $current_frequency = null;
+        /*$current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocsid);
+
+        error_log('frequency_id: ' . print_r($frequency_id, true));
+        // error_log('bocs_body' . print_r($bocs_body['data']['body'], true));
 
         // Check if the required keys exist
         if (isset($bocs_body['data']['body'])) {
@@ -1025,6 +1028,8 @@ class Admin
                 }
             }
         }
+
+        error_log('current_frequency ' . print_r($current_frequency, true));*/
         
         foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
@@ -1144,6 +1149,17 @@ class Admin
 
             $curl = curl_init();
 
+            // set thecurrent currenct based on the set cookie
+            $current_frequency = [
+                'id' => (string) isset($_COOKIE['__bocs_frequency_id']) ? sanitize_text_field($_COOKIE['__bocs_frequency_id']) : '',
+                'timeUnit' => (string) isset($_COOKIE['__bocs_frequency_time_unit']) ? sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']) : '',
+                'frequency' => (int) isset($_COOKIE['__bocs_frequency_interval']) ? sanitize_text_field($_COOKIE['__bocs_frequency_interval']) : '',
+                'discount' => (float) isset($_COOKIE['__bocs_discount']) ? sanitize_text_field($_COOKIE['__bocs_discount']) : '',
+                'discountType' => (string) isset($_COOKIE['__bocs_discount_type']) ? sanitize_text_field($_COOKIE['__bocs_discount_type']) : ''
+            ];
+
+            error_log('current_frequency ' . print_r($current_frequency, true));
+
             // Prepare the data array for JSON encoding
             $post_data_array = [
                 
@@ -1245,6 +1261,27 @@ class Admin
             }
 
             curl_close($curl);
+
+            // destroy all the cookies
+            $cookies_to_destroy = [
+                '__bocs_id',
+                '__bocs_collection_id',
+                '__bocs_frequency_id',
+                '__bocs_frequency_time_unit',
+                '__bocs_frequency_interval',
+                '__bocs_discount_type',
+                '__bocs_total',
+                '__bocs_discount',
+                '__bocs_subtotal'
+            ];
+
+            foreach ($cookies_to_destroy as $cookie_name) {
+                if (isset($_COOKIE[$cookie_name])) {
+                    unset($_COOKIE[$cookie_name]);
+                    setcookie($cookie_name, '', time() - 3600, '/'); // empty value and old timestamp
+                }
+            }
+            
         }
     }
 

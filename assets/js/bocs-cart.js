@@ -21,6 +21,8 @@
  */
 /* global bocsCartObject */
 
+console.log('bocs-cart.js bocsCartObject', bocsCartObject);
+
 jQuery(window).on('load', function() {
 	// Check if bocsCartObject exists in the global scope
 	if (typeof window.bocsCartObject === 'undefined') {
