@@ -58,6 +58,10 @@ window.bocsApi = {
     },
 
     saveWidgetSelection: async (id, name) => {
+        const postId = typeof wp !== 'undefined' && wp.data 
+            ? wp.data.select('core/editor')?.getCurrentPostId()
+            : null;
+
         return jQuery.ajax({
             url: bocs_widget_object.ajax_url,
             type: 'POST',
@@ -66,7 +70,7 @@ window.bocsApi = {
                 nonce: bocs_widget_object.nonce,
                 selectedOption: id,
                 selectedOptionName: name,
-                postId: wp.data.select('core/editor').getCurrentPostId()
+                postId: postId
             }
         });
     }

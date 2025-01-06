@@ -24,11 +24,8 @@
  * @param {Array} params.selectedProducts - Array of products to add to cart
  * @param {number} params.total - Total price after discount
  */
-/* exported bocs_add_to_cart */
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
-	// { bocsId:id, collectionId, selectedFrequency: frequency, selectedProducts: products }
-	// console.log('bocs_add_to_cart params', params);
-	
+
 	let bocsFrequencyId = frequency.id;
 	var id = jQuery('div#bocs-widget').data('id');
 	
@@ -50,7 +47,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	// Loop through the products array and add each product to the cart
 	for (const product of products) {
 
-		if(product.externalSource != "WP" || product.externalSourceId == 0) continue;
+		if (!product.externalSourceId) continue;
 
 		let wcProductId = product.externalSourceId;
 
@@ -186,11 +183,11 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 	
 	if (!isLoggedIn) {
-		window.location.href = escapeUrl(bocsAjaxObject.loginURL + 
+		window.location.href = escape(escapeUrl(bocsAjaxObject.loginURL + 
 			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
-			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.'));
+			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.')));
 	} else {
-		window.location.href = escapeUrl(redirectUrl);
+		window.location.href = escape(escapeUrl(redirectUrl));
 	}
 }
 

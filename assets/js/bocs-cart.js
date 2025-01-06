@@ -1,4 +1,9 @@
 jQuery(window).on('load', function() {
+	// Check if bocsCartObject exists in the global scope
+	if (typeof window.bocsCartObject === 'undefined') {
+		console.warn('bocsCartObject is not defined');
+		return;
+	}
 	
 	if(jQuery('div.wc-block-components-totals-wrapper').length > 0 && typeof bocsCartObject.bocs !== 'undefined' && typeof bocsCartObject.bocs !== "undefined" ){
 		if( typeof bocsCartObject.bocs['products'] !== 'undefined' && typeof bocsCartObject.bocs['products'] !== "undefined"){			if(bocsCartObject.bocs['products'].length > 0){
@@ -36,8 +41,9 @@ jQuery(window).on('load', function() {
 		}
 	}
 	
-	console.log(bocsCartObject.bocsConversionTotal,bocsCartObject.bocsConversion );
-	
+	if (bocsCartObject.bocsConversionTotal !== undefined && bocsCartObject.bocsConversion !== undefined) {
+		console.log(bocsCartObject.bocsConversionTotal, bocsCartObject.bocsConversion);
+	}
 });
 
 

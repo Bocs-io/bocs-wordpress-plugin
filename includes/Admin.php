@@ -280,6 +280,7 @@ class Admin
     {
 
         global $wp;
+        $bocs_conversion_total = 0;
 
         // this to make sure that the keys were added or updated
         $bocs = new Bocs();
@@ -297,7 +298,7 @@ class Admin
             "bocs-widget-script", 
             $widget_url, 
             array(), 
-            '20241203.0', 
+            '20250106.0', 
             true
         );
 
@@ -312,7 +313,7 @@ class Admin
         wp_enqueue_script("bocs-add-to-cart", plugin_dir_url(__FILE__) . '../assets/js/add-to-cart.js', array(
             'jquery',
             'bocs-widget-script'
-        ), '2024.12.16.1', true);
+        ), '2025.01.06.1', true);
 
         wp_localize_script('bocs-add-to-cart', 'bocsAjaxObject', array(
             'productUrl' => BOCS_API_URL . 'products/',
@@ -443,7 +444,6 @@ class Admin
                 $bocs_class = new Bocs_Bocs();
 
                 $bocs_list = $bocs_class->get_all_bocs();
-                $bocs_conversion_total = 0;
                 if (! empty($bocs_list) && ! empty($product_ids)) {
 
                     foreach ($bocs_list as $bocs_item) {
@@ -1161,7 +1161,7 @@ class Admin
                 'lineItems' => $subscription_line_items,
                 'frequency' => $current_frequency,
                 'startDateGmt' => $start_date,
-                // 'order' => json_decode($this->get_order_data_as_json($order_id), true),
+                'order' => json_decode($this->get_order_data_as_json($order_id), true),
                 'total' => number_format((float)$order->get_total(), 2, '.', ''),
                 'discountTotal' => round($order->get_discount_total() + $order->get_discount_tax(), 2)
             ];

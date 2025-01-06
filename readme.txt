@@ -1,3 +1,7 @@
+v0.0.89 01/06/2025
+* pull request fix for the add-to-cart.js
+* add to cart fix
+
 v0.0.88 12/10/2024
 * Undefined array key "bocs-view-subscription" fix
 
