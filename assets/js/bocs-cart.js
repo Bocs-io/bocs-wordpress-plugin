@@ -1,3 +1,26 @@
+/**
+ * @typedef {Object} BocsProduct
+ * @property {number} quantity - The quantity of the product
+ * @property {number} regularPrice - The regular price of the product
+ */
+
+/**
+ * @typedef {Object} BocsFrequency
+ * @property {number} frequency - The frequency number (e.g., 1, 2, 3)
+ * @property {string} timeUnit - The time unit (e.g., 'days', 'weeks', 'months', 'years')
+ */
+
+/**
+ * @typedef {Object} bocsCartObject
+ * @property {Object} bocs - The main BOCS (Buy Once, Subscribe) configuration
+ * @property {string} bocs.type - The type of subscription (e.g., 'fixed')
+ * @property {BocsProduct[]} bocs.products - Array of products in the cart
+ * @property {BocsFrequency} frequency - The subscription frequency settings
+ * @property {number} [bocsConversionTotal] - Optional conversion total amount
+ * @property {string} [bocsConversion] - Optional conversion details
+ */
+/* global bocsCartObject */
+
 jQuery(window).on('load', function() {
 	// Check if bocsCartObject exists in the global scope
 	if (typeof window.bocsCartObject === 'undefined') {

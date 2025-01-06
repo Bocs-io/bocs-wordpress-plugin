@@ -58,7 +58,7 @@ window.bocsApi = {
     },
 
     saveWidgetSelection: async (id, name) => {
-        const postId = typeof wp !== 'undefined' && wp.data 
+        const postId = (typeof wp !== 'undefined' && typeof wp.data !== 'undefined')
             ? wp.data.select('core/editor')?.getCurrentPostId()
             : null;
 

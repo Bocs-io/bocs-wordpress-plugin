@@ -490,7 +490,7 @@ class Admin
 
             wp_enqueue_script('bocs-cart-js', plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js', array(
                 'jquery'
-            ), '20241216.0', true);
+            ), '20250106.1', true);
 
             wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
                 'ajax_url' => admin_url('admin-ajax.php'),
