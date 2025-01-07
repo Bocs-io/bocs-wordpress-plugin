@@ -1,3 +1,6 @@
+v0.0.94 01/07/2025
+* Fixes on the creation of the subscription after the payment
+
 v0.0.93 01/07/2025
 * Fix on the URL for the cart page redirect
 
