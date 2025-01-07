@@ -183,30 +183,16 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 	
 	if (!isLoggedIn) {
-		window.location.href = escape(escapeUrl(bocsAjaxObject.loginURL + 
-			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
-			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.')));
+		const loginUrl = new URL(bocsAjaxObject.loginURL);
+		loginUrl.searchParams.append('redirect_to', redirectUrl);
+		loginUrl.searchParams.append('login_message', 'Please log in to purchase Bocs subscription products.');
+		// Using encodeURI instead of escape() as it's the proper method for URL encoding
+		// while maintaining URL integrity and preventing XSS
+		window.location.href = encodeURI(loginUrl.toString());
 	} else {
-		window.location.href = escape(escapeUrl(redirectUrl));
-	}
-}
-
-function escapeUrl(url) {
-	// Use encodeURI for the base URL and encodeURIComponent for parameters
-	try {
-		const [baseUrl, params] = url.split('?');
-		if (!params) return encodeURI(url);
-		
-		const sanitizedParams = params.split('&')
-			.map(param => {
-				const [key, value] = param.split('=');
-				return `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`;
-			})
-			.join('&');
-			
-		return `${encodeURI(baseUrl)}?${sanitizedParams}`;
-	} catch (e) {
-		console.error('Error escaping URL:', e);
-		return '';
+		const finalUrl = new URL(redirectUrl, window.location.origin);
+		// Using encodeURI instead of escape() as it's the proper method for URL encoding
+		// while maintaining URL integrity and preventing XSS
+		window.location.href = encodeURI(finalUrl.toString());
 	}
 }

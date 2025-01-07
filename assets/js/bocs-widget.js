@@ -322,8 +322,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 						className: 'bocs-dropdown-menu'
 					}),
 					el(DropdownMenu, {
-						label: 'Widgets',
-						text: 'Widgets',
+						label: 'Bocs',
+						text: 'Bocs',
 						controls: widgetMenuOptions,
 						isTertiary: true,
 						icon: false,
@@ -349,8 +349,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					className: 'bocs-dropdown-menu bocs-dropdown-menu-body'
 				}),
 				el(DropdownMenu, {
-					label: 'Widgets',
-					text: 'Widgets',
+					label: 'Bocs',
+					text: 'Bocs',
 					controls: widgetMenuOptions,
 					isTertiary: true,
 					icon: false,
