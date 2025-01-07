@@ -142,7 +142,7 @@ jQuery(window).on("load", async function() {
 
         // Load widgets from API
         const widgets = await fetchBocsData('bocs');
-        populateSelect($widgetsSelect, widgets.data.data, 'No Widgets...');
+        populateSelect($widgetsSelect, widgets.data.data, 'No Bocs...');
 
         // Set up mutual exclusivity between dropdowns
         [$collectionsSelect, $widgetsSelect].forEach($select => {

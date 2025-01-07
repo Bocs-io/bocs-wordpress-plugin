@@ -14,8 +14,8 @@ window.bocsComponents.WidgetControls = function WidgetControls({ onSelect, widge
                 className: 'bocs-dropdown-menu'
             }),
             wp.element.createElement(DropdownMenu, {
-                label: 'Widgets',
-                text: 'Widgets',
+                label: 'Bocs',
+                text: 'Bocs',
                 controls: widgetOptions,
                 isTertiary: true,
                 icon: false,
