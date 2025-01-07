@@ -178,21 +178,75 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	document.cookie = "__bocs_discount="+discount+"; path=/";
 	document.cookie = "__bocs_subtotal="+price+"; path=/";
 
-	// Check if user is logged in
+	// Check if user is logged in - accepts both string '1' and boolean true values
+	// This dual check handles different ways WordPress might return the login status
 	const isLoggedIn = bocsAjaxObject.isLoggedIn === '1' || bocsAjaxObject.isLoggedIn === true;
+
+	// Construct the cart URL with all necessary parameters for subscription processing
+	// Parameters include:
+	// - bocs: bundle/box ID
+	// - collection: collection identifier
+	// - frequency: subscription frequency ID
+	// - total: final price after discounts
+	// - discount: applied discount amount
+	// - price: original price before discounts
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 	
 	if (!isLoggedIn) {
-		const loginUrl = new URL(bocsAjaxObject.loginURL);
-		loginUrl.searchParams.append('redirect_to', redirectUrl);
-		loginUrl.searchParams.append('login_message', 'Please log in to purchase Bocs subscription products.');
-		// Using encodeURI instead of escape() as it's the proper method for URL encoding
-		// while maintaining URL integrity and preventing XSS
-		window.location.href = encodeURI(loginUrl.toString());
+		// For non-logged in users:
+		// 1. Redirect to login page
+		// 2. Include the cart URL as redirect_to parameter for post-login redirect
+		// 3. Add a friendly login message
+		// 4. Ensure all parameters are properly URL encoded
+		window.location.href = escapeUrl(bocsAjaxObject.loginURL + 
+			'?redirect_to=' + encodeURIComponent(redirectUrl) + 
+			'&login_message=' + encodeURIComponent('Please log in to purchase Bocs subscription products.'));
 	} else {
-		const finalUrl = new URL(redirectUrl, window.location.origin);
-		// Using encodeURI instead of escape() as it's the proper method for URL encoding
-		// while maintaining URL integrity and preventing XSS
-		window.location.href = encodeURI(finalUrl.toString());
+		// For logged in users:
+		// Directly redirect to cart page with subscription parameters
+		window.location.href = escapeUrl(redirectUrl);
+	}
+}
+
+/**
+ * Safely escapes and encodes URLs with query parameters
+ * @param {string} url - The URL to escape (can include query parameters)
+ * @returns {string} The properly encoded URL with escaped parameters
+ * @description
+ * This function handles URL encoding in two parts:
+ * 1. Base URL: Uses encodeURI() which preserves URL special characters
+ * 2. Query parameters: Uses encodeURIComponent() for stricter encoding of parameter keys and values
+ * 
+ * @example
+ * // Basic usage
+ * escapeUrl('https://example.com?name=John Doe&type=user')
+ * // Returns: 'https://example.com?name=John%20Doe&type=user'
+ * 
+ * @throws {Error} Logs error to console if URL parsing fails
+ */
+function escapeUrl(url) {
+	// Split URL into base and query parameters
+	try {
+		const [baseUrl, params] = url.split('?');
+		
+		// If no query parameters exist, encode entire URL as is
+		if (!params) return encodeURI(url);
+		
+		// Process each query parameter separately
+		const sanitizedParams = params.split('&')
+			.map(param => {
+				// Split each parameter into key-value pair
+				const [key, value] = param.split('=');
+				// Encode both key and value, handling cases where value might be undefined
+				return `${encodeURIComponent(key)}=${encodeURIComponent(value || '')}`;
+			})
+			.join('&');
+			
+		// Combine encoded base URL with encoded parameters
+		return `${encodeURI(baseUrl)}?${sanitizedParams}`;
+	} catch (e) {
+		// Log any errors during URL processing
+		console.error('Error escaping URL:', e);
+		return '';
 	}
 }
