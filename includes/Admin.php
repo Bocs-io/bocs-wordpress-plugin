@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.06.4',
+            '2025.01.07.3',
             true
         );
 
@@ -1151,14 +1151,16 @@ class Admin
 
             // set thecurrent currenct based on the set cookie
             $current_frequency = [
-                'id' => (string) isset($_COOKIE['__bocs_frequency_id']) ? sanitize_text_field($_COOKIE['__bocs_frequency_id']) : '',
-                'timeUnit' => (string) isset($_COOKIE['__bocs_frequency_time_unit']) ? sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']) : '',
-                'frequency' => (int) isset($_COOKIE['__bocs_frequency_interval']) ? sanitize_text_field($_COOKIE['__bocs_frequency_interval']) : '',
-                'discount' => (float) isset($_COOKIE['__bocs_discount']) ? sanitize_text_field($_COOKIE['__bocs_discount']) : '',
-                'discountType' => (string) isset($_COOKIE['__bocs_discount_type']) ? sanitize_text_field($_COOKIE['__bocs_discount_type']) : ''
+                'id' => (isset($_COOKIE['__bocs_frequency_id']) ? sanitize_text_field($_COOKIE['__bocs_frequency_id']) : ''),
+                'timeUnit' => (isset($_COOKIE['__bocs_frequency_time_unit']) ? sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']) : ''),
+                // Explicitly cast frequency to integer using intval()
+                'frequency' => (isset($_COOKIE['__bocs_frequency_interval']) ? intval(sanitize_text_field($_COOKIE['__bocs_frequency_interval'])) : 0),
+                // Explicitly cast discount to float using floatval()
+                'discount' => (isset($_COOKIE['__bocs_discount']) ? floatval(sanitize_text_field($_COOKIE['__bocs_discount'])) : 0.0),
+                'discountType' => (isset($_COOKIE['__bocs_discount_type']) ? sanitize_text_field($_COOKIE['__bocs_discount_type']) : '')
             ];
 
-            error_log('current_frequency ' . print_r($current_frequency, true));
+            // error_log('current_frequency ' . print_r($current_frequency, true));
 
             // Prepare the data array for JSON encoding
             $post_data_array = [
@@ -1211,7 +1213,6 @@ class Admin
             // Add validation and error logging
             if (json_last_error() !== JSON_ERROR_NONE) {
                 error_log('JSON encoding error: ' . json_last_error_msg());
-                error_log('Data that failed to encode: ' . print_r($post_data_array, true));
                 // Handle the error appropriately
                 return false;
             }
@@ -1240,23 +1241,11 @@ class Admin
             if (curl_errno($curl)) {
                 $error = curl_error($curl);
                 error_log('[Bocs][ERROR] Failed to create subscription: ' . $error);
-                error_log('[Bocs][ERROR] Request data: ' . $post_data);
             } else {
                 if ($http_code >= 200 && $http_code < 300) {
-                    error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                    // error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
                 } else {
                     error_log('[Bocs][ERROR] Subscription creation failed. Response code: ' . $http_code);
-                    error_log('[Bocs][ERROR] Request data: ' . $post_data);
-                    
-                    error_log('[Bocs][ERROR] Request - Basic Info: ' . print_r([
-                    'bocs' => json_encode($post_data_array['bocs']),
-                        'customer' => json_encode($post_data_array['customer']),
-                        'total' => json_encode($post_data_array['total'])
-                    ], true));
-
-                    error_log('[Bocs][ERROR] Request - Billing: ' . print_r(json_encode($post_data_array['billing']), true));
-                    error_log('[Bocs][ERROR] Request - Shipping: ' . print_r(json_encode($post_data_array['shipping']), true));
-                    error_log('[Bocs][ERROR] Request - Line Items: ' . print_r(json_encode($post_data_array['lineItems']), true));
                 }
             }
 

@@ -1,3 +1,6 @@
+v0.0.93 01/07/2025
+* Fix on the URL for the cart page redirect
+
 v0.0.92 01/06/2025
 * Closing parenthesis of a multi-line function call must be on a line by itself
 
