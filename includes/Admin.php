@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.06.1',
+            '2025.01.07.2',
             true
         );
 

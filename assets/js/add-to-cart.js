@@ -183,14 +183,12 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
 	
 	if (!isLoggedIn) {
-		// Create URL object for safer URL handling
 		const loginUrl = new URL(bocsAjaxObject.loginURL);
 		loginUrl.searchParams.append('redirect_to', redirectUrl);
 		loginUrl.searchParams.append('login_message', 'Please log in to purchase Bocs subscription products.');
-		window.location.href = loginUrl.toString();
+		window.location.href = encodeURI(loginUrl.toString());
 	} else {
-		// Create URL object for the redirect URL
 		const finalUrl = new URL(redirectUrl, window.location.origin);
-		window.location.href = finalUrl.toString();
+		window.location.href = encodeURI(finalUrl.toString());
 	}
 }
