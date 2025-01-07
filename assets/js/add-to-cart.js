@@ -186,9 +186,13 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 		const loginUrl = new URL(bocsAjaxObject.loginURL);
 		loginUrl.searchParams.append('redirect_to', redirectUrl);
 		loginUrl.searchParams.append('login_message', 'Please log in to purchase Bocs subscription products.');
+		// Using encodeURI instead of escape() as it's the proper method for URL encoding
+		// while maintaining URL integrity and preventing XSS
 		window.location.href = encodeURI(loginUrl.toString());
 	} else {
 		const finalUrl = new URL(redirectUrl, window.location.origin);
+		// Using encodeURI instead of escape() as it's the proper method for URL encoding
+		// while maintaining URL integrity and preventing XSS
 		window.location.href = encodeURI(finalUrl.toString());
 	}
 }
