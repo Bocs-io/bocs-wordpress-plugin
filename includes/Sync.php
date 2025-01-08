@@ -61,7 +61,7 @@ class Sync
 			return $bocs_contact_id;
 		}
 
-		throw new Exception("Failed to create Bocs user for ID: {$user->ID}");
+		throw new Exception("Failed to create Bocs user for ID: " . intval($user->ID));
 	}
 
 	/**
@@ -932,7 +932,7 @@ class Sync
             'user_id' => $user->ID,
             'response' => $result
         ]);
-        throw new Exception("Failed to create Bocs user for ID: {$user->ID}");
+        throw new Exception("Failed to create Bocs user for ID: " . intval($user->ID));
 	}
 
 	/**
