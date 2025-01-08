@@ -8,7 +8,9 @@ $wpnonce = wp_create_nonce("bocs_plugin_options");
 		<th><label for="forceSyncContactsFromBocs">Force sync from Bocs</label></th>
 		<td>
 			<p>
-				<button id="forceSyncContactsFromBocs" type="button" class="btn btn-primary" data-user-id="<?php echo isset($_GET['user_id']) ? $_GET['user_id'] : 0 ?>" data-wp-nonce="<?php echo $wpnonce?>">Sync Now</button>
+				<button id="forceSyncContactsFromBocs" type="button" class="btn btn-primary" 
+					data-user-id="<?php echo esc_attr(isset($_GET['user_id']) ? $_GET['user_id'] : 0) ?>" 
+					data-wp-nonce="<?php echo esc_attr($wpnonce)?>">Sync Now</button>
 			</p>
 			<p id="forceSyncContactsFromBocs-response"></p>
 		</td>
