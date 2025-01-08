@@ -149,89 +149,6 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 				</table>
 				<br />
 				
-			
-
-			<h2>Stripe Settings</h2>
-			<table class="form-table">
-				<tr>
-					<th scope="row">Test Mode</th>
-					<td>
-						<label>
-							<input type="checkbox" name="bocs_plugin_options[stripe][test_mode]" 
-								value="yes" <?php checked($stripe_settings['test_mode'] ?? 'no', 'yes'); ?>>
-							Enable Test Mode
-						</label>
-						<p class="description">Check this box to use Stripe test API keys instead of live API keys.</p>
-					</td>
-				</tr>
-				
-				<!-- Live Keys Section -->
-				<tr class="live-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? 'hidden' : ''; ?>">
-					<th scope="row">Live Publishable Key</th>
-					<td>
-						<input type="text" name="bocs_plugin_options[stripe][live_publishable_key]" 
-							value="<?php echo esc_attr($stripe_settings['live_publishable_key'] ?? ''); ?>" class="regular-text">
-						<p class="description">
-							Enter your Stripe Live Publishable Key
-							<br>
-							<small>Format: pk_live_51ABC...XYZ</small>
-						</p>
-					</td>
-				</tr>
-				<tr class="live-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? 'hidden' : ''; ?>">
-					<th scope="row">Live Secret Key</th>
-					<td>
-						<input type="password" name="bocs_plugin_options[stripe][live_secret_key]" 
-							value="<?php echo esc_attr($stripe_settings['live_secret_key'] ?? ''); ?>" class="regular-text">
-						<p class="description">
-							Enter your Stripe Live Secret Key
-							<br>
-							<small>Format: sk_live_51ABC...XYZ</small>
-						</p>
-					</td>
-				</tr>
-
-				<!-- Test Keys Section -->
-				<tr class="test-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? '' : 'hidden'; ?>">
-					<th scope="row">Test Publishable Key</th>
-					<td>
-						<input type="text" name="bocs_plugin_options[stripe][test_publishable_key]" 
-							value="<?php echo esc_attr($stripe_settings['test_publishable_key'] ?? ''); ?>" 
-							class="regular-text">
-						<p class="description">
-							Enter your Stripe Test Publishable Key
-							<br>
-							<small>Format: pk_test_51ABC...XYZ</small>
-						</p>
-					</td>
-				</tr>
-				<tr class="test-keys <?php echo ($stripe_settings['test_mode'] ?? 'no') === 'yes' ? '' : 'hidden'; ?>">
-					<th scope="row">Test Secret Key</th>
-					<td>
-						<input type="password" name="bocs_plugin_options[stripe][test_secret_key]" 
-							value="<?php echo esc_attr($stripe_settings['test_secret_key'] ?? ''); ?>" 
-							class="regular-text">
-						<p class="description">
-							Enter your Stripe Test Secret Key
-							<br>
-							<small>Format: sk_test_51ABC...XYZ</small>
-						</p>
-					</td>
-				</tr>
-			</table>
-
-			<div class="stripe-keys-help">
-				<h3>How to get your Stripe API Keys</h3>
-				<ol>
-					<li>Log in to your <a href="https://dashboard.stripe.com/apikeys" target="_blank">Stripe Dashboard</a></li>
-					<li>In the left sidebar, click on "Developers" → "API keys"</li>
-					<li>You'll find both your Publishable and Secret keys here</li>
-					<li>Toggle "View test data" in the Stripe dashboard to switch between live and test keys</li>
-				</ol>
-				<p><strong>Note:</strong> Test mode uses pre-configured test keys. You only need to enter your live keys.</p>
-				<p><strong>Warning:</strong> Never share your Secret key publicly or commit it to version control.</p>
-			</div>
-
 			<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php 
 				echo wp_create_nonce("bocs_plugin_options");
 			?>">
@@ -2087,21 +2004,22 @@ echo wp_create_nonce("bocs_sync_options");
 		<section id="developer-mode" class="tab-panel">
 			<h2>Test</h2>
 			<div class="notice notice-warning">
-				<p><strong>For Bocs developers only</strong></p>
-				<p>
+				<h3>For Bocs developers only</h3>
+				<h4>WARNING: Ensure to re-publish any pages containing the widgets when testing and also when deactivating.</h4>
+				<div>
 					<form method="post">
 						<label>
 							<input type="checkbox" id="developer_mode" name="developer_mode" <?php echo $options['developer_mode'] === 'on' ? 'checked' : ''; ?>>
 							Developer Mode
 						</label>
 						<br />
-						<span>Please resave any  or update any page the widget is on once checked.</span>
 						<br />
 						<input type="hidden" name="action" value="update">
 						<input type="hidden" name="option_page" value="developer_mode">
 						<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
 					</form>
-				</p>
+					<br />
+				</div>
 			</div>
 		</section>
 	</div>

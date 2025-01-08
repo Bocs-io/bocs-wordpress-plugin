@@ -1,3 +1,7 @@
+v0.0.95 01/08/2025
+* Remove stripe keys from the settings page
+* Changes on the developer mode
+
 v0.0.94 01/07/2025
 * Fixes on the creation of the subscription after the payment
 
