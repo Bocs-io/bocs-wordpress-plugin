@@ -51,16 +51,25 @@ class Bocs_Bocs
             $this->headers
         );
 
-        // Check if the response is valid and has data
-        if (!is_array($api_response) || !isset($api_response['data'])) {
-            throw new Exception('Invalid API response: Missing data');
+        // Check if the response is valid
+        if (!is_array($api_response)) {
+            throw new Exception('Invalid API response: Not an array');
+        }
+
+        // Check if response has any data
+        if (empty($api_response)) {
+            return [];
         }
 
         // Handle nested data structure in API response
-        // Some endpoints return data in data.data, others directly in data
-        return isset($api_response['data']['data']) 
-            ? $api_response['data']['data']     // For nested response structure
-            : $api_response['data'];            // For flat response structure
+        if (isset($api_response['data'])) {
+            return isset($api_response['data']['data']) 
+                ? $api_response['data']['data']     // For nested response structure
+                : $api_response['data'];            // For flat response structure
+        }
+
+        // If no data key exists, return empty array
+        return [];
     }
 }
 
