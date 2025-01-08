@@ -2013,12 +2013,12 @@ echo wp_create_nonce("bocs_sync_options");
 							Developer Mode
 						</label>
 						<br />
-						<h4>Please resave any  or update any page the widget is on once checked.</h4>
 						<br />
 						<input type="hidden" name="action" value="update">
 						<input type="hidden" name="option_page" value="developer_mode">
 						<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
 					</form>
+					<br />
 				</div>
 			</div>
 		</section>
