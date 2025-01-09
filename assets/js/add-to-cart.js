@@ -27,6 +27,8 @@
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
 
 	let bocsFrequencyId = frequency.id;
+	var discountType = frequency.discountType ?? 'fixed_cart';
+
 	var id = jQuery('div#bocs-widget').data('id');
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
@@ -49,7 +51,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 
 		let wcProductId = product.externalSourceId;
 
-		if(product.variations){
+		if(product.variations && product.variations.length > 0){
 			// we will get the variations
 			let variationIds = [];
 			for (const bocsVariationId of product.variations) {
@@ -70,9 +72,10 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 				
 			}
 
-			 // Get the minimum variation ID as the default product ID
-			 wcProductId = Math.min(...variationIds);
-
+			if(variationIds.length > 0){
+				// Get the minimum variation ID as the default product ID
+				wcProductId = Math.min(...variationIds);
+			}
 		}
 
 		var data = {
@@ -100,7 +103,6 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	// then we will try to add the coupon if there is a discount
 	if (discount > 0) {
 
-		let discountType = "fixed_cart";
 		let amount = discount;
 
 		if (frequency && !isNaN(parseFloat(frequency.discount))) {
@@ -109,15 +111,11 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 		
 		let couponCode = "bocs-" + amount;
 
-		if (frequency && frequency.discountType !== '') {
-			discountType = frequency.discountType;
-		}
-
-		if (discountType === "percent") {
-			couponCode = couponCode + "percent";
+		if (discountType.toLowerCase().includes('percent')) {
+			couponCode = couponCode + "-percent";
 			discountType = "percent";
 		} else {
-			couponCode = couponCode + "off";
+			couponCode = couponCode + "-dollar-off";
 		}
 
 		couponCode = couponCode + "-" + (Math.random() + 1).toString(36).substring(7);
