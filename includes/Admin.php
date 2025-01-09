@@ -292,7 +292,7 @@ class Admin
         // Set version based on environment
         $script_version = BOCS_ENVIRONMENT === 'dev' 
             ? time()  // Use timestamp for dev environment
-            : null;   // No version for production
+            : BOCS_VERSION;   // Use plugin version for production
             
         wp_enqueue_script(
             "bocs-widget-script", 
@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.07.3',
+            '2025.01.09.4',
             true
         );
 

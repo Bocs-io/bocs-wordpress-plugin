@@ -1,3 +1,7 @@
+v0.0.97 01/09/2025
+* Update version for the widget in whatever environment
+* Fixed on the discount
+
 v0.0.96 01/09/2025
 * Update version for the widget if in developer mode
 
