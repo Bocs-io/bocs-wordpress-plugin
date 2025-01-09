@@ -1,3 +1,6 @@
+v0.0.96 01/09/2025
+* Update version for the widget if in developer mode
+
 v0.0.95 01/08/2025
 * Remove stripe keys from the settings page
 * Changes on the developer mode

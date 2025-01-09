@@ -289,11 +289,16 @@ class Admin
             ? "https://dev.widget.v2.bocs.io/script/index.js"
             : "https://widget.v2.bocs.io/script/index.js";
 
+        // Set version based on environment
+        $script_version = BOCS_ENVIRONMENT === 'dev' 
+            ? time()  // Use timestamp for dev environment
+            : null;   // No version for production
+            
         wp_enqueue_script(
             "bocs-widget-script", 
             $widget_url, 
             array(), 
-            '20250106.0', 
+            $script_version, 
             true
         );
 
