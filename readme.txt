@@ -1,3 +1,13 @@
+v0.0.96 01/09/2025
+* Update version for the widget if in developer mode
+
+v0.0.95 01/08/2025
+* Remove stripe keys from the settings page
+* Changes on the developer mode
+
+v0.0.94 01/07/2025
+* Fixes on the creation of the subscription after the payment
+
 v0.0.93 01/07/2025
 * Fix on the URL for the cart page redirect
 
