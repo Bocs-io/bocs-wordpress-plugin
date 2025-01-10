@@ -1238,12 +1238,42 @@ class Admin
 
             if (curl_errno($curl)) {
                 $error = curl_error($curl);
-                error_log('[Bocs][ERROR] Failed to create subscription: ' . $error);
+                $error_code = curl_errno($curl);
+                $error_message = sprintf(
+                    '[Bocs][ERROR] Failed to create subscription: (Code: %d) %s',
+                    $error_code,
+                    $error
+                );
+                
+                // Always log critical errors
+                error_log($error_message);
+                
+                if (BOCS_ENVIRONMENT === 'dev') {
+                    // Additional debug information in developer mode
+                    error_log('[Bocs][DEBUG] Subscription creation attempt details:');
+                    error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                    error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                }
             } else {
                 if ($http_code >= 200 && $http_code < 300) {
-                    // error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                        error_log('[Bocs][DEBUG] Response: ' . $response);
+                    }
                 } else {
-                    error_log('[Bocs][ERROR] Subscription creation failed. Response code: ' . $http_code);
+                    $error_message = sprintf(
+                        '[Bocs][ERROR] Subscription creation failed. Response code: %d. Response: %s',
+                        $http_code,
+                        $response
+                    );
+                    error_log($error_message);
+                    
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        // Additional debug information in developer mode
+                        error_log('[Bocs][DEBUG] Failed request details:');
+                        error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                        error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                    }
                 }
             }
 
