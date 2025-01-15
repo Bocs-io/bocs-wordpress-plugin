@@ -93,7 +93,6 @@ class Bocs
          * The class responsible for defining all actions that occur in the admin area.
          */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Admin.php';
-        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Account.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_List_Table.php';
 
@@ -290,6 +289,9 @@ class Bocs
 
         // adding meta box for the related orders
         $this->loader->add_action('add_meta_boxes', $plugin_admin, 'show_related_orders');
+
+        $this->loader->add_filter('woocommerce_account_settings', $plugin_admin, 'add_guest_checkout_setting_note', 10, 1);
+        $this->loader->add_filter('woocommerce_payment_gateways_settings', $plugin_admin, 'add_guest_checkout_setting_note', 10, 1);
     }
 
     /**
@@ -348,6 +350,7 @@ class Bocs
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
+        
     }
 
     public function define_checkout_page_hooks()
@@ -355,6 +358,11 @@ class Bocs
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
         $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
+
+        $bocs_account = new Bocs_Account();
+        $this->loader->add_filter('woocommerce_checkout_process', $bocs_account, 'require_registration_during_checkout');
+        $this->loader->add_action('woocommerce_before_checkout_process', $bocs_account, 'force_registration_during_checkout');
+        $this->loader->add_filter('woocommerce_checkout_registration_enabled', $bocs_account, 'maybe_enable_registration');
     }
 
     public function define_bocs_email_api()

@@ -1299,6 +1299,11 @@ class Admin
                     setcookie($cookie_name, '', time() - 3600, '/'); // empty value and old timestamp
                 }
             }
+
+            // Unset bocs data from WC session
+            if (WC()->session) {
+                WC()->session->__unset('bocs');
+            }
             
         }
     }
@@ -2752,5 +2757,32 @@ class Admin
         }
         return $result;
     }
+
+    /**
+     * Add a reminder on the enable guest checkout setting that subscriptions still require an account
+     * @since 0.0.97 - Migrated from WooCommerce Subscriptions v2.3.0
+     * @param array $settings The list of settings
+     */ 
+    public function add_guest_checkout_setting_note( $settings ) {
+		$is_wc_pre_3_4_0 = version_compare( WC()->version, '3.4.0', '<' );
+		$current_filter  = current_filter();
+
+		if ( ( $is_wc_pre_3_4_0 && 'woocommerce_payment_gateways_settings' !== $current_filter ) || ( ! $is_wc_pre_3_4_0 && 'woocommerce_account_settings' !== $current_filter ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return $settings;
+		}
+
+		foreach ( $settings as &$value ) {
+			if ( isset( $value['id'] ) && 'woocommerce_enable_guest_checkout' === $value['id'] ) {
+				$value['desc_tip']  = ! empty( $value['desc_tip'] ) ? $value['desc_tip'] . ' ' : '';
+				$value['desc_tip'] .= __( 'Note that purchasing bocs requires an account.', 'bocs-wordpress' );
+				break;
+			}
+		}
+		return $settings;
+	}
 }
 
