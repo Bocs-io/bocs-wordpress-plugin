@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.09.4',
+            '2025.01.14.1',
             true
         );
 
@@ -388,14 +388,15 @@ class Admin
         $bocs_body = $this->get_bocs_data_from_api($bocs_id);
 
         if (is_checkout()) {
+            
             // checks the stripe checkbox and make it checked as default
-            wp_enqueue_script(
+            /*wp_enqueue_script(
                 'bocs-stripe-checkout-js',
                 plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
                 array('jquery'),
-                '20240611.8',
+                '20250114.4',
                 true
-            );
+            );*/
 
             wp_enqueue_script(
                 'bocs-checkout-js', 
