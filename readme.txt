@@ -1,3 +1,6 @@
+v0.0.98 01/15/2025
+* Added require registration for bocs subscription if not logged in
+
 v0.0.97 01/09/2025
 * Update version for the widget in whatever environment
 * Fixed on the discount
