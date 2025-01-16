@@ -57,6 +57,7 @@ class Bocs
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
         $this->define_bocs_email_api();
+        $this->define_payment_api_hooks();
     }
 
     /**
@@ -147,6 +148,8 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
+
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
 
         $this->loader = new Loader();
     }
@@ -369,6 +372,15 @@ class Bocs
     {
         $email_api = new Bocs_Email_API();
         $this->loader->add_action('rest_api_init', $email_api, 'register_routes');
+    }
+
+    /**
+     * Register the payment API endpoints
+     */
+    private function define_payment_api_hooks()
+    {
+        $payment_api = new Bocs_Payment_API();
+        $this->loader->add_action('rest_api_init', $payment_api, 'register_routes');
     }
 
     /**
