@@ -1,3 +1,6 @@
+v0.0.99 01/16/2025
+* Added Customer WooCommerce REST API for trigger payment
+
 v0.0.98 01/15/2025
 * Added require registration for bocs subscription if not logged in
 
