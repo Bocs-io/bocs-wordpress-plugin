@@ -146,7 +146,37 @@ class Bocs_Payment_API {
                 if ($payment_method === 'stripe') {
                     // Get Stripe customer ID and payment details from order meta
                     $stripe_customer_id = $order->get_meta('_stripe_customer_id');
+                    
+                    // If Stripe customer ID is empty, try to get it from user meta
+                    if (empty($stripe_customer_id)) {
+                        $user_id = $order->get_user_id();
+                        if ($user_id) {
+                            $stripe_customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+                            
+                            // If still empty, try with table prefix
+                            if (empty($stripe_customer_id)) {
+                                global $wpdb;
+                                $stripe_customer_id = get_user_meta($user_id, $wpdb->prefix . '_stripe_customer_id', true);
+                            }
+                        }
+                    }
+
                     $payment_method_id = $order->get_meta('_stripe_source_id');
+                    
+                    // If payment method ID is empty, try to get default payment token
+                    if (empty($payment_method_id)) {
+                        $user_id = $order->get_user_id();
+                        if ($user_id) {
+                            $tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+                            foreach ($tokens as $token) {
+                                if ($token->get_is_default()) {
+                                    $payment_method_id = $token->get_token();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     $payment_intent_id = $order->get_meta('_stripe_intent_id');
                     $upe_payment_type = $order->get_meta('_stripe_upe_payment_type');
                     

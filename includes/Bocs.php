@@ -47,7 +47,6 @@ class Bocs
         $this->plugin_name = BOCS_NAME;
 
         $this->load_dependencies();
-        // $this->set_locale();
         $this->define_updater_hooks();
         $this->define_admin_hooks();
         $this->define_public_hooks();
@@ -152,18 +151,6 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
 
         $this->loader = new Loader();
-    }
-
-    /**
-     * Define the locale for this plugin for internationalization.
-     *
-     * Uses the Bocs_Service_i18n class in order to set the domain and to register the hook
-     * with WordPress.
-     */
-    private function set_locale()
-    {
-        $plugin_i18n = new Internationalization();
-        $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
     }
 
     /**

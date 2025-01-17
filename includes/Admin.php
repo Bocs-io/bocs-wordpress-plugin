@@ -1308,20 +1308,6 @@ class Admin
         }
     }
 
-    /**
-     * Helper method to get value from session or cookie
-     * 
-     * @param string $key
-     * @return string|null
-     */
-    private function get_from_session_or_cookie($key) {
-        $value = WC()->session->get($key);
-        if (empty($value) && isset($_COOKIE["__${key}_id"])) {
-            $value = sanitize_text_field($_COOKIE["__${key}_id"]);
-        }
-        return $value;
-    }
-
     public function search_product_ajax_callback(){
 
         // Verify the AJAX nonce
