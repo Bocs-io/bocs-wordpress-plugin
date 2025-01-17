@@ -120,6 +120,27 @@ class Bocs_Payment_API {
                 array('status' => 400)
             );
         }
+        /*
+        // Get User-Agent from the request
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+        // Determine device type
+        $device_type = 'Desktop'; // Default to Desktop
+
+        if (preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i', $user_agent)) {
+            $device_type = 'Tablet';
+        } else if (preg_match('/(Mobile|Android|iPhone|iPod|IEMobile|BlackBerry|webOS)/i', $user_agent)) {
+            $device_type = 'Mobile';
+        }
+
+        $order->update_meta_data('_wc_order_attribution_device_type', $device_type);
+
+        // Set attribution meta data for API-created orders
+        $order->update_meta_data('_wc_order_attribution_source_type', 'referral');
+        $order->update_meta_data('_wc_order_attribution_utm_source', 'Bocs App');
+        $order->update_meta_data('_wc_order_attribution_user_agent', $_SERVER['HTTP_USER_AGENT']);
+        $order->save();
+        */
 
         try {
             // Initialize WC session if needed for API requests

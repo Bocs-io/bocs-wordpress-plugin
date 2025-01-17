@@ -1,3 +1,7 @@
+v0.0.100 01/17/2025
+* Force check Save payment information to my account for future purchases when bocs product is added to the cart
+* Added the updater for the plugin for pre-release and release for the github repository
+
 v0.0.99 01/16/2025
 * Added Customer WooCommerce REST API for trigger payment
 

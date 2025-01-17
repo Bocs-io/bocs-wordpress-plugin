@@ -48,17 +48,17 @@ class Updater {
 
 	private function get_repository_info() {
 		if ( is_null( $this->github_response ) ) {
+			// Use GitHub API to get release info
 			$request_uri = sprintf(
-				'https://b84gp25mke.execute-api.ap-southeast-2.amazonaws.com/dev/cru-wordpress-plugins-repository-get-latest-version?plugin=%s&environment=%s&release_type=%s',
-				'bocs',
-				BOCS_ENVIRONMENT,
-				BOCS_ENVIRONMENT === 'dev' ? 'pre-release' : 'release'
+				'https://api.github.com/repos/%s/%s/releases',
+				$this->username,
+				$this->repository
 			);
 
 			$args = array();
 
 			if( $this->authorize_token ) {
-				$args['headers']['Authorization'] = "bearer {$this->authorize_token}";
+				$args['headers']['Authorization'] = "token {$this->authorize_token}";
 			}
 
 			$response = wp_remote_get( $request_uri, $args );
@@ -66,31 +66,32 @@ class Updater {
 				return;
 			}
 
-			$response = json_decode( wp_remote_retrieve_body( $response ), true );
-
-			if( is_array( $response ) ) {
-				$response = current( $response );
-			}
-
-			if ( !empty($response) && isset($response['tag_name']) ) {
-				$this->github_response = $response;
+			$releases = json_decode( wp_remote_retrieve_body( $response ), true );
+			
+			// Filter based on environment
+			$release_type = BOCS_ENVIRONMENT === 'dev' ? 'prerelease' : 'release';
+			foreach ($releases as $release) {
+				if ($release_type === 'prerelease' || (!$release['prerelease'] && $release_type === 'release')) {
+					$this->github_response = $release;
+					break;
+				}
 			}
 		}
 	}
 
 	public function initialize() {
-
-        // add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_transient' ), 10, 1 );
-        // add_filter( 'plugins_api', array( $this, 'plugin_popup' ), 10, 3);
-        // add_filter( 'upgrader_post_install', array( $this, 'after_install' ), 10, 3 );
+		// Enable update filters
+		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'modify_transient' ), 10, 1 );
+		add_filter( 'plugins_api', array( $this, 'plugin_popup' ), 10, 3);
+		add_filter( 'upgrader_post_install', array( $this, 'after_install' ), 10, 3 );
 
 		// Add Authorization Token to download_package
-		//add_filter( 'upgrader_pre_download',
-		//	function() {
-		//		add_filter( 'http_request_args', [ $this, 'download_package' ], 15, 2 );
-		//		return false; // upgrader_pre_download filter default return value.
-		//	}
-		//);
+		add_filter( 'upgrader_pre_download',
+			function() {
+				add_filter( 'http_request_args', [ $this, 'download_package' ], 15, 2 );
+				return false; // upgrader_pre_download filter default return value.
+			}
+		);
 	}
 
 	public function modify_transient( $transient ) {

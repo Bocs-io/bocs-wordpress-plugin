@@ -52,6 +52,7 @@ class Bocs
         $this->define_public_hooks();
         $this->define_email_hooks();
         $this->define_checkout_page_hooks();
+        // $this->define_order_hooks();
 
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
@@ -149,6 +150,8 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
+
+        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
 
         $this->loader = new Loader();
     }
@@ -368,6 +371,14 @@ class Bocs
     {
         $payment_api = new Bocs_Payment_API();
         $this->loader->add_action('rest_api_init', $payment_api, 'register_routes');
+    }
+
+    /**
+     * Register the order hooks
+     */
+    private function define_order_hooks()
+    {
+        
     }
 
     /**

@@ -4,50 +4,53 @@
  * in the WooCommerce Stripe checkout form.
  */
 jQuery(document).ready(function ($) {
-    // Wait for Stripe Elements to be fully loaded
-    const waitForStripeElements = setInterval(function() {
-        if (typeof stripe !== 'undefined' && typeof elements !== 'undefined') {
-            clearInterval(waitForStripeElements);
-            
-            // Monitor all input fields for changes
-            const cardNumberInput = $('input[name="number"]');
-            const expiryInput = $('input[name="expiry"]');
-            const cvcInput = $('input[name="cvc"]');
-            const saveCardCheckbox = $('#checkbox-control-1');
+    // Function to check if BOCS identifier exists (either in cookies or URL)
+    function hasBocsIdentifier() {
+        // Check URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasBocsParam = urlParams.has('bocs');
 
-            console.log('saveCardCheckbox', saveCardCheckbox);
-            console.log('cardNumberInput', cardNumberInput);
-            console.log('expiryInput', expiryInput);
-            console.log('cvcInput', cvcInput);
-            
-            // Function to check if all fields are filled correctly
-            const checkAllFieldsFilled = () => {
-                const cardNumberFilled = cardNumberInput.val().replace(/\s/g, '').length === 16;
-                const expiryFilled = expiryInput.val().match(/^\d{2}\s\/\s\d{2}$/);
-                const cvcFilled = cvcInput.val().length >= 3;
+        // Check cookies
+        const hasBocsCookies = document.cookie.includes('__bocs_id=');
 
-                console.log('cardNumberFilled', cardNumberFilled);
-                console.log('expiryFilled', expiryFilled);
-                console.log('cvcFilled', cvcFilled);
-                
-                if (cardNumberFilled && expiryFilled && cvcFilled) {
-                    saveCardCheckbox.prop('checked', true);
-                    console.log('saveCardCheckbox', saveCardCheckbox);
+        return hasBocsParam || hasBocsCookies;
+    }
+
+    // Function to handle the checkbox
+    function setSaveCardCheckbox() {
+        // Only proceed if BOCS identifier exists
+        if (!hasBocsIdentifier()) return;
+
+        const checkboxDiv = $('.wc-block-components-payment-methods__save-card-info');
+        const checkbox = checkboxDiv.find('input[type="checkbox"]');
+        if (checkbox.length) {
+            // Hide the entire div first
+            checkboxDiv.hide();
+            
+            // Then set the checkbox state
+            checkbox.prop('checked', true);
+            checkbox.prop('disabled', true);
+            
+            // Add event listener to force checked state
+            checkbox.on('change', function() {
+                if (!this.checked) {
+                    $(this).prop('checked', true);
                 }
-            };
-
-            // Add change listeners to all inputs
-            cardNumberInput.on('input change', checkAllFieldsFilled);
-            expiryInput.on('input change', checkAllFieldsFilled);
-            cvcInput.on('input change', checkAllFieldsFilled);
+            });
         }
-    }, 500);
+    }
 
-    // Only check if no saved payment methods exist
-    setTimeout(function () {
-        if ($("input[name='radio-control-wc-payment-method-saved-tokens']").length === 0) {
-            $('#checkbox-control-1').prop('checked', true);
-            console.log('checkbox-control-1', $('#checkbox-control-1'));
-        }
-    }, 2000);
+    // Initial setup
+    setSaveCardCheckbox();
+
+    // Monitor for dynamic changes (in case the checkout form reloads)
+    const observer = new MutationObserver(function(mutations) {
+        setSaveCardCheckbox();
+    });
+
+    // Start observing the document body for DOM changes
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 });
