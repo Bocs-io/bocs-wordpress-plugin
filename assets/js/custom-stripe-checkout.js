@@ -29,13 +29,24 @@ jQuery(document).ready(function ($) {
             
             // Then set the checkbox state
             checkbox.prop('checked', true);
-            checkbox.prop('disabled', true);
             
             // Add event listener to force checked state
             checkbox.on('change', function() {
                 if (!this.checked) {
                     $(this).prop('checked', true);
                 }
+            });
+
+            // Add event listeners for Stripe form field changes
+            $('input[name*="card-number"], input[name*="card-expiry"], input[name*="card-cvc"]').on('change blur keyup', function() {
+                setTimeout(() => {
+                    checkbox.prop('checked', true);
+                }, 100);
+            });
+
+            // Add event listener for Place Order button
+            $('.wc-block-components-checkout-place-order-button').on('click', function() {
+                checkbox.prop('checked', true);
             });
         }
     }

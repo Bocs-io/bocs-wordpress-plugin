@@ -122,11 +122,11 @@ class Updater {
                     'new_version' => $details->version()
                 );
 
-                // Add optional metadata if methods exist
-                if (method_exists($details, 'tested_wp_version')) {
+                // Only add optional metadata if the methods exist AND return non-null values
+                if (method_exists($details, 'tested_wp_version') && $details->tested_wp_version() !== null) {
                     $plugin['tested'] = $details->tested_wp_version();
                 }
-                if (method_exists($details, 'requires_php')) {
+                if (method_exists($details, 'requires_php') && $details->requires_php() !== null) {
                     $plugin['requires_php'] = $details->requires_php();
                 }
 

@@ -12,7 +12,7 @@
 
     <tbody>
         <?php
-        if (count($subscriptions['data']['data'])) {
+        if (!empty($subscriptions['data']['data']) && is_array($subscriptions['data']['data'])) {
             foreach ($subscriptions['data']['data'] as $subscription) {
         ?>
                 <tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php

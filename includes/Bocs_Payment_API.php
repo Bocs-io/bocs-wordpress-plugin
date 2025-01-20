@@ -97,6 +97,9 @@ class Bocs_Payment_API {
      * @return WP_REST_Response|WP_Error Success response or error on failure
      */
     public function trigger_payment($request) {
+        // Replace logger initialization with error_log
+        error_log("Bocs Payment API: Payment trigger initiated for order #{$request->get_param('order_id')}");
+        
         $order_id = $request->get_param('order_id');
         
         // Retrieve the order object
@@ -104,6 +107,7 @@ class Bocs_Payment_API {
 
         // Validate order exists
         if (!$order) {
+            error_log("Bocs Payment API: Order #{$order_id} not found");
             return new WP_Error(
                 'not_found',
                 __('Order not found', 'bocs-wordpress'),
@@ -113,6 +117,7 @@ class Bocs_Payment_API {
 
         // Verify order can be paid
         if (!$order->needs_payment()) {
+            error_log("Bocs Payment API: Order #{$order_id} does not need payment. Status: " . $order->get_status());
             $order->add_order_note(__('Payment trigger attempted but order does not need payment.', 'bocs-wordpress'), false);
             return new WP_Error(
                 'invalid_order_status',
@@ -145,12 +150,14 @@ class Bocs_Payment_API {
         try {
             // Initialize WC session if needed for API requests
             if (!WC()->session) {
+                error_log("Bocs Payment API: Initializing WC session for order #{$order_id}");
                 WC()->initialize_session();
             }
 
             // Get available payment gateways and the order's payment method
             $available_gateways = WC()->payment_gateways->get_available_payment_gateways();
             $payment_method = $order->get_payment_method();
+            error_log("Bocs Payment API: Payment method for order #{$order_id}: {$payment_method}");
 
             // Check if the payment gateway is available
             if (isset($available_gateways[$payment_method])) {
@@ -165,6 +172,8 @@ class Bocs_Payment_API {
 
                 // For Stripe payments, ensure we have the payment method
                 if ($payment_method === 'stripe') {
+                    error_log("Bocs Payment API: Processing Stripe payment for order #{$order_id}");
+                    
                     // Get Stripe customer ID and payment details from order meta
                     $stripe_customer_id = $order->get_meta('_stripe_customer_id');
                     
@@ -198,48 +207,26 @@ class Bocs_Payment_API {
                         }
                     }
 
-                    $payment_intent_id = $order->get_meta('_stripe_intent_id');
-                    $upe_payment_type = $order->get_meta('_stripe_upe_payment_type');
-                    
+                    // Verify we have both customer ID and payment method
+                    if (empty($stripe_customer_id) || empty($payment_method_id)) {
+                        throw new Exception(__('Missing required Stripe customer or payment method information.', 'bocs-wordpress'));
+                    }
+
                     try {
                         // Get Stripe gateway to check test mode
                         $stripe_gateway = WC()->payment_gateways()->payment_gateways()['stripe'];
                         $is_test_mode = $stripe_gateway->testmode === 'yes';
-                        
-                        // Ensure we're using the correct API keys based on mode
-                        /*if ($is_test_mode) {
-                            WC_Stripe_API::set_secret_key($stripe_gateway->get_test_secret_key());
-                        } else {
-                            WC_Stripe_API::set_secret_key($stripe_gateway->get_secret_key());
-                        }*/
-                        
-                        // If we have a payment method, ensure it's attached to the customer
-                        if (!empty($payment_method_id)) {
-                            try {
-                                WC_Stripe_API::request(
-                                    array(
-                                        'customer' => $stripe_customer_id
-                                    ),
-                                    "payment_methods/$payment_method_id/attach",
-                                    'POST'
-                                );
-                                
-                                // Set this payment method as the default for the customer
-                                WC_Stripe_API::request(
-                                    array(
-                                        'invoice_settings' => array(
-                                            'default_payment_method' => $payment_method_id
-                                        )
-                                    ),
-                                    "customers/$stripe_customer_id",
-                                    'POST'
-                                );
-                            } catch (Exception $e) {
-                                $order->add_order_note(
-                                    sprintf(__('Warning: Unable to attach payment method to customer: %s', 'bocs-wordpress'), 
-                                    $e->getMessage()),
-                                    false
-                                );
+
+                        // First, ensure payment method is attached to customer
+                        try {
+                            WC_Stripe_API::request([
+                                'payment_method' => $payment_method_id,
+                                'customer' => $stripe_customer_id,
+                            ], 'payment_methods/' . $payment_method_id . '/attach');
+                        } catch (Exception $e) {
+                            // Ignore if payment method is already attached
+                            if (!strpos($e->getMessage(), 'already been attached')) {
+                                throw $e;
                             }
                         }
 
@@ -252,7 +239,7 @@ class Bocs_Payment_API {
                             'currency' => strtolower($currency),
                             'customer' => $stripe_customer_id,
                             'payment_method' => $payment_method_id,
-                            'payment_method_types' => array($upe_payment_type ?: 'card'),
+                            'payment_method_types' => array('card'),
                             'confirmation_method' => 'automatic',
                             'confirm' => 'true',
                             'off_session' => 'true',
@@ -333,7 +320,9 @@ class Bocs_Payment_API {
                 }
 
                 // Process the payment through the gateway
+                error_log("Bocs Payment API: Processing payment through gateway for order #{$order_id}");
                 $result = $gateway->process_payment($order_id);
+                error_log("Bocs Payment API: Gateway process_payment result for order #{$order_id}: " . print_r($result, true));
 
                 // Handle successful payment processing
                 if ($result && isset($result['result']) && $result['result'] === 'success') {
@@ -368,6 +357,9 @@ class Bocs_Payment_API {
             throw new Exception(__('Payment processing failed.', 'bocs'));
 
         } catch (Exception $e) {
+            error_log("Bocs Payment API: Payment processing error for order #{$order_id}: " . $e->getMessage());
+            error_log("Bocs Payment API: Stack trace: " . $e->getTraceAsString());
+            
             // Log any errors that occurred during processing
             $order->add_order_note(
                 sprintf(__('Payment processing error: %s', 'bocs-wordpress'), $e->getMessage()),
