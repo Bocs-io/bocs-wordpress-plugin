@@ -1,3 +1,6 @@
+v0.0.102 01/22/2025
+* Revert the Updater to the old working version
+
 v0.0.101 01/22/2025
 * Hide and check the create account checkbox on the checkout page
 * Hide and check the save card checkbox on the checkout page
