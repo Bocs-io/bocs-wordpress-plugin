@@ -1,3 +1,7 @@
+v0.0.101 01/22/2025
+* Hide and check the create account checkbox on the checkout page
+* Hide and check the save card checkbox on the checkout page
+
 v0.0.100 01/17/2025
 * Force check Save payment information to my account for future purchases when bocs product is added to the cart
 * Added the updater for the plugin for pre-release and release for the github repository
