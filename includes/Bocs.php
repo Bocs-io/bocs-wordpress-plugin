@@ -171,6 +171,8 @@ class Bocs
 
         // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
 
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Checkout.php';
+
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Stripe_Hooks.php';
 
         $this->loader = new Loader();
@@ -391,6 +393,10 @@ class Bocs
         $this->loader->add_filter('woocommerce_checkout_process', $bocs_account, 'require_registration_during_checkout');
         $this->loader->add_action('woocommerce_before_checkout_process', $bocs_account, 'force_registration_during_checkout');
         $this->loader->add_filter('woocommerce_checkout_registration_enabled', $bocs_account, 'maybe_enable_registration');
+    
+        $bocs_checkout = new Bocs_Checkout();
+        $this->loader->add_filter('woocommerce_checkout_fields', $bocs_checkout, 'customize_checkout_account_creation', 10, 1  );
+        $this->loader->add_filter('woocommerce_create_account_default_checked', $bocs_checkout, 'conditional_auto_create_account', 10, 1);
     }
 
     public function define_bocs_email_api()
@@ -418,18 +424,11 @@ class Bocs
 
     private function define_stripe_hooks()
     {
-        if (!class_exists('Bocs_Stripe_Hooks')) {
-            error_log('[Bocs][ERROR] Bocs_Stripe_Hooks class not found');
-            return;
-        }
-
         $stripe_hooks = new Bocs_Stripe_Hooks();
-        $this->loader->add_filter('wc_stripe_payment_metadata', $stripe_hooks, 'force_stripe_save_source', 10, 3);
-        $this->loader->add_filter('wc_stripe_payment_intent_params', $stripe_hooks, 'modify_payment_intent_params', 10, 2);
-        $this->loader->add_filter('wc_stripe_force_save_source', $stripe_hooks, 'should_save_source', 10, 1);
-        $this->loader->add_action('woocommerce_checkout_before_customer_processing', $stripe_hooks, 'ensure_stripe_customer');
-        $this->loader->add_action('woocommerce_payment_complete', $stripe_hooks, 'attach_payment_method_to_customer', 10, 1);
-        $this->loader->add_action('woocommerce_checkout_update_order_meta', $stripe_hooks, 'save_stripe_customer_to_order', 10, 2);
+            
+        // Metadata hooks
+        $this->loader->add_filter('wc_stripe_source_data', $stripe_hooks, 'modify_source_data', 10, 2);
+        $this->loader->add_action('woocommerce_stripe_add_payment_method', $stripe_hooks, 'handle_add_payment_method', 10, 2);
     }
 
     /**

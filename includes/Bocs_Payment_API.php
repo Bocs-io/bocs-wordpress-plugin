@@ -259,7 +259,36 @@ class Bocs_Payment_API {
                             $payment_intent = WC_Stripe_API::request($intent_data, 'payment_intents');
                             
                             if (!empty($payment_intent->error)) {
-                                throw new Exception($payment_intent->error->message);
+                                // Try to retrieve existing payment intent
+                                $existing_intent_id = $order->get_meta('_stripe_intent_id');
+                                if (!empty($existing_intent_id)) {
+                                    error_log("Bocs Payment API: Attempting to use existing payment intent: {$existing_intent_id}");
+                                    
+                                    // Update the existing payment intent
+                                    $update_data = array(
+                                        'amount' => WC_Stripe_Helper::get_stripe_amount($amount, $currency),
+                                        'payment_method' => $payment_method_id
+                                    );
+                                    
+                                    // First update the payment intent
+                                    $payment_intent = WC_Stripe_API::request($update_data, 'payment_intents/' . $existing_intent_id, 'POST');
+                                    
+                                    if (empty($payment_intent->error)) {
+                                        // Then confirm it in a separate request
+                                        $payment_intent = WC_Stripe_API::request(array(), 'payment_intents/' . $existing_intent_id . '/confirm', 'POST');
+                                        
+                                        if (empty($payment_intent->error)) {
+                                            // Clear the error and continue with the existing payment intent
+                                            $payment_intent_id = $existing_intent_id;
+                                        } else {
+                                            throw new Exception($payment_intent->error->message);
+                                        }
+                                    } else {
+                                        throw new Exception($payment_intent->error->message);
+                                    }
+                                } else {
+                                    throw new Exception($payment_intent->error->message);
+                                }
                             }
                             
                             if (!empty($payment_intent->id)) {

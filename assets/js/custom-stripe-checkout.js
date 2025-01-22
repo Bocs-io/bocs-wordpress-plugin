@@ -1,67 +1,100 @@
+/* global wc_stripe_params, Stripe */
+
 /**
- * Custom Stripe Checkout Functionality
- * This script handles the automatic checking and state management of the "Save Card Info" checkbox
- * in the WooCommerce Stripe checkout form.
+ * Custom Stripe Checkout Handler
+ * 
+ * This script provides enhanced functionality for the WooCommerce Stripe checkout process
+ * by managing two specific checkboxes:
+ * 1. "Save Card" checkbox - For storing payment methods for future purchases
+ * 2. "Create an account" checkbox - For automatic account creation during checkout
+ * 
+ * The script automatically checks both checkboxes and hides them from the user interface
+ * to streamline the checkout process and ensure consistent behavior.
+ * 
+ * Dependencies:
+ * - jQuery
+ * - WooCommerce Stripe integration
+ * 
+ * @since 1.0.0
  */
-jQuery(document).ready(function ($) {
-    // Function to check if BOCS identifier exists (either in cookies or URL)
-    function hasBocsIdentifier() {
-        // Check URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasBocsParam = urlParams.has('bocs');
+jQuery(function($) {
+    'use strict';
 
-        // Check cookies
-        const hasBocsCookies = document.cookie.includes('__bocs_id=');
+    /**
+     * Handles the automation of checkbox states in the checkout form
+     * 
+     * This function performs two main tasks:
+     * 1. Manages the "Save Card" checkbox (id: checkbox-control-1):
+     *    - Programmatically clicks the checkbox
+     *    - Ensures it's checked even if initial click fails
+     *    - Hides the checkbox and its label from view
+     * 
+     * 2. Manages the "Create Account" checkbox within the contact section:
+     *    - Automatically checks the box using prop()
+     *    - Hides the entire account creation section
+     *    
+     * The function is called both on initial page load and when dynamic content changes occur
+     */
+    function handleCheckboxes() {
+        // Handle Save Card checkbox functionality
+        const saveCardCheckbox = $('#checkbox-control-1');
+        if (saveCardCheckbox.length) {
+            saveCardCheckbox.trigger('click');
+            // Double-check to ensure the checkbox is actually checked
+            if (!saveCardCheckbox.is(':checked')) {
+                saveCardCheckbox.trigger('click');
+            }
+            // Hide the entire label containing the checkbox
+            saveCardCheckbox.closest('label').hide();
+        }
 
-        return hasBocsParam || hasBocsCookies;
-    }
-
-    // Function to handle the checkbox
-    function setSaveCardCheckbox() {
-        // Only proceed if BOCS identifier exists
-        if (!hasBocsIdentifier()) return;
-
-        const checkboxDiv = $('.wc-block-components-payment-methods__save-card-info');
-        const checkbox = checkboxDiv.find('input[type="checkbox"]');
-        if (checkbox.length) {
-            // Hide the entire div first
-            checkboxDiv.hide();
-            
-            // Then set the checkbox state
-            checkbox.prop('checked', true);
-            
-            // Add event listener to force checked state
-            checkbox.on('change', function() {
-                if (!this.checked) {
-                    $(this).prop('checked', true);
-                }
-            });
-
-            // Add event listeners for Stripe form field changes
-            $('input[name*="card-number"], input[name*="card-expiry"], input[name*="card-cvc"]').on('change blur keyup', function() {
-                setTimeout(() => {
-                    checkbox.prop('checked', true);
-                }, 100);
-            });
-
-            // Add event listener for Place Order button
-            $('.wc-block-components-checkout-place-order-button').on('click', function() {
-                checkbox.prop('checked', true);
-            });
+        // Handle Create Account checkbox functionality within #contact section
+        const contactSection = $('#contact');
+        if (contactSection.length) {
+            const createAccountCheckbox = contactSection.find('.wc-block-checkout__create-account input[type="checkbox"]');
+            if (createAccountCheckbox.length) {
+                // Set checkbox state directly and hide the container
+                createAccountCheckbox.prop('checked', true);
+                createAccountCheckbox.closest('.wc-block-checkout__create-account').hide();
+            }
         }
     }
 
-    // Initial setup
-    setSaveCardCheckbox();
+    // Execute initial checkbox handling when DOM is ready
+    handleCheckboxes();
 
-    // Monitor for dynamic changes (in case the checkout form reloads)
-    const observer = new MutationObserver(function(mutations) {
-        setSaveCardCheckbox();
+    /**
+     * MutationObserver Implementation
+     * 
+     * Watches for dynamic changes to the DOM that might affect our checkout form.
+     * This is crucial because WooCommerce/Stripe can reload parts of the checkout
+     * form dynamically (e.g., after AJAX updates or payment method changes).
+     * 
+     * The observer watches for:
+     * - New elements being added (childList)
+     * - Changes to existing elements (attributes)
+     * - Changes to the entire subtree (subtree)
+     * 
+     * @type {MutationObserver}
+     */
+    const bodyObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            // Check if the mutation involves the #contact section directly or indirectly
+            if (mutation.target.id === 'contact' || 
+                $(mutation.target).find('#contact').length || 
+                mutation.target.closest('#contact')) {
+                handleCheckboxes();
+            } else {
+                // Run handler anyway to catch other relevant changes
+                handleCheckboxes();
+            }
+        });
     });
 
-    // Start observing the document body for DOM changes
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
+    // Initialize the MutationObserver with comprehensive monitoring options
+    bodyObserver.observe(document.body, {
+        childList: true,  // Watch for changes to direct children
+        subtree: true,    // Watch for changes in all descendants
+        attributes: true  // Watch for changes to element attributes
     });
 });

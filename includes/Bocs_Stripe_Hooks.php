@@ -9,193 +9,88 @@
  */
 class Bocs_Stripe_Hooks {
 
-    /**
-     * Validates the presence of required BOCS cookies
-     * 
-     * @return boolean Returns true if all required cookies are present, false otherwise
-     */
-    private function check_required_cookies() {
-        error_log('BOCS Debug: Checking required cookies');
+    
+    public function modify_source_data($source_data, $order) {
+        // Check if either __bocs_id cookie exists or order meta exists
+        $has_bocs_cookie = isset($_COOKIE['__bocs_id']) && !empty($_COOKIE['__bocs_id']);
+        $has_bocs_meta = !empty($order->get_meta('__bocs_id'));
         
-        if (!isset($_COOKIE['__bocs_id'])) {
-            error_log("BOCS Debug: Missing required cookie: {'__bocs_id'}");
-            return false;
+        if (!$has_bocs_cookie && !$has_bocs_meta) {
+            error_log('No BOCS cookie found');
+            return $source_data;
         }
 
-        error_log('BOCS Debug: All required cookies present');
-        return true;
+        error_log('Order status during source data: ' . $order->get_status());
+        $customer_id = $order->get_meta('_stripe_customer_id');
+        
+        if ($customer_id) {
+            $source_data['customer'] = $customer_id;
+            $source_data['usage'] = 'reusable';
+            $source_data['setup_future_usage'] = 'off_session';
+        }
+        
+        return $source_data;
     }
-
-    /**
-     * Forces Stripe to save the payment source for future use
-     * 
-     * @param array $metadata The existing metadata array
-     * @param WC_Order $order The WooCommerce order object
-     * @param string $source The Stripe source ID
-     * @return array Modified metadata array
-     */
-    public function force_stripe_save_source($metadata, $order, $source) {
-        error_log('BOCS Debug: Attempting to force save Stripe source');
-        error_log('BOCS Debug: Order ID: ' . $order->get_id());
-        error_log('BOCS Debug: Source: ' . print_r($source, true));
+    
+    public function handle_add_payment_method($source_id, $source) {
+        // Only check for cookie since we don't have an order object here
+        $has_bocs_cookie = isset($_COOKIE['__bocs_id']) && !empty($_COOKIE['__bocs_id']);
         
-        if (!$this->check_required_cookies()) {
-            error_log('BOCS Debug: Required cookies missing, returning original metadata');
-            return $metadata;
-        }
-        
-        error_log('BOCS Debug: Original metadata: ' . print_r($metadata, true));
-        if (!isset($metadata['setup_future_usage'])) {
-            $metadata['setup_future_usage'] = 'off_session';
-            error_log('BOCS Debug: Added setup_future_usage to metadata');
-        }
-        error_log('BOCS Debug: Final metadata: ' . print_r($metadata, true));
-        return $metadata;
-    }
-
-    /**
-     * Modifies payment intent parameters to enable future usage
-     * 
-     * @param array $params The payment intent parameters
-     * @param WC_Order $order The WooCommerce order object
-     * @return array Modified parameters array
-     */
-    public function modify_payment_intent_params($params, $order) {
-        if (!$this->check_required_cookies()) {
-            return $params;
-        }
-        // Set setup_future_usage parameter for future off-session payments
-        $params['setup_future_usage'] = 'off_session';
-        return $params;
-    }
-
-    /**
-     * Ensures a Stripe customer exists for the current transaction
-     * Creates a new customer if one doesn't exist for the user/email
-     * 
-     * @param array $data Checkout form data
-     */
-    public function ensure_stripe_customer($data) {
-        error_log('BOCS Debug: Starting ensure_stripe_customer');
-        
-        if (!$this->check_required_cookies()) {
-            error_log('BOCS Debug: Required cookies missing, aborting customer creation');
+        if (!$has_bocs_cookie) {
+            error_log('Payment method not added: No BOCS cookie found');
             return;
         }
 
-        $gateway = new WC_Gateway_Stripe();
-        $user_id = get_current_user_id();
-        $customer_email = $data['billing_email'];
-        
-        error_log("BOCS Debug: Processing customer - User ID: {$user_id}, Email: {$customer_email}");
-        
         try {
-            if ($user_id) {
-                $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
-                error_log("BOCS Debug: Existing customer ID for user {$user_id}: " . ($customer_id ?: 'none'));
-                
-                if (!$customer_id) {
-                    error_log('BOCS Debug: Creating new Stripe customer for logged-in user');
-                    $customer = $gateway->create_stripe_customer([
-                        'email' => $customer_email,
-                        'description' => 'Customer ' . $user_id,
-                    ]);
-                    update_user_meta($user_id, '_stripe_customer_id', $customer->id);
-                    error_log("BOCS Debug: Created new customer with ID: {$customer->id}");
+            error_log('Attempting to add payment method. Source ID: ' . $source_id);
+            $customer_id = get_current_user_id();
+            $stripe_customer_id = get_user_meta($customer_id, '_stripe_customer_id', true);
+            
+            if ($stripe_customer_id && $source_id) {
+                // Attach payment method to Stripe customer
+                error_log('Attempting to attach payment method to Stripe customer: ' . $stripe_customer_id);
+                $response = WC_Stripe_API::request([
+                    'payment_method' => $source_id,
+                    'customer' => $stripe_customer_id,
+                ], 'payment_methods/' . $source_id . '/attach');
+
+                if (!is_wp_error($response)) {
+                    error_log('Successfully attached payment method to Stripe. Creating WC Payment Token...');
+                    // Create WC Payment Token
+                    $token = new WC_Payment_Token_CC();
+                    $token->set_token($source_id);
+                    $token->set_gateway_id('stripe');
+                    $token->set_card_type($source->brand);
+                    $token->set_last4($source->last4);
+                    $token->set_expiry_month($source->exp_month);
+                    $token->set_expiry_year($source->exp_year);
+                    $token->set_user_id(get_current_user_id());
+                    
+                    // Save the token
+                    if ($token->save()) {
+                        error_log('Successfully saved WC Payment Token. ID: ' . $token->get_id());
+                        // Store Stripe customer ID in token metadata
+                        update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $stripe_customer_id);
+                        
+                        // Set as default if this is the only token
+                        $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), 'stripe');
+                        if (count($tokens) === 1) {
+                            error_log('Setting token as default payment method');
+                            $token->set_default(true);
+                            $token->save();
+                        }
+                    } else {
+                        error_log('Failed to save WC Payment Token');
+                    }
+                } else {
+                    error_log('Failed to attach payment method to Stripe: ' . $response->get_error_message());
                 }
             } else {
-                error_log('BOCS Debug: Creating new Stripe customer for guest checkout');
-                $customer = $gateway->create_stripe_customer([
-                    'email' => $customer_email,
-                    'description' => 'Guest customer'
-                ]);
-                error_log("BOCS Debug: Created guest customer with ID: {$customer->id}");
+                error_log('Missing required data. Stripe Customer ID: ' . ($stripe_customer_id ? 'Yes' : 'No') . ', Source ID: ' . ($source_id ? 'Yes' : 'No'));
             }
         } catch (Exception $e) {
-            error_log('BOCS Debug: Stripe customer creation failed: ' . $e->getMessage());
-            error_log('BOCS Debug: Error trace: ' . $e->getTraceAsString());
+            error_log('Payment method attachment failed: ' . $e->getMessage());
+            error_log('Exception trace: ' . $e->getTraceAsString());
         }
-    }
-
-    /**
-     * Attaches a payment method to a Stripe customer after successful payment
-     * 
-     * @param int $order_id WooCommerce order ID
-     */
-    public function attach_payment_method_to_customer($order_id) {
-        error_log("BOCS Debug: Starting payment method attachment for order {$order_id}");
-        
-        if (!$this->check_required_cookies()) {
-            error_log('BOCS Debug: Required cookies missing, aborting payment method attachment');
-            return;
-        }
-
-        $order = wc_get_order($order_id);
-        if ($order->get_payment_method() !== 'stripe') {
-            error_log('BOCS Debug: Not a Stripe payment method, aborting');
-            return;
-        }
-    
-        $gateway = new WC_Gateway_Stripe();
-        $source_id = $order->get_meta('_stripe_source_id');
-        $customer_id = $order->get_meta('_stripe_customer_id');
-    
-        error_log("BOCS Debug: Source ID: {$source_id}, Customer ID: {$customer_id}");
-    
-        if ($source_id && $customer_id) {
-            try {
-                error_log('BOCS Debug: Attempting to attach payment method');
-                $gateway->attach_payment_method_to_customer(
-                    $source_id,
-                    $customer_id
-                );
-                error_log('BOCS Debug: Successfully attached payment method');
-            } catch (Exception $e) {
-                error_log('BOCS Debug: Failed to attach payment method: ' . $e->getMessage());
-                error_log('BOCS Debug: Error trace: ' . $e->getTraceAsString());
-            }
-        } else {
-            error_log('BOCS Debug: Missing source_id or customer_id, cannot attach payment method');
-        }
-    }
-
-    /**
-     * Saves the Stripe customer ID to the WooCommerce order
-     * 
-     * @param int $order_id WooCommerce order ID
-     * @param array $data Checkout form data
-     */
-    public function save_stripe_customer_to_order($order_id, $data) {
-        if (!$this->check_required_cookies()) {
-            return;
-        }
-        $order = wc_get_order($order_id);
-        if ($order->get_payment_method() !== 'stripe') {
-            return;
-        }
-    
-        $user_id = $order->get_user_id();
-        if ($user_id) {
-            $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
-            if ($customer_id) {
-                // Store Stripe customer ID in order meta for future reference
-                $order->update_meta_data('_stripe_customer_id', $customer_id);
-                $order->save();
-            }
-        }
-    }
-
-    /**
-     * Forces saving of Stripe payment source for BOCS subscriptions
-     * Overrides the WooCommerce Stripe 'wc_stripe_force_save_source' filter
-     * 
-     * @param boolean $force_save_source The original force save source value
-     * @return boolean True if BOCS cookies are present, otherwise returns original value
-     */
-    public function should_save_source($force_save_source) {
-        if (!$this->check_required_cookies()) {
-            return $force_save_source; // Don't override default behavior if not a BOCS checkout
-        }
-        return true; // Force save source for BOCS subscriptions
     }
 } 
