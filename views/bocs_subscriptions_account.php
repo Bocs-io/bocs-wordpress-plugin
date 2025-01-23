@@ -1,74 +1,299 @@
-<table class="my_account_subscriptions my_account_orders woocommerce-orders-table woocommerce-MyAccount-subscriptions shop_table shop_table_responsive woocommerce-orders-table--subscriptions">
+<?php
+// Enqueue jQuery UI accordion
+wp_enqueue_script('jquery-ui-accordion');
+wp_enqueue_style('wp-jquery-ui-dialog'); // This includes basic jQuery UI styles
+?>
 
-    <thead>
-        <tr>
-            <th class="subscription-id order-number woocommerce-orders-table__header woocommerce-orders-table__header-order-number woocommerce-orders-table__header-subscription-id"><span class="nobr">Subscription</span></th>
-            <th class="subscription-status order-status woocommerce-orders-table__header woocommerce-orders-table__header-order-status woocommerce-orders-table__header-subscription-status"><span class="nobr">Status</span></th>
-            <th class="subscription-next-payment order-date woocommerce-orders-table__header woocommerce-orders-table__header-order-date woocommerce-orders-table__header-subscription-next-payment"><span class="nobr">Next payment</span></th>
-            <th class="subscription-total order-total woocommerce-orders-table__header woocommerce-orders-table__header-order-total woocommerce-orders-table__header-subscription-total"><span class="nobr">Total</span></th>
-            <th class="subscription-actions order-actions woocommerce-orders-table__header woocommerce-orders-table__header-order-actions woocommerce-orders-table__header-subscription-actions">&nbsp;</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        <?php
-        if (!empty($subscriptions['data']['data']) && is_array($subscriptions['data']['data'])) {
-            foreach ($subscriptions['data']['data'] as $subscription) {
-        ?>
-                <tr class="order woocommerce-orders-table__row woocommerce-orders-table__row--status-<?php
-
-                                                                                                        echo $subscription['status'] ?>">
-                    <td class="subscription-id order-number woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-id woocommerce-orders-table__cell-order-number" data-title="ID">
-                        <a href="<?php
-
-                                    echo wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
-                                    ?>"><?php
-
-                echo !empty(trim($subscription['bocs']['name'])) ? $subscription['bocs']['name'] : 'Subscription #' . $subscription['subscriptionNumber'] ?></a>
-                    </td>
-                    <td class="subscription-status order-status woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-status woocommerce-orders-table__cell-order-status" data-title="Status"><?php
-
-                                                                                                                                                                                                                    echo ucfirst($subscription['subscriptionStatus']) ?></td>
-                    <td class="subscription-next-payment order-date woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-next-payment woocommerce-orders-table__cell-order-date" data-title="Next Payment"><?php
-
-                                                                                                                                                                                                                                    $date = new DateTime($subscription['nextPaymentDateGmt']);
-                                                                                                                                                                                                                                    echo $date->format('F j, Y') ?></td>
-                    <td class="subscription-total order-total woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-total woocommerce-orders-table__cell-order-total" data-title="Total">
-                        <span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
-
-                                                                                                                                echo $subscription['total'] ?></span> every <?php
-                                                    $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : '';
-                                                    if (!empty($subscription['billingInterval']) && $frequency == '') {
-                                                        $frequency = $subscription['billingInterval'];
-                                                    }
-                                                    $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
-                                                    if (!empty($subscription['billingPeriod']) && $period == '') {
-                                                        $period = $subscription['billingPeriod'];
-                                                    }
-
-                                                    if ($frequency > 1) {
-                                                        // Remove any trailing 's' and then add one 's'
-                                                        $period = rtrim($period, 's') . 's';
-                                                    } else {
-                                                        // If frequency is 1, ensure there is no trailing 's'
-                                                        $period = rtrim($period, 's');
-                                                        $frequency = '';
-                                                    }
-
-                                                    echo $frequency . ' ' . $period;
-                                                    ?>
-                    </td>
-                    <td class="subscription-actions order-actions woocommerce-orders-table__cell woocommerce-orders-table__cell-subscription-actions woocommerce-orders-table__cell-order-actions">
-                        <a href="<?php
-
-                                    echo wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
-                                    ?>" class="woocommerce-button button view">View</a>
-                    </td>
-                </tr>
-        <?php
+<div id="bocs-subscriptions-accordion" class="woocommerce-subscriptions-wrapper">
+    <?php
+    if (!empty($subscriptions['data']['data']) && is_array($subscriptions['data']['data'])) {
+        foreach ($subscriptions['data']['data'] as $index => $subscription) {
+            // Improved subscription name logic
+            $subscription_name = '';
+            if (!empty(trim($subscription['bocs']['name']))) {
+                $subscription_name = $subscription['bocs']['name'];
+            } elseif (!empty($subscription['externalSourceParentOrderId'])) {
+                $subscription_name = sprintf(
+                    esc_html__('Subscription (Order #%s)', 'woocommerce'),
+                    $subscription['externalSourceParentOrderId']
+                );
+            } else {
+                $subscription_name = sprintf(
+                    esc_html__('Subscription #%s', 'woocommerce'),
+                    substr($subscription['id'], 0, 8)
+                );
             }
-        }
-        ?>
-    </tbody>
+            
+            $subscription_url = wc_get_endpoint_url('bocs-view-subscription', $subscription['id'], wc_get_page_permalink('myaccount'));
+            $next_payment_date = new DateTime($subscription['nextPaymentDateGmt']);
+            $start_date = new DateTime($subscription['startDateGmt']);
+            
+            $row_class = ($index % 2 == 0) ? 'even' : 'odd';
+    ?>
+            <div class="wc-subscription <?php echo esc_attr($row_class); ?>">
+                <h3 class="accordion-header">
+                    <span class="subscription-title"><?php echo esc_html($subscription_name); ?></span>
+                </h3>
+                <div class="accordion-content">
+                    <div class="subscription-header-sticky">
+                        <span class="subscription-title"><?php echo esc_html($subscription_name); ?></span>
+                        <span class="subscription-status status-<?php echo esc_attr($subscription['status']); ?>">
+                            <?php echo ucfirst($subscription['subscriptionStatus']); ?>
+                        </span>
+                    </div>
+                    <div class="subscription-section">
+                        <div class="subscription-row">
+                            <div class="total-amount">
+                                <span class="subscription-label"><?php esc_html_e('Total Amount', 'woocommerce'); ?></span>
+                                <span class="woocommerce-Price-amount amount">
+                                    <?php if (!empty($subscription['currency'])): ?>
+                                        <span class="woocommerce-Price-currencySymbol"><?php echo get_woocommerce_currency_symbol($subscription['currency']); ?></span>
+                                    <?php endif; ?>
+                                    <?php echo number_format($subscription['total'], 2); ?>
+                                </span>
+                                <?php if ($subscription['discountTotal'] > 0): ?>
+                                    <span class="subscription-discount">
+                                        (<?php echo sprintf(esc_html__('Includes %s discount', 'woocommerce'), 
+                                            wc_price($subscription['discountTotal'])); ?>)
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($subscription['status'] === 'active'): ?>
+                                <button class="woocommerce-button button pay-now"><?php esc_html_e('Pay Now', 'woocommerce'); ?></button>
+                            <?php endif; ?>
+                        </div>
 
-</table>
+                        <div class="subscription-row">
+                            <div class="delivery-frequency">
+                                <span class="subscription-label"><?php esc_html_e('Delivery', 'woocommerce'); ?></span>
+                                <span><?php
+                                    $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : 1;
+                                    $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
+                                    if ($frequency > 1) {
+                                        $period = rtrim($period, 's') . 's';
+                                    } else {
+                                        $period = rtrim($period, 's');
+                                    }
+                                    echo esc_html(sprintf(__('Every %d %s', 'woocommerce'), $frequency, $period));
+                                ?></span>
+                            </div>
+                            <div class="total-items">
+                                <span class="subscription-label"><?php esc_html_e('Total Items', 'woocommerce'); ?></span>
+                                <span><?php 
+                                    $items_count = isset($subscription['lineItems']) && is_array($subscription['lineItems']) 
+                                        ? array_sum(array_column($subscription['lineItems'], 'quantity')) 
+                                        : 0;
+                                    echo $items_count . ' ' . esc_html(_n('item', 'items', $items_count, 'woocommerce')); 
+                                ?></span>
+                            </div>
+                        </div>
+
+                        <div class="subscription-row">
+                            <div class="shipping-address">
+                                <span class="subscription-label"><?php esc_html_e('Shipping Address', 'woocommerce'); ?></span>
+                                <?php if (!empty($subscription['shipping'])): ?>
+                                    <address>
+                                        <?php
+                                        $shipping = $subscription['shipping'];
+                                        echo esc_html(implode(', ', array_filter([
+                                            $shipping['firstName'] . ' ' . $shipping['lastName'],
+                                            $shipping['address1'],
+                                            $shipping['address2'],
+                                            $shipping['city'],
+                                            $shipping['state'],
+                                            $shipping['postcode'],
+                                            $shipping['country']
+                                        ])));
+                                        ?>
+                                    </address>
+                                <?php else: ?>
+                                    <span><?php esc_html_e('No address provided', 'woocommerce'); ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="subscription-row">
+                            <div class="next-payment">
+                                <span class="subscription-label"><?php esc_html_e('Next Payment', 'woocommerce'); ?></span>
+                                <time datetime="<?php echo esc_attr($next_payment_date->format('c')); ?>">
+                                    <?php echo esc_html($next_payment_date->format('l, j F Y')); ?>
+                                </time>
+                            </div>
+                            <div class="start-date">
+                                <span class="subscription-label"><?php esc_html_e('Started On', 'woocommerce'); ?></span>
+                                <time datetime="<?php echo esc_attr($start_date->format('c')); ?>">
+                                    <?php echo esc_html($start_date->format('l, j F Y')); ?>
+                                </time>
+                            </div>
+                        </div>
+
+                        <div class="subscription-actions">
+                            <a href="#" class="woocommerce-button button update-box"><?php esc_html_e('Update My Box', 'woocommerce'); ?></a>
+                            <a href="<?php echo esc_url($subscription_url); ?>" class="woocommerce-button button alt"><?php esc_html_e('Edit Details', 'woocommerce'); ?></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    <?php
+        }
+    }
+    ?>
+</div>
+
+<style>
+.woocommerce-subscriptions-wrapper {
+    margin-bottom: 2em;
+}
+
+/* Alternating colors for subscription cards */
+.wc-subscription:nth-child(odd) .accordion-header {
+    background-color: var(--wc-secondary-light);
+}
+
+.wc-subscription:nth-child(even) .accordion-header {
+    background-color: #f7f7f7;
+}
+
+/* Hover state for both odd and even headers */
+.wc-subscription .accordion-header:hover {
+    background-color: #eaeaea;
+}
+
+/* Active state from jQuery UI - this will override the alternating colors when active */
+.ui-state-active,
+.ui-state-active:hover {
+    background-color: var(--wc-primary) !important;
+    color: #fff;
+    border-color: var(--wc-primary);
+}
+
+.accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0;
+    padding: 1em;
+    border: 1px solid var(--wc-secondary);
+    cursor: pointer;
+    min-height: 3.5em; /* Ensures consistent height */
+}
+
+/* Add margin between subscription cards */
+.wc-subscription {
+    margin-bottom: 0.5em;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Hover effect for better interactivity */
+.wc-subscription .accordion-header:hover {
+    background-color: #eaeaea;
+    transition: background-color 0.2s ease;
+}
+
+.subscription-title {
+    font-weight: 600;
+    flex: 1;
+    padding: 0.5em 0;
+    font-size: 1.1em;
+    line-height: 1.4;
+    margin: 0;
+    word-break: break-word; /* Ensures long text wraps properly */
+}
+
+.subscription-status {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    margin-left: 1em;
+}
+
+.status-active {
+    background-color: #c6e1c6;
+    color: #5b841b;
+}
+
+.accordion-content {
+    padding: 1.5em;
+    border: 1px solid var(--wc-secondary);
+    border-top: none;
+    position: relative; /* Ensure sticky positioning works correctly */
+}
+
+/* Add a sticky header inside the accordion content */
+.subscription-header-sticky {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 1em;
+    border-bottom: 1px solid var(--wc-secondary);
+    margin: -1.5em -1.5em 1.5em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    min-height: 3.5em; /* Match accordion header height */
+}
+
+.subscription-header-sticky .subscription-title {
+    padding: 0.5em;
+    font-size: 1.1em;
+    line-height: 1.4;
+    margin: 0;
+    word-break: break-word;
+    flex: 1;
+    font-weight: 600;
+}
+
+.subscription-header-sticky .subscription-status {
+    white-space: nowrap; /* Prevent status from wrapping */
+    margin-left: 1em;
+}
+
+.subscription-section {
+    position: relative;
+}
+
+.subscription-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5em;
+    gap: 1em;
+}
+
+.subscription-label {
+    display: block;
+    color: var(--wc-secondary);
+    margin-bottom: 0.5em;
+}
+
+.subscription-actions {
+    display: flex;
+    gap: 1em;
+    margin-top: 1.5em;
+}
+
+@media screen and (max-width: 768px) {
+    .subscription-row,
+    .subscription-actions {
+        flex-direction: column;
+    }
+    
+    .subscription-actions .button {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+jQuery(function($) {
+    $("#bocs-subscriptions-accordion").accordion({
+        header: "h3",
+        collapsible: true,
+        heightStyle: "content",
+        active: false // Start with all panels collapsed
+    });
+});
+</script>
