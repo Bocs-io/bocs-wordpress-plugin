@@ -2,6 +2,9 @@
 // Enqueue jQuery UI accordion
 wp_enqueue_script('jquery-ui-accordion');
 wp_enqueue_style('wp-jquery-ui-dialog'); // This includes basic jQuery UI styles
+
+// Get BOCS options
+$options = get_option('bocs_plugin_options');
 ?>
 
 <div id="bocs-subscriptions-accordion" class="woocommerce-subscriptions-wrapper">
@@ -59,7 +62,13 @@ wp_enqueue_style('wp-jquery-ui-dialog'); // This includes basic jQuery UI styles
                                 <?php endif; ?>
                             </div>
                             <?php if ($subscription['status'] === 'active'): ?>
-                                <button class="woocommerce-button button pay-now"><?php esc_html_e('Pay Now', 'woocommerce'); ?></button>
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_renewal_early" 
+                                    id="renewal_<?php echo esc_attr($subscription['id']); ?>"
+                                    data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
+                                >
+                                    <?php esc_html_e('Early Renewal', 'woocommerce'); ?>
+                                </button>
                             <?php endif; ?>
                         </div>
 
@@ -285,6 +294,18 @@ wp_enqueue_style('wp-jquery-ui-dialog'); // This includes basic jQuery UI styles
         text-align: center;
     }
 }
+
+.early-renewal {
+    background-color: var(--wc-secondary);
+    color: #fff;
+    padding: 0.5em 1em;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.early-renewal:hover {
+    background-color: var(--wc-secondary-dark);
+}
 </style>
 
 <script>
@@ -294,6 +315,95 @@ jQuery(function($) {
         collapsible: true,
         heightStyle: "content",
         active: false // Start with all panels collapsed
+    });
+});
+
+jQuery(document).ready(function ($) {
+    console.log('Subscription renewal handlers initialized');
+
+    // Disable default behavior for all BOCS buttons
+    $('button.bocs-button').on('click', function (e) {
+        e.preventDefault();
+        console.log('BOCS button clicked - default prevented');
+    });
+
+    // Handle early renewal with specific subscription ID
+    $('button.subscription_renewal_early').on('click', function () {
+        const buttonElement = $(this);
+        const subscriptionId = buttonElement.data('subscription-id');
+        const specificButton = $(`#renewal_${subscriptionId}`);
+
+        console.log('Early Renewal clicked:', {
+            buttonId: buttonElement.attr('id'),
+            subscriptionId: subscriptionId,
+            buttonText: buttonElement.text(),
+            isDisabled: buttonElement.hasClass('disabled')
+        });
+
+        if (!subscriptionId || buttonElement.attr('id') !== `renewal_${subscriptionId}`) {
+            console.error('Invalid subscription ID or button mismatch:', {
+                subscriptionId: subscriptionId,
+                buttonId: buttonElement.attr('id'),
+                expectedId: `renewal_${subscriptionId}`
+            });
+            return;
+        }
+
+        if (!buttonElement.hasClass('disabled')) {
+            console.log('Processing renewal for subscription:', subscriptionId);
+            buttonElement.addClass('disabled');
+            buttonElement.text('<?php esc_html_e('Processing...', 'woocommerce'); ?>');
+            
+            $.ajax({
+                url: '<?php echo BOCS_API_URL; ?>subscriptions/' + subscriptionId + '/renew',
+                method: 'POST',
+                beforeSend: function (xhr) {
+                    console.log('Sending renewal request for subscription:', subscriptionId);
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                },
+                success: function (response) {
+                    console.log('Renewal successful for subscription:', subscriptionId, {
+                        response: response,
+                        buttonState: {
+                            id: specificButton.attr('id'),
+                            text: specificButton.text(),
+                            isDisabled: specificButton.hasClass('disabled')
+                        }
+                    });
+                    specificButton.text('<?php esc_html_e('Renewed', 'woocommerce'); ?>');
+                },
+                error: function (error) {
+                    console.error('Renewal failed for subscription:', subscriptionId, {
+                        error: error,
+                        buttonState: {
+                            id: specificButton.attr('id'),
+                            text: specificButton.text(),
+                            isDisabled: specificButton.hasClass('disabled')
+                        }
+                    });
+                    specificButton.text('<?php esc_html_e('Early Renewal', 'woocommerce'); ?>');
+                    specificButton.removeClass('disabled');
+                }
+            });
+        } else {
+            console.log('Button not eligible for renewal:', {
+                isDisabled: buttonElement.hasClass('disabled'),
+                buttonText: buttonElement.text(),
+                subscriptionId: subscriptionId
+            });
+        }
+    });
+
+    // Log initial button states
+    $('.subscription_renewal_early').each(function() {
+        console.log('Found renewal button:', {
+            id: $(this).attr('id'),
+            subscriptionId: $(this).data('subscription-id'),
+            text: $(this).text(),
+            isDisabled: $(this).hasClass('disabled')
+        });
     });
 });
 </script>
