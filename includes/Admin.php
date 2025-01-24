@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.09.4',
+            '2025.01.14.1',
             true
         );
 
@@ -388,12 +388,13 @@ class Admin
         $bocs_body = $this->get_bocs_data_from_api($bocs_id);
 
         if (is_checkout()) {
+            
             // checks the stripe checkbox and make it checked as default
             wp_enqueue_script(
                 'bocs-stripe-checkout-js',
                 plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
                 array('jquery'),
-                '20240611.8',
+                '20250122.5',
                 true
             );
 
@@ -930,6 +931,9 @@ class Admin
     {
         if (empty($order_id))
             return false;
+        
+        if (!isset($_COOKIE['__bocs_id']))
+            return false;
 
         // get the order details
         $order = wc_get_order($order_id);
@@ -989,45 +993,7 @@ class Admin
                 $order->update_meta_data('__bocs_frequency_id', $bocs_value);
             }
         }
-
-        /*$current_frequency = null;
-        $bocs_body = $this->get_bocs_data_from_api($bocsid);
-
-        error_log('frequency_id: ' . print_r($frequency_id, true));
-        // error_log('bocs_body' . print_r($bocs_body['data']['body'], true));
-
-        // Check if the required keys exist
-        if (isset($bocs_body['data']['body'])) {
-            $body_data = json_decode($bocs_body['data']['body'], true);
-
-            if (isset($body_data['zones'])) {
-                foreach ($body_data['zones'] as $zone_items) {
-                    foreach ($zone_items as $zone_item) {
-                        if ($zone_item['type'] === 'BocsStep5' && isset($zone_item['props']['selected'])) {
-                            $selected_items = $zone_item['props']['selected'];
-
-                            foreach ($selected_items as $selected_item) {
-                                if (isset($selected_item['priceAdjustment'])) {
-                                    $price_adjustment = $selected_item['priceAdjustment'];
-
-                                    // If you need the specific fields of the priceAdjustment
-                                    if (isset($price_adjustment['adjustments'])) {
-                                        foreach ($price_adjustment['adjustments'] as $adjustment) {
-                                            if ($adjustment['id'] == $frequency_id) {
-                                                $current_frequency = $adjustment;
-                                                break 3;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        error_log('current_frequency ' . print_r($current_frequency, true));*/
+        
         
         foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
@@ -1238,12 +1204,42 @@ class Admin
 
             if (curl_errno($curl)) {
                 $error = curl_error($curl);
-                error_log('[Bocs][ERROR] Failed to create subscription: ' . $error);
+                $error_code = curl_errno($curl);
+                $error_message = sprintf(
+                    '[Bocs][ERROR] Failed to create subscription: (Code: %d) %s',
+                    $error_code,
+                    $error
+                );
+                
+                // Always log critical errors
+                error_log($error_message);
+                
+                if (BOCS_ENVIRONMENT === 'dev') {
+                    // Additional debug information in developer mode
+                    error_log('[Bocs][DEBUG] Subscription creation attempt details:');
+                    error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                    error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                }
             } else {
                 if ($http_code >= 200 && $http_code < 300) {
-                    // error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                        error_log('[Bocs][DEBUG] Response: ' . $response);
+                    }
                 } else {
-                    error_log('[Bocs][ERROR] Subscription creation failed. Response code: ' . $http_code);
+                    $error_message = sprintf(
+                        '[Bocs][ERROR] Subscription creation failed. Response code: %d. Response: %s',
+                        $http_code,
+                        $response
+                    );
+                    error_log($error_message);
+                    
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        // Additional debug information in developer mode
+                        error_log('[Bocs][DEBUG] Failed request details:');
+                        error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                        error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                    }
                 }
             }
 
@@ -1268,22 +1264,13 @@ class Admin
                     setcookie($cookie_name, '', time() - 3600, '/'); // empty value and old timestamp
                 }
             }
+
+            // Unset bocs data from WC session
+            if (WC()->session) {
+                WC()->session->__unset('bocs');
+            }
             
         }
-    }
-
-    /**
-     * Helper method to get value from session or cookie
-     * 
-     * @param string $key
-     * @return string|null
-     */
-    private function get_from_session_or_cookie($key) {
-        $value = WC()->session->get($key);
-        if (empty($value) && isset($_COOKIE["__${key}_id"])) {
-            $value = sanitize_text_field($_COOKIE["__${key}_id"]);
-        }
-        return $value;
     }
 
     public function search_product_ajax_callback(){
@@ -2721,5 +2708,32 @@ class Admin
         }
         return $result;
     }
+
+    /**
+     * Add a reminder on the enable guest checkout setting that subscriptions still require an account
+     * @since 0.0.97 - Migrated from WooCommerce Subscriptions v2.3.0
+     * @param array $settings The list of settings
+     */ 
+    public function add_guest_checkout_setting_note( $settings ) {
+		$is_wc_pre_3_4_0 = version_compare( WC()->version, '3.4.0', '<' );
+		$current_filter  = current_filter();
+
+		if ( ( $is_wc_pre_3_4_0 && 'woocommerce_payment_gateways_settings' !== $current_filter ) || ( ! $is_wc_pre_3_4_0 && 'woocommerce_account_settings' !== $current_filter ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return $settings;
+		}
+
+		foreach ( $settings as &$value ) {
+			if ( isset( $value['id'] ) && 'woocommerce_enable_guest_checkout' === $value['id'] ) {
+				$value['desc_tip']  = ! empty( $value['desc_tip'] ) ? $value['desc_tip'] . ' ' : '';
+				$value['desc_tip'] .= __( 'Note that purchasing bocs requires an account.', 'bocs-wordpress' );
+				break;
+			}
+		}
+		return $settings;
+	}
 }
 

@@ -134,4 +134,22 @@ class Bocs_Cart
         error_log('bocs_cart_totals_before_order_total');
         echo '<tr class="custom-text-before-subtotal"><th>Additional Info:</th><td>Your custom message here.</td></tr>';
     }
+
+    public function cart_contains_bocs_subscription(){
+        
+        // get the current bocs subscription id
+        $bocs_id = ! empty($bocs_id) ? $bocs_id : '';
+
+        if (empty($bocs_id) && isset(WC()->session)) {
+            $bocs_id = WC()->session->get('bocs');
+
+            if (empty($bocs_id)) {
+                if (isset($_COOKIE['__bocs_id'])) {
+                    $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+                }
+            }
+        }
+
+        return ! empty($bocs_id);
+    }
 }

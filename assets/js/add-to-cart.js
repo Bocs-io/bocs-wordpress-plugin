@@ -187,8 +187,9 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	// - discount: applied discount amount
 	// - price: original price before discounts
 	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
-	
-	if (!isLoggedIn) {
+	window.location.href = escapeUrl(redirectUrl);
+
+	/*if (!isLoggedIn) {
 		// For non-logged in users:
 		// 1. Redirect to login page
 		// 2. Include the cart URL as redirect_to parameter for post-login redirect
@@ -201,7 +202,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 		// For logged in users:
 		// Directly redirect to cart page with subscription parameters
 		window.location.href = escapeUrl(redirectUrl);
-	}
+	}*/
 }
 
 /**

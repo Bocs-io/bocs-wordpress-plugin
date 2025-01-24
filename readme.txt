@@ -1,3 +1,24 @@
+v0.0.103 01/24/2025
+* Added accordion on the subscriptions page
+* Added the subscription details on the subscriptions page
+
+v0.0.102 01/22/2025
+* Revert the Updater to the old working version
+
+v0.0.101 01/22/2025
+* Hide and check the create account checkbox on the checkout page
+* Hide and check the save card checkbox on the checkout page
+
+v0.0.100 01/17/2025
+* Force check Save payment information to my account for future purchases when bocs product is added to the cart
+* Added the updater for the plugin for pre-release and release for the github repository
+
+v0.0.99 01/16/2025
+* Added Customer WooCommerce REST API for trigger payment
+
+v0.0.98 01/15/2025
+* Added require registration for bocs subscription if not logged in
+
 v0.0.97 01/09/2025
 * Update version for the widget in whatever environment
 * Fixed on the discount

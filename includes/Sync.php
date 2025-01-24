@@ -639,19 +639,6 @@ class Sync
 		return $json;
 	}
 
-	private function isSuccessfulCreation($response) {
-		$isValid = $response && 
-				  ((isset($response->data->data) && (is_array($response->data->data) ? $response->data->data[0]->id : $response->data->data->id)) || 
-				   (isset($response->data) && (is_array($response->data) ? $response->data[0]->id : $response->data->id)));
-		
-		$this->logMessage('DEBUG', "Validating creation response", [
-			'is_valid' => $isValid,
-			'response' => $response
-		]);
-		
-		return $isValid;
-	}
-
 	private function processSyncUpdates($user_id, $data, $old_userdata, $first_name, $last_name) {
 		$this->logMessage('INFO', "Processing sync updates", [
 			'user_id' => $user_id
