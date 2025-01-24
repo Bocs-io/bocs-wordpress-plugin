@@ -1,3 +1,7 @@
+v0.0.103 01/24/2025
+* Added accordion on the subscriptions page
+* Added the subscription details on the subscriptions page
+
 v0.0.102 01/22/2025
 * Revert the Updater to the old working version
 
