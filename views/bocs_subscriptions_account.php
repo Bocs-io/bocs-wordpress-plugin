@@ -1207,35 +1207,62 @@ jQuery(document).ready(function($) {
 
             // Process and display line items
             if (subscriptionData.lineItems && Array.isArray(subscriptionData.lineItems)) {
-                subscriptionData.lineItems.forEach(item => {
-                    const itemHtml = `
-                        <div class="box-item" 
-                             data-product-id="${item.externalSourceId}"
-                             data-bocs-product-id="${item.productId}"
-                             data-quantity="${item.quantity}"
-                             data-price="${item.price}"
-                             data-total="${item.total}">
-                            <div class="item-details">
-                                <span class="item-name">Product ID: ${item.externalSourceId}</span>
-                                <span class="item-price">
-                                    <span class="woocommerce-Price-amount amount">
-                                        <bdi>
-                                            <span class="woocommerce-Price-currencySymbol">$</span>${item.price}
-                                        </bdi>
-                                    </span>
-                                </span>
-                                <span class="item-quantity">× ${item.quantity}</span>
-                                <span class="item-total">
-                                    <span class="woocommerce-Price-amount amount">
-                                        <bdi>
-                                            <span class="woocommerce-Price-currencySymbol">$</span>${item.total}
-                                        </bdi>
-                                    </span>
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                    boxItemsContainer.append(itemHtml);
+                // First, collect all product IDs
+                const productIds = subscriptionData.lineItems.map(item => item.externalSourceId);
+                
+                // Fetch product details from WooCommerce
+                $.ajax({
+                    url: wc_add_to_cart_params.ajax_url,
+                    type: 'POST',
+                    data: {
+                        action: 'get_product_details',
+                        product_ids: productIds,
+                        nonce: '<?php echo wp_create_nonce("get_product_details"); ?>'
+                    },
+                    success: function(response) {
+                        if (response.success && response.data) {
+                            const products = response.data;
+                            
+                            // Now process line items with product details
+                            subscriptionData.lineItems.forEach(item => {
+                                const productDetails = products[item.externalSourceId] || {};
+                                const productName = productDetails.name || `Product ID: ${item.externalSourceId}`;
+                                const productSku = productDetails.sku ? ` (SKU: ${productDetails.sku})` : '';
+                                
+                                const itemHtml = `
+                                    <div class="box-item" 
+                                         data-product-id="${item.externalSourceId}"
+                                         data-bocs-product-id="${item.productId}"
+                                         data-quantity="${item.quantity}"
+                                         data-price="${item.price}"
+                                         data-total="${item.total}">
+                                        <div class="item-details">
+                                            <span class="item-name">${productName}${productSku}</span>
+                                            <span class="item-price">
+                                                <span class="woocommerce-Price-amount amount">
+                                                    <bdi>
+                                                        <span class="woocommerce-Price-currencySymbol">$</span>${parseFloat(item.price).toFixed(2)}
+                                                    </bdi>
+                                                </span>
+                                            </span>
+                                            <span class="item-quantity">× ${item.quantity}</span>
+                                            <span class="item-total">
+                                                <span class="woocommerce-Price-amount amount">
+                                                    <bdi>
+                                                        <span class="woocommerce-Price-currencySymbol">$</span>${parseFloat(item.total).toFixed(2)}
+                                                    </bdi>
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                `;
+                                boxItemsContainer.append(itemHtml);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching product details:', error);
+                    }
                 });
             }
 

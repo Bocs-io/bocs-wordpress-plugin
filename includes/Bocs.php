@@ -340,6 +340,9 @@ class Bocs
 
         $this->loader->add_action('wp_ajax_get_product_price', $bocs_product, 'get_product_price_callback');
         $this->loader->add_action('wp_ajax_nopriv_get_product_price', $bocs_product, 'get_product_price_callback');
+        $this->loader->add_action('wp_ajax_get_product_details', $bocs_product, 'get_product_details_ajax');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_details', $bocs_product, 'get_product_details_ajax');
+
 
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
