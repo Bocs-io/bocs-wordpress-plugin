@@ -156,7 +156,7 @@ $options = get_option('bocs_plugin_options');
 <div id="subscription-details-view" style="display: none;">
     <div class="subscription-details-header">
         <div class="subscription-navigation">
-            <a href="#" class="back-to-list"><?php esc_html_e('Back to list of subscriptions', 'woocommerce'); ?></a>
+            <a href="#" class="back-to-subscription"><?php esc_html_e('Back to subscription', 'woocommerce'); ?></a>
             <span class="nav-separator">|</span>
             <span class="nav-item">Dashboard</span>
             <span class="nav-separator">→</span>
@@ -513,24 +513,33 @@ $options = get_option('bocs_plugin_options');
     pointer-events: none;
 }
 
-.button-loading::after {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    top: 50%;
-    left: 50%;
-    margin: -10px 0 0 -10px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+.button-loading .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    vertical-align: middle;
+    border: 2px solid #ffffff;
     border-radius: 50%;
-    border-top-color: #fff;
-    animation: button-loading-spinner 0.8s linear infinite;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
 }
 
-@keyframes button-loading-spinner {
+@keyframes spin {
     to {
         transform: rotate(360deg);
     }
+}
+
+.save-frequency.button-loading {
+    color: #ffffff !important;
+    background-color: #7f54b3;
+    opacity: 0.8;
+}
+
+.save-frequency.button-loading .loading-spinner {
+    border-color: #ffffff;
+    border-top-color: transparent;
 }
 
 /* ==========================================================================
@@ -1092,11 +1101,64 @@ $options = get_option('bocs_plugin_options');
     font-weight: bold;
     font-size: 1.1em;
 }
+
+.bocs-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 1000;
+    max-width: 300px;
+}
+
+.bocs-notification.loading {
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+}
+
+.bocs-notification.success {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.bocs-notification.error {
+    background: #f8d7da;
+    border-left: 4px solid #dc3545;
+}
+
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #007bff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
 </style>
 
 <script>
 jQuery(document).ready(function($) {
     let activeSubscriptionId = null;
+
+    // Initialize accordion with all panels collapsed
+    $('#bocs-subscriptions-accordion').accordion({
+        collapsible: true,
+        active: false, // This ensures all panels are collapsed by default
+        heightStyle: "content",
+        header: "> div > h3"
+    });
 
     // Handle View Details button click
     $(document).on('click', '.subscription-actions .view-details, button.view-details', async function(e) {
@@ -1113,8 +1175,10 @@ jQuery(document).ready(function($) {
         }
 
         try {
+            // Show loading state
             button.prop('disabled', true).addClass('button-loading');
-            
+            showNotification('Fetching subscription details...', 'loading');
+
             const response = await $.ajax({
                 url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
                 method: 'GET',
@@ -1183,6 +1247,14 @@ jQuery(document).ready(function($) {
                     detailsView.find('.current-frequency').text(
                         `Every ${freq} ${unit}`
                     );
+                    
+                    // Pre-select the matching radio button
+                    detailsView.find(`input[name="frequency"][data-frequency="${freq}"]`)
+                        .prop('checked', true)
+                        .closest('.frequency-option')
+                        .siblings()
+                        .find('input[name="frequency"]')
+                        .prop('checked', false);
                 }
             }
 
@@ -1206,7 +1278,7 @@ jQuery(document).ready(function($) {
                         <span>
                             <span class="woocommerce-Price-amount amount">
                                 <bdi>
-                                    <span class="woocommerce-Price-currencySymbol">$</span>${calculations.subtotal}
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${calculations.subtotal.toFixed(2)}
                                 </bdi>
                             </span>
                         </span>
@@ -1216,7 +1288,7 @@ jQuery(document).ready(function($) {
                         <span>
                             <span class="woocommerce-Price-amount amount">
                                 <bdi>
-                                    -<span class="woocommerce-Price-currencySymbol">$</span>${totalDiscount}
+                                    -<span class="woocommerce-Price-currencySymbol">$</span>${totalDiscount.toFixed(2)}
                                 </bdi>
                             </span>
                         </span>
@@ -1226,7 +1298,7 @@ jQuery(document).ready(function($) {
                         <span>
                             <span class="woocommerce-Price-amount amount">
                                 <bdi>
-                                    <span class="woocommerce-Price-currencySymbol">$</span>${subscriptionData.shippingTotal || '0.00'}
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${(subscriptionData.shippingTotal || 0).toFixed(2)}
                                 </bdi>
                             </span>
                         </span>
@@ -1236,7 +1308,7 @@ jQuery(document).ready(function($) {
                         <span>
                             <span class="woocommerce-Price-amount amount">
                                 <bdi>
-                                    <span class="woocommerce-Price-currencySymbol">$</span>${subscriptionData.total}
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${subscriptionData.total.toFixed(2)}
                                 </bdi>
                             </span>
                         </span>
@@ -1249,6 +1321,9 @@ jQuery(document).ready(function($) {
             $('#bocs-subscriptions-accordion').hide();
             detailsView.show();
 
+            // Hide loading message on success
+            hideNotification();
+
         } catch (error) {
             console.error('Error fetching subscription details:', error);
             showNotification('Failed to load subscription details. Please try again.', 'error');
@@ -1258,20 +1333,37 @@ jQuery(document).ready(function($) {
     });
 
     // Handle frequency edit button
-    $(document).on('click', '.edit-frequency', function(e) {
+    $(document).on('click', '.edit-link', function(e) {
         e.preventDefault();
         const button = $(this);
         const detailsSection = button.closest('.details-section');
+        
+        // Hide the edit button
         button.hide();
+        
+        // Show the frequency editor
         detailsSection.find('.frequency-editor').show();
+        
+        // Get current frequency from subscription data and select the matching radio button
+        const currentFrequencyText = detailsSection.find('.current-frequency').text();
+        const frequencyMatch = currentFrequencyText.match(/Every (\d+) Month/);
+        
+        if (frequencyMatch) {
+            const currentFrequency = parseInt(frequencyMatch[1]);
+            detailsSection.find(`input[name="frequency"][data-frequency="${currentFrequency}"]`).prop('checked', true);
+        }
     });
 
-    // Handle frequency cancel button
+    // Handle cancel button click
     $(document).on('click', '.cancel-edit', function(e) {
         e.preventDefault();
         const button = $(this);
         const frequencyEditor = button.closest('.frequency-editor');
+        
+        // Hide the frequency editor
         frequencyEditor.hide();
+        
+        // Show the edit button
         frequencyEditor.closest('.details-section').find('.edit-link').show();
     });
 
@@ -1279,6 +1371,7 @@ jQuery(document).ready(function($) {
     $(document).on('click', '.save-frequency', async function(e) {
         e.preventDefault();
         const button = $(this);
+        const originalButtonText = button.html();
         const frequencyEditor = button.closest('.frequency-editor');
         
         // Get selected frequency
@@ -1289,18 +1382,23 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        // Get frequency data
-        const frequencyData = {
-            id: selectedFrequency.val(),
-            discount: parseInt(selectedFrequency.data('discount')),
-            discountType: "percent",
-            timeUnit: selectedFrequency.data('time-unit'),
-            frequency: parseInt(selectedFrequency.data('frequency')),
-            price: 0
-        };
-
         try {
-            button.prop('disabled', true).addClass('button-loading');
+            // Show loading state
+            button.prop('disabled', true)
+                  .addClass('button-loading')
+                  .html('<span class="loading-spinner"></span> Updating frequency...');
+            
+            showNotification('Updating subscription frequency...', 'loading');
+
+            // Get frequency data
+            const frequencyData = {
+                id: selectedFrequency.val(),
+                discount: parseInt(selectedFrequency.data('discount')),
+                discountType: "percent",
+                timeUnit: selectedFrequency.data('time-unit'),
+                frequency: parseInt(selectedFrequency.data('frequency')),
+                price: 0
+            };
 
             // Get current subscription data
             const currentItems = [];
@@ -1371,6 +1469,69 @@ jQuery(document).ready(function($) {
                 const frequencyText = `Every ${frequencyData.frequency} ${frequencyData.timeUnit}`;
                 $('.current-frequency').text(frequencyText);
 
+                // Update line items display with new totals
+                currentItems.forEach(item => {
+                    const itemElement = $(`.box-item[data-product-id="${item.externalSourceId}"]`);
+                    if (itemElement.length) {
+                        // Update the total display
+                        itemElement.find('.item-total .woocommerce-Price-amount bdi').html(
+                            `<span class="woocommerce-Price-currencySymbol">$</span>${parseFloat(item.total).toFixed(2)}`
+                        );
+                        
+                        // Update the data attributes
+                        itemElement.attr('data-total', item.total.toFixed(2));
+                    }
+                });
+
+                // Update totals display
+                const totalsHtml = `
+                    <div class="subscription-totals">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span>
+                                <span class="woocommerce-Price-amount amount">
+                                    <bdi>
+                                        <span class="woocommerce-Price-currencySymbol">$</span>${subtotal.toFixed(2)}
+                                    </bdi>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="total-row">
+                            <span>Discount:</span>
+                            <span>
+                                <span class="woocommerce-Price-amount amount">
+                                    <bdi>
+                                        -<span class="woocommerce-Price-currencySymbol">$</span>${discountTotal.toFixed(2)}
+                                    </bdi>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="total-row">
+                            <span>Delivery:</span>
+                            <span>
+                                <span class="woocommerce-Price-amount amount">
+                                    <bdi>
+                                        <span class="woocommerce-Price-currencySymbol">$</span>0.00
+                                    </bdi>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="total-row total">
+                            <span>Total:</span>
+                            <span>
+                                <span class="woocommerce-Price-amount amount">
+                                    <bdi>
+                                        <span class="woocommerce-Price-currencySymbol">$</span>${total.toFixed(2)}
+                                    </bdi>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                // Update the totals section
+                $('.subscription-totals').replaceWith(totalsHtml);
+
                 // Update subscription in list
                 const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
                     .closest('.wc-subscription');
@@ -1380,7 +1541,7 @@ jQuery(document).ready(function($) {
                     subscriptionInList.find('.total-amount').html(
                         `<span class="woocommerce-Price-amount amount">
                             <bdi>
-                                <span class="woocommerce-Price-currencySymbol">$</span>${total}
+                                <span class="woocommerce-Price-currencySymbol">$</span>${total.toFixed(2)}
                             </bdi>
                         </span>`
                     );
@@ -1398,23 +1559,69 @@ jQuery(document).ready(function($) {
             console.error('Error updating subscription frequency:', error);
             showNotification('Failed to update frequency. Please try again.', 'error');
         } finally {
-            button.prop('disabled', false).removeClass('button-loading');
+            // Reset button state
+            button.prop('disabled', false)
+                  .removeClass('button-loading')
+                  .html(originalButtonText);
         }
     });
 
-    // Handle back to subscriptions list
-    $(document).on('click', '.back-to-subscriptions', function(e) {
+    // Handle both back to subscription button and link clicks
+    $(document).on('click', '.back-to-subscription-button, .back-to-subscription', function(e) {
         e.preventDefault();
+        
+        // Hide the details view
         $('#subscription-details-view').hide();
+        
+        // Show the subscriptions list/accordion
         $('#bocs-subscriptions-accordion').show();
+        
+        // Reset any open editors
+        $('.frequency-editor').hide();
+        $('.edit-link').show();
+        
+        // Find and open the accordion panel for the current subscription
+        if (activeSubscriptionId) {
+            const subscriptionHeader = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
+                .closest('.wc-subscription')
+                .find('h3');
+                
+            // Get the index of the subscription panel
+            const panelIndex = $('#bocs-subscriptions-accordion > div > h3').index(subscriptionHeader);
+            
+            // Activate the accordion panel
+            if (panelIndex !== -1) {
+                $('#bocs-subscriptions-accordion').accordion('option', 'active', panelIndex);
+            }
+        }
     });
 
-    // Helper function for notifications
+    // Updated notification helper functions
     function showNotification(message, type = 'success') {
-        // Implement your notification system here
-        if (type === 'error') {
-            console.error(message);
+        const notificationElement = $('.bocs-notification');
+        
+        // Remove any existing notifications
+        notificationElement.remove();
+        
+        // Create notification HTML based on type
+        let notificationHtml = `
+            <div class="bocs-notification ${type}">
+                ${type === 'loading' ? '<div class="loading-spinner"></div>' : ''}
+                <span class="message">${message}</span>
+            </div>
+        `;
+        
+        // Add notification to the page
+        $('body').append(notificationHtml);
+        
+        // Don't auto-hide loading notifications
+        if (type !== 'loading') {
+            setTimeout(hideNotification, 3000);
         }
+    }
+
+    function hideNotification() {
+        $('.bocs-notification').remove();
     }
 });
 </script>
