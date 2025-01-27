@@ -175,6 +175,8 @@ class Bocs
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Stripe_Hooks.php';
 
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
+
         $this->loader = new Loader();
     }
 
@@ -333,6 +335,11 @@ class Bocs
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
+
+        $bocs_product = new Bocs_Product();
+
+        $this->loader->add_action('wp_ajax_get_product_price', $bocs_product, 'get_product_price_callback');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_price', $bocs_product, 'get_product_price_callback');
 
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');

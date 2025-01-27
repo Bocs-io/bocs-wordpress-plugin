@@ -178,7 +178,12 @@ $options = get_option('bocs_plugin_options');
         </div>
         <div class="box-items">
             <?php foreach ($subscription['lineItems'] as $item): ?>
-                <div class="box-item">
+                <div class="box-item" 
+                    data-product-id="<?php echo esc_attr($item['externalSourceId']); ?>"
+                    data-price="<?php echo esc_attr($item['price']); ?>"
+                    data-bocs-product-id="<?php echo esc_attr($item['productId']); ?>"
+                    data-quantity="<?php echo esc_attr($item['quantity']); ?>"
+                    data-total="<?php echo esc_attr($item['total']); ?>">
                     <?php 
                     $product = wc_get_product($item['externalSourceId']);
                     $image = $product ? wp_get_attachment_image_src(get_post_thumbnail_id($product->get_id()), 'thumbnail') : '';
@@ -304,6 +309,8 @@ $options = get_option('bocs_plugin_options');
                                     value="<?php echo esc_attr($freq['id']); ?>" 
                                     data-name="<?php echo esc_attr($freq_name); ?>"
                                     data-discount="<?php echo esc_attr($freq['discount']); ?>"
+                                    data-time-unit="<?php echo esc_attr($freq['timeUnit']); ?>"
+                                    data-frequency="<?php echo esc_attr($freq['frequency']); ?>"
                                     <?php checked($current_frequency['id'] === $freq['id']); ?>>
                                 <span class="radio-label"><?php echo esc_html($freq_name); ?></span>
                             </label>
@@ -1088,206 +1095,326 @@ $options = get_option('bocs_plugin_options');
 </style>
 
 <script>
-jQuery(function($) {
-    $("#bocs-subscriptions-accordion").accordion({
-        header: "h3",
-        collapsible: true,
-        heightStyle: "content",
-        active: false // Start with all panels collapsed
-    });
-});
+jQuery(document).ready(function($) {
+    let activeSubscriptionId = null;
 
-jQuery(document).ready(function ($) {
-    console.log('Subscription renewal handlers initialized');
-
-    // Disable default behavior for all BOCS buttons
-    $('button.bocs-button').on('click', function (e) {
+    // Handle View Details button click
+    $(document).on('click', '.subscription-actions .view-details, button.view-details', async function(e) {
         e.preventDefault();
-        console.log('BOCS button clicked - default prevented');
-    });
-
-    // Handle early renewal with specific subscription ID
-    $('button.subscription_renewal_early').on('click', function () {
-        const buttonElement = $(this);
-        const subscriptionId = buttonElement.data('subscription-id');
-        const specificButton = $(`#renewal_${subscriptionId}`);
-
-        console.log('Early Renewal clicked:', {
-            buttonId: buttonElement.attr('id'),
-            subscriptionId: subscriptionId,
-            buttonText: buttonElement.text(),
-            isDisabled: buttonElement.hasClass('disabled')
-        });
-
-        if (!subscriptionId || buttonElement.attr('id') !== `renewal_${subscriptionId}`) {
-            console.error('Invalid subscription ID or button mismatch:', {
-                subscriptionId: subscriptionId,
-                buttonId: buttonElement.attr('id'),
-                expectedId: `renewal_${subscriptionId}`
-            });
+        e.stopPropagation();
+        
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id');
+        activeSubscriptionId = subscriptionId;
+        
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
             return;
         }
 
-        if (!buttonElement.hasClass('disabled')) {
-            console.log('Processing renewal for subscription:', subscriptionId);
-            buttonElement.addClass('disabled');
-            buttonElement.text('<?php esc_html_e('Processing...', 'woocommerce'); ?>');
+        try {
+            button.prop('disabled', true).addClass('button-loading');
             
-            $.ajax({
-                url: '<?php echo BOCS_API_URL; ?>subscriptions/' + subscriptionId + '/renew',
-                method: 'POST',
-                beforeSend: function (xhr) {
-                    console.log('Sending renewal request for subscription:', subscriptionId);
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                method: 'GET',
+                beforeSend: function(xhr) {
                     xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
                     xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
                     xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                },
-                success: function (response) {
-                    console.log('Renewal successful for subscription:', subscriptionId, {
-                        response: response,
-                        buttonState: {
-                            id: specificButton.attr('id'),
-                            text: specificButton.text(),
-                            isDisabled: specificButton.hasClass('disabled')
-                        }
-                    });
-                    specificButton.text('<?php esc_html_e('Renewed', 'woocommerce'); ?>');
-                },
-                error: function (error) {
-                    console.error('Renewal failed for subscription:', subscriptionId, {
-                        error: error,
-                        buttonState: {
-                            id: specificButton.attr('id'),
-                            text: specificButton.text(),
-                            isDisabled: specificButton.hasClass('disabled')
-                        }
-                    });
-                    specificButton.text('<?php esc_html_e('Early Renewal', 'woocommerce'); ?>');
-                    specificButton.removeClass('disabled');
                 }
             });
-        } else {
-            console.log('Button not eligible for renewal:', {
-                isDisabled: buttonElement.hasClass('disabled'),
-                buttonText: buttonElement.text(),
-                subscriptionId: subscriptionId
-            });
-        }
-    });
 
-    // Log initial button states
-    $('.subscription_renewal_early').each(function() {
-        console.log('Found renewal button:', {
-            id: $(this).attr('id'),
-            subscriptionId: $(this).data('subscription-id'),
-            text: $(this).text(),
-            isDisabled: $(this).hasClass('disabled')
-        });
-    });
-
-    // Store the active subscription ID when opening details
-    let activeSubscriptionId = null;
-
-    // Handle view details button
-    $('.view-details').on('click', function(e) {
-        e.preventDefault();
-        activeSubscriptionId = $(this).data('subscription-id');
-        const subscriptionName = $(this).closest('.wc-subscription')
-            .find('.subscription-title').first().text().trim();
-        
-        // Update the navigation with subscription name
-        $('#subscription-details-view .subscription-name').text(subscriptionName);
-        
-        // Hide the subscriptions list
-        $('#bocs-subscriptions-accordion').hide();
-        
-        // Show the details view
-        $('#subscription-details-view').show();
-    });
-
-    // Handle back to subscription button
-    $('.back-to-subscription-button').on('click', function(e) {
-        e.preventDefault();
-        
-        // Hide the details view
-        $('#subscription-details-view').hide();
-        
-        // Show the subscriptions list and open the specific accordion
-        $('#bocs-subscriptions-accordion').show();
-        
-        if (activeSubscriptionId) {
-            // Find and activate the specific accordion
-            $(`#renewal_${activeSubscriptionId}`).closest('.wc-subscription')
-                .find('.accordion-header').trigger('click');
-        }
-    });
-
-    // Function to update product prices based on discount
-    function updateProductPrices(discount) {
-        $('.box-item').each(function() {
-            var originalPrice = $(this).data('original-price');
-            if (originalPrice) {
-                var discountAmount = (originalPrice * discount) / 100;
-                var finalPrice = originalPrice - discountAmount;
-                
-                var priceHtml = '<div class="item-price">' +
-                    '<span class="original-price">' + formatPrice(originalPrice) + '</span>';
-                
-                if (discount > 0) {
-                    priceHtml += '<span class="price-discount">-' + formatPrice(discountAmount) + '</span>' +
-                        '<span class="final-price">' + formatPrice(finalPrice) + '</span>';
-                }
-                
-                priceHtml += '</div>';
-                
-                $(this).find('.item-price').replaceWith(priceHtml);
+            if (!response.data) {
+                throw new Error('Invalid API response structure');
             }
-        });
-    }
 
-    // Helper function to format price
-    function formatPrice(price) {
-        return accounting.formatMoney(price, {
-            symbol: '<?php echo get_woocommerce_currency_symbol(); ?>',
-            decimal: '<?php echo get_option('woocommerce_price_decimal_sep'); ?>',
-            thousand: '<?php echo get_option('woocommerce_price_thousand_sep'); ?>',
-            precision: <?php echo get_option('woocommerce_price_num_decimals'); ?>,
-            format: '%s%v'
-        });
-    }
-
-    // Show/hide frequency editor
-    $('.edit-link').on('click', function() {
-        $(this).closest('.details-section').find('.frequency-editor').show();
-        $(this).hide();
-    });
-
-    $('.cancel-edit').on('click', function() {
-        $(this).closest('.frequency-editor').hide();
-        $(this).closest('.details-section').find('.edit-link').show();
-    });
-
-    // Update prices when frequency changes
-    $('.save-frequency').on('click', function() {
-        var selectedFreq = $('input[name="frequency"]:checked');
-        if (selectedFreq.length) {
-            // Update the display with the selected frequency name
-            $(this).closest('.details-section')
-                .find('.current-frequency')
-                .text(selectedFreq.data('name'));
+            const subscriptionData = response.data;
+            const detailsView = $('#subscription-details-view');
+            const boxItemsContainer = detailsView.find('.box-items');
             
-            // Update prices with new discount
-            updateProductPrices(selectedFreq.data('discount'));
-            
-            // Hide the editor
-            $(this).closest('.frequency-editor').hide();
-            
-            // Show the edit button again
-            $(this).closest('.details-section').find('.edit-link').show();
+            // Clear existing items
+            boxItemsContainer.empty();
+
+            // Update subscription details
+            detailsView.find('.subscription-name').text(
+                `Subscription (Order #${subscriptionData.externalSourceParentOrderId})`
+            );
+
+            // Process and display line items
+            if (subscriptionData.lineItems && Array.isArray(subscriptionData.lineItems)) {
+                subscriptionData.lineItems.forEach(item => {
+                    const itemHtml = `
+                        <div class="box-item" 
+                             data-product-id="${item.externalSourceId}"
+                             data-bocs-product-id="${item.productId}"
+                             data-quantity="${item.quantity}"
+                             data-price="${item.price}"
+                             data-total="${item.total}">
+                            <div class="item-details">
+                                <span class="item-name">Product ID: ${item.externalSourceId}</span>
+                                <span class="item-price">
+                                    <span class="woocommerce-Price-amount amount">
+                                        <bdi>
+                                            <span class="woocommerce-Price-currencySymbol">$</span>${item.price}
+                                        </bdi>
+                                    </span>
+                                </span>
+                                <span class="item-quantity">× ${item.quantity}</span>
+                                <span class="item-total">
+                                    <span class="woocommerce-Price-amount amount">
+                                        <bdi>
+                                            <span class="woocommerce-Price-currencySymbol">$</span>${item.total}
+                                        </bdi>
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                    boxItemsContainer.append(itemHtml);
+                });
+            }
+
+            // Update frequency display
+            if (subscriptionData.frequency) {
+                const freq = subscriptionData.frequency.frequency;
+                const unit = subscriptionData.frequency.timeUnit;
+                if (freq && unit) {
+                    detailsView.find('.current-frequency').text(
+                        `Every ${freq} ${unit}`
+                    );
+                }
+            }
+
+            // Calculate and update totals
+            const calculations = subscriptionData.lineItems.reduce((acc, item) => {
+                const itemSubtotal = parseFloat(item.price) * parseInt(item.quantity);
+                const itemTotal = parseFloat(item.total);
+                return {
+                    subtotal: acc.subtotal + itemSubtotal,
+                    totalAfterDiscount: acc.totalAfterDiscount + itemTotal
+                };
+            }, { subtotal: 0, totalAfterDiscount: 0 });
+
+            const totalDiscount = calculations.subtotal - calculations.totalAfterDiscount;
+
+            // Update totals display
+            const totalsHtml = `
+                <div class="subscription-totals">
+                    <div class="total-row">
+                        <span>Subtotal:</span>
+                        <span>
+                            <span class="woocommerce-Price-amount amount">
+                                <bdi>
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${calculations.subtotal}
+                                </bdi>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="total-row">
+                        <span>Discount:</span>
+                        <span>
+                            <span class="woocommerce-Price-amount amount">
+                                <bdi>
+                                    -<span class="woocommerce-Price-currencySymbol">$</span>${totalDiscount}
+                                </bdi>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="total-row">
+                        <span>Delivery:</span>
+                        <span>
+                            <span class="woocommerce-Price-amount amount">
+                                <bdi>
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${subscriptionData.shippingTotal || '0.00'}
+                                </bdi>
+                            </span>
+                        </span>
+                    </div>
+                    <div class="total-row total">
+                        <span>Total:</span>
+                        <span>
+                            <span class="woocommerce-Price-amount amount">
+                                <bdi>
+                                    <span class="woocommerce-Price-currencySymbol">$</span>${subscriptionData.total}
+                                </bdi>
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            `;
+            detailsView.find('.subscription-totals').replaceWith(totalsHtml);
+
+            // Hide subscriptions list and show details
+            $('#bocs-subscriptions-accordion').hide();
+            detailsView.show();
+
+        } catch (error) {
+            console.error('Error fetching subscription details:', error);
+            showNotification('Failed to load subscription details. Please try again.', 'error');
+        } finally {
+            button.prop('disabled', false).removeClass('button-loading');
         }
     });
 
-    // Initial price update
-    updateProductPrices(<?php echo $discount_percent; ?>);
+    // Handle frequency edit button
+    $(document).on('click', '.edit-frequency', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const detailsSection = button.closest('.details-section');
+        button.hide();
+        detailsSection.find('.frequency-editor').show();
+    });
+
+    // Handle frequency cancel button
+    $(document).on('click', '.cancel-edit', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const frequencyEditor = button.closest('.frequency-editor');
+        frequencyEditor.hide();
+        frequencyEditor.closest('.details-section').find('.edit-link').show();
+    });
+
+    // Handle save frequency button
+    $(document).on('click', '.save-frequency', async function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const frequencyEditor = button.closest('.frequency-editor');
+        
+        // Get selected frequency
+        const selectedFrequency = frequencyEditor.find('input[name="frequency"]:checked');
+        if (!selectedFrequency.length) {
+            console.error('No frequency selected');
+            showNotification('Please select a frequency', 'error');
+            return;
+        }
+
+        // Get frequency data
+        const frequencyData = {
+            id: selectedFrequency.val(),
+            discount: parseInt(selectedFrequency.data('discount')),
+            discountType: "percent",
+            timeUnit: selectedFrequency.data('time-unit'),
+            frequency: parseInt(selectedFrequency.data('frequency')),
+            price: 0
+        };
+
+        try {
+            button.prop('disabled', true).addClass('button-loading');
+
+            // Get current subscription data
+            const currentItems = [];
+            $('.box-items .box-item').each(function() {
+                const item = $(this);
+                currentItems.push({
+                    externalSourceId: item.data('product-id').toString(),
+                    productId: item.data('bocs-product-id'),
+                    quantity: parseInt(item.data('quantity')),
+                    price: parseFloat(item.data('price')),
+                    total: 0,
+                    taxes: [],
+                    metaData: []
+                });
+            });
+
+            if (!currentItems.length) {
+                throw new Error('No line items found');
+            }
+
+            // Calculate new totals
+            const discountMultiplier = 1 - (frequencyData.discount / 100);
+            let subtotal = 0;
+            currentItems.forEach(item => {
+                const itemSubtotal = item.price * item.quantity;
+                subtotal += itemSubtotal;
+                item.total = itemSubtotal * discountMultiplier;
+            });
+
+            const discountTotal = subtotal * (frequencyData.discount / 100);
+            const total = subtotal - discountTotal;
+
+            // Prepare update payload
+            const updatePayload = {
+                frequency: {
+                    ...frequencyData,
+                    price: parseFloat((0).toFixed(2))
+                },
+                billingInterval: frequencyData.frequency,
+                billingPeriod: frequencyData.timeUnit.toLowerCase(),
+                discountTotal: parseFloat(discountTotal.toFixed(2)),
+                total: parseFloat(total.toFixed(2)),
+                totalTax: parseFloat((0).toFixed(2)),
+                lineItems: currentItems.map(item => ({
+                    ...item,
+                    price: parseFloat(item.price.toFixed(2)),
+                    total: parseFloat(item.total.toFixed(2)),
+                    taxes: [],
+                    metaData: []
+                }))
+            };
+
+            // Update subscription
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
+                method: 'PUT',
+                data: JSON.stringify(updatePayload),
+                contentType: 'application/json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                }
+            });
+
+            if (response.code === 200) {
+                // Update frequency display
+                const frequencyText = `Every ${frequencyData.frequency} ${frequencyData.timeUnit}`;
+                $('.current-frequency').text(frequencyText);
+
+                // Update subscription in list
+                const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
+                    .closest('.wc-subscription');
+                
+                if (subscriptionInList.length) {
+                    subscriptionInList.find('.delivery-frequency span:last').text(frequencyText);
+                    subscriptionInList.find('.total-amount').html(
+                        `<span class="woocommerce-Price-amount amount">
+                            <bdi>
+                                <span class="woocommerce-Price-currencySymbol">$</span>${total}
+                            </bdi>
+                        </span>`
+                    );
+                }
+
+                // Hide frequency editor
+                frequencyEditor.hide();
+                frequencyEditor.closest('.details-section').find('.edit-link').show();
+
+                showNotification('Frequency updated successfully', 'success');
+            } else {
+                throw new Error(response.message || 'Failed to update frequency');
+            }
+        } catch (error) {
+            console.error('Error updating subscription frequency:', error);
+            showNotification('Failed to update frequency. Please try again.', 'error');
+        } finally {
+            button.prop('disabled', false).removeClass('button-loading');
+        }
+    });
+
+    // Handle back to subscriptions list
+    $(document).on('click', '.back-to-subscriptions', function(e) {
+        e.preventDefault();
+        $('#subscription-details-view').hide();
+        $('#bocs-subscriptions-accordion').show();
+    });
+
+    // Helper function for notifications
+    function showNotification(message, type = 'success') {
+        // Implement your notification system here
+        if (type === 'error') {
+            console.error(message);
+        }
+    }
 });
 </script>
