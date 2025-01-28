@@ -1,3 +1,5 @@
+v0.0.105 01/28/2025
+* Pause/Skip Next Payment Date
 
 v0.0.104 01/27/2025
 * Added the edit frequency on the subscriptions page
