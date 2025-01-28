@@ -174,7 +174,7 @@ $options = get_option('bocs_plugin_options');
         </div>
         <div class="header-actions">
             <button class="woocommerce-button button alt pay-now">
-                <?php esc_html_e('Pay Now', 'woocommerce'); ?>
+                <?php esc_html_e('Early Renewal', 'woocommerce'); ?>
             </button>
         </div>
     </div>
@@ -359,13 +359,62 @@ $options = get_option('bocs_plugin_options');
                         echo esc_html($next_payment_date->format('l j F Y')); 
                     ?></p>
                 </div>
-                <div class="date-info">
-                    <p class="date-label"><?php esc_html_e('Next Delivery Date', 'woocommerce'); ?></p>
-                    <p class="date-value"><?php 
-                        $delivery_date = new DateTime($subscription['nextPaymentDateGmt']);
-                        $delivery_date->modify('+3 days'); // Adjust as needed
-                        echo esc_html($delivery_date->format('l j F Y')); 
-                    ?></p>
+
+                <!-- Add new schedule editor -->
+                <div class="schedule-editor" style="display: none;">
+                    <div class="schedule-header">
+                        <h3><?php esc_html_e('Adjust Schedule', 'woocommerce'); ?></h3>
+                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'woocommerce'); ?></button>
+                    </div>
+                    
+                    <div class="schedule-options">
+                        <div class="schedule-option">
+                            <div class="pause-duration">
+                                <?php 
+                                if (!empty($frequencies)):
+                                    foreach ($frequencies as $freq): 
+                                        $pause_text = sprintf(
+                                            _n('Pause for %d Month', 'Pause for %d Months', $freq['frequency'], 'woocommerce'),
+                                            $freq['frequency']
+                                        );
+                                ?>
+                                    <label class="frequency-option">
+                                        <input type="radio" name="pause_duration" 
+                                            value="<?php echo esc_attr($freq['id']); ?>" 
+                                            data-frequency="<?php echo esc_attr($freq['frequency']); ?>"
+                                            data-time-unit="<?php echo esc_attr($freq['timeUnit']); ?>"
+                                            >
+                                        <span class="radio-label"><?php echo esc_html($pause_text); ?></span>
+                                    </label>
+                                <?php 
+                                    endforeach;
+                                endif;
+                                ?>
+                                <label class="frequency-option">
+                                    <input type="radio" name="pause_duration" value="custom_date">
+                                    <span class="radio-label">Skip to Date</span>
+                                </label>
+                                <input type="date" name="new_date"
+                                       min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
+                                       value="<?php echo $next_payment_date->format('Y-m-d'); ?>">
+                            </div>
+                        </div>
+
+                        <!-- Add next payment date preview -->
+                        <div class="next-payment-preview" style="display: none;">
+                            <div class="preview-header">
+                                <?php esc_html_e('Preview of Changes', 'woocommerce'); ?>
+                            </div>
+                            <div class="preview-content">
+                                <span class="preview-label"><?php esc_html_e('Next Payment Date:', 'woocommerce'); ?></span>
+                                <span class="preview-date"></span>
+                            </div>
+                        </div>
+
+                        <button class="save-schedule woocommerce-button button alt">
+                            <?php esc_html_e('Save Changes', 'woocommerce'); ?>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1169,6 +1218,172 @@ $options = get_option('bocs_plugin_options');
         transform: rotate(360deg);
     }
 }
+
+.box-items-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2em;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin: 1em 0;
+}
+
+.box-items-loading .loading-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #007bff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1em;
+}
+
+.box-items-loading p {
+    color: #666;
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.pause-duration {
+    margin: 0.8em 0 0 1.8em;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pause-duration .frequency-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.pause-duration input[type="radio"]:disabled + .radio-label {
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* Schedule Editor Styles */
+.schedule-editor {
+    background: #fff;
+    padding: 1.5em;
+    border-radius: 4px;
+    margin-top: 1em;
+    border: 1px solid #eee;
+}
+
+.schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #eee;
+}
+
+.schedule-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.schedule-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+    margin: 1.5em 0;
+}
+
+.schedule-option {
+    padding: 1em;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.5em;
+    cursor: pointer;
+}
+
+.option-description {
+    margin: 0.5em 0 0 1.8em;
+    color: #666;
+    font-size: 0.9em;
+}
+
+.pause-duration,
+.date-selector {
+    margin: 0.8em 0 0 1.8em;
+}
+
+.pause-duration select,
+.date-selector input {
+    width: 100%;
+    max-width: 200px;
+    padding: 0.5em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.pause-duration select:disabled,
+.date-selector input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.save-schedule {
+    width: 100%;
+    margin-top: 1em;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .schedule-editor {
+        padding: 1em;
+    }
+
+    .pause-duration select,
+    .date-selector input {
+        max-width: 100%;
+    }
+}
+
+.next-payment-preview {
+    margin: 1.5em 0;
+    padding: 1em;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.preview-header {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5em;
+}
+
+.preview-content {
+    display: flex;
+    gap: 0.5em;
+    align-items: center;
+}
+
+.preview-label {
+    color: #666;
+}
+
+.preview-date {
+    font-weight: 500;
+    color: var(--wc-primary, #7f54b3);
+}
 </style>
 
 <!-- JavaScript Implementation -->
@@ -1239,8 +1454,13 @@ jQuery(document).ready(function($) {
                 const detailsView = $('#subscription-details-view');
                 const boxItemsContainer = detailsView.find('.box-items');
                 
-                // Clear existing items
-                boxItemsContainer.empty();
+                // Clear existing items and show loading message
+                boxItemsContainer.empty().append(`
+                    <div class="box-items-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading subscription items...</p>
+                    </div>
+                `);
 
                 // Update subscription details
                 detailsView.find('.subscription-name').text(
@@ -1264,7 +1484,7 @@ jQuery(document).ready(function($) {
                         success: function(response) {
                             if (response.success && response.data) {
                                 const products = response.data;
-                                
+                                boxItemsContainer.empty()
                                 // Now process line items with product details
                                 subscriptionData.lineItems.forEach(item => {
                                     const productDetails = products[item.externalSourceId] || {};
@@ -1593,6 +1813,18 @@ jQuery(document).ready(function($) {
                     $('#bocs-subscriptions-accordion').accordion('option', 'active', panelIndex);
                 }
             }
+        },
+
+        editSchedule: function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const detailsSection = button.closest('.details-section');
+            
+            // Hide the edit button and notice box
+            button.hide();
+            
+            // Show the schedule editor
+            detailsSection.find('.schedule-editor').show();
         }
     };
 
@@ -1707,6 +1939,170 @@ jQuery(document).ready(function($) {
         .on('click', '.edit-link', eventHandlers.editFrequency)
         .on('click', '.cancel-edit', eventHandlers.cancelEdit)
         .on('click', '.save-frequency', eventHandlers.saveFrequency)
-        .on('click', '.back-to-subscription-button, .back-to-subscription', eventHandlers.backToSubscription);
+        .on('click', '.back-to-subscription-button, .back-to-subscription', eventHandlers.backToSubscription)
+        .on('change', 'input[name="schedule_action"]', function() {
+            // Enable/disable corresponding inputs
+            const selectedValue = $(this).val();
+            
+            // Disable all inputs first
+            $('select[name="pause_duration"], input[name="new_date"]').prop('disabled', true);
+            
+            // Enable the relevant input based on selection
+            if (selectedValue === 'pause') {
+                $('select[name="pause_duration"]').prop('disabled', false);
+            } else if (selectedValue === 'date') {
+                $('input[name="new_date"]').prop('disabled', false);
+            }
+        })
+        .on('click', '.details-section:has(.schedule-editor) .edit-link', eventHandlers.editSchedule);
+
+    $('.save-schedule').on('click', async function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const originalButtonText = button.html();
+        
+        const selectedOption = $('input[name="pause_duration"]:checked');
+        if (!selectedOption.length) {
+            helpers.showNotification('Please select a pause duration or custom date', 'error');
+            return;
+        }
+
+        try {
+            // Show loading state
+            button.prop('disabled', true)
+                  .addClass('button-loading')
+                  .html('<span class="loading-spinner"></span> Updating schedule...');
+            
+            helpers.showNotification('Updating subscription schedule...', 'loading');
+
+            // Calculate the next payment date
+            let nextPaymentDate = new Date('<?php echo $next_payment_date->format('Y-m-d'); ?>');
+
+            if (selectedOption.val() === 'custom_date') {
+                const customDate = $('input[name="new_date"]').val();
+                if (!customDate) {
+                    throw new Error('Please select a valid date');
+                }
+                nextPaymentDate = new Date(customDate);
+            } else {
+                const frequency = parseInt(selectedOption.data('frequency'));
+                const timeUnit = selectedOption.data('time-unit');
+                
+                if (timeUnit.toLowerCase() === 'month' || timeUnit.toLowerCase() === 'months') {
+                    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + frequency);
+                } else if (timeUnit.toLowerCase() === 'week' || timeUnit.toLowerCase() === 'weeks') {
+                    nextPaymentDate.setDate(nextPaymentDate.getDate() + (frequency * 7));
+                } else if (timeUnit.toLowerCase() === 'day' || timeUnit.toLowerCase() === 'days') {
+                    nextPaymentDate.setDate(nextPaymentDate.getDate() + frequency);
+                } else if (timeUnit.toLowerCase() === 'year' || timeUnit.toLowerCase() === 'years') {
+                    nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + frequency);
+                }
+            }
+
+            // Prepare the payload
+            const updatePayload = {
+                nextPaymentDateGmt: nextPaymentDate.toISOString()
+            };
+
+            // Send update to API
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
+                method: 'PUT',
+                data: JSON.stringify(updatePayload),
+                contentType: 'application/json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                }
+            });
+
+            if (response.code === 200) {
+                // Update the displayed next payment date in the subscription details
+                const formattedDate = nextPaymentDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                $('.date-value').text(formattedDate);
+
+                // Update the date in the subscription list if visible
+                const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
+                    .closest('.wc-subscription');
+                if (subscriptionInList.length) {
+                    subscriptionInList.find('.next-payment time').text(formattedDate);
+                }
+
+                // Hide the schedule editor
+                $('.schedule-editor').hide();
+                $('.edit-link').show();
+
+                helpers.showNotification('Schedule updated successfully', 'success');
+            } else {
+                throw new Error(response.message || 'Failed to update schedule');
+            }
+        } catch (error) {
+            console.error('Error updating subscription schedule:', error);
+            helpers.showNotification(error.message || 'Failed to update schedule. Please try again.', 'error');
+        } finally {
+            // Reset button state
+            button.prop('disabled', false)
+                  .removeClass('button-loading')
+                  .html(originalButtonText);
+        }
+    });
+
+    // Function to calculate and display next payment date
+    function updateNextPaymentPreview() {
+        const selectedOption = $('input[name="pause_duration"]:checked');
+        if (!selectedOption.length) {
+            $('.next-payment-preview').hide();
+            return;
+        }
+
+        let nextPaymentDate = new Date('<?php echo $next_payment_date->format('Y-m-d'); ?>');
+
+        if (selectedOption.val() === 'custom_date') {
+            const customDate = $('input[name="new_date"]').val();
+            if (customDate) {
+                nextPaymentDate = new Date(customDate);
+            }
+        } else {
+            const frequency = parseInt(selectedOption.data('frequency'));
+            const timeUnit = selectedOption.data('time-unit');
+            
+            if (timeUnit.toLowerCase() === 'month' || timeUnit.toLowerCase() === 'months') {
+                nextPaymentDate.setMonth(nextPaymentDate.getMonth() + frequency);
+            } else if (timeUnit.toLowerCase() === 'week' || timeUnit.toLowerCase() === 'weeks') {
+                nextPaymentDate.setDate(nextPaymentDate.getDate() + (frequency * 7));
+            } else if (timeUnit.toLowerCase() === 'day' || timeUnit.toLowerCase() === 'days') {
+                nextPaymentDate.setDate(nextPaymentDate.getDate() + frequency);
+            } else if (timeUnit.toLowerCase() === 'year' || timeUnit.toLowerCase() === 'years') {
+                nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + frequency);
+            }
+        }
+
+        // Format and display the date
+        const formattedDate = nextPaymentDate.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        $('.preview-date').text(formattedDate);
+        $('.next-payment-preview').show();
+    }
+
+    // Update preview when pause duration changes
+    $('input[name="pause_duration"]').on('change', updateNextPaymentPreview);
+    
+    // Update preview when custom date changes
+    $('input[name="new_date"]').on('change', function() {
+        if ($('input[name="pause_duration"][value="custom_date"]').is(':checked')) {
+            updateNextPaymentPreview();
+        }
+    });
 });
 </script>
