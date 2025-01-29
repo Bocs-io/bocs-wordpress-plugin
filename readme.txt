@@ -1,3 +1,6 @@
+v0.0.106 01/29/2025
+* Cancel subscription button on the subscriptions page
+
 v0.0.105 01/28/2025
 * Pause/Skip Next Payment Date
 

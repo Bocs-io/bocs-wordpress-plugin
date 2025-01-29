@@ -24,7 +24,10 @@ $options = get_option('bocs_plugin_options');
             // Improved subscription name logic
             $subscription_name = '';
             if (!empty(trim($subscription['bocs']['name']))) {
-                $subscription_name = $subscription['bocs']['name'];
+                $subscription_name = sprintf(
+                    esc_html__($subscription['bocs']['name'] . ' (Order #%s)', 'woocommerce'),
+                    $subscription['externalSourceParentOrderId']
+                );
             } elseif (!empty($subscription['externalSourceParentOrderId'])) {
                 $subscription_name = sprintf(
                     esc_html__('Subscription (Order #%s)', 'woocommerce'),
@@ -50,7 +53,7 @@ $options = get_option('bocs_plugin_options');
                 <div class="accordion-content">
                     <div class="subscription-header-sticky">
                         <span class="subscription-title"><?php echo esc_html($subscription_name); ?></span>
-                        <span class="subscription-status status-<?php echo esc_attr($subscription['status']); ?>">
+                        <span class="subscription-status status-<?php echo esc_attr(strtolower($subscription['subscriptionStatus']) ); ?>">
                             <?php echo ucfirst($subscription['subscriptionStatus']); ?>
                         </span>
                     </div>
@@ -71,7 +74,7 @@ $options = get_option('bocs_plugin_options');
                                     </span>
                                 <?php endif; ?>
                             </div>
-                            <?php if ($subscription['status'] === 'active'): ?>
+                            <?php if (strtolower($subscription['subscriptionStatus']) === 'active'): ?>
                                 <button 
                                     class="woocommerce-button button bocs-button subscription_renewal_early" 
                                     id="renewal_<?php echo esc_attr($subscription['id']); ?>"
@@ -1453,6 +1456,13 @@ jQuery(document).ready(function($) {
                 const subscriptionData = response.data;
                 const detailsView = $('#subscription-details-view');
                 const boxItemsContainer = detailsView.find('.box-items');
+                const earlyRenewButton = detailsView.find('.header-actions button');
+                
+                if (subscriptionData.subscriptionStatus === 'active') {
+                    earlyRenewButton.show();
+                } else {
+                    earlyRenewButton.hide();
+                }
                 
                 // Clear existing items and show loading message
                 boxItemsContainer.empty().append(`
@@ -1940,6 +1950,67 @@ jQuery(document).ready(function($) {
         .on('click', '.cancel-edit', eventHandlers.cancelEdit)
         .on('click', '.save-frequency', eventHandlers.saveFrequency)
         .on('click', '.back-to-subscription-button, .back-to-subscription', eventHandlers.backToSubscription)
+        .on('click', '.cancel-button', async function(e) {
+            e.preventDefault();
+            
+            // Show confirmation dialog
+            if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+                return;
+            }
+
+            const button = $(this);
+            const originalButtonText = button.html();
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Cancelling...');
+                
+                helpers.showNotification('Cancelling subscription...', 'loading');
+
+                // Send cancellation request
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update subscription status in the list
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+                    }
+
+                    // Return to subscription list
+                    $('#subscription-details-view').hide();
+                    $('#bocs-subscriptions-accordion').show();
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error cancelling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                // Reset button state
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        })
         .on('change', 'input[name="schedule_action"]', function() {
             // Enable/disable corresponding inputs
             const selectedValue = $(this).val();
