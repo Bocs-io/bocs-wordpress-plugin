@@ -1923,16 +1923,16 @@ class Admin
             'status' => $order->get_status(),
             'currency' => $order->get_currency(),
             'version' => $order->get_version(),
-            'prices_include_tax' => $order->get_prices_include_tax(),
+            'prices_include_tax' => number_format((float)$order->get_prices_include_tax(), 2, '.', ''),
             'date_created' => $order->get_date_created()->date('c'),
             'date_modified' => $order->get_date_modified()->date('c'),
-            'discount_total' => $order->get_discount_total(),
-            'discount_tax' => $order->get_discount_tax(),
-            'shipping_total' => $order->get_shipping_total(),
-            'shipping_tax' => $order->get_shipping_tax(),
-            'cart_tax' => $order->get_cart_tax(),
+            'discount_total' => number_format((float)$order->get_discount_total(), 2, '.', ''),
+            'discount_tax' => number_format((float)$order->get_discount_tax(), 2, '.', ''),
+            'shipping_total' => number_format((float)$order->get_shipping_total(), 2, '.', ''),
+            'shipping_tax' => number_format((float)$order->get_shipping_tax(), 2, '.', ''),
+            'cart_tax' => number_format((float)$order->get_cart_tax(), 2, '.', ''),
             'total' => number_format((float)$order->get_total(), 2, '.', ''),
-            'total_tax' => $order->get_total_tax(),
+            'total_tax' => number_format((float)$order->get_total_tax(), 2, '.', ''),
             'customer_id' => $order->get_customer_id(),
             'order_key' => $order->get_order_key(),
             'billing' => $order->get_address('billing'),
@@ -1966,10 +1966,10 @@ class Admin
                 'variation_id' => $item->get_variation_id(),
                 'quantity' => $item->get_quantity(),
                 'tax_class' => $item->get_tax_class(),
-                'subtotal' => $item->get_subtotal(),
-                'subtotal_tax' => $item->get_subtotal_tax(),
+                'subtotal' => (float)number_format((float)$item->get_subtotal(), 2, '.', ''),
+                'subtotal_tax' => (float)number_format((float)$item->get_subtotal_tax(), 2, '.', ''),
                 'total' => (float)number_format((float)$item->get_total(), 2, '.', ''),
-                'total_tax' => $item->get_total_tax(),
+                'total_tax' => (float)number_format((float)$item->get_total_tax(), 2, '.', ''),
                 'taxes' => $item->get_taxes(),
                 'meta_data' => $item->get_meta_data(),
                 'sku' => $product ? $product->get_sku() : '',
@@ -1984,9 +1984,9 @@ class Admin
                 'rate_code' => $tax->rate_id,
                 'rate_id' => $tax->rate_id,
                 'label' => $tax->label,
-                'compound' => isset($tax->compound) ? $tax->compound : 0,
-                'tax_total' => isset($tax->tax_total) ? $tax->tax_total : 0,
-                'shipping_tax_total' => isset($tax->shipping_tax_total) ? $tax->shipping_tax_total : 0
+                'compound' => isset($tax->compound) ? (float)number_format((float)$tax->compound, 2, '.', '') : 0,
+                'tax_total' => isset($tax->tax_total) ? (float)number_format((float)$tax->tax_total, 2, '.', '') : 0,
+                'shipping_tax_total' => isset($tax->shipping_tax_total) ? (float)number_format((float)$tax->shipping_tax_total, 2, '.', '') : 0
             );
         }
 
@@ -1997,7 +1997,7 @@ class Admin
                 'method_title' => $shipping_item->get_name(),
                 'method_id' => $shipping_item->get_method_id(),
                 'total' => (float)number_format((float)$shipping_item->get_total(), 2, '.', ''),
-                'total_tax' => $shipping_item->get_total_tax(),
+                'total_tax' => (float)number_format((float)$shipping_item->get_total_tax(), 2, '.', ''),
                 'taxes' => $shipping_item->get_taxes()
             );
         }
@@ -2010,7 +2010,7 @@ class Admin
                 'tax_class' => $fee_item->get_tax_class(),
                 'tax_status' => $fee_item->get_tax_status(),
                 'total' => (float)number_format((float)$fee_item->get_total(), 2, '.', ''),
-                'total_tax' => $fee_item->get_total_tax(),
+                'total_tax' => (float)number_format((float)$fee_item->get_total_tax(), 2, '.', ''),
                 'taxes' => $fee_item->get_taxes()
             );
         }
@@ -2020,8 +2020,8 @@ class Admin
             $order_data['coupon_lines'][] = array(
                 'id' => $coupon_item_id,
                 'code' => $coupon_item->get_code(),
-                'discount' => $coupon_item->get_discount(),
-                'discount_tax' => $coupon_item->get_discount_tax()
+                'discount' => (float)number_format((float)$coupon_item->get_discount(), 2, '.', ''),
+                'discount_tax' => (float)number_format((float)$coupon_item->get_discount_tax(), 2, '.', '')
             );
         }
 
