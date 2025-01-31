@@ -24,12 +24,12 @@
  * @param {Array} params.selectedProducts - Array of products to add to cart
  * @param {number} params.total - Total price after discount
  */
-async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total }) {
+async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total, bocsId, collectionId }) {
 
 	let bocsFrequencyId = frequency.id;
 	var discountType = frequency.discountType ?? 'fixed_cart';
 
-	var id = jQuery('div#bocs-widget').data('id');
+	var id = bocsId
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -159,13 +159,11 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	}
 
 	buttonCart.html('Redirecting to Cart...');
-	if( id == null) id = '';
-	const collectionId = '';
-	// if(collectionId == null) collectionId = '';
-
 	// create cookie
 	document.cookie = "__bocs_id="+id+"; path=/";
-	if( collectionId != '' ) document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
+	if (collectionId && collectionId !== 'undefined' && collectionId !== '') {
+		document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
+	}
 	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
 	document.cookie = "__bocs_frequency_time_unit="+frequency.timeUnit+"; path=/";
 	document.cookie = "__bocs_frequency_interval="+frequency.frequency+"; path=/";
