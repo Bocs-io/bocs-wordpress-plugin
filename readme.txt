@@ -1,3 +1,8 @@
+
+v0.0.107 01/31/2025
+* Added the billing and shipping address on the order
+* Fixed the issue on the order creation in relation to bocsId and collectionId
+
 v0.0.106 01/29/2025
 * Cancel subscription button on the subscriptions page
 

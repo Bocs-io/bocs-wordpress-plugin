@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.31.1',
+            '2025.01.31.4',
             true
         );
 
@@ -942,58 +942,67 @@ class Admin
         $subscription_line_items = [];
         $is_bocs = false;
 
-        // get bocs data
-        $bocsid = $order->get_meta('__bocs_bocs_id');
-        $collectionid = $order->get_meta('__bocs_collections_id');
-        $frequency_id = $order->get_meta('__bocs_frequency_id');
+        // get bocs data with new hierarchy: cookies -> session -> order meta
+        $bocsid = '';
+        $collectionid = '';
+        $frequency_id = '';
 
+        // 1. Try to get values from cookies first
+        if (isset($_COOKIE['__bocs_id'])) {
+            $bocsid = sanitize_text_field($_COOKIE['__bocs_id']);
+        }
+        if (isset($_COOKIE['__bocs_collection_id'])) {
+            $collectionid = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+        }
+        if (isset($_COOKIE['__bocs_frequency_id'])) {
+            $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+        }
+
+        // 2. If values are empty, try to get from session
         if (empty($bocsid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $bocsid = $bocs_value;
-                $order->update_meta_data('__bocs_bocs_id', $bocs_value);
             }
         }
 
-        $is_bocs = ! empty($bocsid);
-
         if (empty($collectionid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_collection');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_collection_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $collectionid = $bocs_value;
-                $order->update_meta_data('__bocs_collection_id', $bocs_value);
             }
         }
 
         if (empty($frequency_id) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_frequency');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $frequency_id = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_id', $bocs_value);
             }
         }
-        
+
+        // 3. If still empty, try to get from order meta
+        if (empty($bocsid)) {
+            $bocsid = $order->get_meta('__bocs_id');
+        }
+        if (empty($collectionid)) {
+            $collectionid = $order->get_meta('__bocs_collections_id');
+        }
+        if (empty($frequency_id)) {
+            $frequency_id = $order->get_meta('__bocs_frequency_id');
+        }
+
+        // Update order meta with final values if they exist
+        if (!empty($bocsid)) {
+            $order->update_meta_data('__bocs_bocs_id', $bocsid);
+        }
+        if (!empty($collectionid)) {
+            $order->update_meta_data('__bocs_collection_id', $collectionid);
+        }
+        if (!empty($frequency_id)) {
+            $order->update_meta_data('__bocs_frequency_id', $frequency_id);
+        }
+
+        $is_bocs = !empty($bocsid);
         
         foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
@@ -1125,11 +1134,14 @@ class Admin
             ];
 
             // error_log('current_frequency ' . print_r($current_frequency, true));
+            error_log('bocsid ' . $bocsid);
+            error_log('collectionid ' . $collectionid);
 
             // Prepare the data array for JSON encoding
             $post_data_array = [
                 
                 'bocs' => ['id' => $bocsid],
+                // 'collection' => ['id' => $collectionid],
                 'billing' => [
                     'firstName' => $order->get_billing_first_name(),
                     'lastName' => $order->get_billing_last_name(),
@@ -1171,8 +1183,6 @@ class Admin
                 'total_tax' => is_string($order->get_total_tax()) ? number_format((float)$order->get_total_tax(), 2, '.', '') : (float)$order->get_total_tax(),
                 'customer_id' => $order->get_customer_id(),
                 'order_key' => $order->get_order_key(),
-                'billing' => $order->get_address('billing'),
-                'shipping' => $order->get_address('shipping'),
                 'payment_method' => $order->get_payment_method(),
                 'payment_method_title' => $order->get_payment_method_title(),
                 'transaction_id' => $order->get_transaction_id(),
@@ -1195,6 +1205,9 @@ class Admin
             if (!empty($collectionid)) {
                 $post_data_array['collection'] = ['id' => $collectionid];
             }
+
+            error_log('post_data billing' . print_r($post_data_array['billing'], true));
+            error_log('post_data shipping' . print_r($post_data_array['shipping'], true));
 
             // Encode the data array to JSON
             $post_data = json_encode($post_data_array);

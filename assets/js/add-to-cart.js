@@ -25,11 +25,14 @@
  * @param {number} params.total - Total price after discount
  */
 async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total, bocsId, collectionId }) {
-
+	
 	let bocsFrequencyId = frequency.id;
 	var discountType = frequency.discountType ?? 'fixed_cart';
 
-	var id = bocsId
+	var id = jQuery('div#bocs-widget').data('id');
+	if (collectionId != null && typeof collectionId !== 'undefined' && collectionId !== '') {
+		id = bocsId;
+	}
 	
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 
@@ -159,32 +162,63 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 	}
 
 	buttonCart.html('Redirecting to Cart...');
+	if (bocsId != null && typeof bocsId !== 'undefined' && bocsId !== '') id = bocsId;
+	
 	// create cookie
-	document.cookie = "__bocs_id="+id+"; path=/";
-	if (collectionId && collectionId !== 'undefined' && collectionId !== '') {
+	if (id != null && typeof id !== 'undefined' && id !== '') {
+		document.cookie = "__bocs_id="+id+"; path=/";
+	}
+	if (collectionId != null && typeof collectionId !== 'undefined' && collectionId !== '') {
 		document.cookie = "__bocs_collection_id="+collectionId+"; path=/";
 	}
-	document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
-	document.cookie = "__bocs_frequency_time_unit="+frequency.timeUnit+"; path=/";
-	document.cookie = "__bocs_frequency_interval="+frequency.frequency+"; path=/";
-	document.cookie = "__bocs_discount_type="+frequency.discountType+"; path=/";
-	document.cookie = "__bocs_total="+total+"; path=/";
-	document.cookie = "__bocs_discount="+discount+"; path=/";
-	document.cookie = "__bocs_subtotal="+price+"; path=/";
+	if (bocsFrequencyId != null && typeof bocsFrequencyId !== 'undefined' && bocsFrequencyId !== '') {
+		document.cookie = "__bocs_frequency_id="+bocsFrequencyId+"; path=/";
+	}
+	if (frequency.timeUnit != null && typeof frequency.timeUnit !== 'undefined' && frequency.timeUnit !== '') {
+		document.cookie = "__bocs_frequency_time_unit="+frequency.timeUnit+"; path=/";
+	}
+	if (frequency.frequency != null && typeof frequency.frequency !== 'undefined' && frequency.frequency !== '') {
+		document.cookie = "__bocs_frequency_interval="+frequency.frequency+"; path=/";
+	}
+	if (frequency.discountType != null && typeof frequency.discountType !== 'undefined' && frequency.discountType !== '') {
+		document.cookie = "__bocs_discount_type="+frequency.discountType+"; path=/";
+	}
+	if (total != null && typeof total !== 'undefined' && total !== '') {
+		document.cookie = "__bocs_total="+total+"; path=/";
+	}
+	if (discount != null && typeof discount !== 'undefined' && discount !== '') {
+		document.cookie = "__bocs_discount="+discount+"; path=/";
+	}
+	if (price != null && typeof price !== 'undefined' && price !== '') {
+		document.cookie = "__bocs_subtotal="+price+"; path=/";
+	}
 
 	// Check if user is logged in - accepts both string '1' and boolean true values
 	// This dual check handles different ways WordPress might return the login status
 	const isLoggedIn = bocsAjaxObject.isLoggedIn === '1' || bocsAjaxObject.isLoggedIn === true;
 
-	// Construct the cart URL with all necessary parameters for subscription processing
-	// Parameters include:
-	// - bocs: bundle/box ID
-	// - collection: collection identifier
-	// - frequency: subscription frequency ID
-	// - total: final price after discounts
-	// - discount: applied discount amount
-	// - price: original price before discounts
-	const redirectUrl = bocsAjaxObject.cartURL+'?bocs='+id+'&collection='+collectionId+'&frequency='+bocsFrequencyId+'&total='+total+'&discount='+discount+'&price='+price;
+	let params = [];
+	
+	if (id != null && typeof id !== 'undefined' && id !== '') {
+		params.push('bocs=' + id);
+	}
+	if (collectionId != null && typeof collectionId !== 'undefined' && collectionId !== '') {
+		params.push('collection=' + collectionId);
+	}
+	if (bocsFrequencyId != null && typeof bocsFrequencyId !== 'undefined' && bocsFrequencyId !== '') {
+		params.push('frequency=' + bocsFrequencyId);
+	}
+	if (total != null && typeof total !== 'undefined' && total !== '') {
+		params.push('total=' + total);
+	}
+	if (discount != null && typeof discount !== 'undefined' && discount !== '') {
+		params.push('discount=' + discount);
+	}
+	if (price != null && typeof price !== 'undefined' && price !== '') {
+		params.push('price=' + price);
+	}
+
+	const redirectUrl = bocsAjaxObject.cartURL + (params.length ? '?' + params.join('&') : '');
 	window.location.href = escapeUrl(redirectUrl);
 
 	/*if (!isLoggedIn) {
