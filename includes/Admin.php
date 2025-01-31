@@ -317,7 +317,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.09.4',
+            '2025.01.31.4',
             true
         );
 
@@ -388,12 +388,13 @@ class Admin
         $bocs_body = $this->get_bocs_data_from_api($bocs_id);
 
         if (is_checkout()) {
+            
             // checks the stripe checkbox and make it checked as default
             wp_enqueue_script(
                 'bocs-stripe-checkout-js',
                 plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
                 array('jquery'),
-                '20240611.8',
+                '20250122.5',
                 true
             );
 
@@ -930,6 +931,9 @@ class Admin
     {
         if (empty($order_id))
             return false;
+        
+        if (!isset($_COOKIE['__bocs_id']))
+            return false;
 
         // get the order details
         $order = wc_get_order($order_id);
@@ -938,96 +942,67 @@ class Admin
         $subscription_line_items = [];
         $is_bocs = false;
 
-        // get bocs data
-        $bocsid = $order->get_meta('__bocs_bocs_id');
-        $collectionid = $order->get_meta('__bocs_collections_id');
-        $frequency_id = $order->get_meta('__bocs_frequency_id');
+        // get bocs data with new hierarchy: cookies -> session -> order meta
+        $bocsid = '';
+        $collectionid = '';
+        $frequency_id = '';
 
+        // 1. Try to get values from cookies first
+        if (isset($_COOKIE['__bocs_id'])) {
+            $bocsid = sanitize_text_field($_COOKIE['__bocs_id']);
+        }
+        if (isset($_COOKIE['__bocs_collection_id'])) {
+            $collectionid = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+        }
+        if (isset($_COOKIE['__bocs_frequency_id'])) {
+            $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+        }
+
+        // 2. If values are empty, try to get from session
         if (empty($bocsid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $bocsid = $bocs_value;
-                $order->update_meta_data('__bocs_bocs_id', $bocs_value);
             }
         }
 
-        $is_bocs = ! empty($bocsid);
-
         if (empty($collectionid) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_collection');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_collection_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $collectionid = $bocs_value;
-                $order->update_meta_data('__bocs_collection_id', $bocs_value);
             }
         }
 
         if (empty($frequency_id) && isset(WC()->session)) {
             $bocs_value = WC()->session->get('bocs_frequency');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
+            if (!empty($bocs_value)) {
                 $frequency_id = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_id', $bocs_value);
             }
         }
 
-        /*$current_frequency = null;
-        $bocs_body = $this->get_bocs_data_from_api($bocsid);
-
-        error_log('frequency_id: ' . print_r($frequency_id, true));
-        // error_log('bocs_body' . print_r($bocs_body['data']['body'], true));
-
-        // Check if the required keys exist
-        if (isset($bocs_body['data']['body'])) {
-            $body_data = json_decode($bocs_body['data']['body'], true);
-
-            if (isset($body_data['zones'])) {
-                foreach ($body_data['zones'] as $zone_items) {
-                    foreach ($zone_items as $zone_item) {
-                        if ($zone_item['type'] === 'BocsStep5' && isset($zone_item['props']['selected'])) {
-                            $selected_items = $zone_item['props']['selected'];
-
-                            foreach ($selected_items as $selected_item) {
-                                if (isset($selected_item['priceAdjustment'])) {
-                                    $price_adjustment = $selected_item['priceAdjustment'];
-
-                                    // If you need the specific fields of the priceAdjustment
-                                    if (isset($price_adjustment['adjustments'])) {
-                                        foreach ($price_adjustment['adjustments'] as $adjustment) {
-                                            if ($adjustment['id'] == $frequency_id) {
-                                                $current_frequency = $adjustment;
-                                                break 3;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        // 3. If still empty, try to get from order meta
+        if (empty($bocsid)) {
+            $bocsid = $order->get_meta('__bocs_id');
+        }
+        if (empty($collectionid)) {
+            $collectionid = $order->get_meta('__bocs_collections_id');
+        }
+        if (empty($frequency_id)) {
+            $frequency_id = $order->get_meta('__bocs_frequency_id');
         }
 
-        error_log('current_frequency ' . print_r($current_frequency, true));*/
+        // Update order meta with final values if they exist
+        if (!empty($bocsid)) {
+            $order->update_meta_data('__bocs_bocs_id', $bocsid);
+        }
+        if (!empty($collectionid)) {
+            $order->update_meta_data('__bocs_collection_id', $collectionid);
+        }
+        if (!empty($frequency_id)) {
+            $order->update_meta_data('__bocs_frequency_id', $frequency_id);
+        }
+
+        $is_bocs = !empty($bocsid);
         
         foreach ($order->get_items() as $item) {
             $item_data = $item->get_data();
@@ -1159,11 +1134,14 @@ class Admin
             ];
 
             // error_log('current_frequency ' . print_r($current_frequency, true));
+            error_log('bocsid ' . $bocsid);
+            error_log('collectionid ' . $collectionid);
 
             // Prepare the data array for JSON encoding
             $post_data_array = [
                 
                 'bocs' => ['id' => $bocsid],
+                // 'collection' => ['id' => $collectionid],
                 'billing' => [
                     'firstName' => $order->get_billing_first_name(),
                     'lastName' => $order->get_billing_last_name(),
@@ -1197,12 +1175,39 @@ class Admin
                 'startDateGmt' => $start_date,
                 'order' => json_decode($this->get_order_data_as_json($order_id), true),
                 'total' => number_format((float)$order->get_total(), 2, '.', ''),
-                'discountTotal' => round($order->get_discount_total() + $order->get_discount_tax(), 2)
+                'discountTotal' => is_string($order->get_discount_total()) ? number_format((float)$order->get_discount_total(), 2, '.', '') : (float)$order->get_discount_total(),
+                'discount_tax' => is_string($order->get_discount_tax()) ? number_format((float)$order->get_discount_tax(), 2, '.', '') : (float)$order->get_discount_tax(),
+                'shipping_total' => is_string($order->get_shipping_total()) ? number_format((float)$order->get_shipping_total(), 2, '.', '') : (float)$order->get_shipping_total(),
+                'shipping_tax' => is_string($order->get_shipping_tax()) ? number_format((float)$order->get_shipping_tax(), 2, '.', '') : (float)$order->get_shipping_tax(),
+                'cart_tax' => is_string($order->get_cart_tax()) ? number_format((float)$order->get_cart_tax(), 2, '.', '') : (float)$order->get_cart_tax(),
+                'total_tax' => is_string($order->get_total_tax()) ? number_format((float)$order->get_total_tax(), 2, '.', '') : (float)$order->get_total_tax(),
+                'customer_id' => $order->get_customer_id(),
+                'order_key' => $order->get_order_key(),
+                'payment_method' => $order->get_payment_method(),
+                'payment_method_title' => $order->get_payment_method_title(),
+                'transaction_id' => $order->get_transaction_id(),
+                'customer_ip_address' => $order->get_customer_ip_address(),
+                'customer_user_agent' => $order->get_customer_user_agent(),
+                'created_via' => $order->get_created_via(),
+                'customer_note' => $order->get_customer_note(),
+                'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('c') : null,
+                'date_paid' => $order->get_date_paid() ? $order->get_date_paid()->date('c') : null,
+                'cart_hash' => $order->get_cart_hash(),
+                'meta_data' => $order->get_meta_data(),
+                'line_items' => array(),
+                'tax_lines' => array(),
+                'shipping_lines' => array(),
+                'fee_lines' => array(),
+                'coupon_lines' => array(),
+                'refunds' => array()
             ];
 
             if (!empty($collectionid)) {
                 $post_data_array['collection'] = ['id' => $collectionid];
             }
+
+            error_log('post_data billing' . print_r($post_data_array['billing'], true));
+            error_log('post_data shipping' . print_r($post_data_array['shipping'], true));
 
             // Encode the data array to JSON
             $post_data = json_encode($post_data_array);
@@ -1238,12 +1243,42 @@ class Admin
 
             if (curl_errno($curl)) {
                 $error = curl_error($curl);
-                error_log('[Bocs][ERROR] Failed to create subscription: ' . $error);
+                $error_code = curl_errno($curl);
+                $error_message = sprintf(
+                    '[Bocs][ERROR] Failed to create subscription: (Code: %d) %s',
+                    $error_code,
+                    $error
+                );
+                
+                // Always log critical errors
+                error_log($error_message);
+                
+                if (BOCS_ENVIRONMENT === 'dev') {
+                    // Additional debug information in developer mode
+                    error_log('[Bocs][DEBUG] Subscription creation attempt details:');
+                    error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                    error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                }
             } else {
                 if ($http_code >= 200 && $http_code < 300) {
-                    // error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        error_log('[Bocs][SUCCESS] Subscription created successfully. Response code: ' . $http_code);
+                        error_log('[Bocs][DEBUG] Response: ' . $response);
+                    }
                 } else {
-                    error_log('[Bocs][ERROR] Subscription creation failed. Response code: ' . $http_code);
+                    $error_message = sprintf(
+                        '[Bocs][ERROR] Subscription creation failed. Response code: %d. Response: %s',
+                        $http_code,
+                        $response
+                    );
+                    error_log($error_message);
+                    
+                    if (BOCS_ENVIRONMENT === 'dev') {
+                        // Additional debug information in developer mode
+                        error_log('[Bocs][DEBUG] Failed request details:');
+                        error_log('[Bocs][DEBUG] Request URL: ' . BOCS_API_URL . 'subscriptions');
+                        error_log('[Bocs][DEBUG] Request Data: ' . print_r($post_data_array, true));
+                    }
                 }
             }
 
@@ -1268,22 +1303,13 @@ class Admin
                     setcookie($cookie_name, '', time() - 3600, '/'); // empty value and old timestamp
                 }
             }
+
+            // Unset bocs data from WC session
+            if (WC()->session) {
+                WC()->session->__unset('bocs');
+            }
             
         }
-    }
-
-    /**
-     * Helper method to get value from session or cookie
-     * 
-     * @param string $key
-     * @return string|null
-     */
-    private function get_from_session_or_cookie($key) {
-        $value = WC()->session->get($key);
-        if (empty($value) && isset($_COOKIE["__${key}_id"])) {
-            $value = sanitize_text_field($_COOKIE["__${key}_id"]);
-        }
-        return $value;
     }
 
     public function search_product_ajax_callback(){
@@ -1936,16 +1962,16 @@ class Admin
             'status' => $order->get_status(),
             'currency' => $order->get_currency(),
             'version' => $order->get_version(),
-            'prices_include_tax' => $order->get_prices_include_tax(),
+            'prices_include_tax' => is_string($order->get_prices_include_tax()) ? number_format((float)$order->get_prices_include_tax(), 2, '.', '') : (float)$order->get_prices_include_tax(),
             'date_created' => $order->get_date_created()->date('c'),
             'date_modified' => $order->get_date_modified()->date('c'),
-            'discount_total' => $order->get_discount_total(),
-            'discount_tax' => $order->get_discount_tax(),
-            'shipping_total' => $order->get_shipping_total(),
-            'shipping_tax' => $order->get_shipping_tax(),
-            'cart_tax' => $order->get_cart_tax(),
-            'total' => number_format((float)$order->get_total(), 2, '.', ''),
-            'total_tax' => $order->get_total_tax(),
+            'discount_total' => is_string($order->get_discount_total()) ? number_format((float)$order->get_discount_total(), 2, '.', '') : (float)$order->get_discount_total(),
+            'discount_tax' => is_string($order->get_discount_tax()) ? number_format((float)$order->get_discount_tax(), 2, '.', '') : (float)$order->get_discount_tax(),
+            'shipping_total' => is_string($order->get_shipping_total()) ? number_format((float)$order->get_shipping_total(), 2, '.', '') : (float)$order->get_shipping_total(),
+            'shipping_tax' => is_string($order->get_shipping_tax()) ? number_format((float)$order->get_shipping_tax(), 2, '.', '') : (float)$order->get_shipping_tax(),
+            'cart_tax' => is_string($order->get_cart_tax()) ? number_format((float)$order->get_cart_tax(), 2, '.', '') : (float)$order->get_cart_tax(),
+            'total' => is_string($order->get_total()) ? number_format((float)$order->get_total(), 2, '.', '') : (float)$order->get_total(),
+            'total_tax' => is_string($order->get_total_tax()) ? number_format((float)$order->get_total_tax(), 2, '.', '') : (float)$order->get_total_tax(),
             'customer_id' => $order->get_customer_id(),
             'order_key' => $order->get_order_key(),
             'billing' => $order->get_address('billing'),
@@ -1979,10 +2005,10 @@ class Admin
                 'variation_id' => $item->get_variation_id(),
                 'quantity' => $item->get_quantity(),
                 'tax_class' => $item->get_tax_class(),
-                'subtotal' => $item->get_subtotal(),
-                'subtotal_tax' => $item->get_subtotal_tax(),
-                'total' => (float)number_format((float)$item->get_total(), 2, '.', ''),
-                'total_tax' => $item->get_total_tax(),
+                'subtotal' => is_string($item->get_subtotal()) ? number_format((float)$item->get_subtotal(), 2, '.', '') : (float)$item->get_subtotal(),    
+                'subtotal_tax' => is_string($item->get_subtotal_tax()) ? number_format((float)$item->get_subtotal_tax(), 2, '.', '') : (float)$item->get_subtotal_tax(),
+                'total' => is_string($item->get_total()) ? number_format((float)$item->get_total(), 2, '.', '') : (float)$item->get_total(),
+                'total_tax' => is_string($item->get_total_tax()) ? number_format((float)$item->get_total_tax(), 2, '.', '') : (float)$item->get_total_tax(),
                 'taxes' => $item->get_taxes(),
                 'meta_data' => $item->get_meta_data(),
                 'sku' => $product ? $product->get_sku() : '',
@@ -1997,9 +2023,9 @@ class Admin
                 'rate_code' => $tax->rate_id,
                 'rate_id' => $tax->rate_id,
                 'label' => $tax->label,
-                'compound' => isset($tax->compound) ? $tax->compound : 0,
-                'tax_total' => isset($tax->tax_total) ? $tax->tax_total : 0,
-                'shipping_tax_total' => isset($tax->shipping_tax_total) ? $tax->shipping_tax_total : 0
+                'compound' => isset($tax->compound) ? (is_string($tax->compound) ? number_format((float)$tax->compound, 2, '.', '') : (float)$tax->compound) : 0,
+                'tax_total' => isset($tax->tax_total) ? (is_string($tax->tax_total) ? number_format((float)$tax->tax_total, 2, '.', '') : (float)$tax->tax_total) : 0,
+                'shipping_tax_total' => isset($tax->shipping_tax_total) ? (is_string($tax->shipping_tax_total) ? number_format((float)$tax->shipping_tax_total, 2, '.', '') : (float)$tax->shipping_tax_total) : 0
             );
         }
 
@@ -2009,8 +2035,8 @@ class Admin
                 'id' => $shipping_item_id,
                 'method_title' => $shipping_item->get_name(),
                 'method_id' => $shipping_item->get_method_id(),
-                'total' => (float)number_format((float)$shipping_item->get_total(), 2, '.', ''),
-                'total_tax' => $shipping_item->get_total_tax(),
+                'total' => is_string($shipping_item->get_total()) ? number_format((float)$shipping_item->get_total(), 2, '.', '') : (float)$shipping_item->get_total(),
+                'total_tax' => is_string($shipping_item->get_total_tax()) ? number_format((float)$shipping_item->get_total_tax(), 2, '.', '') : (float)$shipping_item->get_total_tax(),
                 'taxes' => $shipping_item->get_taxes()
             );
         }
@@ -2022,8 +2048,8 @@ class Admin
                 'name' => $fee_item->get_name(),
                 'tax_class' => $fee_item->get_tax_class(),
                 'tax_status' => $fee_item->get_tax_status(),
-                'total' => (float)number_format((float)$fee_item->get_total(), 2, '.', ''),
-                'total_tax' => $fee_item->get_total_tax(),
+                'total' => is_string($fee_item->get_total()) ? number_format((float)$fee_item->get_total(), 2, '.', '') : (float)$fee_item->get_total(),
+                'total_tax' => is_string($fee_item->get_total_tax()) ? number_format((float)$fee_item->get_total_tax(), 2, '.', '') : (float)$fee_item->get_total_tax(),
                 'taxes' => $fee_item->get_taxes()
             );
         }
@@ -2033,8 +2059,8 @@ class Admin
             $order_data['coupon_lines'][] = array(
                 'id' => $coupon_item_id,
                 'code' => $coupon_item->get_code(),
-                'discount' => $coupon_item->get_discount(),
-                'discount_tax' => $coupon_item->get_discount_tax()
+                'discount' => is_string($coupon_item->get_discount()) ? number_format((float)$coupon_item->get_discount(), 2, '.', '') : (float)$coupon_item->get_discount(),
+                'discount_tax' => is_string($coupon_item->get_discount_tax()) ? number_format((float)$coupon_item->get_discount_tax(), 2, '.', '') : (float)$coupon_item->get_discount_tax()
             );
         }
 
@@ -2043,7 +2069,7 @@ class Admin
             $order_data['refunds'][] = array(
                 'id' => $refund->get_id(),
                 'reason' => $refund->get_reason(),
-                'total' => (float)number_format((float)$refund->get_amount(), 2, '.', '')
+                'total' => is_string($refund->get_amount()) ? number_format((float)$refund->get_amount(), 2, '.', '') : (float)$refund->get_amount()
             );
         }
 
@@ -2721,5 +2747,32 @@ class Admin
         }
         return $result;
     }
+
+    /**
+     * Add a reminder on the enable guest checkout setting that subscriptions still require an account
+     * @since 0.0.97 - Migrated from WooCommerce Subscriptions v2.3.0
+     * @param array $settings The list of settings
+     */ 
+    public function add_guest_checkout_setting_note( $settings ) {
+		$is_wc_pre_3_4_0 = version_compare( WC()->version, '3.4.0', '<' );
+		$current_filter  = current_filter();
+
+		if ( ( $is_wc_pre_3_4_0 && 'woocommerce_payment_gateways_settings' !== $current_filter ) || ( ! $is_wc_pre_3_4_0 && 'woocommerce_account_settings' !== $current_filter ) ) {
+			return $settings;
+		}
+
+		if ( ! is_array( $settings ) ) {
+			return $settings;
+		}
+
+		foreach ( $settings as &$value ) {
+			if ( isset( $value['id'] ) && 'woocommerce_enable_guest_checkout' === $value['id'] ) {
+				$value['desc_tip']  = ! empty( $value['desc_tip'] ) ? $value['desc_tip'] . ' ' : '';
+				$value['desc_tip'] .= __( 'Note that purchasing bocs requires an account.', 'bocs-wordpress' );
+				break;
+			}
+		}
+		return $settings;
+	}
 }
 

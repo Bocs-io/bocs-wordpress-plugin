@@ -151,4 +151,72 @@ class Bocs_Account
             echo '<p>' . __('No subscription ID provided.', 'woocommerce') . '</p>';
         }
     }
+
+    private function _cart_contains_bocs_subscription(){
+        
+        // get the current bocs subscription id
+        $bocs_id = '';
+
+        if (isset(WC()->session)) {
+            $bocs_id = WC()->session->get('bocs');   
+        }
+
+        if (empty($bocs_id)) {
+            if (isset($_COOKIE['__bocs_id'])) {
+                $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+            }
+        }
+
+        return ! empty($bocs_id);
+    }
+    
+    /**
+	 * Enables the 'registration required' (guest checkout) setting when purchasing bocs.
+	 *
+	 * @since 0.0.97
+	 *
+	 * @param bool $account_required Whether an account is required to checkout.
+	 * @return bool
+	 */
+	public function require_registration_during_checkout($account_required) {
+		// If cart has BOCS subscription AND user is not logged in
+		if ($this->_cart_contains_bocs_subscription() && !is_user_logged_in()) {
+			$account_required = true;
+		}
+
+		return $account_required;
+	}
+
+	/**
+	 * During the checkout process, force registration when the cart contains a bocs subscription.
+	 *
+	 *@since 0.0.97
+	 * @param $woocommerce_params This parameter is not used.
+	 */
+	public function force_registration_during_checkout( $woocommerce_params ) {
+		if ( $this->_cart_contains_bocs_subscription() && ! is_user_logged_in() ) {
+			$_POST['createaccount'] = 1;
+		}
+	}
+
+    /**
+	 * Enables registration for carts containing bocs
+	 *
+	 * @since 3.1.0
+	 *
+	 * @param  bool $registration_enabled Whether registration is enabled on checkout by default.
+	 * @return bool
+	 */
+	public function maybe_enable_registration( $registration_enabled ) {
+		// Exit early if regristration is already allowed.
+		if ( $registration_enabled ) {
+			return $registration_enabled;
+		}
+
+		if ( $this->_cart_contains_bocs_subscription() ) {
+			return true;
+		}
+
+		return $registration_enabled;
+	}
 }
