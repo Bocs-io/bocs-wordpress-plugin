@@ -15,6 +15,11 @@ wp_enqueue_style('wp-jquery-ui-dialog');
 
 // Retrieve BOCS plugin settings
 $options = get_option('bocs_plugin_options');
+
+// Initialize variables at the start of the file or before line 204
+$discount_percent = 0; // or whatever default value is appropriate
+$frequency_text = ''; // or whatever default value is appropriate
+
 ?>
 
 <div id="bocs-subscriptions-accordion" class="woocommerce-subscriptions-wrapper">
@@ -45,6 +50,19 @@ $options = get_option('bocs_plugin_options');
             $start_date = new DateTime($subscription['startDateGmt']);
             
             $row_class = ($index % 2 == 0) ? 'even' : 'odd';
+
+            // Then later in the code where these variables should be set
+            if (isset($subscription['frequency']) && isset($subscription['timeUnit'])) {
+                $frequency_text = sprintf(
+                    'Every %d %s',
+                    $subscription['frequency'],
+                    $subscription['frequency'] > 1 ? $subscription['timeUnit'] : rtrim($subscription['timeUnit'], 's')
+                );
+            }
+
+            if (isset($subscription['discount'])) {
+                $discount_percent = floatval($subscription['discount']);
+            }
     ?>
             <div class="wc-subscription <?php echo esc_attr($row_class); ?>">
                 <h3 class="accordion-header">
@@ -189,51 +207,9 @@ $options = get_option('bocs_plugin_options');
                 <?php esc_html_e('Edit the Box', 'woocommerce'); ?>
             </button>
         </div>
-        <div class="box-items">
-            <?php foreach ($subscription['lineItems'] as $item): ?>
-                <div class="box-item" 
-                    data-product-id="<?php echo esc_attr($item['externalSourceId']); ?>"
-                    data-price="<?php echo esc_attr($item['price']); ?>"
-                    data-bocs-product-id="<?php echo esc_attr($item['productId']); ?>"
-                    data-quantity="<?php echo esc_attr($item['quantity']); ?>"
-                    data-total="<?php echo esc_attr($item['total']); ?>">
-                    <?php 
-                    $product = wc_get_product($item['externalSourceId']);
-                    $image = $product ? wp_get_attachment_image_src(get_post_thumbnail_id($product->get_id()), 'thumbnail') : '';
-                    ?>
-                    <div class="item-image">
-                        <?php if ($image): ?>
-                            <img src="<?php echo esc_url($image[0]); ?>" alt="<?php echo esc_attr($product->get_name()); ?>">
-                        <?php endif; ?>
-                    </div>
-                    <div class="item-details">
-                        <h4><?php echo esc_html($product ? $product->get_name() : 'Product'); ?></h4>
-                        <div class="item-quantity">
-                            <?php echo esc_html($item['quantity']); ?> × 
-                            <?php echo wc_price($item['price']); ?>
-                        </div>
-                    </div>
-                    <div class="item-total">
-                        <?php echo wc_price($item['total']); ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+        <div class="box-items"></div>
 
-        <div class="subscription-totals">
-            <div class="total-row">
-                <span><?php esc_html_e('Subtotal:', 'woocommerce'); ?></span>
-                <span><?php echo wc_price($subscription['total']); ?></span>
-            </div>
-            <div class="total-row">
-                <span><?php esc_html_e('Delivery:', 'woocommerce'); ?></span>
-                <span><?php echo wc_price($subscription['shippingTotal']); ?></span>
-            </div>
-            <div class="total-row total">
-                <span><?php esc_html_e('Total:', 'woocommerce'); ?></span>
-                <span><?php echo wc_price($subscription['total']); ?></span>
-            </div>
-        </div>
+        <div class="subscription-totals"></div>
 
         <div class="subscription-details-sections">
             <div class="details-section">
@@ -241,53 +217,6 @@ $options = get_option('bocs_plugin_options');
                     <h3><?php esc_html_e('Frequency', 'woocommerce'); ?></h3>
                     <button class="edit-link"><?php esc_html_e('Edit', 'woocommerce'); ?></button>
                 </div>
-                <?php
-                // Get frequencies from BOCS widget
-                $bocs_id = $subscription['bocs']['id'] ?? '';
-                $frequencies = [];
-                
-                if ($bocs_id) {
-                    $widget_url = BOCS_LIST_WIDGETS_URL . $bocs_id . '/bocs';
-                    
-                    // Use existing BOCS headers from options
-                    $headers = array(
-                        'Store' => $options['bocs_headers']['store'],
-                        'Organization' => $options['bocs_headers']['organization'],
-                        'Authorization' => $options['bocs_headers']['authorization'],
-                        'Content-Type' => 'application/json'
-                    );
-                    
-                    $response = wp_remote_get($widget_url, array(
-                        'headers' => $headers
-                    ));
-                    
-                    if (!is_wp_error($response)) {
-                        $widget_data = json_decode(wp_remote_retrieve_body($response), true);
-                        
-                        // Get frequencies from priceAdjustment.adjustments
-                        if (isset($widget_data['data']['priceAdjustment']['adjustments'])) {
-                            $frequencies = $widget_data['data']['priceAdjustment']['adjustments'];
-                        }
-                    }
-                }
-
-                // Current frequency display
-                $current_frequency = $subscription['frequency'];
-                $frequency_text = sprintf(
-                    __('Every %d %s', 'woocommerce'),
-                    $current_frequency['frequency'],
-                    $current_frequency['frequency'] > 1 ? $current_frequency['timeUnit'] : rtrim($current_frequency['timeUnit'], 's')
-                );
-
-                // Calculate discount amount for current frequency
-                $discount_percent = 0;
-                foreach ($frequencies as $freq) {
-                    if ($freq['id'] === $current_frequency['id']) {
-                        $discount_percent = $freq['discount'];
-                        break;
-                    }
-                }
-                ?>
                 <p class="current-frequency">
                     <?php 
                     if ($discount_percent > 0) {
@@ -305,32 +234,11 @@ $options = get_option('bocs_plugin_options');
                     </div>
                     
                     <div class="frequency-options">
-                        <?php 
-                        if (!empty($frequencies)):
-                            foreach ($frequencies as $freq): 
-                                $freq_name = sprintf(
-                                    __('Every %d %s', 'woocommerce'),
-                                    $freq['frequency'],
-                                    $freq['frequency'] > 1 ? $freq['timeUnit'] : rtrim($freq['timeUnit'], 's')
-                                );
-                                if ($freq['discount'] > 0) {
-                                    $freq_name .= sprintf(' (%d%% off)', $freq['discount']);
-                                }
-                        ?>
-                            <label class="frequency-option">
-                                <input type="radio" name="frequency" 
-                                    value="<?php echo esc_attr($freq['id']); ?>" 
-                                    data-name="<?php echo esc_attr($freq_name); ?>"
-                                    data-discount="<?php echo esc_attr($freq['discount']); ?>"
-                                    data-time-unit="<?php echo esc_attr($freq['timeUnit']); ?>"
-                                    data-frequency="<?php echo esc_attr($freq['frequency']); ?>"
-                                    <?php checked($current_frequency['id'] === $freq['id']); ?>>
-                                <span class="radio-label"><?php echo esc_html($freq_name); ?></span>
-                            </label>
-                        <?php 
-                            endforeach;
-                        endif;
-                        ?>
+                        <div class="frequency-options-loading" style="display: none;">
+                            <div class="loading-spinner"></div>
+                            <p>Loading frequency options...</p>
+                        </div>
+                        <div class="frequency-options-content"></div>
                     </div>
 
                     <button class="save-frequency">
@@ -344,7 +252,7 @@ $options = get_option('bocs_plugin_options');
                     <h3><?php esc_html_e('Instructions', 'woocommerce'); ?></h3>
                     <button class="edit-link"><?php esc_html_e('Edit', 'woocommerce'); ?></button>
                 </div>
-                <p><?php echo esc_html($subscription['shipping']['instructions'] ?? ''); ?></p>
+                <p></p>
             </div>
 
             <div class="details-section">
@@ -357,10 +265,7 @@ $options = get_option('bocs_plugin_options');
                 </div>
                 <div class="date-info">
                     <p class="date-label"><?php esc_html_e('Next Payment Date', 'woocommerce'); ?></p>
-                    <p class="date-value"><?php 
-                        $next_payment_date = new DateTime($subscription['nextPaymentDateGmt']);
-                        echo esc_html($next_payment_date->format('l j F Y')); 
-                    ?></p>
+                    <p class="date-value"></p>
                 </div>
 
                 <!-- Add new schedule editor -->
@@ -373,33 +278,18 @@ $options = get_option('bocs_plugin_options');
                     <div class="schedule-options">
                         <div class="schedule-option">
                             <div class="pause-duration">
-                                <?php 
-                                if (!empty($frequencies)):
-                                    foreach ($frequencies as $freq): 
-                                        $pause_text = sprintf(
-                                            _n('Pause for %d Month', 'Pause for %d Months', $freq['frequency'], 'woocommerce'),
-                                            $freq['frequency']
-                                        );
-                                ?>
-                                    <label class="frequency-option">
-                                        <input type="radio" name="pause_duration" 
-                                            value="<?php echo esc_attr($freq['id']); ?>" 
-                                            data-frequency="<?php echo esc_attr($freq['frequency']); ?>"
-                                            data-time-unit="<?php echo esc_attr($freq['timeUnit']); ?>"
-                                            >
-                                        <span class="radio-label"><?php echo esc_html($pause_text); ?></span>
-                                    </label>
-                                <?php 
-                                    endforeach;
-                                endif;
-                                ?>
+                                <div class="pause-options-loading" style="display: none;">
+                                    <div class="loading-spinner"></div>
+                                    <p>Loading pause options...</p>
+                                </div>
+                                <div class="pause-options-content"></div>
                                 <label class="frequency-option">
                                     <input type="radio" name="pause_duration" value="custom_date">
                                     <span class="radio-label">Skip to Date</span>
                                 </label>
                                 <input type="date" name="new_date"
                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
-                                       value="<?php echo $next_payment_date->format('Y-m-d'); ?>">
+                                       value="">
                             </div>
                         </div>
 
@@ -1429,6 +1319,8 @@ jQuery(document).ready(function($) {
             const subscriptionId = button.data('subscription-id');
             activeSubscriptionId = subscriptionId;
             
+            console.log('View details clicked for subscription:', subscriptionId);
+            
             if (!subscriptionId) {
                 console.error('No subscription ID found');
                 return;
@@ -1579,8 +1471,16 @@ jQuery(document).ready(function($) {
                 // Hide loading message on success
                 helpers.hideNotification();
 
+                // After successful subscription data fetch, load frequencies
+                if (subscriptionData.bocs && subscriptionData.bocs.id) {
+                    console.log('Loading frequencies for BOCS ID:', subscriptionData.bocs.id);
+                    await helpers.loadFrequencyOptions(subscriptionData.bocs.id, subscriptionData.frequency);
+                } else {
+                    console.warn('No BOCS ID found in subscription data:', subscriptionData);
+                }
+
             } catch (error) {
-                console.error('Error fetching subscription details:', error);
+                console.error('Error in viewDetails:', error);
                 helpers.showNotification('Failed to load subscription details. Please try again.', 'error');
             } finally {
                 button.prop('disabled', false).removeClass('button-loading');
@@ -1937,6 +1837,122 @@ jQuery(document).ready(function($) {
 
             // Update the totals section
             $('.subscription-totals').replaceWith(totalsHtml);
+        },
+
+        /**
+         * Load Frequency Options
+         * Fetches and populates frequency options for both editors
+         * 
+         * @param {string} bocsId - The BOCS widget ID
+         * @param {Object} currentFrequency - The current frequency settings
+         */
+        loadFrequencyOptions: async function(bocsId, currentFrequency) {
+            console.log('Loading frequency options...', {
+                bocsId: bocsId,
+                currentFrequency: currentFrequency
+            });
+
+            const loadingElements = $('.frequency-options-loading, .pause-options-loading');
+            const contentElements = $('.frequency-options-content, .pause-options-content');
+            
+            try {
+                loadingElements.show();
+                contentElements.empty();
+
+                console.log('Fetching frequency data from API...');
+
+                // Function to generate HTML for frequency options
+                const generateFrequencyHtml = (frequencies) => {
+                    const frequencyOptionsHtml = frequencies.map(freq => {
+                        const freqName = `Every ${freq.frequency} ${freq.frequency > 1 ? freq.timeUnit : freq.timeUnit.replace(/s$/, '')}`;
+                        const discountText = freq.discount > 0 ? ` (${freq.discount}% off)` : '';
+                        const isChecked = currentFrequency && currentFrequency.id === freq.id;
+                        
+                        return `
+                            <label class="frequency-option">
+                                <input type="radio" name="frequency" 
+                                    value="${freq.id}" 
+                                    data-name="${freqName}${discountText}"
+                                    data-discount="${freq.discount}"
+                                    data-time-unit="${freq.timeUnit}"
+                                    data-frequency="${freq.frequency}"
+                                    ${isChecked ? 'checked' : ''}>
+                                <span class="radio-label">${freqName}${discountText}</span>
+                            </label>
+                        `;
+                    }).join('');
+
+                    const pauseOptionsHtml = frequencies.map(freq => {
+                        const pauseText = `Pause for ${freq.frequency} ${freq.frequency > 1 ? freq.timeUnit : freq.timeUnit.replace(/s$/, '')}`;
+                        return `
+                            <label class="frequency-option">
+                                <input type="radio" name="pause_duration" 
+                                    value="${freq.id}" 
+                                    data-frequency="${freq.frequency}"
+                                    data-time-unit="${freq.timeUnit}">
+                                <span class="radio-label">${pauseText}</span>
+                            </label>
+                        `;
+                    }).join('');
+
+                    $('.frequency-options-content').html(frequencyOptionsHtml);
+                    $('.pause-options-content').html(pauseOptionsHtml);
+                };
+
+                // Try first API endpoint
+                let response = await $.ajax({
+                    url: '<?php echo BOCS_LIST_WIDGETS_URL; ?>' + bocsId + '/bocs',
+                    method: 'GET',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                        xhr.setRequestHeader('Content-Type', ' application/json');
+                    }
+                });
+
+                // If first endpoint doesn't have adjustments, try second endpoint
+                if (!(response.data?.priceAdjustment?.adjustments)) {
+                    response = await new Promise(resolve => setTimeout(async () => {
+                        const result = await $.ajax({
+                            url: '<?php echo BOCS_LIST_WIDGETS_URL; ?>' + bocsId,
+                            method: 'GET',
+                            beforeSend: function(xhr) {
+                                xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                                xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                                xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                                xhr.setRequestHeader('Content-Type', ' application/json');
+                            }
+                        });
+                        resolve(result);
+                    }, 5000)); // 5000 milliseconds = 5 seconds
+
+                    // Try to parse body data if available
+                    if (response.data?.body) {
+                        try {
+                            const bodyData = JSON.parse(response.data.body);
+                            if (bodyData.content?.[0]?.props?.selected?.[0]?.priceAdjustment?.adjustments) {
+                                response.data.priceAdjustment = bodyData.content[0].props.selected[0].priceAdjustment;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing body JSON:', e);
+                        }
+                    }
+                }
+
+                // Generate HTML if we have frequency data
+                if (response.data?.priceAdjustment?.adjustments) {
+                    generateFrequencyHtml(response.data.priceAdjustment.adjustments);
+                } else {
+                    console.warn('No frequency data found in response:', response);
+                    contentElements.html('<p class="error">No frequency options available.</p>');
+                }
+            } catch (error) {
+                console.error('Error fetching frequency data:', error);
+                contentElements.html('<p class="error">Failed to load frequency options.</p>');
+            } finally {
+                loadingElements.hide();
+            }
         }
     };
 
