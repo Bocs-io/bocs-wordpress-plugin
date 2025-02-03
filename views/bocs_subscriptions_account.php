@@ -1950,29 +1950,29 @@ jQuery(document).ready(function($) {
         .on('click', '.cancel-edit', eventHandlers.cancelEdit)
         .on('click', '.save-frequency', eventHandlers.saveFrequency)
         .on('click', '.back-to-subscription-button, .back-to-subscription', eventHandlers.backToSubscription)
-        .on('click', '.cancel-button', async function(e) {
+        .on('click', '.subscription_renewal_early, .pay-now', async function(e) {
             e.preventDefault();
-            
-            // Show confirmation dialog
-            if (!confirm('Are you sure you want to cancel this subscription? This action cannot be undone.')) {
+            const button = $(this);
+            const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+            const originalButtonText = button.html();
+
+            if (!subscriptionId) {
+                console.error('No subscription ID found');
                 return;
             }
-
-            const button = $(this);
-            const originalButtonText = button.html();
 
             try {
                 // Show loading state
                 button.prop('disabled', true)
                       .addClass('button-loading')
-                      .html('<span class="loading-spinner"></span> Cancelling...');
+                      .html('<span class="loading-spinner"></span> Processing...');
                 
-                helpers.showNotification('Cancelling subscription...', 'loading');
+                helpers.showNotification('Processing early renewal...', 'loading');
 
-                // Send cancellation request
+                // Send early renewal request
                 const response = await $.ajax({
-                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}/cancel`,
-                    method: 'PUT',
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
                     contentType: 'application/json',
                     beforeSend: function(xhr) {
                         xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
@@ -1981,29 +1981,21 @@ jQuery(document).ready(function($) {
                     }
                 });
 
-                if (response.code === 200) {
-                    // Update subscription status in the list
-                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
-                        .closest('.wc-subscription');
-                    
-                    if (subscriptionInList.length) {
-                        subscriptionInList.find('.subscription-status')
-                            .removeClass('status-active')
-                            .addClass('status-cancelled')
-                            .text('Cancelled');
+                if (response.code === 200 && response.data) {
+                    // Redirect to checkout if payment URL is provided
+                    if (response.data.paymentUrl) {
+                        window.location.href = response.data.paymentUrl;
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        // Optionally reload the page after a short delay
+                        setTimeout(() => window.location.reload(), 2000);
                     }
-
-                    // Return to subscription list
-                    $('#subscription-details-view').hide();
-                    $('#bocs-subscriptions-accordion').show();
-
-                    helpers.showNotification('Subscription cancelled successfully', 'success');
                 } else {
-                    throw new Error(response.message || 'Failed to cancel subscription');
+                    throw new Error(response.message || 'Failed to process early renewal');
                 }
             } catch (error) {
-                console.error('Error cancelling subscription:', error);
-                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
             } finally {
                 // Reset button state
                 button.prop('disabled', false)
