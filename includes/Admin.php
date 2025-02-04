@@ -394,7 +394,7 @@ class Admin
                 'bocs-stripe-checkout-js',
                 plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
                 array('jquery'),
-                '20250122.5',
+                '20250204.11',
                 true
             );
 

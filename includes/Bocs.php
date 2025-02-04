@@ -404,9 +404,10 @@ class Bocs
         $this->loader->add_action('woocommerce_before_checkout_process', $bocs_account, 'force_registration_during_checkout');
         $this->loader->add_filter('woocommerce_checkout_registration_enabled', $bocs_account, 'maybe_enable_registration');
     
-        $bocs_checkout = new Bocs_Checkout();
-        $this->loader->add_filter('woocommerce_checkout_fields', $bocs_checkout, 'customize_checkout_account_creation', 10, 1  );
-        $this->loader->add_filter('woocommerce_create_account_default_checked', $bocs_checkout, 'conditional_auto_create_account', 10, 1);
+        //$bocs_checkout = new Bocs_Checkout();
+        //$this->loader->add_filter('woocommerce_checkout_fields', $bocs_checkout, 'customize_checkout_account_creation', 10, 1  );
+        //$this->loader->add_filter('woocommerce_create_account_default_checked', $bocs_checkout, 'conditional_auto_create_account', 10, 1);
+        //$this->loader->add_filter('woocommerce_create_account_default', $bocs_checkout, 'conditional_create_account_default', 10, 1);
     }
 
     public function define_bocs_email_api()

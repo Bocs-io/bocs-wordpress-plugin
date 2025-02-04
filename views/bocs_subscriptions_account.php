@@ -329,7 +329,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                 </button>
                 <button class="cancel-button">
                     <span class="dashicons dashicons-trash"></span>
-                    <?php esc_html_e('Cancel', 'woocommerce'); ?>
+                    <?php esc_html_e('Cancel Subscription', 'woocommerce'); ?>
                 </button>
             </div>
         </div>
@@ -1918,8 +1918,6 @@ jQuery(document).ready(function($) {
                             url: '<?php echo BOCS_LIST_WIDGETS_URL; ?>' + bocsId,
                             method: 'GET',
                             beforeSend: function(xhr) {
-                                xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                                xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
                                 xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
                                 xhr.setRequestHeader('Content-Type', ' application/json');
                             }

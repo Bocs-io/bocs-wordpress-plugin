@@ -511,6 +511,9 @@ class Sync
 
 		// Search for existing Bocs user if no contact ID
 		if (empty($bocs_contact_id)) {
+
+			$curl = new Curl();
+			
 			$url = 'contacts?query=email:"' . $email . '"';
 			$this->logMessage('DEBUG', "Searching for Bocs user by email", [
 				'email' => $email,
@@ -943,5 +946,68 @@ class Sync
 	private function logMessage($level, $message, $context = []) {
 		$contextStr = !empty($context) ? ' ' . print_r($context, true) : '';
 		error_log("[Bocs Sync][{$level}] {$message}{$contextStr}");
+	}
+
+	/**
+	 * Builds parameters for updating a Bocs user
+	 *
+	 * @param int    $user_id     WordPress user ID
+	 * @param string $first_name  User's first name
+	 * @param string $last_name   User's last name
+	 * @param string $email       User's email address
+	 * @param string $bocs_contact_id Bocs contact ID
+	 * @return array Array containing 'do_sync' boolean and 'data' array of parameters
+	 */
+	private function buildUpdateParams($user_id, $first_name, $last_name, $email, $bocs_contact_id) {
+		$this->logMessage('DEBUG', "Building update parameters", [
+			'user_id' => $user_id,
+			'email' => $email
+		]);
+		
+		$params = [
+			'do_sync' => false,
+			'data' => []
+		];
+		
+		// Always include ID
+		$params['data'][] = '"id": "' . $user_id . '"';
+		
+		// Get current user data for comparison
+		$current_user = get_userdata($user_id);
+		
+		// Check for changes in first name
+		if ($current_user->first_name !== $first_name) {
+			$params['data'][] = '"firstName": "' . $first_name . '"';
+			$params['do_sync'] = true;
+		}
+		
+		// Check for changes in last name
+		if ($current_user->last_name !== $last_name) {
+			$params['data'][] = '"lastName": "' . $last_name . '"';
+			$params['do_sync'] = true;
+		}
+		
+		// Check for changes in email
+		if ($current_user->user_email !== $email) {
+			$params['data'][] = '"email": "' . $email . '"';
+			$params['do_sync'] = true;
+		}
+		
+		// Add full name if either first or last name changed
+		if ($current_user->first_name !== $first_name || $current_user->last_name !== $last_name) {
+			$params['data'][] = '"fullName": "' . $first_name . ' ' . $last_name . '"';
+		}
+		
+		// Add Bocs contact ID if available
+		if (!empty($bocs_contact_id)) {
+			$params['data'][] = '"bocsContactId": "' . $bocs_contact_id . '"';
+		}
+		
+		$this->logMessage('DEBUG', "Built update parameters", [
+			'do_sync' => $params['do_sync'],
+			'param_count' => count($params['data'])
+		]);
+		
+		return $params;
 	}
 }

@@ -152,22 +152,26 @@ class Bocs_Account
         }
     }
 
-    private function _cart_contains_bocs_subscription(){
-        
-        // get the current bocs subscription id
+    /**
+     * Checks if the current cart contains a Bocs subscription.
+     *
+     * @since 0.0.97
+     * @access private
+     * 
+     * @return bool True if cart contains a Bocs subscription, false otherwise.
+     */
+    private function _cart_contains_bocs_subscription() {
         $bocs_id = '';
-
+        
         if (isset(WC()->session)) {
-            $bocs_id = WC()->session->get('bocs');   
+            $bocs_id = WC()->session->get('bocs');
+        }
+        
+        if (empty($bocs_id) && isset($_COOKIE['__bocs_id'])) {
+            $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
         }
 
-        if (empty($bocs_id)) {
-            if (isset($_COOKIE['__bocs_id'])) {
-                $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
-            }
-        }
-
-        return ! empty($bocs_id);
+        return !empty($bocs_id);
     }
     
     /**
@@ -179,25 +183,24 @@ class Bocs_Account
 	 * @return bool
 	 */
 	public function require_registration_during_checkout($account_required) {
-		// If cart has BOCS subscription AND user is not logged in
-		if ($this->_cart_contains_bocs_subscription() && !is_user_logged_in()) {
-			$account_required = true;
-		}
-
-		return $account_required;
+		return $this->_cart_contains_bocs_subscription() && !is_user_logged_in() 
+			? true 
+			: $account_required;
 	}
 
-	/**
-	 * During the checkout process, force registration when the cart contains a bocs subscription.
-	 *
-	 *@since 0.0.97
-	 * @param $woocommerce_params This parameter is not used.
-	 */
-	public function force_registration_during_checkout( $woocommerce_params ) {
-		if ( $this->_cart_contains_bocs_subscription() && ! is_user_logged_in() ) {
-			$_POST['createaccount'] = 1;
-		}
-	}
+    /**
+     * During the checkout process, force registration when the cart contains a bocs subscription.
+     *
+     * @since 0.0.97
+     * @param array $data Posted checkout form data
+     * @return array Modified checkout form data
+     */
+    public function force_registration_during_checkout($data) {
+        if ($this->_cart_contains_bocs_subscription() && !is_user_logged_in()) {
+            $data['createaccount'] = 1;
+        }
+        return $data;
+    }
 
     /**
 	 * Enables registration for carts containing bocs
@@ -210,7 +213,7 @@ class Bocs_Account
 	public function maybe_enable_registration( $registration_enabled ) {
 		// Exit early if regristration is already allowed.
 		if ( $registration_enabled ) {
-			return $registration_enabled;
+			return true;
 		}
 
 		if ( $this->_cart_contains_bocs_subscription() ) {
