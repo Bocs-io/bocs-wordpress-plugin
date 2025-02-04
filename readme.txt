@@ -1,3 +1,8 @@
+v0.0.108 02/04/2025
+* Added the save payment checkbox on the checkout page 
+* Fixes on the frequency on the subscriptions page
+* Fixes on the next payment date on the subscriptions page
+* Fixes on the early renewal on the subscriptions page
 
 v0.0.107 01/31/2025
 * Added the billing and shipping address on the order
