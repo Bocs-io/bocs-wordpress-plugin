@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-02-05T06:13:48+00:00\n"
+"POT-Creation-Date: 2025-02-06T14:01:06+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: bocs-wordpress\n"
@@ -51,10 +51,10 @@ msgstr ""
 #: bocs.php:177
 #: bocs.php:192
 #: bocs.php:207
-#: bocs.php:222
-#: bocs.php:245
+#: bocs.php:223
+#: bocs.php:246
 #: bocs.php:271
-#: bocs.php:291
+#: bocs.php:297
 msgid "← Go back to plugins page"
 msgstr ""
 
@@ -62,10 +62,10 @@ msgstr ""
 #: bocs.php:179
 #: bocs.php:194
 #: bocs.php:209
-#: bocs.php:224
-#: bocs.php:247
+#: bocs.php:225
+#: bocs.php:248
 #: bocs.php:273
-#: bocs.php:293
+#: bocs.php:299
 msgid "Plugin Activation Error"
 msgstr ""
 
@@ -85,7 +85,7 @@ msgstr ""
 msgid "This plugin requires WooCommerce version 5.0.0 or higher."
 msgstr ""
 
-#: bocs.php:242
+#: bocs.php:243
 msgid "Missing required PHP extensions"
 msgstr ""
 
@@ -93,57 +93,143 @@ msgstr ""
 msgid "The following directories need to be writable"
 msgstr ""
 
-#: bocs.php:288
+#: bocs.php:294
 msgid "Error activating plugin"
 msgstr ""
 
-#: bocs.php:322
+#: bocs.php:340
+#: views/bocs_settings.php:1064
 msgid "Settings"
 msgstr ""
 
-#: includes/Admin.php:43
-msgid "Critical: Missing required Bocs API credentials"
+#: bocs.php:360
+msgid "Bocs requires WooCommerce to be installed and active."
 msgstr ""
 
-#. translators: %s: Error message
-#: includes/Admin.php:60
-msgid "Critical: Failed to register Bocs log handler: %s"
+#: includes/Admin.php:688
+#: includes/Admin.php:2808
+msgid "Bocs Settings"
 msgstr ""
 
-#: includes/Admin.php:75
-msgid "Critical: Missing post ID for product meta processing"
+#: includes/Admin.php:694
+#: views/bocs_subscriptions_account.php:261
+msgid "Save"
 msgstr ""
 
-#: includes/Admin.php:110
-#: includes/Admin.php:144
-msgid "Bocs Product"
+#: includes/Admin.php:739
+msgid "Here you can set all the options for using the API"
 msgstr ""
 
-#: includes/Admin.php:134
-msgid "Required class WC_Bocs_Product_Type not found."
+#: includes/Admin.php:834
+msgid "Invalid headers configuration provided"
 msgstr ""
 
-#: includes/Admin.php:135
-msgid "Plugin Error"
+#. translators: %s: Field name
+#: includes/Admin.php:847
+#: includes/Bocs_Helper.php:220
+msgid "Missing required field: %s"
 msgstr ""
 
-#. translators: %s: Error message
-#: includes/Admin.php:203
-msgid "Critical: Failed to register Bocs widget script: %s"
+#: includes/Admin.php:870
+msgid "Invalid nonce"
 msgstr ""
 
-#. translators: %s: Error message
-#: includes/Admin.php:259
-msgid "Critical: Failed to enqueue admin scripts: %s"
+#: includes/Admin.php:2393
+msgid "No Bocs subscription found for this order."
 msgstr ""
 
-#. translators: %s: Error message
-#: includes/Admin.php:319
-msgid "Critical: Failed to enqueue frontend scripts: %s"
+#: includes/Admin.php:2402
+msgid "Bocs subscription %s not found or has been deleted."
 msgstr ""
 
-#: includes/Admin.php:2568
-msgid "Note that purchasing bocs requires an account."
+#: includes/Admin.php:2411
+msgid "Order Number"
+msgstr ""
+
+#: includes/Admin.php:2412
+msgid "Relationship"
+msgstr ""
+
+#: includes/Admin.php:2413
+msgid "Date"
+msgstr ""
+
+#: includes/Admin.php:2414
+#: views/bocs_view_subscription.php:4
+msgid "Status"
+msgstr ""
+
+#: includes/Admin.php:2415
+#: views/bocs_view_subscription.php:113
+msgid "Total"
+msgstr ""
+
+#: includes/Admin.php:2433
+msgid "An error occurred while retrieving order information."
+msgstr ""
+
+#: includes/Admin.php:2602
+msgid "Renewal Order"
+msgstr ""
+
+#: includes/Admin.php:2604
+msgid "Parent Order"
+msgstr ""
+
+#: includes/Admin.php:2610
+#: includes/Admin.php:2615
+msgid "Related Order"
+msgstr ""
+
+#. translators: 1: Error context 2: Error message 3: File name 4: Line number
+#: includes/Admin.php:2784
+msgid "[Bocs][ERROR] %1$s%2$s in %3$s:%4$d"
+msgstr ""
+
+#: includes/Admin.php:2807
+msgid "Bocs Plugin Settings"
+msgstr ""
+
+#: includes/Admin.php:2820
+msgid "API Settings"
+msgstr ""
+
+#: includes/Admin.php:2827
+msgid "API Headers"
+msgstr ""
+
+#: includes/Admin.php:2838
+msgid "Organization"
+msgstr ""
+
+#: includes/Admin.php:2839
+msgid "Store"
+msgstr ""
+
+#: includes/Admin.php:2840
+#: views/bocs_settings.php:146
+msgid "Authorization"
+msgstr ""
+
+#: includes/Admin.php:2859
+msgid "Create Bocs Subscription"
+msgstr ""
+
+#: includes/Admin.php:2865
+msgid "Cancel Bocs Subscription"
+msgstr ""
+
+#: includes/Admin.php:2878
+#: includes/Admin.php:2897
+msgid "Invalid order ID"
+msgstr ""
+
+#: includes/Admin.php:2887
+msgid "Failed to create subscription"
+msgstr ""
+
+#: includes/Admin.php:2906
+msgid "Failed to cancel subscription"
 msgstr ""
 
 #: includes/Auth.php:80
@@ -167,36 +253,19 @@ msgstr ""
 msgid "User ID not found in the token"
 msgstr ""
 
-#: includes/Bocs.php:58
-msgid "Critical: Bocs plugin constants not defined"
-msgstr ""
-
-#. translators: %s: File path
-#: includes/Bocs.php:134
-msgid "Critical: Required Bocs file missing: %s"
-msgstr ""
-
-#: includes/Bocs.php:146
-msgid "Critical: Failed to initialize Bocs loader"
-msgstr ""
-
-#: includes/Bocs.php:387
-msgid "Critical: Cannot run Bocs plugin - loader not initialized"
-msgstr ""
-
 #: includes/Bocs_Account.php:46
 msgid "Bocs Subscriptions"
 msgstr ""
 
-#: includes/Bocs_Account.php:99
+#: includes/Bocs_Account.php:96
 msgid "Subscription template not found."
 msgstr ""
 
-#: includes/Bocs_Account.php:160
+#: includes/Bocs_Account.php:157
 msgid "Invalid subscription ID."
 msgstr ""
 
-#: includes/Bocs_Account.php:163
+#: includes/Bocs_Account.php:160
 msgid "No subscription ID provided."
 msgstr ""
 
@@ -282,19 +351,11 @@ msgstr ""
 
 #. translators: 1: Frequency number, 2: Time unit
 #: includes/Bocs_Helper.php:146
-#: views/bocs_subscriptions_account.php:68
 msgid "Every %1$d %2$s"
-msgid_plural "Every %1$d %2$s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr ""
 
 #: includes/Bocs_Helper.php:207
 msgid "Invalid webhook payload format"
-msgstr ""
-
-#. translators: %s: Field name
-#: includes/Bocs_Helper.php:220
-msgid "Missing required field: %s"
 msgstr ""
 
 #. translators: %s: Log directory path
@@ -724,7 +785,7 @@ msgid "Privacy Policy"
 msgstr ""
 
 #: views/bocs_homepage.php:139
-#: views/bocs_settings.php:191
+#: views/bocs_settings.php:160
 msgid "Submit"
 msgstr ""
 
@@ -784,102 +845,753 @@ msgstr ""
 msgid "Enter the discount amount to apply to subscription"
 msgstr ""
 
-#: views/bocs_settings.php:25
+#: views/bocs_settings.php:23
+#: views/bocs_settings.php:1034
 msgid "Visit plugin homepage"
 msgstr ""
 
+#. translators: 1: current version 2: latest version
 #. translators: 1: current version. 2: latest version
-#: views/bocs_settings.php:37
-msgid "Version %1$s (update to version %2$s is available)"
+#: views/bocs_settings.php:35
+#: views/bocs_settings.php:1392
+msgid "%1$s (update to version %2$s is available)"
 msgstr ""
 
-#: views/bocs_settings.php:46
+#: views/bocs_settings.php:44
 msgid "Network enabled"
 msgstr ""
 
 #. translators: %s: WooCommerce version
-#: views/bocs_settings.php:57
+#: views/bocs_settings.php:55
 msgid "Installed version not tested with active version of WooCommerce %s"
 msgstr ""
 
 #. translators: %s: plugin author
-#: views/bocs_settings.php:70
+#: views/bocs_settings.php:68
+#: views/bocs_settings.php:1046
 msgid "by %s"
 msgstr ""
 
-#: views/bocs_settings.php:85
-msgid "Failed to retrieve system status report"
-msgstr ""
-
-#. translators: %s: Error message
-#: views/bocs_settings.php:119
-msgid "Critical: Bocs settings initialization error: %s"
-msgstr ""
-
-#: views/bocs_settings.php:128
-#: views/bocs_settings.php:146
+#: views/bocs_settings.php:108
+#: views/bocs_settings.php:124
 msgid "Credentials / Keys"
 msgstr ""
 
-#: views/bocs_settings.php:131
-#: views/bocs_settings.php:199
+#: views/bocs_settings.php:111
+#: views/bocs_settings.php:166
 msgid "Sync Logs"
 msgstr ""
 
-#: views/bocs_settings.php:134
+#: views/bocs_settings.php:114
+#: views/bocs_settings.php:174
 msgid "Sync Modules"
 msgstr ""
 
-#: views/bocs_settings.php:137
+#: views/bocs_settings.php:117
 msgid "Site Status"
 msgstr ""
 
-#: views/bocs_settings.php:140
+#: views/bocs_settings.php:120
 msgid "Test"
 msgstr ""
 
-#: views/bocs_settings.php:153
+#: views/bocs_settings.php:130
 msgid "Store ID"
 msgstr ""
 
-#: views/bocs_settings.php:165
+#: views/bocs_settings.php:138
 msgid "Organization ID"
 msgstr ""
 
-#: views/bocs_settings.php:177
-msgid "Authorization"
+#: views/bocs_settings.php:179
+msgid "All Modules"
 msgstr ""
 
-#. translators: 1: Subscription name, 2: Order number
-#: views/bocs_subscriptions_account.php:36
-msgid "%1$s (Order #%2$s)"
+#: views/bocs_settings.php:183
+#: views/bocs_settings.php:213
+msgid "Sync Both Ways"
 msgstr ""
 
-#. translators: %s: Order number
-#: views/bocs_subscriptions_account.php:43
+#: views/bocs_settings.php:184
+#: views/bocs_settings.php:214
+msgid "Sync Bocs to WordPress"
+msgstr ""
+
+#: views/bocs_settings.php:185
+#: views/bocs_settings.php:215
+msgid "Sync WordPress to Bocs"
+msgstr ""
+
+#: views/bocs_settings.php:186
+msgid "Custom Module Sync"
+msgstr ""
+
+#: views/bocs_settings.php:187
+#: views/bocs_settings.php:216
+msgid "Do Not Sync"
+msgstr ""
+
+#: views/bocs_settings.php:193
+msgid "Products"
+msgstr ""
+
+#: views/bocs_settings.php:194
+msgid "Bocs"
+msgstr ""
+
+#: views/bocs_settings.php:195
+msgid "Contacts"
+msgstr ""
+
+#: views/bocs_settings.php:196
+msgid "Orders"
+msgstr ""
+
+#: views/bocs_settings.php:197
+msgid "Invoices"
+msgstr ""
+
+#: views/bocs_settings.php:198
+msgid "Shipping"
+msgstr ""
+
+#: views/bocs_settings.php:199
+msgid "Tax"
+msgstr ""
+
+#: views/bocs_settings.php:200
+msgid "Categories & Tags"
+msgstr ""
+
+#: views/bocs_settings.php:201
+msgid "Subscriptions"
+msgstr ""
+
+#: views/bocs_settings.php:228
+msgid "Sync Now"
+msgstr ""
+
+#: views/bocs_settings.php:232
+msgid "System Status"
+msgstr ""
+
+#: views/bocs_settings.php:237
+msgid "WordPress environment"
+msgstr ""
+
+#: views/bocs_settings.php:244
+msgid "WordPress address (URL)"
+msgstr ""
+
+#: views/bocs_settings.php:247
+msgid "The root URL of your site."
+msgstr ""
+
+#: views/bocs_settings.php:253
+msgid "Site address (URL)"
+msgstr ""
+
+#: views/bocs_settings.php:256
+msgid "The homepage URL of your site."
+msgstr ""
+
+#: views/bocs_settings.php:262
+msgid "WooCommerce version"
+msgstr ""
+
+#: views/bocs_settings.php:265
+msgid "The version of WooCommerce installed on your site."
+msgstr ""
+
+#: views/bocs_settings.php:271
+msgid "WordPress version"
+msgstr ""
+
+#: views/bocs_settings.php:274
+msgid "The version of WordPress installed on your site."
+msgstr ""
+
+#. translators: 1: Current version, 2: New version
+#: views/bocs_settings.php:297
+msgid "%1$s - There is a newer version of WordPress available (%2$s)"
+msgstr ""
+
+#: views/bocs_settings.php:315
+#: views/bocs_settings.php:386
+msgid "Server environment"
+msgstr ""
+
+#: views/bocs_settings.php:322
+#: views/bocs_settings.php:394
+msgid "Server info"
+msgstr ""
+
+#: views/bocs_settings.php:325
+#: views/bocs_settings.php:398
+msgid "Information about the web server that is currently hosting your site."
+msgstr ""
+
+#: views/bocs_settings.php:331
+#: views/bocs_settings.php:408
+msgid "PHP version"
+msgstr ""
+
+#: views/bocs_settings.php:334
+#: views/bocs_settings.php:412
+msgid "The version of PHP installed on your hosting server."
+msgstr ""
+
+#: views/bocs_settings.php:343
+#: views/bocs_settings.php:427
+msgid "PHP post max size"
+msgstr ""
+
+#: views/bocs_settings.php:346
+#: views/bocs_settings.php:431
+msgid "The largest filesize that can be contained in one post."
+msgstr ""
+
+#: views/bocs_settings.php:352
+#: views/bocs_settings.php:441
+msgid "PHP time limit"
+msgstr ""
+
+#: views/bocs_settings.php:355
+#: views/bocs_settings.php:445
+msgid "The amount of time (in seconds) that your site will spend on a single operation before timing out (to avoid server lockups)"
+msgstr ""
+
+#: views/bocs_settings.php:361
+#: views/bocs_settings.php:455
+msgid "PHP max input vars"
+msgstr ""
+
+#: views/bocs_settings.php:364
+#: views/bocs_settings.php:459
+msgid "The maximum number of variables your server can use for a single function to avoid overloads."
+msgstr ""
+
+#: views/bocs_settings.php:370
+#: views/bocs_settings.php:469
+msgid "cURL version"
+msgstr ""
+
+#: views/bocs_settings.php:373
+#: views/bocs_settings.php:473
+msgid "The version of cURL installed on your server."
+msgstr ""
+
+#: views/bocs_settings.php:483
+msgid "SUHOSIN installed"
+msgstr ""
+
+#: views/bocs_settings.php:487
+msgid "Suhosin is an advanced protection system for PHP installations. It was designed to protect your servers on the one hand against a number of well known problems in PHP applications and on the other hand against potential unknown vulnerabilities within these applications or the PHP core itself. If enabled on your server, Suhosin may need to be configured to increase its data submission limits."
+msgstr ""
+
+#: views/bocs_settings.php:505
+#: views/bocs_settings.php:753
+msgid "MySQL version"
+msgstr ""
+
+#: views/bocs_settings.php:509
+#: views/bocs_settings.php:756
+msgid "The version of MySQL installed on your hosting server."
+msgstr ""
+
+#. Translators: %1$s: MySQL version, %2$s: Recommended MySQL version.
+#. translators: 1: MySQL version 2: Recommended MySQL version
+#: views/bocs_settings.php:515
+#: views/bocs_settings.php:765
+msgid "%1$s - We recommend a minimum MySQL version of 5.6. See: %2$s"
+msgstr ""
+
+#. Translators: %1$s: MySQL version, %2$s: Recommended MySQL version.
+#: views/bocs_settings.php:515
+#: views/bocs_settings.php:768
+msgid "WordPress requirements"
+msgstr ""
+
+#: views/bocs_settings.php:528
+#: views/bocs_settings.php:780
+msgid "Max upload size"
+msgstr ""
+
+#: views/bocs_settings.php:532
+#: views/bocs_settings.php:783
+msgid "The largest filesize that can be uploaded to your WordPress installation."
+msgstr ""
+
+#: views/bocs_settings.php:542
+msgid "Default timezone is UTC"
+msgstr ""
+
+#: views/bocs_settings.php:546
+#: views/bocs_settings.php:792
+msgid "The default timezone for your server."
+msgstr ""
+
+#. Translators: %s: default timezone..
+#. translators: %s: default timezone
+#: views/bocs_settings.php:552
+#: views/bocs_settings.php:801
+msgid "Default timezone is %s - it should be UTC"
+msgstr ""
+
+#: views/bocs_settings.php:562
+msgid "fsockopen/cURL"
+msgstr ""
+
+#: views/bocs_settings.php:566
+msgid "Payment gateways can use cURL to communicate with remote servers to authorize payments, other plugins may also use it when communicating with remote services."
+msgstr ""
+
+#: views/bocs_settings.php:573
+msgid "Your server does not have fsockopen or cURL enabled - PayPal IPN and other scripts which communicate with other servers will not work. Contact your hosting provider."
+msgstr ""
+
+#: views/bocs_settings.php:581
+msgid "SoapClient"
+msgstr ""
+
+#: views/bocs_settings.php:585
+msgid "Some webservices like shipping use SOAP to get information from remote servers, for example, live shipping quotes from FedEx require SOAP to be installed."
+msgstr ""
+
+#. Translators: %s classname and link.
+#: views/bocs_settings.php:593
+msgid "Your server does not have the %s class enabled - some gateway plugins which use SOAP may not work as expected."
+msgstr ""
+
+#: views/bocs_settings.php:601
+msgid "DOMDocument"
+msgstr ""
+
+#: views/bocs_settings.php:605
+msgid "HTML/Multipart emails use DOMDocument to generate inline CSS in templates."
+msgstr ""
+
+#. Translators: %s: classname and link.
+#: views/bocs_settings.php:613
+msgid "Your server does not have the %s class enabled - HTML/Multipart emails, and also some extensions, will not work without DOMDocument."
+msgstr ""
+
+#: views/bocs_settings.php:621
+msgid "GZip"
+msgstr ""
+
+#: views/bocs_settings.php:625
+msgid "GZip (gzopen) is used to open the GEOIP database from MaxMind."
+msgstr ""
+
+#. Translators: %s: classname and link.
+#: views/bocs_settings.php:633
+msgid "Your server does not support the %s function - this is required to use the GeoIP database from MaxMind."
+msgstr ""
+
+#: views/bocs_settings.php:641
+msgid "Multibyte string"
+msgstr ""
+
+#: views/bocs_settings.php:645
+msgid "Multibyte String (mbstring) is used to convert character encoding, like for emails or converting characters to lowercase."
+msgstr ""
+
+#. Translators: %s: classname and link.
+#: views/bocs_settings.php:653
+msgid "Your server does not support the %s functions - this is required for better character encoding. Some fallbacks will be used instead for it."
+msgstr ""
+
+#: views/bocs_settings.php:661
+msgid "Remote post"
+msgstr ""
+
+#: views/bocs_settings.php:665
+msgid "PayPal uses this method of communicating when sending back transaction information."
+msgstr ""
+
+#. Translators: %s: function name.
+#: views/bocs_settings.php:673
+#: views/bocs_settings.php:693
+msgid "%s failed. Contact your hosting provider."
+msgstr ""
+
+#: views/bocs_settings.php:681
+msgid "Remote get"
+msgstr ""
+
+#: views/bocs_settings.php:685
+msgid "WooCommerce plugins may use this method of communication when checking for plugin updates."
+msgstr ""
+
+#: views/bocs_settings.php:746
+msgid "Database"
+msgstr ""
+
+#: views/bocs_settings.php:789
+msgid "Default timezone"
+msgstr ""
+
+#: views/bocs_settings.php:823
+msgid "Post Type Counts"
+msgstr ""
+
+#: views/bocs_settings.php:856
+msgid "Security"
+msgstr ""
+
+#: views/bocs_settings.php:864
+msgid "Secure connection (HTTPS)"
+msgstr ""
+
+#: views/bocs_settings.php:868
+msgid "Is the connection to your store secure?"
+msgstr ""
+
+#. Translators: %s: docs link.
+#: views/bocs_settings.php:883
+msgid "Your store is not using HTTPS. <a href=\"%s\" target=\"_blank\">Learn more about HTTPS and SSL Certificates</a>."
+msgstr ""
+
+#: views/bocs_settings.php:895
+msgid "Hide errors from visitors"
+msgstr ""
+
+#: views/bocs_settings.php:899
+msgid "Error messages can contain sensitive information about your store environment. These should be hidden from untrusted visitors."
+msgstr ""
+
+#: views/bocs_settings.php:913
+msgid "Error messages should not be shown to visitors."
+msgstr ""
+
+#: views/bocs_settings.php:932
+msgid "Active plugins"
+msgstr ""
+
+#: views/bocs_settings.php:955
+msgid "Inactive plugins"
+msgstr ""
+
+#: views/bocs_settings.php:981
+msgid "Dropin Plugins"
+msgstr ""
+
+#: views/bocs_settings.php:1022
+msgid "Must Use Plugins"
+msgstr ""
+
+#: views/bocs_settings.php:1072
+msgid "API enabled"
+msgstr ""
+
+#: views/bocs_settings.php:1076
+msgid "Does your site have REST API enabled?"
+msgstr ""
+
+#: views/bocs_settings.php:1086
+msgid "Force SSL"
+msgstr ""
+
+#: views/bocs_settings.php:1090
+msgid "Does your site force a SSL Certificate for transactions?"
+msgstr ""
+
+#: views/bocs_settings.php:1100
+msgid "Currency"
+msgstr ""
+
+#: views/bocs_settings.php:1104
+msgid "What currency prices are listed at in the catalog and which currency gateways will take payments in."
+msgstr ""
+
+#: views/bocs_settings.php:1117
+msgid "Currency position"
+msgstr ""
+
+#: views/bocs_settings.php:1121
+msgid "The position of the currency symbol."
+msgstr ""
+
+#: views/bocs_settings.php:1131
+msgid "Thousand separator"
+msgstr ""
+
+#: views/bocs_settings.php:1135
+msgid "The thousand separator of displayed prices."
+msgstr ""
+
+#: views/bocs_settings.php:1145
+msgid "Decimal separator"
+msgstr ""
+
+#: views/bocs_settings.php:1149
+msgid "The decimal separator of displayed prices."
+msgstr ""
+
+#: views/bocs_settings.php:1159
+msgid "Number of decimals"
+msgstr ""
+
+#: views/bocs_settings.php:1163
+msgid "The number of decimal points shown in displayed prices."
+msgstr ""
+
+#: views/bocs_settings.php:1173
+msgid "Taxonomies: Product types"
+msgstr ""
+
+#: views/bocs_settings.php:1177
+msgid "A list of taxonomy terms that can be used in regard to order/product statuses."
+msgstr ""
+
+#: views/bocs_settings.php:1192
+msgid "Taxonomies: Product visibility"
+msgstr ""
+
+#: views/bocs_settings.php:1196
+msgid "A list of taxonomy terms used for product visibility."
+msgstr ""
+
+#: views/bocs_settings.php:1211
+msgid "Connected to WooCommerce.com"
+msgstr ""
+
+#: views/bocs_settings.php:1215
+msgid "Is your site connected to WooCommerce.com?"
+msgstr ""
+
+#: views/bocs_settings.php:1225
+msgid "Enforce Approved Product Download Directories"
+msgstr ""
+
+#: views/bocs_settings.php:1229
+msgid "Is your site enforcing the use of Approved Product Download Directories?"
+msgstr ""
+
+#: views/bocs_settings.php:1240
+msgid "HPOS feature screen enabled:"
+msgstr ""
+
+#: views/bocs_settings.php:1244
+msgid "Is HPOS feature screen enabled?"
+msgstr ""
+
+#: views/bocs_settings.php:1254
+msgid "HPOS enabled:"
+msgstr ""
+
+#: views/bocs_settings.php:1258
+msgid "Is HPOS enabled?"
+msgstr ""
+
+#: views/bocs_settings.php:1268
+msgid "Order datastore:"
+msgstr ""
+
+#: views/bocs_settings.php:1272
+msgid "Datastore currently in use for orders."
+msgstr ""
+
+#: views/bocs_settings.php:1282
+msgid "HPOS data sync enabled:"
+msgstr ""
+
+#: views/bocs_settings.php:1286
+msgid "Is data sync enabled for HPOS?"
+msgstr ""
+
+#: views/bocs_settings.php:1302
+msgid "WooCommerce pages"
+msgstr ""
+
+#. Translators: %s: page name.
+#: views/bocs_settings.php:1314
+msgid "Edit %s page"
+msgstr ""
+
+#. Translators: %s: page name.
+#: views/bocs_settings.php:1321
+msgid "The URL of your %s page (along with the Page ID)."
+msgstr ""
+
+#: views/bocs_settings.php:1325
+msgid "Page not set"
+msgstr ""
+
+#: views/bocs_settings.php:1328
+msgid "Page ID is set, but the page does not exist"
+msgstr ""
+
+#. Translators: %s: docs link.
+#: views/bocs_settings.php:1332
+msgid "Page visibility should be <a href=\"%s\" target=\"_blank\">public</a>"
+msgstr ""
+
+#. Translators: %1$s: shortcode text, %2$s: block slug.
+#: views/bocs_settings.php:1339
+msgid "Page does not contain the %1$s shortcode or the %2$s block."
+msgstr ""
+
+#. Translators: %1$s: shortcode text, %2$s: block slug.
+#: views/bocs_settings.php:1339
+msgid "Page does not contain the %s shortcode."
+msgstr ""
+
+#: views/bocs_settings.php:1360
+msgid "Theme"
+msgstr ""
+
+#: views/bocs_settings.php:1368
+msgid "Name"
+msgstr ""
+
+#: views/bocs_settings.php:1372
+msgid "The name of the current active theme."
+msgstr ""
+
+#: views/bocs_settings.php:1382
+msgid "Version"
+msgstr ""
+
+#: views/bocs_settings.php:1386
+msgid "The installed version of the current active theme."
+msgstr ""
+
+#: views/bocs_settings.php:1402
+msgid "Author URL"
+msgstr ""
+
+#: views/bocs_settings.php:1406
+msgid "The theme developers URL."
+msgstr ""
+
+#: views/bocs_settings.php:1416
+msgid "Child theme"
+msgstr ""
+
+#: views/bocs_settings.php:1420
+msgid "Displays whether or not the current theme is a child theme."
+msgstr ""
+
+#. Translators: %s docs link.
+#: views/bocs_settings.php:1428
+msgid "If you are modifying WooCommerce on a parent theme that you did not build personally we recommend using a child theme. See: <a href=\"%s\" target=\"_blank\">How to create a child theme</a>"
+msgstr ""
+
+#: views/bocs_settings.php:1440
+msgid "Parent theme name"
+msgstr ""
+
+#: views/bocs_settings.php:1444
+msgid "The name of the parent theme."
+msgstr ""
+
+#: views/bocs_settings.php:1454
+msgid "Parent theme version"
+msgstr ""
+
+#: views/bocs_settings.php:1458
+msgid "The installed version of the parent theme."
+msgstr ""
+
+#. translators: %s: parent theme latest version
+#: views/bocs_settings.php:1465
+msgid "%s is available"
+msgstr ""
+
+#: views/bocs_settings.php:1473
+msgid "Parent theme author URL"
+msgstr ""
+
+#: views/bocs_settings.php:1477
+msgid "The parent theme developers URL."
+msgstr ""
+
+#: views/bocs_settings.php:1498
+msgid "WooCommerce support"
+msgstr ""
+
+#: views/bocs_settings.php:1502
+msgid "Displays whether or not the current active theme declares WooCommerce support."
+msgstr ""
+
+#: views/bocs_settings.php:1507
+msgid "Not declared"
+msgstr ""
+
+#: views/bocs_settings.php:1522
+msgid "Templates"
+msgstr ""
+
+#: views/bocs_settings.php:1525
+msgid "This section shows any files that are overriding the default WooCommerce template pages."
+msgstr ""
+
+#: views/bocs_settings.php:1537
+msgid "Archive template"
+msgstr ""
+
+#: views/bocs_settings.php:1542
+msgid "Your theme has a woocommerce.php file, you will not be able to override the woocommerce/archive-product.php custom template since woocommerce.php has priority over archive-product.php. This is intended to prevent display issues."
+msgstr ""
+
+#: views/bocs_settings.php:1563
+#: views/bocs_settings.php:1594
+msgid "Overrides"
+msgstr ""
+
+#. Translators: %1$s: Template name, %2$s: Template version, %3$s: Core version.
+#: views/bocs_settings.php:1575
+msgid "%1$s version %2$s is out of date. The core version is %3$s"
+msgstr ""
+
+#: views/bocs_settings.php:1611
+msgid "Outdated templates"
+msgstr ""
+
+#: views/bocs_settings.php:1621
+msgid "Learn how to update"
+msgstr ""
+
+#: views/bocs_settings.php:1642
+msgid "Status report information"
+msgstr ""
+
+#: views/bocs_settings.php:1645
+msgid "This section shows information about this status report."
+msgstr ""
+
+#: views/bocs_settings.php:1653
+msgid "Generated at"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:28
+msgid "No active subscriptions found. Your subscriptions may have been deleted or are no longer available."
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:48
+msgid "%s (Order #%s)"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:54
 msgid "Subscription (Order #%s)"
 msgstr ""
 
-#. translators: %s: Subscription ID
-#: views/bocs_subscriptions_account.php:49
+#: views/bocs_subscriptions_account.php:59
 msgid "Subscription #%s"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:99
+#: views/bocs_subscriptions_account.php:97
 msgid "Total Amount"
 msgstr ""
 
-#. translators: %s: Discount amount
-#: views/bocs_subscriptions_account.php:113
-msgid "(Includes %s discount)"
-msgstr ""
-
-#: views/bocs_subscriptions_account.php:126
-#: views/bocs_subscriptions_account.php:230
+#: views/bocs_subscriptions_account.php:117
+#: views/bocs_subscriptions_account.php:214
 msgid "Early Renewal"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:133
+#: views/bocs_subscriptions_account.php:124
 msgid "Delivery"
 msgstr ""
 
@@ -887,122 +1599,128 @@ msgstr ""
 msgid "Total Items"
 msgstr ""
 
-#. translators: %d: Number of items
-#: views/bocs_subscriptions_account.php:145
-msgid "%d item"
-msgid_plural "%d items"
+#: views/bocs_subscriptions_account.php:142
+msgid "item"
+msgid_plural "items"
 msgstr[0] ""
 msgstr[1] ""
 
-#: views/bocs_subscriptions_account.php:155
+#: views/bocs_subscriptions_account.php:149
 msgid "Shipping Address"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:172
+#: views/bocs_subscriptions_account.php:166
 msgid "No address provided"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:179
+#: views/bocs_subscriptions_account.php:173
 msgid "Next Payment"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:185
+#: views/bocs_subscriptions_account.php:179
 msgid "Started On"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:194
+#: views/bocs_subscriptions_account.php:187
 msgid "Update My Box"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:198
+#: views/bocs_subscriptions_account.php:190
 msgid "Edit Details"
 msgstr ""
 
-#. translators: 1: Subscription ID, 2: Error message
-#: views/bocs_subscriptions_account.php:208
-msgid "Critical: Error processing subscription #%1$s: %2$s"
-msgstr ""
-
-#: views/bocs_subscriptions_account.php:222
+#: views/bocs_subscriptions_account.php:206
 msgid "Back to subscription"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:237
+#: views/bocs_subscriptions_account.php:208
+msgid "Dashboard"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:221
 msgid "Box Content"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:239
+#: views/bocs_subscriptions_account.php:223
 msgid "Edit the Box"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:249
-#: views/bocs_subscriptions_account.php:264
+#: views/bocs_subscriptions_account.php:233
+#: views/bocs_subscriptions_account.php:248
 msgid "Frequency"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:250
-#: views/bocs_subscriptions_account.php:285
-#: views/bocs_subscriptions_account.php:293
+#: views/bocs_subscriptions_account.php:234
+#: views/bocs_subscriptions_account.php:269
+#: views/bocs_subscriptions_account.php:277
 msgid "Edit"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:265
-#: views/bocs_subscriptions_account.php:307
+#: views/bocs_subscriptions_account.php:249
+#: views/bocs_subscriptions_account.php:291
 #: views/bocs_view_subscription.php:75
 #: views/bocs_view_subscription.php:99
 msgid "Cancel"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:277
-msgid "Save"
+#: views/bocs_subscriptions_account.php:255
+msgid "Loading frequency options..."
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:284
+#: views/bocs_subscriptions_account.php:268
 msgid "Instructions"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:292
+#: views/bocs_subscriptions_account.php:276
 msgid "Pause or Skip"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:296
+#: views/bocs_subscriptions_account.php:280
 msgid "You can pause or skip your subscription easily, select the next date you would like your payment debited, plus your desired delivery date."
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:299
+#: views/bocs_subscriptions_account.php:283
 msgid "Next Payment Date"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:306
+#: views/bocs_subscriptions_account.php:290
 msgid "Adjust Schedule"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:331
+#: views/bocs_subscriptions_account.php:299
+msgid "Loading pause options..."
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:304
+msgid "Skip to Date"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:315
 msgid "Preview of Changes"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:334
+#: views/bocs_subscriptions_account.php:318
 msgid "Next Payment Date:"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:340
+#: views/bocs_subscriptions_account.php:324
 msgid "Save Changes"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:348
+#: views/bocs_subscriptions_account.php:332
 msgid "Promos"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:360
+#: views/bocs_subscriptions_account.php:336
+msgid "FREE PRODUCT FOR LIFE"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:344
 msgid "Back to Subscription"
 msgstr ""
 
-#: views/bocs_subscriptions_account.php:364
+#: views/bocs_subscriptions_account.php:348
 msgid "Cancel Subscription"
-msgstr ""
-
-#: views/bocs_view_subscription.php:4
-msgid "Status"
 msgstr ""
 
 #: views/bocs_view_subscription.php:10
@@ -1073,10 +1791,6 @@ msgstr ""
 
 #: views/bocs_view_subscription.php:112
 msgid "Product"
-msgstr ""
-
-#: views/bocs_view_subscription.php:113
-msgid "Total"
 msgstr ""
 
 #. translators: %s: Product quantity
