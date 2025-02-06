@@ -1,69 +1,77 @@
 <?php
+/**
+ * Bocs Homepage Template
+ *
+ * @package    Bocs
+ * @subpackage Bocs/views
+ * @since      0.0.1
+ */
 
+// Get current user email
 $current_email = '';
-$wp_user = new WP_User( get_current_user_id() );
-if ($wp_user) $current_email = $wp_user->user_email;
+$wp_user = new WP_User(get_current_user_id());
+if ($wp_user) {
+    $current_email = $wp_user->user_email;
+}
 
-// check if the wooocmmerce rest api keys were created for bocs
+// Check WooCommerce REST API keys
 $bocs_woocommerce_public_key = '';
 $bocs_woocommerce_secret_key = '';
 
-$options = get_option( 'bocs_plugin_options' );
+$options = get_option('bocs_plugin_options');
 
-if (isset($options['bocs_woocommerce_public_key'])){
-	if (trim($options['bocs_woocommerce_public_key']) != ''){
-		$bocs_woocommerce_public_key = $options['bocs_woocommerce_public_key'];
-	}
+if (isset($options['bocs_woocommerce_public_key']) && 
+    trim($options['bocs_woocommerce_public_key']) !== '') {
+    $bocs_woocommerce_public_key = $options['bocs_woocommerce_public_key'];
 }
 
-if (isset($options['bocs_woocommerce_secret_key'])){
-	if (trim($options['bocs_woocommerce_secret_key']) != ''){
-		$bocs_woocommerce_secret_key = $options['bocs_woocommerce_secret_key'];
-	}
+if (isset($options['bocs_woocommerce_secret_key']) && 
+    trim($options['bocs_woocommerce_secret_key']) !== '') {
+    $bocs_woocommerce_secret_key = $options['bocs_woocommerce_secret_key'];
 }
 
-if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
+// Generate API keys if not exist
+if (empty($bocs_woocommerce_public_key) || empty($bocs_woocommerce_secret_key)) {
+    try {
+        global $wpdb;
 
-	global $wpdb;
+        $user_id = get_current_user_id();
+        $permissions = 'read_write';
+        $description = __('Bocs REST API', 'bocs-wordpress');
+        $consumer_key = 'ck_' . wc_rand_hash();
+        $consumer_secret = 'cs_' . wc_rand_hash();
 
-	$user_id = get_current_user_id();
-	$permissions = 'read_write';
-	$description = "Bocs REST API";
-	$consumer_key = 'ck_' . wc_rand_hash();
-	$consumer_secret = 'cs_' . wc_rand_hash();
+        $bocs_woocommerce_public_key = $consumer_key;
+        $bocs_woocommerce_secret_key = $consumer_secret;
 
-	$bocs_woocommerce_public_key = $consumer_key;
-	$bocs_woocommerce_secret_key = $consumer_secret;
+        $data = array(
+            'user_id'         => $user_id,
+            'description'     => $description,
+            'permissions'     => $permissions,
+            'consumer_key'    => wc_api_hash($consumer_key),
+            'consumer_secret' => $consumer_secret,
+            'truncated_key'   => substr($consumer_key, -7),
+        );
 
-	$data = array(
-		'user_id'         => $user_id,
-		'description'     => $description,
-		'permissions'     => $permissions,
-		'consumer_key'    => wc_api_hash( $consumer_key ),
-		'consumer_secret' => $consumer_secret,
-		'truncated_key'   => substr( $consumer_key, -7 ),
-	);
+        $result = $wpdb->insert(
+            $wpdb->prefix . 'woocommerce_api_keys',
+            $data,
+            array('%d', '%s', '%s', '%s', '%s', '%s')
+        );
 
-	$wpdb->insert(
-		$wpdb->prefix . 'woocommerce_api_keys',
-		$data,
-		array(
-			'%d',
-			'%s',
-			'%s',
-			'%s',
-			'%s',
-			'%s',
-		)
-	);
+        if (0 === $wpdb->insert_id) {
+            throw new Exception(__('Critical: Error generating API Key.', 'bocs-wordpress'));
+        }
 
-	if ( 0 === $wpdb->insert_id ) {
-		throw new Exception( __( 'There was an error generating your API Key.', 'woocommerce' ) );
-	} else {
-		// save the options
-		update_option('bocs_plugin_options', $options);
-	}
+        update_option('bocs_plugin_options', $options);
 
+    } catch (Exception $e) {
+        error_log(sprintf(
+            /* translators: %s: Error message */
+            __('Critical: Failed to generate WooCommerce API keys: %s', 'bocs-wordpress'),
+            $e->getMessage()
+        ));
+    }
 }
 ?>
 <div class="bocs">
@@ -72,41 +80,69 @@ if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
 			<div class="custom-container">
 				<div class="header-top">
 					<div class="top-links">
-			<span>
-			  <a href="https://wordpress.org/support/plugin/bocs/reviews/#new-post" target="_blank" rel="noopener noreferrer"> Leave a Review </a>
-			</span> &nbsp; <span>
-			  <a href="https://wordpress.org/support/plugin/bocs/" target="_blank" rel="noopener noreferrer"> Need Help? </a>
-			</span>
+						<span>
+							<a href="https://wordpress.org/support/plugin/bocs/reviews/#new-post" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e('Leave a Review', 'bocs-wordpress'); ?>
+							</a>
+						</span>
+						<span>
+							<a href="https://wordpress.org/support/plugin/bocs/" target="_blank" rel="noopener noreferrer">
+								<?php esc_html_e('Need Help?', 'bocs-wordpress'); ?>
+							</a>
+						</span>
 					</div>
 					<div class="logo-img">
-                            <a href="https://bocs.io" target="_blank" rel="noopener noreferrer">
-							<img height="65" src="<?php echo esc_url(plugins_url("../assets/images/bocs-logo.svg", __FILE__)); ?>" alt="Logo">
+						<a href="https://bocs.io" target="_blank" rel="noopener noreferrer">
+							<img height="65" src="<?php echo esc_url(plugins_url('../assets/images/bocs-logo.svg', __FILE__)); ?>" alt="<?php esc_attr_e('Bocs Logo', 'bocs-wordpress'); ?>">
 						</a>
 					</div>
-					<h2 class="text-center heading">Create and build custom subscription boxes for your Wordpress customers </h2>
+					<h2 class="text-center heading">
+						<?php esc_html_e('Create and build custom subscription boxes for your WordPress customers', 'bocs-wordpress'); ?>
+					</h2>
 					<div class="text-center intro-video">
 						<a href="https://bocs.io" target="_blank" rel="noopener noreferrer">
-							<img src="<?php echo esc_url(plugins_url("../assets/images/play-video.png", __FILE__)); ?>"> Watch the Bocs.io Video </a>
+							<img src="<?php echo esc_url(plugins_url('../assets/images/play-video.png', __FILE__)); ?>" alt="<?php esc_attr_e('Play Video', 'bocs-wordpress'); ?>">
+							<?php esc_html_e('Watch the Bocs.io Video', 'bocs-wordpress'); ?>
+						</a>
 					</div>
 				</div>
 				<div class="email-form">
 					<div class="row">
 						<div class="col-xs-12 form-container">
-							<div class="search-container text-center ">
-								<form action="https://dev.app.bocs.io/login" style="padding-top:10px; margin: 0px;" onsubmit="document.getElementById('get-started').disabled = true;" method="get" name="signup">
-									<input type="text" placeholder="Enter your email address to continue" id="email" name="email" class="search" required="required" value="<?php echo $current_email?>">
+							<div class="search-container text-center">
+								<form action="https://dev.app.bocs.io/login" 
+									  style="padding-top:10px; margin: 0px;" 
+									  onsubmit="document.getElementById('get-started').disabled = true;" 
+									  method="get" 
+									  name="signup">
+									<input type="text" 
+										   placeholder="<?php esc_attr_e('Enter your email address to continue', 'bocs-wordpress'); ?>" 
+										   id="email" 
+										   name="email" 
+										   class="search" 
+										   required="required" 
+										   value="<?php echo esc_attr($current_email); ?>">
 									<h5 class="check-box-text">
 										<input type="checkbox" class="check-box" name="consent" value="1" required="">
-										<label>I agree to Bocs.io <a href="https://bocs.io/tos" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="https://bocs.io/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+										<label>
+											<?php 
+											printf(
+												/* translators: 1: Terms of Service link, 2: Privacy Policy link */
+												esc_html__('I agree to Bocs.io %1$s and %2$s', 'bocs-wordpress'),
+												sprintf('<a href="https://bocs.io/tos" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Terms of Service', 'bocs-wordpress')),
+												sprintf('<a href="https://bocs.io/privacy" target="_blank" rel="noopener noreferrer">%s</a>', esc_html__('Privacy Policy', 'bocs-wordpress'))
+											);
+											?>
 										</label>
 									</h5>
 									<button id="get-started" type="submit" class="e-mail-button">
-										<span class="text-white">Submit</span>
+										<span class="text-white"><?php esc_html_e('Submit', 'bocs-wordpress'); ?></span>
 									</button>
 
-									<input type="hidden" name="bocsnonce" value="<?php echo wp_create_nonce("bocsnonce");?>">
-									<input type="hidden" name="site" value="<?php echo site_url();?>">
-									<input type="hidden" name="public" value="<?php echo $bocs_woocommerce_public_key ?>"><input type="hidden" name="secret" value="<?php echo $bocs_woocommerce_secret_key ?>">
+									<input type="hidden" name="bocsnonce" value="<?php echo esc_attr(wp_create_nonce('bocsnonce')); ?>">
+									<input type="hidden" name="site" value="<?php echo esc_attr(site_url()); ?>">
+									<input type="hidden" name="public" value="<?php echo esc_attr($bocs_woocommerce_public_key); ?>">
+									<input type="hidden" name="secret" value="<?php echo esc_attr($bocs_woocommerce_secret_key); ?>">
 								</form>
 							</div>
 						</div>
@@ -202,7 +238,7 @@ if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
 							<img class="user" src="<?php echo esc_url(plugins_url("../assets/images/bv-testimony-mickey-kay.jpeg", __FILE__)); ?>">
 							<br>
 							<p></p>
-							<h1>“</h1>
+							<h1>"</h1>
 							<h4>At last, a simple subscription platform that just works. Fantastic support.</h4>
 							<h5>Mickey Kay, NerdStuff</h5>
 							<p></p>
@@ -211,7 +247,7 @@ if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
 							<img class="user" src="<?php echo esc_url(plugins_url("../assets/images/bv-testimony-david-attardi.jpg", __FILE__)); ?>">
 							<br>
 							<p></p>
-							<h1>“</h1>
+							<h1>"</h1>
 							<h4>Once we installed the plugin &amp; synced, it was super easy to get the subscription platform set up. The smoothest &amp; fastest syncing of products we ever did.</h4>
 							<h5>David Attardi, Store Success</h5>
 							<p></p>
@@ -220,7 +256,7 @@ if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
 							<img class="user" src="<?php echo esc_url(plugins_url("../assets/images/bv-testimony-ryan-sullivan.png", __FILE__)); ?>">
 							<br>
 							<p></p>
-							<h1>“</h1>
+							<h1>"</h1>
 							<h4>Bocs is by far the best custom subscription platform. The choice of widgets allow it to seamlessly integrate with our store and get set up fast.</h4>
 							<h5>Ryan Sullivan, Wine Club AU</h5>
 							<p></p>
@@ -229,7 +265,7 @@ if ( $bocs_woocommerce_public_key == '' || $bocs_woocommerce_secret_key == '' ){
 							<img class="user" src="<?php echo esc_url(plugins_url("../assets/images/bv-testimony-michael-signorella.jpg", __FILE__)); ?>">
 							<br>
 							<p></p>
-							<h1>“</h1>
+							<h1>"</h1>
 							<h4>This platform has proved to be invaluable. I tried a few other options to create customer subscription boxes but this surpasses them all. Very pleased.</h4>
 							<h5>Michael Signorella, Health Benefits UK</h5>
 							<p></p>

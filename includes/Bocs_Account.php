@@ -1,10 +1,23 @@
 <?php
+/**
+ * Bocs Account Handler Class
+ *
+ * Handles all account-related functionality for the Bocs plugin.
+ *
+ * @package    Bocs
+ * @subpackage Bocs/includes
+ * @since      0.0.1
+ */
 
 class Bocs_Account
 {
 
+    /** @var array API headers for Bocs authentication */
     private $headers;
 
+    /**
+     * Initialize the class and set its properties.
+     */
     public function __construct()
     {
         $options = get_option('bocs_plugin_options');
@@ -22,118 +35,114 @@ class Bocs_Account
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Helper.php';
     }
 
-    // bocs subscriptions under My Account
+    /**
+     * Add Bocs subscriptions menu item to My Account menu
+     *
+     * @param array $items Existing menu items
+     * @return array Modified menu items
+     */
     public function bocs_account_menu_item($items)
     {
-        $items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-subscriptions');
+        $items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-wordpress');
         return $items;
     }
 
-    // bocs subscription new endpoint
+    /**
+     * Register the Bocs subscriptions endpoint
+     */
     public function register_bocs_account_endpoint()
     {
         add_rewrite_endpoint('bocs-subscriptions', EP_ROOT | EP_PAGES);
     }
 
     /**
-     * Content for the My Account Bocs Subscriptions
+     * Display content for the My Account Bocs Subscriptions page
      */
     public function bocs_endpoint_content()
     {
         $user_id = get_current_user_id();
-
-        // get the bocs customer id
         $bocs_customer_id = '';
-
         $data = false;
+        $url = '';
 
         if (! empty($user_id)) {
             $bocs_customer_id = get_user_meta($user_id, 'bocs_user_id', true);
-
             $url = BOCS_API_URL . 'subscriptions';
 
             if (! empty($bocs_customer_id)) {
-                $data = [
-                    'customer.id' => $bocs_customer_id
-                ];
+                $url = BOCS_API_URL . 'subscriptions?query=customer.id:' . urlencode($bocs_customer_id);
             } else {
-                $data = [
-                    'customer.externalSourceId' => $user_id
-                ];
+                $url = BOCS_API_URL . 'subscriptions?query=customer.externalSourceId:' . urlencode($user_id);
             }
         }
 
-        if ($data === false) {
+        if ( empty($url) ) {
             $current_user = wp_get_current_user();
             if ($current_user->exists()) {
-                $data = [
-                    'billing.email' => esc_html($current_user->user_email)
-                ];
+                $url = BOCS_API_URL . 'subscriptions?query=billing.email:' . urlencode($current_user->user_email);
             }
         }
 
-        if ($data !== false) {
-            // get the list of subscriptions of the current user
+        error_log('URL: ' . $url);
+
+        if (isset($url)) {
             $helper = new Bocs_Helper();
-            $subscriptions = $helper->curl_request($url, 'GET', $data, $this->headers);
+            $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
             $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_subscriptions_account.php';
 
-            if (file_exists($template_path))
+            if (file_exists($template_path)) {
                 include $template_path;
-        } else {
-            echo "";
+            } else {
+                echo esc_html__('Subscription template not found.', 'bocs-wordpress');
+            }
         }
     }
 
     /**
-     * register bocs subscription view under My Account
+     * Register the Bocs subscription view endpoint
      */
     public function register_bocs_view_subscription_endpoint()
     {
         add_rewrite_endpoint('bocs-view-subscription', EP_PAGES);
     }
 
+    /**
+     * Display content for the subscription view page
+     */
     public function bocs_view_subscription_endpoint_content()
     {
         global $wp;
 
-        // Safely get the subscription ID from the URL
         $bocs_subscription_id = isset($wp->query_vars['bocs-view-subscription']) 
-            ? $wp->query_vars['bocs-view-subscription'] 
+            ? sanitize_text_field($wp->query_vars['bocs-view-subscription']) 
             : '';
 
-        // get the details of the subscription
         if ($bocs_subscription_id) {
-
             $url = BOCS_API_URL . 'subscriptions/' . $bocs_subscription_id;
-
-            // Retrieve the subscription details (replace this with actual subscription retrieval logic)
             $helper = new Bocs_Helper();
             $subscription = $helper->curl_request($url, 'GET', [], $this->headers);
 
-            // get the related orders
+            // Get related orders
             $url = BOCS_API_URL . 'orders?query=subscriptionId:' . $bocs_subscription_id;
-            $related_orders = $helper->curl_request($url, 'GET',[], $this->headers);
+            $related_orders = $helper->curl_request($url, 'GET', [], $this->headers);
             
-            if(isset($related_orders['data'])) {
-                if( $related_orders['data'] == 'Internal server error.' ) {
+            if (isset($related_orders['data'])) {
+                if ($related_orders['data'] == 'Internal server error.') {
                     $related_orders['data'] = [];
                 }
             } else {
                 $related_orders['data'] = [];
             }
 
-            // in case that the related orders not exists or there is none
             if (! isset($related_orders['data']) || empty($related_orders['data'])) {
-                
                 $args = array(
-                    'limit' => - 1, // Retrieve all orders
+                    'limit' => -1,
                     'orderby' => 'date',
                     'order' => 'DESC',
                     'meta_key' => '__bocs_subscription_id',
                     'meta_value' => $bocs_subscription_id,
                     'meta_compare' => '=',
-                    'return' => 'ids' // Return only order IDs
+                    'return' => 'ids'
                 );
 
                 $query = new WC_Order_Query($args);
@@ -145,20 +154,19 @@ class Bocs_Account
             if (file_exists($template_path)) {
                 include $template_path;
             } else {
-                echo '<p>' . __('Invalid subscription ID.', 'woocommerce') . '</p>';
+                echo '<p>' . esc_html__('Invalid subscription ID.', 'bocs-wordpress') . '</p>';
             }
         } else {
-            echo '<p>' . __('No subscription ID provided.', 'woocommerce') . '</p>';
+            echo '<p>' . esc_html__('No subscription ID provided.', 'bocs-wordpress') . '</p>';
         }
     }
 
     /**
-     * Checks if the current cart contains a Bocs subscription.
+     * Check if the current cart contains a Bocs subscription.
      *
      * @since 0.0.97
      * @access private
-     * 
-     * @return bool True if cart contains a Bocs subscription, false otherwise.
+     * @return bool True if cart contains a Bocs subscription
      */
     private function _cart_contains_bocs_subscription() {
         $bocs_id = '';
@@ -175,21 +183,20 @@ class Bocs_Account
     }
     
     /**
-	 * Enables the 'registration required' (guest checkout) setting when purchasing bocs.
-	 *
-	 * @since 0.0.97
-	 *
-	 * @param bool $account_required Whether an account is required to checkout.
-	 * @return bool
-	 */
-	public function require_registration_during_checkout($account_required) {
-		return $this->_cart_contains_bocs_subscription() && !is_user_logged_in() 
-			? true 
-			: $account_required;
-	}
+     * Enable registration requirement when purchasing Bocs products
+     *
+     * @since 0.0.97
+     * @param bool $account_required Current account requirement status
+     * @return bool Modified account requirement status
+     */
+    public function require_registration_during_checkout($account_required) {
+        return $this->_cart_contains_bocs_subscription() && !is_user_logged_in() 
+            ? true 
+            : $account_required;
+    }
 
     /**
-     * During the checkout process, force registration when the cart contains a bocs subscription.
+     * Force registration during checkout for Bocs subscriptions
      *
      * @since 0.0.97
      * @param array $data Posted checkout form data
@@ -203,23 +210,17 @@ class Bocs_Account
     }
 
     /**
-	 * Enables registration for carts containing bocs
-	 *
-	 * @since 3.1.0
-	 *
-	 * @param  bool $registration_enabled Whether registration is enabled on checkout by default.
-	 * @return bool
-	 */
-	public function maybe_enable_registration( $registration_enabled ) {
-		// Exit early if regristration is already allowed.
-		if ( $registration_enabled ) {
-			return true;
-		}
+     * Enable registration for carts containing Bocs products
+     *
+     * @since 3.1.0
+     * @param bool $registration_enabled Current registration status
+     * @return bool Modified registration status
+     */
+    public function maybe_enable_registration($registration_enabled) {
+        if ($registration_enabled) {
+            return true;
+        }
 
-		if ( $this->_cart_contains_bocs_subscription() ) {
-			return true;
-		}
-
-		return $registration_enabled;
-	}
+        return $this->_cart_contains_bocs_subscription() ? true : $registration_enabled;
+    }
 }

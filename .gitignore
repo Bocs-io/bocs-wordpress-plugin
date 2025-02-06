@@ -213,3 +213,9 @@ wp-config.php
 
 
 # End of https://www.toptal.com/developers/gitignore/api/phpstorm,visualstudiocode,wordpress,macos
+
+# Ignore compiled translation files
+languages/*.mo
+languages/*.po
+# Don't ignore the template
+!languages/*.pot

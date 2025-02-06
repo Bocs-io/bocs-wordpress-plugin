@@ -20,6 +20,21 @@ $options = get_option('bocs_plugin_options');
 $discount_percent = 0; // or whatever default value is appropriate
 $frequency_text = ''; // or whatever default value is appropriate
 
+// Check if $subscriptions is a WP_Error before proceeding
+if (is_wp_error($subscriptions)) {
+    ?>
+    <div class="woocommerce-message woocommerce-error">
+        <?php 
+        echo esc_html__('No active subscriptions found. Your subscriptions may have been deleted or are no longer available.', 'bocs-wordpress');
+        if (WP_DEBUG) {
+            echo ' Error: ' . esc_html($subscriptions->get_error_message());
+        }
+        ?>
+    </div>
+    <?php
+    return;
+}
+
 ?>
 
 <div id="bocs-subscriptions-accordion" class="woocommerce-subscriptions-wrapper">
@@ -30,17 +45,18 @@ $frequency_text = ''; // or whatever default value is appropriate
             $subscription_name = '';
             if (!empty(trim($subscription['bocs']['name']))) {
                 $subscription_name = sprintf(
-                    esc_html__($subscription['bocs']['name'] . ' (Order #%s)', 'woocommerce'),
+                    esc_html__('%s (Order #%s)', 'bocs-wordpress'),
+                    $subscription['bocs']['name'],
                     $subscription['externalSourceParentOrderId']
                 );
             } elseif (!empty($subscription['externalSourceParentOrderId'])) {
                 $subscription_name = sprintf(
-                    esc_html__('Subscription (Order #%s)', 'woocommerce'),
+                    esc_html__('Subscription (Order #%s)', 'bocs-wordpress'),
                     $subscription['externalSourceParentOrderId']
                 );
             } else {
                 $subscription_name = sprintf(
-                    esc_html__('Subscription #%s', 'woocommerce'),
+                    esc_html__('Subscription #%s', 'bocs-wordpress'),
                     substr($subscription['id'], 0, 8)
                 );
             }
@@ -78,7 +94,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                     <div class="subscription-section">
                         <div class="subscription-row">
                             <div class="total-amount">
-                                <span class="subscription-label"><?php esc_html_e('Total Amount', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Total Amount', 'bocs-wordpress'); ?></span>
                                 <span class="woocommerce-Price-amount amount">
                                     <?php if (!empty($subscription['currency'])): ?>
                                         <span class="woocommerce-Price-currencySymbol"><?php echo get_woocommerce_currency_symbol($subscription['currency']); ?></span>
@@ -98,14 +114,14 @@ $frequency_text = ''; // or whatever default value is appropriate
                                     id="renewal_<?php echo esc_attr($subscription['id']); ?>"
                                     data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
                                 >
-                                    <?php esc_html_e('Early Renewal', 'woocommerce'); ?>
+                                    <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
                                 </button>
                             <?php endif; ?>
                         </div>
 
                         <div class="subscription-row">
                             <div class="delivery-frequency">
-                                <span class="subscription-label"><?php esc_html_e('Delivery', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Delivery', 'bocs-wordpress'); ?></span>
                                 <span><?php
                                     $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : 1;
                                     $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
@@ -118,19 +134,19 @@ $frequency_text = ''; // or whatever default value is appropriate
                                 ?></span>
                             </div>
                             <div class="total-items">
-                                <span class="subscription-label"><?php esc_html_e('Total Items', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Total Items', 'bocs-wordpress'); ?></span>
                                 <span><?php 
                                     $items_count = isset($subscription['lineItems']) && is_array($subscription['lineItems']) 
                                         ? array_sum(array_column($subscription['lineItems'], 'quantity')) 
                                         : 0;
-                                    echo $items_count . ' ' . esc_html(_n('item', 'items', $items_count, 'woocommerce')); 
+                                    echo $items_count . ' ' . esc_html(_n('item', 'items', $items_count, 'bocs-wordpress')); 
                                 ?></span>
                             </div>
                         </div>
 
                         <div class="subscription-row">
                             <div class="shipping-address">
-                                <span class="subscription-label"><?php esc_html_e('Shipping Address', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Shipping Address', 'bocs-wordpress'); ?></span>
                                 <?php if (!empty($subscription['shipping'])): ?>
                                     <address>
                                         <?php
@@ -147,20 +163,20 @@ $frequency_text = ''; // or whatever default value is appropriate
                                         ?>
                                     </address>
                                 <?php else: ?>
-                                    <span><?php esc_html_e('No address provided', 'woocommerce'); ?></span>
+                                    <span><?php esc_html_e('No address provided', 'bocs-wordpress'); ?></span>
                                 <?php endif; ?>
                             </div>
                         </div>
 
                         <div class="subscription-row">
                             <div class="next-payment">
-                                <span class="subscription-label"><?php esc_html_e('Next Payment', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Next Payment', 'bocs-wordpress'); ?></span>
                                 <time datetime="<?php echo esc_attr($next_payment_date->format('c')); ?>">
                                     <?php echo esc_html($next_payment_date->format('l, j F Y')); ?>
                                 </time>
                             </div>
                             <div class="start-date">
-                                <span class="subscription-label"><?php esc_html_e('Started On', 'woocommerce'); ?></span>
+                                <span class="subscription-label"><?php esc_html_e('Started On', 'bocs-wordpress'); ?></span>
                                 <time datetime="<?php echo esc_attr($start_date->format('c')); ?>">
                                     <?php echo esc_html($start_date->format('l, j F Y')); ?>
                                 </time>
@@ -168,10 +184,10 @@ $frequency_text = ''; // or whatever default value is appropriate
                         </div>
 
                         <div class="subscription-actions">
-                            <a href="#" class="woocommerce-button button update-box"><?php esc_html_e('Update My Box', 'woocommerce'); ?></a>
+                            <a href="#" class="woocommerce-button button update-box"><?php esc_html_e('Update My Box', 'bocs-wordpress'); ?></a>
                             <button class="woocommerce-button button alt view-details" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
-                                <?php esc_html_e('Edit Details', 'woocommerce'); ?>
+                                <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
                             </button>
                         </div>
                     </div>
@@ -187,24 +203,24 @@ $frequency_text = ''; // or whatever default value is appropriate
 <div id="subscription-details-view" style="display: none;">
     <div class="subscription-details-header">
         <div class="subscription-navigation">
-            <a href="#" class="back-to-subscription"><?php esc_html_e('Back to subscription', 'woocommerce'); ?></a>
+            <a href="#" class="back-to-subscription"><?php esc_html_e('Back to subscription', 'bocs-wordpress'); ?></a>
             <span class="nav-separator">|</span>
-            <span class="nav-item">Dashboard</span>
+            <span class="nav-item"><?php esc_html_e('Dashboard', 'bocs-wordpress'); ?></span>
             <span class="nav-separator">→</span>
             <span class="nav-item subscription-name"></span>
         </div>
         <div class="header-actions">
             <button class="woocommerce-button button alt pay-now">
-                <?php esc_html_e('Early Renewal', 'woocommerce'); ?>
+                <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
             </button>
         </div>
     </div>
     
     <div class="subscription-details-content">
         <div class="content-header">
-            <h2><?php esc_html_e('Box Content', 'woocommerce'); ?></h2>
+            <h2><?php esc_html_e('Box Content', 'bocs-wordpress'); ?></h2>
             <button class="woocommerce-button button edit-box">
-                <?php esc_html_e('Edit the Box', 'woocommerce'); ?>
+                <?php esc_html_e('Edit the Box', 'bocs-wordpress'); ?>
             </button>
         </div>
         <div class="box-items"></div>
@@ -214,8 +230,8 @@ $frequency_text = ''; // or whatever default value is appropriate
         <div class="subscription-details-sections">
             <div class="details-section">
                 <div class="section-header">
-                    <h3><?php esc_html_e('Frequency', 'woocommerce'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'woocommerce'); ?></button>
+                    <h3><?php esc_html_e('Frequency', 'bocs-wordpress'); ?></h3>
+                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
                 </div>
                 <p class="current-frequency">
                     <?php 
@@ -229,50 +245,50 @@ $frequency_text = ''; // or whatever default value is appropriate
 
                 <div class="frequency-editor" style="display: none;">
                     <div class="frequency-header">
-                        <h3><?php esc_html_e('Frequency', 'woocommerce'); ?></h3>
-                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'woocommerce'); ?></button>
+                        <h3><?php esc_html_e('Frequency', 'bocs-wordpress'); ?></h3>
+                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
                     </div>
                     
                     <div class="frequency-options">
                         <div class="frequency-options-loading" style="display: none;">
                             <div class="loading-spinner"></div>
-                            <p>Loading frequency options...</p>
+                            <p><?php esc_html_e('Loading frequency options...', 'bocs-wordpress'); ?></p>
                         </div>
                         <div class="frequency-options-content"></div>
                     </div>
 
                     <button class="save-frequency">
-                        <?php esc_html_e('Save', 'woocommerce'); ?>
+                        <?php esc_html_e('Save', 'bocs-wordpress'); ?>
                     </button>
                 </div>
             </div>
 
             <div class="details-section">
                 <div class="section-header">
-                    <h3><?php esc_html_e('Instructions', 'woocommerce'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'woocommerce'); ?></button>
+                    <h3><?php esc_html_e('Instructions', 'bocs-wordpress'); ?></h3>
+                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
                 </div>
                 <p></p>
             </div>
 
             <div class="details-section">
                 <div class="section-header">
-                    <h3><?php esc_html_e('Pause or Skip', 'woocommerce'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'woocommerce'); ?></button>
+                    <h3><?php esc_html_e('Pause or Skip', 'bocs-wordpress'); ?></h3>
+                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
                 </div>
                 <div class="notice-box">
-                    <?php esc_html_e('You can pause or skip your subscription easily, select the next date you would like your payment debited, plus your desired delivery date.', 'woocommerce'); ?>
+                    <?php esc_html_e('You can pause or skip your subscription easily, select the next date you would like your payment debited, plus your desired delivery date.', 'bocs-wordpress'); ?>
                 </div>
                 <div class="date-info">
-                    <p class="date-label"><?php esc_html_e('Next Payment Date', 'woocommerce'); ?></p>
+                    <p class="date-label"><?php esc_html_e('Next Payment Date', 'bocs-wordpress'); ?></p>
                     <p class="date-value"></p>
                 </div>
 
                 <!-- Add new schedule editor -->
                 <div class="schedule-editor" style="display: none;">
                     <div class="schedule-header">
-                        <h3><?php esc_html_e('Adjust Schedule', 'woocommerce'); ?></h3>
-                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'woocommerce'); ?></button>
+                        <h3><?php esc_html_e('Adjust Schedule', 'bocs-wordpress'); ?></h3>
+                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
                     </div>
                     
                     <div class="schedule-options">
@@ -280,12 +296,12 @@ $frequency_text = ''; // or whatever default value is appropriate
                             <div class="pause-duration">
                                 <div class="pause-options-loading" style="display: none;">
                                     <div class="loading-spinner"></div>
-                                    <p>Loading pause options...</p>
+                                    <p><?php esc_html_e('Loading pause options...', 'bocs-wordpress'); ?></p>
                                 </div>
                                 <div class="pause-options-content"></div>
                                 <label class="frequency-option">
                                     <input type="radio" name="pause_duration" value="custom_date">
-                                    <span class="radio-label">Skip to Date</span>
+                                    <span class="radio-label"><?php esc_html_e('Skip to Date', 'bocs-wordpress'); ?></span>
                                 </label>
                                 <input type="date" name="new_date"
                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
@@ -296,16 +312,16 @@ $frequency_text = ''; // or whatever default value is appropriate
                         <!-- Add next payment date preview -->
                         <div class="next-payment-preview" style="display: none;">
                             <div class="preview-header">
-                                <?php esc_html_e('Preview of Changes', 'woocommerce'); ?>
+                                <?php esc_html_e('Preview of Changes', 'bocs-wordpress'); ?>
                             </div>
                             <div class="preview-content">
-                                <span class="preview-label"><?php esc_html_e('Next Payment Date:', 'woocommerce'); ?></span>
+                                <span class="preview-label"><?php esc_html_e('Next Payment Date:', 'bocs-wordpress'); ?></span>
                                 <span class="preview-date"></span>
                             </div>
                         </div>
 
                         <button class="save-schedule woocommerce-button button alt">
-                            <?php esc_html_e('Save Changes', 'woocommerce'); ?>
+                            <?php esc_html_e('Save Changes', 'bocs-wordpress'); ?>
                         </button>
                     </div>
                 </div>
@@ -313,11 +329,11 @@ $frequency_text = ''; // or whatever default value is appropriate
 
             <div class="details-section">
                 <div class="section-header">
-                    <h3><?php esc_html_e('Promos', 'woocommerce'); ?></h3>
+                    <h3><?php esc_html_e('Promos', 'bocs-wordpress'); ?></h3>
                 </div>
                 <?php if (!empty($subscription['promos'])): ?>
                     <div class="promo-tag">
-                        <?php echo esc_html($subscription['promos'][0] ?? 'FREE PRODUCT FOR LIFE'); ?>
+                        <?php echo esc_html($subscription['promos'][0] ?? esc_html__('FREE PRODUCT FOR LIFE', 'bocs-wordpress')); ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -325,11 +341,11 @@ $frequency_text = ''; // or whatever default value is appropriate
             <div class="subscription-actions">
                 <button class="back-to-subscription-button">
                     <span class="dashicons dashicons-arrow-left-alt"></span>
-                    <?php esc_html_e('Back to Subscription', 'woocommerce'); ?>
+                    <?php esc_html_e('Back to Subscription', 'bocs-wordpress'); ?>
                 </button>
                 <button class="cancel-button">
                     <span class="dashicons dashicons-trash"></span>
-                    <?php esc_html_e('Cancel Subscription', 'woocommerce'); ?>
+                    <?php esc_html_e('Cancel Subscription', 'bocs-wordpress'); ?>
                 </button>
             </div>
         </div>
@@ -2075,58 +2091,50 @@ jQuery(document).ready(function($) {
                     nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + frequency);
                 }
             }
+        }
 
-            // Prepare the payload
-            const updatePayload = {
-                nextPaymentDateGmt: nextPaymentDate.toISOString()
-            };
+        // Prepare the payload
+        const updatePayload = {
+            nextPaymentDateGmt: nextPaymentDate.toISOString()
+        };
 
-            // Send update to API
-            const response = await $.ajax({
-                url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
-                method: 'PUT',
-                data: JSON.stringify(updatePayload),
-                contentType: 'application/json',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                }
-            });
-
-            if (response.code === 200) {
-                // Update the displayed next payment date in the subscription details
-                const formattedDate = nextPaymentDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                $('.date-value').text(formattedDate);
-
-                // Update the date in the subscription list if visible
-                const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
-                    .closest('.wc-subscription');
-                if (subscriptionInList.length) {
-                    subscriptionInList.find('.next-payment time').text(formattedDate);
-                }
-
-                // Hide the schedule editor
-                $('.schedule-editor').hide();
-                $('.edit-link').show();
-
-                helpers.showNotification('Schedule updated successfully', 'success');
-            } else {
-                throw new Error(response.message || 'Failed to update schedule');
+        // Send update to API
+        const response = await $.ajax({
+            url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
+            method: 'PUT',
+            data: JSON.stringify(updatePayload),
+            contentType: 'application/json',
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
             }
-        } catch (error) {
-            console.error('Error updating subscription schedule:', error);
-            helpers.showNotification(error.message || 'Failed to update schedule. Please try again.', 'error');
-        } finally {
-            // Reset button state
-            button.prop('disabled', false)
-                  .removeClass('button-loading')
-                  .html(originalButtonText);
+        });
+
+        if (response.code === 200) {
+            // Update the displayed next payment date in the subscription details
+            const formattedDate = nextPaymentDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            $('.date-value').text(formattedDate);
+
+            // Update the date in the subscription list if visible
+            const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
+                .closest('.wc-subscription');
+            if (subscriptionInList.length) {
+                subscriptionInList.find('.next-payment time').text(formattedDate);
+            }
+
+            // Hide the schedule editor
+            $('.schedule-editor').hide();
+            $('.edit-link').show();
+
+            helpers.showNotification('Schedule updated successfully', 'success');
+        } else {
+            throw new Error(response.message || 'Failed to update schedule');
         }
     });
 

@@ -1,64 +1,102 @@
 <table class="shop_table subscription_details">
 	<tbody>
 		<tr>
-			<td>Status</td>
+			<td><?php esc_html_e('Status', 'bocs-wordpress'); ?></td>
 			<td>
-				<p id="subscriptionStatus"><?php
-    echo ucfirst($subscription['data']['subscriptionStatus'])?></p>
+				<p id="subscriptionStatus"><?php echo esc_html(ucfirst($subscription['data']['subscriptionStatus'])); ?></p>
 			</td>
 		</tr>
 		<tr>
-			<td>Start date</td>
+			<td><?php esc_html_e('Start date', 'bocs-wordpress'); ?></td>
 			<td>
 				<?php
-    if (isset($subscription['data']['startDateGmt'])) {
-        $startDate = new DateTime($subscription['data']['startDateGmt']);
-        echo $startDate->format('F j, Y');
-    }
-    ?>
+				if (isset($subscription['data']['startDateGmt'])) {
+					try {
+						$startDate = new DateTime($subscription['data']['startDateGmt']);
+						echo esc_html($startDate->format('F j, Y'));
+					} catch (Exception $e) {
+						error_log(sprintf(
+							/* translators: %s: Error message */
+							__('Critical: Error formatting start date: %s', 'bocs-wordpress'),
+							$e->getMessage()
+						));
+					}
+				}
+				?>
 			</td>
 		</tr>
 		<tr>
-			<td>Last order date</td>
+			<td><?php esc_html_e('Last order date', 'bocs-wordpress'); ?></td>
 			<td></td>
 		</tr>
 		<tr>
-			<td>Next payment date</td>
-			<td><?php
-if (isset($subscription['data']['nextPaymentDateGmt'])) {
-    $nextPaymentDate = new DateTime($subscription['data']['nextPaymentDateGmt']);
-    echo $nextPaymentDate->format('F j, Y');
-}
-?>
-                <br />
-                <input type="date" id="updated-next-payment-date" name="updated-next-payment-date" style="display: none;">
-                <br />
-                <button class="button bocs-button" id="next-payment-date-button" data-subscription-id="<?php echo $subscription['data']['id']; ?>">Set Next Payment Date</button>
+			<td><?php esc_html_e('Next payment date', 'bocs-wordpress'); ?></td>
+			<td>
+				<?php
+				if (isset($subscription['data']['nextPaymentDateGmt'])) {
+					try {
+						$nextPaymentDate = new DateTime($subscription['data']['nextPaymentDateGmt']);
+						echo esc_html($nextPaymentDate->format('F j, Y'));
+					} catch (Exception $e) {
+						error_log(sprintf(
+							/* translators: %s: Error message */
+							__('Critical: Error formatting next payment date: %s', 'bocs-wordpress'),
+							$e->getMessage()
+						));
+					}
+				}
+				?>
+				<br />
+				<input type="date" 
+					   id="updated-next-payment-date" 
+					   name="updated-next-payment-date" 
+					   style="display: none;"
+					   aria-label="<?php esc_attr_e('Select next payment date', 'bocs-wordpress'); ?>">
+				<br />
+				<button class="button bocs-button" 
+						id="next-payment-date-button" 
+						data-subscription-id="<?php echo esc_attr($subscription['data']['id']); ?>">
+					<?php esc_html_e('Set Next Payment Date', 'bocs-wordpress'); ?>
+				</button>
 			</td>
 		</tr>
 		<tr>
-			<td>Payment</td>
+			<td><?php esc_html_e('Payment', 'bocs-wordpress'); ?></td>
 			<td><span data-is_manual="no" class="subscription-payment-method"></span></td>
 		</tr>
 		<tr>
-			<td>Actions</td>
+			<td><?php esc_html_e('Actions', 'bocs-wordpress'); ?></td>
 			<td>
-				<a href="#" class="button bocs-button cancel wcs_block_ui_on_click<?php
-
-    echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? ' disabled' : ''?>"><?php
-
-    echo ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled' ? 'Cancelled' : 'Cancel'?></a>
-				<a href="#" class="button bocs-button change_payment_method">Change payment</a>
-				<a href="#" class="button bocs-button subscription_renewal_early">Renew now</a>
-				<a href="#" class="button bocs-button subscription_pause">Pause</a>
+				<?php
+				$is_cancelled = ucfirst($subscription['data']['subscriptionStatus']) == 'Cancelled';
+				?>
+				<a href="#" 
+				   class="button bocs-button cancel wcs_block_ui_on_click<?php echo $is_cancelled ? ' disabled' : ''; ?>">
+					<?php echo esc_html($is_cancelled ? __('Cancelled', 'bocs-wordpress') : __('Cancel', 'bocs-wordpress')); ?>
+				</a>
+				<a href="#" class="button bocs-button change_payment_method">
+					<?php esc_html_e('Change payment', 'bocs-wordpress'); ?>
+				</a>
+				<a href="#" class="button bocs-button subscription_renewal_early">
+					<?php esc_html_e('Renew now', 'bocs-wordpress'); ?>
+				</a>
+				<a href="#" class="button bocs-button subscription_pause">
+					<?php esc_html_e('Pause', 'bocs-wordpress'); ?>
+				</a>
 				<p id="next-payment-date-wrapper" style="display: none;">
-					<label for="next-payment-date">Next Payment (date and time):</label>
-					<input type="datetime-local" id="next-payment-date" name="next-payment-date" value="<?php
-
-    echo str_replace('.000Z', '', $subscription['data']['nextPaymentDateGmt']);
-    ?>">
-					<input type="button" id="next-payment-date-confirm" value="Confirm">
-					<input type="button" id="next-payment-date-cancel" value="Cancel">
+					<label for="next-payment-date">
+						<?php esc_html_e('Next Payment (date and time):', 'bocs-wordpress'); ?>
+					</label>
+					<input type="datetime-local" 
+						   id="next-payment-date" 
+						   name="next-payment-date" 
+						   value="<?php echo esc_attr(str_replace('.000Z', '', $subscription['data']['nextPaymentDateGmt'])); ?>">
+					<input type="button" 
+						   id="next-payment-date-confirm" 
+						   value="<?php esc_attr_e('Confirm', 'bocs-wordpress'); ?>">
+					<input type="button" 
+						   id="next-payment-date-cancel" 
+						   value="<?php esc_attr_e('Cancel', 'bocs-wordpress'); ?>">
 				</p>
 			</td>
 		</tr>
@@ -66,96 +104,105 @@ if (isset($subscription['data']['nextPaymentDateGmt'])) {
 </table>
 <br />
 <header>
-	<h2>Bocs Subscription Totals</h2>
+	<h2><?php esc_html_e('Bocs Subscription Totals', 'bocs-wordpress'); ?></h2>
 </header>
 <table class="shop_table order_details">
 	<thead>
 		<tr>
-			<th class="product-name">Product</th>
-			<th class="product-total">Total</th>
+			<th class="product-name"><?php esc_html_e('Product', 'bocs-wordpress'); ?></th>
+			<th class="product-total"><?php esc_html_e('Total', 'bocs-wordpress'); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<tr class="order_item">
 			<td class="product-name">
 				<?php
-    // Display subscription line items
-    // Iterate through each product in the subscription and display its details
-    if ($subscription['data']['lineItems']) {
-        foreach ($subscription['data']['lineItems'] as $lineItem) {
-            // Retrieve WooCommerce product details using the external source ID
-            $wc_id = $lineItem['externalSourceId'];
-            $product = wc_get_product($wc_id);
-            $product_name = '';
-            if ($product) {
-                $product_name = $product->get_name();
-            }
-            $quantity = $lineItem['quantity'];
-?>
-						<p><?php
-
-            echo $product_name?> <strong class="product-quantity">× <?php
-
-            echo $quantity?></strong> </p>
-				<?php
-        }
-    }
-    ?>
+				if ($subscription['data']['lineItems']) {
+					foreach ($subscription['data']['lineItems'] as $lineItem) {
+						try {
+							$wc_id = $lineItem['externalSourceId'];
+							$product = wc_get_product($wc_id);
+							$product_name = '';
+							if ($product) {
+								$product_name = $product->get_name();
+							}
+							$quantity = $lineItem['quantity'];
+							?>
+							<p>
+								<?php echo esc_html($product_name); ?> 
+								<strong class="product-quantity">
+									<?php 
+									/* translators: %s: Product quantity */
+									printf(esc_html__('× %s', 'bocs-wordpress'), esc_html($quantity)); 
+									?>
+								</strong>
+							</p>
+							<?php
+						} catch (Exception $e) {
+							error_log(sprintf(
+								/* translators: 1: Product ID, 2: Error message */
+								__('Critical: Error processing product #%1$s: %2$s', 'bocs-wordpress'),
+								$wc_id,
+								$e->getMessage()
+							));
+						}
+					}
+				}
+				?>
 			</td>
 			<td class="product-total">
-				<span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
-
-    echo $subscription['data']['total']?></span>
+				<span class="woocommerce-Price-amount amount">
+					<span class="woocommerce-Price-currencySymbol">$</span>
+					<?php echo esc_html($subscription['data']['total']); ?>
+				</span>
 				<?php
+				// Calculate and format billing interval and period
+				$subscriptionBillingInterval = 0;
+				$subscriptionBillingPeriod = '';
 
-    // Calculate and format billing interval and period
-    // Initialize billing variables
-    $subscriptionBillingInterval = 0;
-    $subscriptionBillingPeriod = '';
+				if (isset($subscription['data']['billingInterval'])) {
+					$subscriptionBillingInterval = $subscription['data']['billingInterval'];
+				} else if (isset($subscription['data']['frequency']['frequency'])) {
+					$subscriptionBillingInterval = $subscription['data']['frequency']['frequency'];
+				}
 
-    // Get billing interval from either direct property or frequency object
-    if (isset($subscription['data']['billingInterval'])) {
-        $subscriptionBillingInterval = $subscription['data']['billingInterval'];
-    } else if (isset($subscription['data']['frequency']['frequency'])) {
-        $subscriptionBillingInterval = $subscription['data']['frequency']['frequency'];
-    }
+				if (isset($subscription['data']['billingPeriod'])) {
+					$subscriptionBillingPeriod = $subscription['data']['billingPeriod'];
+				} else if (isset($subscription['data']['frequency']['timeUnit'])) {
+					$subscriptionBillingPeriod = $subscription['data']['frequency']['timeUnit'];
+				}
 
-    // Get billing period from either direct property or frequency object
-    if (isset($subscription['data']['billingPeriod'])) {
-        $subscriptionBillingPeriod = $subscription['data']['billingPeriod'];
-    } else if (isset($subscription['data']['frequency']['timeUnit'])) {
-        $subscriptionBillingPeriod = $subscription['data']['frequency']['timeUnit'];
-    }
-
-    // Format billing period string (handle pluralization)
-    $subscriptionBillingPeriod = $subscriptionBillingPeriod . 's';
-    if ($subscriptionBillingInterval <= 1) {
-        $subscriptionBillingPeriod = rtrim($subscriptionBillingPeriod, 's');
-        $subscriptionBillingInterval = '';
-    }
-
-    ?>every <?php
-
-    echo trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod);
-    ?>
+				$subscriptionBillingPeriod = $subscriptionBillingPeriod . 's';
+				if ($subscriptionBillingInterval <= 1) {
+					$subscriptionBillingPeriod = rtrim($subscriptionBillingPeriod, 's');
+					$subscriptionBillingInterval = '';
+				}
+				?>
+				<?php esc_html_e('every', 'bocs-wordpress'); ?> 
+				<?php echo esc_html(trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod)); ?>
 			</td>
 		</tr>
 	</tbody>
 	<tfoot>
 		<tr>
-			<th scope="row">Subtotal:</th>
-			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
-
-echo $subscription['data']['total']?></span></td>
+			<th scope="row"><?php esc_html_e('Subtotal:', 'bocs-wordpress'); ?></th>
+			<td>
+				<span class="woocommerce-Price-amount amount">
+					<span class="woocommerce-Price-currencySymbol">$</span>
+					<?php echo esc_html($subscription['data']['total']); ?>
+				</span>
+			</td>
 		</tr>
 		<tr>
-			<th scope="row">Total:</th>
-			<td><span class="woocommerce-Price-amount amount"><span class="woocommerce-Price-currencySymbol">$</span><?php
-
-echo $subscription['data']['total']?></span> every <?php
-
-echo trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod);
-?></td>
+			<th scope="row"><?php esc_html_e('Total:', 'bocs-wordpress'); ?></th>
+			<td>
+				<span class="woocommerce-Price-amount amount">
+					<span class="woocommerce-Price-currencySymbol">$</span>
+					<?php echo esc_html($subscription['data']['total']); ?>
+				</span> 
+				<?php esc_html_e('every', 'bocs-wordpress'); ?> 
+				<?php echo esc_html(trim($subscriptionBillingInterval . ' ' . $subscriptionBillingPeriod)); ?>
+			</td>
 		</tr>
 	</tfoot>
 </table>
@@ -332,59 +379,37 @@ if (isset($related_orders['data']) && !empty($related_orders['data'])) {
 }
 ?>
 <section class="woocommerce-customer-details">
-	<h2 class="woocommerce-column__title">Billing address</h2>
+	<h2 class="woocommerce-column__title"><?php esc_html_e('Billing address', 'bocs-wordpress'); ?></h2>
 	<address>
 		<?php
-echo $subscription['data']['billing']['firstName'] . ' ' . $subscription['data']['billing']['lastName'];
-echo "<br />";
-if (! empty($subscription['data']['billing']['company'])) {
-    echo $subscription['data']['billing']['company'];
-    echo "<br />";
-}
-if (! empty($subscription['data']['billing']['address1'])) {
-    echo $subscription['data']['billing']['address1'];
-}
-if (! empty($subscription['data']['billing']['address2'])) {
-    echo ' ' . $subscription['data']['billing']['address2'];
-}
-if (! empty($subscription['data']['billing']['city'])) {
-    echo ' ' . $subscription['data']['billing']['city'];
-}
-if (! empty($subscription['data']['billing']['state'])) {
-    echo ' ' . $subscription['data']['billing']['state'];
-}
-if (! empty($subscription['data']['billing']['postcode'])) {
-    echo ' ' . $subscription['data']['billing']['postcode'];
-}
-if (! empty($subscription['data']['billing']['country'])) {
-    echo ' ' . $subscription['data']['billing']['country'];
-}
-echo "<br />";
-?>
+		$billing = $subscription['data']['billing'];
+		echo esc_html($billing['firstName'] . ' ' . $billing['lastName']);
+		echo "<br />";
+		if (!empty($billing['company'])) {
+			echo esc_html($billing['company']) . "<br />";
+		}
+		
+		$address_parts = array_filter([
+			$billing['address1'],
+			$billing['address2'],
+			$billing['city'],
+			$billing['state'],
+			$billing['postcode'],
+			$billing['country']
+		]);
+		
+		echo esc_html(implode(' ', $address_parts));
+		echo "<br />";
 
-		<?php
+		if (!empty($billing['phone'])) {
+			echo '<p class="woocommerce-customer-details--phone">' . esc_html($billing['phone']) . '</p>';
+		}
 
-if (! empty($subscription['data']['billing']['phone'])) :
-    ?>
-			<p class="woocommerce-customer-details--phone"><?php
+		if (!empty($billing['email'])) {
+			echo '<p class="woocommerce-customer-details--email">' . esc_html($billing['email']) . '</p>';
+		}
+		?>
 
-    echo esc_html($subscription['data']['billing']['phone']);
-    ?></p>
-		<?php endif;
-
-?>
-
-		<?php
-
-if (! empty($subscription['data']['billing']['email'])) :
-    ?>
-			<p class="woocommerce-customer-details--email"><?php
-
-    echo esc_html($subscription['data']['billing']['email']);
-    ?></p>
-		<?php endif;
-
-?>
 	</address>
 
 </section>

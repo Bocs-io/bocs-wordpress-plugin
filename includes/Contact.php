@@ -1,17 +1,32 @@
 <?php
 
 /**
- * All of the contacts API related
+ * Contact Management Class
+ *
+ * Handles all contact-related API functionality and synchronization
+ * between WordPress and Bocs platform.
+ *
+ * @package    Bocs
+ * @subpackage Bocs/includes
+ * @since      0.0.1
  */
 class Contact
 {
 
+    /** @var string API authentication token */
     private $api_token;
 
+    /** @var array API request headers */
     private $headers;
 
+    /** @var int Number of items per page for API requests */
     private $per_page;
 
+    /**
+     * Initialize the class and set its properties.
+     *
+     * @since 0.0.1
+     */
     public function __construct()
     {
         $options = get_option('bocs_plugin_options');
@@ -25,50 +40,57 @@ class Contact
     }
 
     /**
-     * Syncs / Adds the user to Bocs when created / added on Wordpress
+     * Syncs / Adds the user to Bocs when created / added on WordPress
      *
-     * @param $user_id integer
-     *            Wordpress User ID
-     *
-     * @return void
+     * @since 0.0.1
+     * @param int $user_id WordPress User ID
+     * @return int|bool Contact ID on success, false on failure
      */
     public function sync_add_contact($user_id)
     {
         $options = get_option('bocs_plugin_options');
         $options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-        // no sync happening if it was disabled
         if ($options['sync_contacts_to_bocs'] == 0)
             return false;
 
-        // check first if the bocs contact id already exists
         $contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
-
-        // do not proceed to sync to bocs, this maybe a sync from bocs to wodpress
         if (! empty($contact_id))
-            return;
+            return false;
 
         $post_to = BOCS_API_URL . '/contacts';
-
         $params = $this->get_params($user_id);
-
-        // filter the address, if there is no address it won't be added to Bocs
-        // $body = json_decode($params['body'], true);
-        // if (trim($body['shipping']['address1']) == "") return false;
-
-        // then we will create a contact on the Bocs end
 
         try {
             $return = wp_remote_post($post_to, $params);
-            $contact_id = json_decode($return['body'], 2)['data']['id'];
+            
+            if (is_wp_error($return)) {
+                error_log(
+                    sprintf(
+                        /* translators: %s: Error message */
+                        __('Critical: Failed to sync contact to Bocs: %s', 'bocs-wordpress'),
+                        $return->get_error_message()
+                    )
+                );
+                return false;
+            }
 
-            // we will add this to the user meta
+            $response = json_decode($return['body'], true);
+            $contact_id = $response['data']['id'] ?? null;
+
             if (! empty($contact_id)) {
                 delete_user_meta($user_id, 'bocs_contact_id');
                 update_user_meta($user_id, 'bocs_contact_id', $contact_id);
                 return $contact_id;
             }
         } catch (Exception $e) {
+            error_log(
+                sprintf(
+                    /* translators: %s: Error message */
+                    __('Critical: Exception during contact sync: %s', 'bocs-wordpress'),
+                    $e->getMessage()
+                )
+            );
             add_settings_error(BOCS_NAME, 'sync_add_contact', $e->getMessage(), 'error');
         }
 
@@ -78,40 +100,53 @@ class Contact
     /**
      * Syncs the user to Bocs when updated
      *
-     * @param $user_id integer
-     *            Wordpres User ID
-     *
-     * @return void
+     * @since 0.0.1
+     * @param int $user_id WordPress User ID
+     * @return bool Success status
      */
     public function sync_update_contact($user_id)
     {
         $options = get_option('bocs_plugin_options');
         $options['sync_contacts_to_bocs'] = $options['sync_contacts_to_bocs'] ?? 0;
 
-        // no sync happening if it was disabled
         if ($options['sync_contacts_to_bocs'] == 0)
             return false;
 
-        // get the contact id
         $contact_id = get_user_meta($user_id, 'bocs_contact_id', true);
+        if (empty($contact_id))
+            return false;
 
-        if (! empty($contact_id)) {
-
+        try {
             $put_to = BOCS_API_URL . '/contacts/' . $contact_id;
-
             $params = $this->get_params($user_id);
             $params['method'] = "PUT";
 
-            // filter the address, if there is no address it won't be added to Bocs
-            // $body = json_decode($params['body'], true);
-            // if (trim($body['shipping']['address1']) == "") return false;
-
-            try {
-                $result = wp_remote_post($put_to, $params);
-            } catch (Exception $e) {
-                add_settings_error(BOCS_NAME, 'sync_update_contact', $e->getMessage(), 'error');
+            $result = wp_remote_post($put_to, $params);
+            
+            if (is_wp_error($result)) {
+                error_log(
+                    sprintf(
+                        /* translators: %s: Error message */
+                        __('Critical: Failed to update contact in Bocs: %s', 'bocs-wordpress'),
+                        $result->get_error_message()
+                    )
+                );
+                return false;
             }
+            
+            return true;
+        } catch (Exception $e) {
+            error_log(
+                sprintf(
+                    /* translators: %s: Error message */
+                    __('Critical: Exception during contact update: %s', 'bocs-wordpress'),
+                    $e->getMessage()
+                )
+            );
+            add_settings_error(BOCS_NAME, 'sync_update_contact', $e->getMessage(), 'error');
         }
+        
+        return false;
     }
 
     /**

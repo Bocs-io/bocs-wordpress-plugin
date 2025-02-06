@@ -1,55 +1,25 @@
 <?php
 
 /**
- * Core Bocs Plugin Class
+ * The core plugin class.
  *
- * This class serves as the main plugin controller, handling initialization,
- * hook registration, and core functionality management for the Bocs plugin.
- * It orchestrates all plugin components including admin interfaces, public
- * facing features, API integrations, and WooCommerce extensions.
- *
- * @package Bocs
- * @since 0.0.100
+ * @since      1.0.0
+ * @package    Bocs
+ * @subpackage Bocs/includes
  */
 class Bocs
 {
-
-    /**
-     * The loader responsible for managing all action and filter hooks.
-     *
-     * @since 0.0.100
-     * @access protected
-     * @var Loader $loader Maintains and registers all hooks for the plugin.
-     */
+    /** @var Loader */
     protected $loader;
 
-    /**
-     * The unique identifier for this plugin.
-     *
-     * @since 0.0.100
-     * @access protected
-     * @var string $plugin_name The string used to uniquely identify this plugin.
-     */
+    /** @var string */
     protected $plugin_name;
 
-    /**
-     * The current version of the plugin.
-     *
-     * @since 0.0.100
-     * @access protected
-     * @var string $version The current version of the plugin.
-     */
+    /** @var string */
     protected $version;
 
     /**
-     * Initialize the plugin and set its core properties.
-     *
-     * This constructor sets up the plugin's basic attributes and initiates
-     * all core functionality by loading dependencies and registering hooks
-     * for various plugin components.
-     *
-     * @since 0.0.100
-     * @access public
+     * Initialize the plugin.
      */
     public function __construct()
     {
@@ -62,178 +32,77 @@ class Bocs
         $this->define_public_hooks();
         $this->define_email_hooks();
         $this->define_checkout_page_hooks();
-        // $this->define_order_hooks();
-
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
         $this->define_bocs_email_api();
-        $this->define_payment_api_hooks();
-        $this->define_stripe_hooks();
     }
 
     /**
-     * Load and register all plugin dependencies.
-     *
-     * This method includes all required plugin files and initializes the
-     * hook loader. It handles core functionality files, admin interfaces,
-     * public facing components, and third-party integrations.
-     *
-     * Files loaded include:
-     * - Core plugin loader
-     * - Admin interface handlers
-     * - Public facing components
-     * - WooCommerce integrations
-     * - API handlers
-     * - Email system
-     * - Payment processing
-     *
-     * @since 0.0.100
-     * @access private
-     * @return void
+     * Load dependencies and initialize loader.
      */
     private function load_dependencies()
     {
-
-        /**
-         * The class responsible for orchestrating the actions and filters of the
-         * core plugin.
-         */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Loader.php';
-
-        /**
-         * The class responsible for defining internationalization functionality
-         * of the plugin.
-         */
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Internationalization.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/constants.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the admin area.
-         */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Admin.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_List_Table.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Updater.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Sync.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Curl.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Error_Logs_List_Table.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Log_Handler.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the public-facing
-         * side of the site.
-         */
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Frontend.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Auth.php';
-
-        // Bocs's Shortcode
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Shortcode.php';
-
-        // Api class - for the custom rest api
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Api.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Tag.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Widget.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)).'libraries/action-scheduler/action-scheduler.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
-
-        // email rest api
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
-
-        /*
-         * if (!class_exists('WC_Email')) {
-         * require_once WC_ABSPATH . 'includes/class-wc-emails.php';
-         * }
-         */
-
-        // emails
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
-
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
-
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Checkout.php';
-
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Stripe_Hooks.php';
-
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
 
         $this->loader = new Loader();
     }
 
     /**
-     * Register synchronization hooks with the Bocs App.
-     *
-     * Handles all hooks related to keeping WordPress user data in sync
-     * with the Bocs application. This includes user profile updates,
-     * account modifications, and new user registrations.
-     *
-     * @since 0.0.100
-     * @access private
-     * @return void
+     * Define sync hooks for Bocs App synchronization.
      */
     private function define_sync_hooks()
     {
         $syncing = new Sync();
-
+        
+        // Critical user sync hooks
         $this->loader->add_action('profile_update', $syncing, 'profile_update', 10, 3);
-        // $this->loader->add_filter('insert_user_meta', $syncing, 'insert_user_meta', 10, 4);
-
         $this->loader->add_action('woocommerce_save_account_details', $syncing, 'save_account_details');
-
-        // add new user hooks
         $this->loader->add_action('user_register', $syncing, 'bocs_user_register');
     }
 
     /**
-     * handles hooks related to the My Account / My Profile
-     *
-     * @return void
+     * Define hooks for My Account/Profile functionality.
      */
     private function define_account_profile_hooks()
     {
         $bocs_account = new Bocs_Account();
 
-        // bocs subscriptions under My Account
         $this->loader->add_filter('woocommerce_account_menu_items', $bocs_account, 'bocs_account_menu_item');
         $this->loader->add_action('init', $bocs_account, 'register_bocs_account_endpoint');
         $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
-
-        // bocs subscription under My Account page
         $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
-
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
     }
 
+    /**
+     * Define hooks for plugin updates.
+     */
     private function define_updater_hooks()
     {
         $updater = new Updater(plugin_dir_path(dirname(__FILE__)) . 'bocs.php');
-
+        
         $this->loader->add_action('admin_init', $updater, 'set_plugin_properties');
-
         $this->loader->add_filter('pre_set_site_transient_update_plugins', $updater, 'modify_transient');
         $this->loader->add_filter('plugins_api', $updater, 'plugin_popup', 10, 3);
         $this->loader->add_filter('upgrader_post_install', $updater, 'after_install', 10, 3);
-        
     }
 
     /**
@@ -308,9 +177,6 @@ class Bocs
 
         // adding meta box for the related orders
         $this->loader->add_action('add_meta_boxes', $plugin_admin, 'show_related_orders');
-
-        $this->loader->add_filter('woocommerce_account_settings', $plugin_admin, 'add_guest_checkout_setting_note', 10, 1);
-        $this->loader->add_filter('woocommerce_payment_gateways_settings', $plugin_admin, 'add_guest_checkout_setting_note', 10, 1);
     }
 
     /**
@@ -335,14 +201,6 @@ class Bocs
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
-
-        $bocs_product = new Bocs_Product();
-
-        $this->loader->add_action('wp_ajax_get_product_price', $bocs_product, 'get_product_price_callback');
-        $this->loader->add_action('wp_ajax_nopriv_get_product_price', $bocs_product, 'get_product_price_callback');
-        $this->loader->add_action('wp_ajax_get_product_details', $bocs_product, 'get_product_details_ajax');
-        $this->loader->add_action('wp_ajax_nopriv_get_product_details', $bocs_product, 'get_product_details_ajax');
-
 
         // $bocs_cart = new Bocs_Cart();
         // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
@@ -377,77 +235,19 @@ class Bocs
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
         // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
-        
     }
 
-    /**
-     * Register all hooks related to WooCommerce checkout functionality.
-     *
-     * Sets up hooks for customizing the checkout process, including:
-     * - Cart total modifications
-     * - Order review customizations
-     * - Registration requirements
-     * - Account creation handling
-     *
-     * @since 0.0.100
-     * @access public
-     * @return void
-     */
     public function define_checkout_page_hooks()
     {
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
         $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
-
-        $bocs_account = new Bocs_Account();
-        $this->loader->add_filter('woocommerce_checkout_process', $bocs_account, 'require_registration_during_checkout');
-        $this->loader->add_action('woocommerce_before_checkout_process', $bocs_account, 'force_registration_during_checkout');
-        $this->loader->add_filter('woocommerce_checkout_registration_enabled', $bocs_account, 'maybe_enable_registration');
-    
-        //$bocs_checkout = new Bocs_Checkout();
-        //$this->loader->add_filter('woocommerce_checkout_fields', $bocs_checkout, 'customize_checkout_account_creation', 10, 1  );
-        //$this->loader->add_filter('woocommerce_create_account_default_checked', $bocs_checkout, 'conditional_auto_create_account', 10, 1);
-        //$this->loader->add_filter('woocommerce_create_account_default', $bocs_checkout, 'conditional_create_account_default', 10, 1);
     }
 
     public function define_bocs_email_api()
     {
         $email_api = new Bocs_Email_API();
         $this->loader->add_action('rest_api_init', $email_api, 'register_routes');
-    }
-
-    /**
-     * Register payment gateway API endpoints and handlers.
-     *
-     * Sets up REST API routes and handlers for payment processing,
-     * including integration with payment gateways and transaction
-     * management.
-     *
-     * @since 0.0.100
-     * @access private
-     * @return void
-     */
-    private function define_payment_api_hooks()
-    {
-        $payment_api = new Bocs_Payment_API();
-        $this->loader->add_action('rest_api_init', $payment_api, 'register_routes');
-    }
-
-    private function define_stripe_hooks()
-    {
-        $stripe_hooks = new Bocs_Stripe_Hooks();
-            
-        // Metadata hooks
-        $this->loader->add_filter('wc_stripe_source_data', $stripe_hooks, 'modify_source_data', 10, 2);
-        $this->loader->add_action('woocommerce_stripe_add_payment_method', $stripe_hooks, 'handle_add_payment_method', 10, 2);
-    }
-
-    /**
-     * Register the order hooks
-     */
-    private function define_order_hooks()
-    {
-        
     }
 
     /**
@@ -465,7 +265,7 @@ class Bocs
      * - WooCommerce Key: WooCommerce API consumer key
      * - WooCommerce Secret: WooCommerce API consumer secret
      *
-     * @since 0.0.100
+     * @since 1.0.0
      * @access public
      * @static
      * 
@@ -544,7 +344,7 @@ class Bocs
      * After successful transfer, the original user meta entries are deleted to prevent
      * duplicate processing and maintain data cleanliness.
      * 
-     * @since 0.0.100
+     * @since 1.0.0
      * @access public
      * @return void
      */
@@ -605,14 +405,7 @@ class Bocs
     }
 
     /**
-     * Execute the plugin by running the hook loader.
-     *
-     * This method initiates the execution of all registered WordPress
-     * hooks and filters, effectively starting the plugin's operation.
-     *
-     * @since 0.0.100
-     * @access public
-     * @return void
+     * Run the loader to execute all of the hooks with WordPress.
      */
     public function run()
     {

@@ -1,3 +1,10 @@
+v0.0.109 02/06/2025
+* Use github for the updater instead of the old method S3
+* Added the updater for the plugin for pre-release and release for the github repository
+* Added the text domain for the plugin
+* Correction on the old text domain to use 'bocs-wordpress'
+* Fix the current user's list of subscriptions on My Account page
+
 v0.0.108 02/04/2025
 * Added the save payment checkbox on the checkout page 
 * Fixes on the frequency on the subscriptions page

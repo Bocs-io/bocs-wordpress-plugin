@@ -1,0 +1,1107 @@
+# Copyright (C) 2025 Bocs.io
+# This file is distributed under the GPL-2.0+.
+msgid ""
+msgstr ""
+"Project-Id-Version: Bocs (alpha) 0.0.109\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/bocs-wordpress-plugin\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-02-05T06:13:48+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: bocs-wordpress\n"
+
+#. Plugin Name of the plugin
+#: bocs.php
+msgid "Bocs (alpha)"
+msgstr ""
+
+#. Plugin URI of the plugin
+#. Author URI of the plugin
+#: bocs.php
+msgid "https://bocs.io"
+msgstr ""
+
+#. Description of the plugin
+#: bocs.php
+msgid "The Bocs service is a powerful sales channel for your products."
+msgstr ""
+
+#. Author of the plugin
+#: bocs.php
+msgid "Bocs.io"
+msgstr ""
+
+#: bocs.php:142
+msgid "Another instance of Bocs plugin is already active."
+msgstr ""
+
+#: bocs.php:143
+msgid "You can either:"
+msgstr ""
+
+#: bocs.php:144
+msgid "1. Update the existing plugin if an update is available, or<br>2. Deactivate the existing Bocs plugin before activating this new instance."
+msgstr ""
+
+#: bocs.php:146
+#: bocs.php:177
+#: bocs.php:192
+#: bocs.php:207
+#: bocs.php:222
+#: bocs.php:245
+#: bocs.php:271
+#: bocs.php:291
+msgid "← Go back to plugins page"
+msgstr ""
+
+#: bocs.php:148
+#: bocs.php:179
+#: bocs.php:194
+#: bocs.php:209
+#: bocs.php:224
+#: bocs.php:247
+#: bocs.php:273
+#: bocs.php:293
+msgid "Plugin Activation Error"
+msgstr ""
+
+#: bocs.php:175
+msgid "This plugin requires WordPress version 5.6.0 or higher."
+msgstr ""
+
+#: bocs.php:190
+msgid "This plugin requires PHP version 7.3.5 or higher."
+msgstr ""
+
+#: bocs.php:205
+msgid "This plugin requires WooCommerce to be installed and active. Please install and activate WooCommerce first."
+msgstr ""
+
+#: bocs.php:220
+msgid "This plugin requires WooCommerce version 5.0.0 or higher."
+msgstr ""
+
+#: bocs.php:242
+msgid "Missing required PHP extensions"
+msgstr ""
+
+#: bocs.php:268
+msgid "The following directories need to be writable"
+msgstr ""
+
+#: bocs.php:288
+msgid "Error activating plugin"
+msgstr ""
+
+#: bocs.php:322
+msgid "Settings"
+msgstr ""
+
+#: includes/Admin.php:43
+msgid "Critical: Missing required Bocs API credentials"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Admin.php:60
+msgid "Critical: Failed to register Bocs log handler: %s"
+msgstr ""
+
+#: includes/Admin.php:75
+msgid "Critical: Missing post ID for product meta processing"
+msgstr ""
+
+#: includes/Admin.php:110
+#: includes/Admin.php:144
+msgid "Bocs Product"
+msgstr ""
+
+#: includes/Admin.php:134
+msgid "Required class WC_Bocs_Product_Type not found."
+msgstr ""
+
+#: includes/Admin.php:135
+msgid "Plugin Error"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Admin.php:203
+msgid "Critical: Failed to register Bocs widget script: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Admin.php:259
+msgid "Critical: Failed to enqueue admin scripts: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Admin.php:319
+msgid "Critical: Failed to enqueue frontend scripts: %s"
+msgstr ""
+
+#: includes/Admin.php:2568
+msgid "Note that purchasing bocs requires an account."
+msgstr ""
+
+#: includes/Auth.php:80
+#: includes/Auth.php:179
+msgid "Bocs is not configured properly, please contact the administrator"
+msgstr ""
+
+#: includes/Auth.php:90
+msgid "Invalid Credentials."
+msgstr ""
+
+#: includes/Auth.php:170
+msgid "Authorization header malformed."
+msgstr ""
+
+#: includes/Auth.php:190
+msgid "The issuer does not match this server"
+msgstr ""
+
+#: includes/Auth.php:198
+msgid "User ID not found in the token"
+msgstr ""
+
+#: includes/Bocs.php:58
+msgid "Critical: Bocs plugin constants not defined"
+msgstr ""
+
+#. translators: %s: File path
+#: includes/Bocs.php:134
+msgid "Critical: Required Bocs file missing: %s"
+msgstr ""
+
+#: includes/Bocs.php:146
+msgid "Critical: Failed to initialize Bocs loader"
+msgstr ""
+
+#: includes/Bocs.php:387
+msgid "Critical: Cannot run Bocs plugin - loader not initialized"
+msgstr ""
+
+#: includes/Bocs_Account.php:46
+msgid "Bocs Subscriptions"
+msgstr ""
+
+#: includes/Bocs_Account.php:99
+msgid "Subscription template not found."
+msgstr ""
+
+#: includes/Bocs_Account.php:160
+msgid "Invalid subscription ID."
+msgstr ""
+
+#: includes/Bocs_Account.php:163
+msgid "No subscription ID provided."
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Cart.php:99
+msgid "Critical: Failed to get Bocs options: %s"
+msgstr ""
+
+#: includes/Bocs_Cart.php:186
+msgid "Monthly recurring total"
+msgstr ""
+
+#. translators: %s: Starting date
+#: includes/Bocs_Cart.php:194
+msgid "Starting: %s"
+msgstr ""
+
+#: includes/Bocs_Cart.php:215
+msgid "Additional cart contents information"
+msgstr ""
+
+#: includes/Bocs_Cart.php:228
+#: includes/Bocs_Cart.php:244
+msgid "Additional Info:"
+msgstr ""
+
+#: includes/Bocs_Cart.php:229
+#: includes/Bocs_Cart.php:245
+msgid "Your custom message here."
+msgstr ""
+
+#: includes/Bocs_Helper.php:29
+msgid "API URL is required"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Helper.php:58
+msgid "Critical: API request failed: %s"
+msgstr ""
+
+#. translators: %d: HTTP response code
+#: includes/Bocs_Helper.php:69
+msgid "Critical: API returned non-200 response code: %d"
+msgstr ""
+
+#: includes/Bocs_Helper.php:79
+msgid "Critical: Failed to parse API response"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Helper.php:87
+msgid "Critical: API Error: %s"
+msgstr ""
+
+#: includes/Bocs_Helper.php:126
+msgid "day"
+msgid_plural "days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Bocs_Helper.php:127
+msgid "week"
+msgid_plural "weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Bocs_Helper.php:128
+msgid "month"
+msgid_plural "months"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Bocs_Helper.php:129
+msgid "year"
+msgid_plural "years"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: Interval period (day/week/month/year)
+#: includes/Bocs_Helper.php:139
+msgid "Every %s"
+msgstr ""
+
+#. translators: 1: Frequency number, 2: Time unit
+#: includes/Bocs_Helper.php:146
+#: views/bocs_subscriptions_account.php:68
+msgid "Every %1$d %2$s"
+msgid_plural "Every %1$d %2$s"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Bocs_Helper.php:207
+msgid "Invalid webhook payload format"
+msgstr ""
+
+#. translators: %s: Field name
+#: includes/Bocs_Helper.php:220
+msgid "Missing required field: %s"
+msgstr ""
+
+#. translators: %s: Log directory path
+#: includes/Bocs_Log_Handler.php:163
+msgid "Bocs log directory is not writable: %s"
+msgstr ""
+
+#. translators: %s: Log directory path
+#: includes/Bocs_Log_Handler.php:184
+msgid "Failed to create Bocs log directory: %s"
+msgstr ""
+
+#. translators: %s: Log file path
+#: includes/Bocs_Log_Handler.php:265
+msgid "Failed to delete Bocs log file: %s"
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:67
+msgid "Sorry, you are not allowed to trigger payments."
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/Bocs_Payment_API.php:109
+msgid "Critical: Order #%d not found for payment trigger"
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:114
+msgid "Order not found"
+msgstr ""
+
+#. translators: 1: Order ID, 2: Order status
+#: includes/Bocs_Payment_API.php:123
+msgid "Critical: Order #%1$d cannot be paid. Status: %2$s"
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:128
+msgid "Payment trigger attempted but order does not need payment."
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:133
+msgid "This order cannot be paid for."
+msgstr ""
+
+#. translators: %s: Gateway title
+#: includes/Bocs_Payment_API.php:155
+msgid "Processing payment via %s"
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:170
+msgid "Missing required Stripe customer or payment method information."
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:185
+#: includes/Bocs_Payment_API.php:201
+msgid "Payment processed successfully."
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:207
+msgid "Payment processing failed."
+msgstr ""
+
+#: includes/Bocs_Payment_API.php:210
+msgid "Payment gateway not available."
+msgstr ""
+
+#. translators: 1: Order ID, 2: Error message
+#: includes/Bocs_Payment_API.php:215
+msgid "Critical: Payment processing failed for order #%1$d: %2$s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Payment_API.php:223
+msgid "Payment processing failed: %s"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:30
+msgid "No BOCS cookie found"
+msgstr ""
+
+#. translators: %s: Order status
+#: includes/Bocs_Stripe_Hooks.php:37
+msgid "Order status during source data: %s"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:65
+msgid "Payment method not added: No BOCS cookie found"
+msgstr ""
+
+#. translators: %s: Source ID
+#: includes/Bocs_Stripe_Hooks.php:73
+msgid "Attempting to add payment method. Source ID: %s"
+msgstr ""
+
+#. translators: %s: Stripe customer ID
+#: includes/Bocs_Stripe_Hooks.php:85
+msgid "Attempting to attach payment method to Stripe customer: %s"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:97
+msgid "Successfully attached payment method to Stripe. Creating WC Payment Token..."
+msgstr ""
+
+#. translators: %d: Token ID
+#: includes/Bocs_Stripe_Hooks.php:114
+msgid "Successfully saved WC Payment Token. ID: %d"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:125
+msgid "Setting token as default payment method"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:130
+msgid "Failed to save WC Payment Token"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Stripe_Hooks.php:136
+msgid "Failed to attach payment method to Stripe: %s"
+msgstr ""
+
+#. translators: 1: Stripe customer ID status, 2: Source ID status
+#: includes/Bocs_Stripe_Hooks.php:145
+msgid "Missing required data. Stripe Customer ID: %1$s, Source ID: %2$s"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:146
+#: includes/Bocs_Stripe_Hooks.php:147
+msgid "Yes"
+msgstr ""
+
+#: includes/Bocs_Stripe_Hooks.php:146
+#: includes/Bocs_Stripe_Hooks.php:147
+msgid "No"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Bocs_Stripe_Hooks.php:155
+msgid "Payment method attachment failed: %s"
+msgstr ""
+
+#. translators: %s: Stack trace
+#: includes/Bocs_Stripe_Hooks.php:162
+msgid "Exception trace: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Contact.php:71
+msgid "Critical: Failed to sync contact to Bocs: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Contact.php:90
+msgid "Critical: Exception during contact sync: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Contact.php:130
+msgid "Critical: Failed to update contact in Bocs: %s"
+msgstr ""
+
+#. translators: %s: Error message
+#: includes/Contact.php:142
+msgid "Critical: Exception during contact update: %s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:96
+msgid "Bocs Completed Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:97
+msgid "Email notification for completed subscription renewal orders"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:98
+msgid "Your renewal order is complete"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:99
+msgid "Your subscription renewal order is complete"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:117
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:92
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:117
+#: includes/emails/class-bocs-email-processing-renewal-order.php:117
+msgid "No order ID provided"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-completed-renewal-order.php:125
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:100
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:125
+#: includes/emails/class-bocs-email-processing-renewal-order.php:125
+msgid "Order #%d not found"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-completed-renewal-order.php:136
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:111
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:136
+#: includes/emails/class-bocs-email-processing-renewal-order.php:136
+msgid "No recipient email found for order #%d"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-completed-renewal-order.php:158
+msgid "Failed to send completed renewal order email for order #%d"
+msgstr ""
+
+#. translators: 1: Order ID, 2: Error message
+#: includes/emails/class-bocs-email-completed-renewal-order.php:170
+msgid "Critical: Completed renewal order email error for order #%1$d: %2$s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:191
+msgid "Completed Subscription Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:193
+msgid "Thank you for your continued subscription. Your renewal order details are below:"
+msgstr ""
+
+#. translators: %s: Order number
+#: includes/emails/class-bocs-email-completed-renewal-order.php:199
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:200
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:195
+#: includes/emails/class-bocs-email-processing-renewal-order.php:195
+msgid "Order Number: %s"
+msgstr ""
+
+#. translators: %s: Order date
+#: includes/emails/class-bocs-email-completed-renewal-order.php:208
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:209
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:204
+#: includes/emails/class-bocs-email-processing-renewal-order.php:204
+msgid "Order Date: %s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:213
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:215
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:209
+#: includes/emails/class-bocs-email-processing-renewal-order.php:209
+msgid "Order Details"
+msgstr ""
+
+#. translators: %s: Order total
+#: includes/emails/class-bocs-email-completed-renewal-order.php:230
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:233
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:226
+#: includes/emails/class-bocs-email-processing-renewal-order.php:226
+msgid "Total: %s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-completed-renewal-order.php:235
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:239
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:231
+#: includes/emails/class-bocs-email-processing-renewal-order.php:231
+msgid "We appreciate your business and look forward to serving you again."
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:75
+msgid "Bocs Customer Renewal Invoice"
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:76
+msgid "Email sent to customers containing their renewal order invoice"
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:77
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:164
+msgid "Subscription Renewal Invoice"
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:78
+msgid "Your renewal invoice"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:131
+msgid "Failed to send renewal invoice email for order #%d"
+msgstr ""
+
+#. translators: 1: Order ID, 2: Error message
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:143
+msgid "Critical: Renewal invoice email error for order #%1$d: %2$s"
+msgstr ""
+
+#. translators: %s: Payment link
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:171
+msgid "An order has been created for you to renew your subscription. To pay for this invoice please use the following link: %s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:174
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:187
+msgid "Pay Now »"
+msgstr ""
+
+#. translators: %s: Payment link
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:184
+msgid "The automatic payment to renew your subscription has failed. To reactivate the subscription, please log in and pay for the renewal from your account page: %s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-customer-renewal-invoice.php:194
+msgid "Your renewal order details are below:"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:96
+msgid "Bocs On-hold Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:97
+msgid "Email notification for on-hold subscription renewal orders"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:98
+msgid "Your renewal order is on-hold"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:99
+msgid "Your subscription renewal order is on-hold"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:156
+msgid "Failed to send on-hold renewal order email for order #%d"
+msgstr ""
+
+#. translators: 1: Order ID, 2: Error message
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:168
+msgid "Critical: On-hold renewal order email error for order #%1$d: %2$s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:189
+msgid "On-hold Subscription Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-on-hold-renewal-order.php:190
+msgid "Thank you for your continued subscription. Your on-hold renewal order details are below:"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:96
+msgid "Bocs Processing Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:97
+msgid "Email notification for processing subscription renewal orders"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:98
+msgid "Your renewal order is being processed"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:99
+msgid "Your subscription renewal order is being processed"
+msgstr ""
+
+#. translators: %d: Order ID
+#: includes/emails/class-bocs-email-processing-renewal-order.php:156
+msgid "Failed to send processing renewal order email for order #%d"
+msgstr ""
+
+#. translators: 1: Order ID, 2: Error message
+#: includes/emails/class-bocs-email-processing-renewal-order.php:168
+msgid "Critical: Processing renewal order email error for order #%1$d: %2$s"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:189
+msgid "Processing Subscription Renewal Order"
+msgstr ""
+
+#: includes/emails/class-bocs-email-processing-renewal-order.php:190
+msgid "Thank you for your continued subscription. Your renewal order is now being processed:"
+msgstr ""
+
+#: views/bocs_homepage.php:40
+msgid "Bocs REST API"
+msgstr ""
+
+#: views/bocs_homepage.php:63
+msgid "Critical: Error generating API Key."
+msgstr ""
+
+#. translators: %s: Error message
+#: views/bocs_homepage.php:71
+msgid "Critical: Failed to generate WooCommerce API keys: %s"
+msgstr ""
+
+#: views/bocs_homepage.php:85
+msgid "Leave a Review"
+msgstr ""
+
+#: views/bocs_homepage.php:90
+msgid "Need Help?"
+msgstr ""
+
+#: views/bocs_homepage.php:96
+msgid "Bocs Logo"
+msgstr ""
+
+#: views/bocs_homepage.php:100
+msgid "Create and build custom subscription boxes for your WordPress customers"
+msgstr ""
+
+#: views/bocs_homepage.php:104
+msgid "Play Video"
+msgstr ""
+
+#: views/bocs_homepage.php:105
+msgid "Watch the Bocs.io Video"
+msgstr ""
+
+#: views/bocs_homepage.php:119
+msgid "Enter your email address to continue"
+msgstr ""
+
+#. translators: 1: Terms of Service link, 2: Privacy Policy link
+#: views/bocs_homepage.php:131
+msgid "I agree to Bocs.io %1$s and %2$s"
+msgstr ""
+
+#: views/bocs_homepage.php:132
+msgid "Terms of Service"
+msgstr ""
+
+#: views/bocs_homepage.php:133
+msgid "Privacy Policy"
+msgstr ""
+
+#: views/bocs_homepage.php:139
+#: views/bocs_settings.php:191
+msgid "Submit"
+msgstr ""
+
+#: views/bocs_product_panel.php:9
+msgid "Interval"
+msgstr ""
+
+#: views/bocs_product_panel.php:11
+msgid "Select the subscription interval unit"
+msgstr ""
+
+#: views/bocs_product_panel.php:13
+msgid "Days"
+msgstr ""
+
+#: views/bocs_product_panel.php:14
+msgid "Weeks"
+msgstr ""
+
+#: views/bocs_product_panel.php:15
+msgid "Months"
+msgstr ""
+
+#: views/bocs_product_panel.php:16
+msgid "Years"
+msgstr ""
+
+#: views/bocs_product_panel.php:30
+msgid "Interval Count"
+msgstr ""
+
+#: views/bocs_product_panel.php:32
+msgid "Enter the number of intervals between subscription renewals"
+msgstr ""
+
+#: views/bocs_product_panel.php:50
+msgid "Discount Type"
+msgstr ""
+
+#: views/bocs_product_panel.php:52
+msgid "Select the type of discount to apply to subscription"
+msgstr ""
+
+#: views/bocs_product_panel.php:54
+msgid "Fixed Amount"
+msgstr ""
+
+#: views/bocs_product_panel.php:55
+msgid "Percentage"
+msgstr ""
+
+#: views/bocs_product_panel.php:69
+msgid "Discount Amount"
+msgstr ""
+
+#: views/bocs_product_panel.php:71
+msgid "Enter the discount amount to apply to subscription"
+msgstr ""
+
+#: views/bocs_settings.php:25
+msgid "Visit plugin homepage"
+msgstr ""
+
+#. translators: 1: current version. 2: latest version
+#: views/bocs_settings.php:37
+msgid "Version %1$s (update to version %2$s is available)"
+msgstr ""
+
+#: views/bocs_settings.php:46
+msgid "Network enabled"
+msgstr ""
+
+#. translators: %s: WooCommerce version
+#: views/bocs_settings.php:57
+msgid "Installed version not tested with active version of WooCommerce %s"
+msgstr ""
+
+#. translators: %s: plugin author
+#: views/bocs_settings.php:70
+msgid "by %s"
+msgstr ""
+
+#: views/bocs_settings.php:85
+msgid "Failed to retrieve system status report"
+msgstr ""
+
+#. translators: %s: Error message
+#: views/bocs_settings.php:119
+msgid "Critical: Bocs settings initialization error: %s"
+msgstr ""
+
+#: views/bocs_settings.php:128
+#: views/bocs_settings.php:146
+msgid "Credentials / Keys"
+msgstr ""
+
+#: views/bocs_settings.php:131
+#: views/bocs_settings.php:199
+msgid "Sync Logs"
+msgstr ""
+
+#: views/bocs_settings.php:134
+msgid "Sync Modules"
+msgstr ""
+
+#: views/bocs_settings.php:137
+msgid "Site Status"
+msgstr ""
+
+#: views/bocs_settings.php:140
+msgid "Test"
+msgstr ""
+
+#: views/bocs_settings.php:153
+msgid "Store ID"
+msgstr ""
+
+#: views/bocs_settings.php:165
+msgid "Organization ID"
+msgstr ""
+
+#: views/bocs_settings.php:177
+msgid "Authorization"
+msgstr ""
+
+#. translators: 1: Subscription name, 2: Order number
+#: views/bocs_subscriptions_account.php:36
+msgid "%1$s (Order #%2$s)"
+msgstr ""
+
+#. translators: %s: Order number
+#: views/bocs_subscriptions_account.php:43
+msgid "Subscription (Order #%s)"
+msgstr ""
+
+#. translators: %s: Subscription ID
+#: views/bocs_subscriptions_account.php:49
+msgid "Subscription #%s"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:99
+msgid "Total Amount"
+msgstr ""
+
+#. translators: %s: Discount amount
+#: views/bocs_subscriptions_account.php:113
+msgid "(Includes %s discount)"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:126
+#: views/bocs_subscriptions_account.php:230
+msgid "Early Renewal"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:133
+msgid "Delivery"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:137
+msgid "Total Items"
+msgstr ""
+
+#. translators: %d: Number of items
+#: views/bocs_subscriptions_account.php:145
+msgid "%d item"
+msgid_plural "%d items"
+msgstr[0] ""
+msgstr[1] ""
+
+#: views/bocs_subscriptions_account.php:155
+msgid "Shipping Address"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:172
+msgid "No address provided"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:179
+msgid "Next Payment"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:185
+msgid "Started On"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:194
+msgid "Update My Box"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:198
+msgid "Edit Details"
+msgstr ""
+
+#. translators: 1: Subscription ID, 2: Error message
+#: views/bocs_subscriptions_account.php:208
+msgid "Critical: Error processing subscription #%1$s: %2$s"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:222
+msgid "Back to subscription"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:237
+msgid "Box Content"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:239
+msgid "Edit the Box"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:249
+#: views/bocs_subscriptions_account.php:264
+msgid "Frequency"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:250
+#: views/bocs_subscriptions_account.php:285
+#: views/bocs_subscriptions_account.php:293
+msgid "Edit"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:265
+#: views/bocs_subscriptions_account.php:307
+#: views/bocs_view_subscription.php:75
+#: views/bocs_view_subscription.php:99
+msgid "Cancel"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:277
+msgid "Save"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:284
+msgid "Instructions"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:292
+msgid "Pause or Skip"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:296
+msgid "You can pause or skip your subscription easily, select the next date you would like your payment debited, plus your desired delivery date."
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:299
+msgid "Next Payment Date"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:306
+msgid "Adjust Schedule"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:331
+msgid "Preview of Changes"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:334
+msgid "Next Payment Date:"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:340
+msgid "Save Changes"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:348
+msgid "Promos"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:360
+msgid "Back to Subscription"
+msgstr ""
+
+#: views/bocs_subscriptions_account.php:364
+msgid "Cancel Subscription"
+msgstr ""
+
+#: views/bocs_view_subscription.php:4
+msgid "Status"
+msgstr ""
+
+#: views/bocs_view_subscription.php:10
+msgid "Start date"
+msgstr ""
+
+#. translators: %s: Error message
+#: views/bocs_view_subscription.php:20
+msgid "Critical: Error formatting start date: %s"
+msgstr ""
+
+#: views/bocs_view_subscription.php:29
+msgid "Last order date"
+msgstr ""
+
+#: views/bocs_view_subscription.php:33
+msgid "Next payment date"
+msgstr ""
+
+#. translators: %s: Error message
+#: views/bocs_view_subscription.php:43
+msgid "Critical: Error formatting next payment date: %s"
+msgstr ""
+
+#: views/bocs_view_subscription.php:54
+msgid "Select next payment date"
+msgstr ""
+
+#: views/bocs_view_subscription.php:59
+msgid "Set Next Payment Date"
+msgstr ""
+
+#: views/bocs_view_subscription.php:64
+msgid "Payment"
+msgstr ""
+
+#: views/bocs_view_subscription.php:68
+msgid "Actions"
+msgstr ""
+
+#: views/bocs_view_subscription.php:75
+msgid "Cancelled"
+msgstr ""
+
+#: views/bocs_view_subscription.php:78
+msgid "Change payment"
+msgstr ""
+
+#: views/bocs_view_subscription.php:81
+msgid "Renew now"
+msgstr ""
+
+#: views/bocs_view_subscription.php:84
+msgid "Pause"
+msgstr ""
+
+#: views/bocs_view_subscription.php:88
+msgid "Next Payment (date and time):"
+msgstr ""
+
+#: views/bocs_view_subscription.php:96
+msgid "Confirm"
+msgstr ""
+
+#: views/bocs_view_subscription.php:107
+msgid "Bocs Subscription Totals"
+msgstr ""
+
+#: views/bocs_view_subscription.php:112
+msgid "Product"
+msgstr ""
+
+#: views/bocs_view_subscription.php:113
+msgid "Total"
+msgstr ""
+
+#. translators: %s: Product quantity
+#: views/bocs_view_subscription.php:136
+msgid "× %s"
+msgstr ""
+
+#. translators: 1: Product ID, 2: Error message
+#: views/bocs_view_subscription.php:144
+msgid "Critical: Error processing product #%1$s: %2$s"
+msgstr ""
+
+#: views/bocs_view_subscription.php:181
+#: views/bocs_view_subscription.php:203
+msgid "every"
+msgstr ""
+
+#: views/bocs_view_subscription.php:188
+msgid "Subtotal:"
+msgstr ""
+
+#: views/bocs_view_subscription.php:197
+msgid "Total:"
+msgstr ""
+
+#: views/bocs_view_subscription.php:382
+msgid "Billing address"
+msgstr ""

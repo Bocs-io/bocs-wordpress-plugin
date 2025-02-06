@@ -6,14 +6,14 @@
 			array(
 				'id' => 'bocs_product_interval',
 				'name' => 'bocs_product_interval',
-				'label' => __( 'Interval', 'bocs_product_interval' ),
-				'desc_tip' => 'true',
-				'description' => __( 'Unit interval', 'bocs_product_interval_desc' ),
+				'label' => __('Interval', 'bocs-wordpress'),
+				'desc_tip' => true,
+				'description' => __('Select the subscription interval unit', 'bocs-wordpress'),
 				'options' => array(
-					'days' => 'Days',
-					'weeks' => 'Weeks',
-					'months' => 'Months',
-					'years' => 'Years'
+					'days' => __('Days', 'bocs-wordpress'),
+					'weeks' => __('Weeks', 'bocs-wordpress'),
+					'months' => __('Months', 'bocs-wordpress'),
+					'years' => __('Years', 'bocs-wordpress')
 				)
 			)
 		);
@@ -27,10 +27,14 @@
 			array(
 				'id' => 'bocs_product_interval_count',
 				'name' => 'bocs_product_interval_count',
-				'label' => __( 'Interval Count', 'bocs_product_interval_count' ),
-				'desc_tip' => 'true',
-				'description' => __( 'Unit count interval', 'bocs_product_interval_count_desc' ),
-				'type' => 'number'
+				'label' => __('Interval Count', 'bocs-wordpress'),
+				'desc_tip' => true,
+				'description' => __('Enter the number of intervals between subscription renewals', 'bocs-wordpress'),
+				'type' => 'number',
+				'custom_attributes' => array(
+					'min' => '1',
+					'step' => '1'
+				)
 			)
 		);
 
@@ -43,12 +47,12 @@
 			array(
 				'id' => 'bocs_product_discount_type',
 				'name' => 'bocs_product_discount_type',
-				'label' => __( 'Discount Type', 'bocs_product_discount_type' ),
-				'desc_tip' => 'true',
-				'description' => __( 'Discount Type', 'bocs_product_discount_type_desc' ),
+				'label' => __('Discount Type', 'bocs-wordpress'),
+				'desc_tip' => true,
+				'description' => __('Select the type of discount to apply to subscription', 'bocs-wordpress'),
 				'options' => array(
-					'fixed' => 'Fixed',
-					'percentage' => 'Percentage'
+					'fixed' => __('Fixed Amount', 'bocs-wordpress'),
+					'percentage' => __('Percentage', 'bocs-wordpress')
 				)
 			)
 		);
@@ -62,10 +66,14 @@
 			array(
 				'id' => 'bocs_product_discount',
 				'name' => 'bocs_product_discount',
-				'label' => __( 'Discount amount', 'bocs_product_discount' ),
-				'desc_tip' => 'true',
-				'description' => __( 'Discount', 'bocs_product_discount_desc' ),
-				'type' => 'number'
+				'label' => __('Discount Amount', 'bocs-wordpress'),
+				'desc_tip' => true,
+				'description' => __('Enter the discount amount to apply to subscription', 'bocs-wordpress'),
+				'type' => 'number',
+				'custom_attributes' => array(
+					'min' => '0',
+					'step' => '0.01'
+				)
 			)
 		);
 

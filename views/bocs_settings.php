@@ -10,56 +10,69 @@ function bocs_output_plugins_info($plugins, $untested_plugins)
     $wc_version = Constants::get_constant('WC_VERSION');
 
     if ('major' === Constants::get_constant('WC_SSR_PLUGIN_UPDATE_RELEASE_VERSION_TYPE')) {
-        // Since we're only testing against major, we don't need to show minor and patch version.
         $wc_version = $wc_version[0] . '.0';
     }
 
     foreach ($plugins as $plugin) {
         if (! empty($plugin['name'])) {
-            // Link the plugin name to the plugin url if available.
             $plugin_name = esc_html($plugin['name']);
             if (! empty($plugin['url'])) {
-                $plugin_name = '<a href="' . esc_url($plugin['url']) . '" aria-label="' . esc_attr__('Visit plugin homepage', 'woocommerce') . '" target="_blank">' . $plugin_name . '</a>';
+                $plugin_name = sprintf(
+                    '<a href="%1$s" aria-label="%2$s" target="_blank">%3$s</a>',
+                    esc_url($plugin['url']),
+                    esc_attr__('Visit plugin homepage', 'bocs-wordpress'),
+                    $plugin_name
+                );
             }
 
-            $has_newer_version = false;
             $version_string = $plugin['version'];
             $network_string = '';
+            
             if (strstr($plugin['url'], 'woothemes.com') || strstr($plugin['url'], 'woocommerce.com')) {
                 if (! empty($plugin['version_latest']) && version_compare($plugin['version_latest'], $plugin['version'], '>')) {
-                    /* translators: 1: current version. 2: latest version */
-                    $version_string = sprintf(__('%1$s (update to version %2$s is available)', 'woocommerce'), $plugin['version'], $plugin['version_latest']);
+                    $version_string = sprintf(
+                        /* translators: 1: current version 2: latest version */
+                        __('%1$s (update to version %2$s is available)', 'bocs-wordpress'),
+                        $plugin['version'],
+                        $plugin['version_latest']
+                    );
                 }
 
                 if (false !== $plugin['network_activated']) {
-                    $network_string = ' &ndash; <strong style="color: black;">' . esc_html__('Network enabled', 'woocommerce') . '</strong>';
+                    $network_string = sprintf(
+                        ' &ndash; <strong style="color: black;">%s</strong>',
+                        esc_html__('Network enabled', 'bocs-wordpress')
+                    );
                 }
             }
+
             $untested_string = '';
             if (array_key_exists($plugin['plugin'], $untested_plugins)) {
-                $untested_string = ' &ndash; <strong style="color: #a00;">';
-
-                /* translators: %s: version */
-                $untested_string .= esc_html(sprintf(__('Installed version not tested with active version of WooCommerce %s', 'woocommerce'), $wc_version));
-
-                $untested_string .= '</strong>';
+                $untested_string = sprintf(
+                    ' &ndash; <strong style="color: #a00;">%s</strong>',
+                    sprintf(
+                        /* translators: %s: WooCommerce version */
+                        esc_html__('Installed version not tested with active version of WooCommerce %s', 'bocs-wordpress'),
+                        $wc_version
+                    )
+                );
             }
             ?>
-				<tr>
-					<td><?php
-
-            echo wp_kses_post($plugin_name);
-            ?></td>
-					<td class="help">&nbsp;</td>
-					<td>
-						<?php
-            /* translators: %s: plugin author */
-            printf(esc_html__('by %s', 'woocommerce'), esc_html($plugin['author_name']));
-            echo ' &ndash; ' . esc_html($version_string) . $untested_string . $network_string; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-            ?>
-					</td>
-				</tr>
-				<?php
+            <tr>
+                <td><?php echo wp_kses_post($plugin_name); ?></td>
+                <td class="help">&nbsp;</td>
+                <td>
+                    <?php
+                    printf(
+                        /* translators: %s: plugin author */
+                        esc_html__('by %s', 'bocs-wordpress'),
+                        esc_html($plugin['author_name'])
+                    );
+                    echo ' &ndash; ' . esc_html($version_string) . $untested_string . $network_string;
+                    ?>
+                </td>
+            </tr>
+            <?php
         }
     }
 }
@@ -80,9 +93,6 @@ $wp_pages = $report['pages'];
 $plugin_updates = new WC_Plugin_Updates();
 $untested_plugins = $plugin_updates->get_untested_plugins(WC()->version, Constants::get_constant('WC_SSR_PLUGIN_UPDATE_RELEASE_VERSION_TYPE'));
 
-$bocs = new Bocs();
-$bocs->auto_add_bocs_keys();
-
 $options = get_option('bocs_plugin_options');
 $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 $options['developer_mode'] = $options['developer_mode'] ?? 'off';
@@ -94,848 +104,598 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 
 <div class="tabset">
 	<!-- Tab 1 -->
-	<input type="radio" name="tabset" id="tab1" aria-controls="marzen" checked>
-	<label for="tab1">Credentials / Keys</label>
+	<input type="radio" name="tabset" id="tab1" aria-controls="credentials" checked>
+	<label for="tab1"><?php esc_html_e('Credentials / Keys', 'bocs-wordpress'); ?></label>
 	<!-- Tab 2 -->
-	<input type="radio" name="tabset" id="tab2" aria-controls="rauchbier">
-	<label for="tab2">Sync Logs</label>
+	<input type="radio" name="tabset" id="tab2" aria-controls="sync-logs">
+	<label for="tab2"><?php esc_html_e('Sync Logs', 'bocs-wordpress'); ?></label>
 	<!-- Tab 3 -->
-	<input type="radio" name="tabset" id="tab3" aria-controls="dunkles">
-	<label for="tab3">Sync Modules</label>
+	<input type="radio" name="tabset" id="tab3" aria-controls="sync-modules">
+	<label for="tab3"><?php esc_html_e('Sync Modules', 'bocs-wordpress'); ?></label>
 	<!-- Tab 4 -->
 	<input type="radio" name="tabset" id="tab4" aria-controls="site-status">
-	<label for="tab4">Site Status</label>
+	<label for="tab4"><?php esc_html_e('Site Status', 'bocs-wordpress'); ?></label>
 	<!-- Tab 5 -->
 	<input type="radio" name="tabset" id="tab5" aria-controls="developer-mode">
-	<label for="tab5">Test</label>
+	<label for="tab5"><?php esc_html_e('Test', 'bocs-wordpress'); ?></label>
 
 	<div class="tab-panels">
-		<section id="marzen" class="tab-panel">
-			<h2>Credentials / Keys</h2>
+		<section id="credentials" class="tab-panel">
+			<h2><?php esc_html_e('Credentials / Keys', 'bocs-wordpress'); ?></h2>
 			<form method="post">
 				<table class="form-table">
 					<tbody>
 						<tr valign="top">
 							<th scope="row" class="titledesc">
-								<label>Store ID</label>
+								<label><?php esc_html_e('Store ID', 'bocs-wordpress'); ?></label>
 							</th>
 							<td class="forminp forminp-text">
-								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][store]" id="bocsStore" value="<?php
-
-        echo $options['bocs_headers']['store'] ?? ""?>" />
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][store]" id="bocsStore" value="<?php echo esc_attr($options['bocs_headers']['store'] ?? ''); ?>" />
 							</td>
 						</tr>
 						<tr valign="top">
 							<th scope="row" class="titledesc">
-								<label>Organization ID</label>
+								<label><?php esc_html_e('Organization ID', 'bocs-wordpress'); ?></label>
 							</th>
 							<td class="forminp forminp-text">
-								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][organization]" id="bocsOrganization" value="<?php
-
-        echo $options['bocs_headers']['organization'] ?? ""?>" />
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][organization]" id="bocsOrganization" value="<?php echo esc_attr($options['bocs_headers']['organization'] ?? ''); ?>" />
 							</td>
 						</tr>
 						<tr valign="top">
 							<th scope="row" class="titledesc">
-								<label>Authorization</label>
+								<label><?php esc_html_e('Authorization', 'bocs-wordpress'); ?></label>
 							</th>
 							<td class="forminp forminp-text">
-								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php
-
-        echo $options['bocs_headers']['authorization'] ?? ""?>" />
+								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php echo esc_attr($options['bocs_headers']['authorization'] ?? ''); ?>" />
 							</td>
 						</tr>
 					</tbody>
 				</table>
-				<br />
+				<?php wp_nonce_field('bocs_plugin_options'); ?>
+				<input type="hidden" name="action" value="update">
+				<input type="hidden" name="option_page" value="bocs_plugin_options">
 				
-			<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php 
-				echo wp_create_nonce("bocs_plugin_options");
-			?>">
-			<input type="hidden" name="action" value="update">
-			<input type="hidden" name="option_page" value="bocs_plugin_options">
-			
-			<p class="submit">
-				<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
-			</p>
-			
-		</form>
+				<p class="submit">
+					<button type="submit" class="button-primary woocommerce-save-button">
+						<?php esc_html_e('Submit', 'bocs-wordpress'); ?>
+					</button>
+				</p>
+			</form>
 		</section>
-		<section id="rauchbier" class="tab-panel">
-			<h2>Sync Logs</h2>
+		<section id="sync-logs" class="tab-panel">
+			<h2><?php esc_html_e('Sync Logs', 'bocs-wordpress'); ?></h2>
 			<?php
-$table = new Error_Logs_List_Table();
-$table->prepare_items();
-$table->display();
-?>
+			$table = new Error_Logs_List_Table();
+			$table->prepare_items();
+			$table->display();
+			?>
 		</section>
-		<section id="dunkles" class="tab-panel">
-			<h2>Sync Modules</h2>
+		<section id="sync-modules" class="tab-panel">
+			<h2><?php esc_html_e('Sync Modules', 'bocs-wordpress'); ?></h2>
 			<table class="form-table">
 				<tbody>
 					<tr valign="top">
 						<th scope="row" class="titledesc">
-							<label>All Modules</label>
+							<label><?php esc_html_e('All Modules', 'bocs-wordpress'); ?></label>
 						</th>
 						<td class="forminp">
 							<select id="bocs_all_module" name="bocs_all_module">
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="custom">Custom Module Sync</option>
-								<option value="none">Do Not Sync</option>
+								<option value="both"><?php esc_html_e('Sync Both Ways', 'bocs-wordpress'); ?></option>
+								<option value="b2w"><?php esc_html_e('Sync Bocs to WordPress', 'bocs-wordpress'); ?></option>
+								<option value="w2b"><?php esc_html_e('Sync WordPress to Bocs', 'bocs-wordpress'); ?></option>
+								<option value="custom"><?php esc_html_e('Custom Module Sync', 'bocs-wordpress'); ?></option>
+								<option value="none"><?php esc_html_e('Do Not Sync', 'bocs-wordpress'); ?></option>
 							</select>
 						</td>
 					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Products</label>
+					<?php
+					$modules = array(
+						'product' => esc_html__('Products', 'bocs-wordpress'),
+						'bocs' => esc_html__('Bocs', 'bocs-wordpress'),
+						'contact' => esc_html__('Contacts', 'bocs-wordpress'),
+						'order' => esc_html__('Orders', 'bocs-wordpress'),
+						'invoice' => esc_html__('Invoices', 'bocs-wordpress'),
+						'shipping' => esc_html__('Shipping', 'bocs-wordpress'),
+						'tax' => esc_html__('Tax', 'bocs-wordpress'),
+						'category' => esc_html__('Categories & Tags', 'bocs-wordpress'),
+						'subscription' => esc_html__('Subscriptions', 'bocs-wordpress')
+					);
+
+					foreach ($modules as $module_id => $module_name) : ?>
+						<tr valign="top">
+							<th scope="row" class="titledesc">
+								<label><?php echo $module_name; ?></label>
+							</th>
+							<td class="forminp">
+								<select id="bocs_<?php echo esc_attr($module_id); ?>_module" 
+										name="bocs_<?php echo esc_attr($module_id); ?>_module" 
+										disabled>
+									<option value="both"><?php esc_html_e('Sync Both Ways', 'bocs-wordpress'); ?></option>
+									<option value="b2w"><?php esc_html_e('Sync Bocs to WordPress', 'bocs-wordpress'); ?></option>
+									<option value="w2b"><?php esc_html_e('Sync WordPress to Bocs', 'bocs-wordpress'); ?></option>
+									<option value="none"><?php esc_html_e('Do Not Sync', 'bocs-wordpress'); ?></option>
+								</select>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<br />
+			<?php wp_nonce_field('bocs_sync_options', '_wpnonce'); ?>
+			<input type="hidden" name="action" value="update">
+			<input type="hidden" name="option_page" value="bocs_sync_options">
+			<button type="button" class="button-primary woocommerce-save-button" id="syncNow">
+				<?php esc_html_e('Sync Now', 'bocs-wordpress'); ?>
+			</button>
+		</section>
+		<section id="site-status" class="tab-panel">
+			<h2><?php esc_html_e('System Status', 'bocs-wordpress'); ?></h2>
+			<table class="wc_status_table widefat" cellspacing="0" id="status">
+				<thead>
+					<tr>
+						<th colspan="3" data-export-label="WordPress Environment">
+							<h2><?php esc_html_e('WordPress environment', 'bocs-wordpress'); ?></h2>
 						</th>
-						<td class="forminp">
-							<select id="bocs_product_module" name="bocs_product_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
-						</td>
 					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Bocs</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_bocs_module" name="bocs_product_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+				</thead>
+				<tbody>
+					<tr>
+						<td data-export-label="WordPress address (URL)">
+							<?php esc_html_e('WordPress address (URL)', 'bocs-wordpress'); ?>:
 						</td>
-					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Contacts</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_contact_module" name="bocs_contact_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('The root URL of your site.', 'bocs-wordpress')); ?>
 						</td>
+						<td><?php echo esc_html($environment['site_url']); ?></td>
 					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Orders</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_order_module" name="bocs_order_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+					<tr>
+						<td data-export-label="Site address (URL)">
+							<?php esc_html_e('Site address (URL)', 'bocs-wordpress'); ?>:
 						</td>
-					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Invoices</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_invoice_module" name="bocs_invoice_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('The homepage URL of your site.', 'bocs-wordpress')); ?>
 						</td>
+						<td><?php echo esc_html($environment['home_url']); ?></td>
 					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Shipping</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_shipping_module" name="bocs_shipping_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+					<tr>
+						<td data-export-label="WC Version">
+							<?php esc_html_e('WooCommerce version', 'bocs-wordpress'); ?>:
 						</td>
-					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Tax</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_tax_module" name="bocs_tax_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('The version of WooCommerce installed on your site.', 'bocs-wordpress')); ?>
 						</td>
+						<td><?php echo esc_html($environment['version']); ?></td>
 					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Categories & Tags</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_category_module" name="bocs_category_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+					<tr>
+						<td data-export-label="WP Version">
+							<?php esc_html_e('WordPress version', 'bocs-wordpress'); ?>:
 						</td>
-					</tr>
-					<tr valign="top">
-						<th scope="row" class="titledesc">
-							<label>Subscriptions</label>
-						</th>
-						<td class="forminp">
-							<select id="bocs_subscription_module" name="bocs_subscription_module" disabled>
-								<option value="both">Sync Both Ways</option>
-								<option value="b2w">Sync Bocs to Wordpress</option>
-								<option value="w2b">Sync Wordpress to Bocs</option>
-								<option value="none">Do Not Sync</option>
-							</select>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('The version of WordPress installed on your site.', 'bocs-wordpress')); ?>
+						</td>
+						<td>
+							<?php
+							$latest_version = get_transient('woocommerce_system_status_wp_version_check');
+
+							if (false === $latest_version) {
+								$version_check = wp_remote_get('https://api.wordpress.org/core/version-check/1.7/');
+								$api_response = json_decode(wp_remote_retrieve_body($version_check), true);
+
+								if ($api_response && isset($api_response['offers'], $api_response['offers'][0], $api_response['offers'][0]['version'])) {
+									$latest_version = $api_response['offers'][0]['version'];
+								} else {
+									$latest_version = $environment['wp_version'];
+								}
+								set_transient('woocommerce_system_status_wp_version_check', $latest_version, DAY_IN_SECONDS);
+							}
+
+							if (version_compare($environment['wp_version'], $latest_version, '<')) {
+								printf(
+									'<mark class="error"><span class="dashicons dashicons-warning"></span> %s</mark>',
+									sprintf(
+										/* translators: 1: Current version, 2: New version */
+										esc_html__('%1$s - There is a newer version of WordPress available (%2$s)', 'bocs-wordpress'),
+										esc_html($environment['wp_version']),
+										esc_html($latest_version)
+									)
+								);
+							} else {
+								echo '<mark class="yes">' . esc_html($environment['wp_version']) . '</mark>';
+							}
+							?>
 						</td>
 					</tr>
 				</tbody>
 			</table>
 			<br />
-			<input type="hidden" id="_wpnonce" name="_wpnonce" value="<?php
+			<table class="wc_status_table widefat" cellspacing="0">
+				<thead>
+					<tr>
+						<th colspan="3" data-export-label="Server Environment">
+							<h2><?php esc_html_e('Server environment', 'bocs-wordpress'); ?></h2>
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td data-export-label="Server Info">
+							<?php esc_html_e('Server info', 'bocs-wordpress'); ?>:
+						</td>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('Information about the web server that is currently hosting your site.', 'bocs-wordpress')); ?>
+						</td>
+						<td><?php echo esc_html($environment['server_info']); ?></td>
+					</tr>
+					<tr>
+						<td data-export-label="PHP Version">
+							<?php esc_html_e('PHP version', 'bocs-wordpress'); ?>:
+						</td>
+						<td class="help">
+							<?php echo wc_help_tip(esc_html__('The version of PHP installed on your hosting server.', 'bocs-wordpress')); ?>
+						</td>
+						<td>
+							<?php echo '<mark class="yes">' . esc_html($environment['php_version']) . '</mark>'; ?>
+						</td>
+					</tr>
+					<?php if (function_exists('ini_get')) : ?>
+						<tr>
+							<td data-export-label="PHP Post Max Size">
+								<?php esc_html_e('PHP post max size', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The largest filesize that can be contained in one post.', 'bocs-wordpress')); ?>
+							</td>
+							<td><?php echo esc_html(size_format($environment['php_post_max_size'])); ?></td>
+						</tr>
+						<tr>
+							<td data-export-label="PHP Time Limit">
+								<?php esc_html_e('PHP time limit', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The amount of time (in seconds) that your site will spend on a single operation before timing out (to avoid server lockups)', 'bocs-wordpress')); ?>
+							</td>
+							<td><?php echo esc_html($environment['php_max_execution_time']); ?></td>
+						</tr>
+						<tr>
+							<td data-export-label="PHP Max Input Vars">
+								<?php esc_html_e('PHP max input vars', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The maximum number of variables your server can use for a single function to avoid overloads.', 'bocs-wordpress')); ?>
+							</td>
+							<td><?php echo esc_html($environment['php_max_input_vars']); ?></td>
+						</tr>
+						<tr>
+							<td data-export-label="cURL Version">
+								<?php esc_html_e('cURL version', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The version of cURL installed on your server.', 'bocs-wordpress')); ?>
+							</td>
+							<td><?php echo esc_html($environment['curl_version']); ?></td>
+						</tr>
+					<?php endif; ?>
+				</tbody>
+			</table>
+			<br />
+			<table class="wc_status_table widefat" cellspacing="0">
+				<thead>
+					<tr>
+						<th colspan="3" data-export-label="Server Environment"><h2><?php
 
-echo wp_create_nonce("bocs_sync_options");
-?>">
-			<input type="hidden" name="action" value="update">
-			<input type="hidden" name="option_page" value="bocs_sync_options">
-			<button type="button" class="button-primary woocommerce-save-button" id="syncNow">Sync Now</button>
-		</section>
-		<section id="site-status" class="tab-panel">
-			<h2>System Status</h2>
-			<table class="wc_status_table widefat" cellspacing="0" id="status">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="WordPress Environment"><h2><?php
-
-            esc_html_e('WordPress environment', 'woocommerce');
+            esc_html_e('Server environment', 'bocs-wordpress');
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="WordPress address (URL)"><?php
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td data-export-label="Server Info"><?php
 
-            esc_html_e('WordPress address (URL)', 'woocommerce');
+            esc_html_e('Server info', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+						<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The root URL of your site.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Information about the web server that is currently hosting your site.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
-
-            echo esc_html($environment['site_url']);
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Site address (URL)"><?php
-
-            esc_html_e('Site address (URL)', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The homepage URL of your site.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
-
-            echo esc_html($environment['home_url']);
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WC Version"><?php
-
-            esc_html_e('WooCommerce version', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The version of WooCommerce installed on your site.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
-
-            echo esc_html($environment['version']);
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="REST API Version"><?php
-
-            esc_html_e('WooCommerce REST API package', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The WooCommerce REST API package running on your site.', 'woocommerce'));
-            ?></td>
-            			<td>
-							
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WC Blocks Version"><?php
-
-            esc_html_e('WooCommerce Blocks package', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The WooCommerce Blocks package running on your site.', 'woocommerce'));
-            ?></td>
-            			<td>
-            				<?php
-                if (class_exists('\Automattic\WooCommerce\Blocks\Package')) {
-                    $version = \Automattic\WooCommerce\Blocks\Package::get_version();
-                    $path = \Automattic\WooCommerce\Blocks\Package::get_path(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-                } else {
-                    $version = null;
-                }
-
-                if (! is_null($version)) {
-                    echo '<mark class="yes"><span class="dashicons dashicons-yes"></span> ' . esc_html($version) . ' <code class="private">' . esc_html($path) . '</code></mark> ';
-                } else {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Unable to detect the Blocks package.', 'woocommerce') . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Action Scheduler Version"><?php
-
-            esc_html_e('Action Scheduler package', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Action Scheduler package running on your site.', 'woocommerce'));
-            ?></td>
-            			<td>
-            				<?php
-                if (class_exists('ActionScheduler_Versions') && class_exists('ActionScheduler')) {
-                    $version = ActionScheduler_Versions::instance()->latest_version();
-                    $path = ActionScheduler::plugin_path(''); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-                } else {
-                    $version = null;
-                }
-
-                if (! is_null($version)) {
-                    echo '<mark class="yes"><span class="dashicons dashicons-yes"></span> ' . esc_html($version) . ' <code class="private">' . esc_html($path) . '</code></mark> ';
-                } else {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Unable to detect the Action Scheduler package.', 'woocommerce') . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Log Directory Writable"><?php
-
-            esc_html_e('Log directory writable', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Several WooCommerce extensions can write logs which makes debugging problems easier. The directory must be writable for this to happen.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td>
-            				<?php
-                if ($environment['log_directory_writable']) {
-                    echo '<mark class="yes"><span class="dashicons dashicons-yes"></span> <code class="private">' . esc_html($environment['log_directory']) . '</code></mark> ';
-                } else {
-                    /* Translators: %1$s: Log directory, %2$s: Log directory constant */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('To allow logging, make %1$s writable or define a custom %2$s.', 'woocommerce'), '<code>' . esc_html($environment['log_directory']) . '</code>', '<code>WC_LOG_DIR</code>') . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WP Version"><?php
-
-            esc_html_e('WordPress version', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The version of WordPress installed on your site.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td>
-            				<?php
-                $latest_version = get_transient('woocommerce_system_status_wp_version_check');
-
-                if (false === $latest_version) {
-                    $version_check = wp_remote_get('https://api.wordpress.org/core/version-check/1.7/');
-                    $api_response = json_decode(wp_remote_retrieve_body($version_check), true);
-
-                    if ($api_response && isset($api_response['offers'], $api_response['offers'][0], $api_response['offers'][0]['version'])) {
-                        $latest_version = $api_response['offers'][0]['version'];
-                    } else {
-                        $latest_version = $environment['wp_version'];
-                    }
-                    set_transient('woocommerce_system_status_wp_version_check', $latest_version, DAY_IN_SECONDS);
-                }
-
-                if (version_compare($environment['wp_version'], $latest_version, '<')) {
-                    /* Translators: %1$s: Current version, %2$s: New version */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%1$s - There is a newer version of WordPress available (%2$s)', 'woocommerce'), esc_html($environment['wp_version']), esc_html($latest_version)) . '</mark>';
-                } else {
-                    echo '<mark class="yes">' . esc_html($environment['wp_version']) . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WP Multisite"><?php
-
-            esc_html_e('WordPress multisite', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Whether or not you have WordPress Multisite enabled.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
-
-            echo ($environment['wp_multisite']) ? '<span class="dashicons dashicons-yes"></span>' : '&ndash;';
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WP Memory Limit"><?php
-
-            esc_html_e('WordPress memory limit', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The maximum amount of memory (RAM) that your site can use at one time.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td>
-            				<?php
-                if ($environment['wp_memory_limit'] < 67108864) {
-                    /* Translators: %1$s: Memory limit, %2$s: Docs link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%1$s - We recommend setting memory to at least 64MB. See: %2$s', 'woocommerce'), esc_html(size_format($environment['wp_memory_limit'])), '<a href="https://wordpress.org/support/article/editing-wp-config-php/#increasing-memory-allocated-to-php" target="_blank">' . esc_html__('Increasing memory allocated to PHP', 'woocommerce') . '</a>') . '</mark>';
-                } else {
-                    echo '<mark class="yes">' . esc_html(size_format($environment['wp_memory_limit'])) . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WP Debug Mode"><?php
-
-            esc_html_e('WordPress debug mode', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Displays whether or not WordPress is in Debug Mode.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td>
-            				<?php
-
-                if ($environment['wp_debug_mode']) :
-                    ?>
-            					<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
-            				<?php
-
-                else :
-                    ?>
-            					<mark class="no">&ndash;</mark>
-            				<?php
-
-                endif;
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WP Cron"><?php
-
-            esc_html_e('WordPress cron', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Displays whether or not WP Cron Jobs are enabled.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td>
-            				<?php
-
-                if ($environment['wp_cron']) :
-                    ?>
-            					<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
-            				<?php
-
-                else :
-                    ?>
-            					<mark class="no">&ndash;</mark>
-            				<?php
-
-                endif;
-                ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Language"><?php
-
-            esc_html_e('Language', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The current language used by WordPress. Default = English', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
-
-            echo esc_html($environment['language']);
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="External object cache"><?php
-
-            esc_html_e('External object cache', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Displays whether or not WordPress is using an external object cache.', 'woocommerce'));
-            ?></td>
-            			<td>
-            				<?php
-
-                if ($environment['external_object_cache']) :
-                    ?>
-            					<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
-            				<?php
-
-                else :
-                    ?>
-            					<mark class="no">&ndash;</mark>
-            				<?php
-
-                endif;
-                ?>
-            			</td>
-            		</tr>
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Server Environment"><h2><?php
-
-            esc_html_e('Server environment', 'woocommerce');
-            ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="Server Info"><?php
-
-            esc_html_e('Server info', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('Information about the web server that is currently hosting your site.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
+						<td><?php
 
             echo esc_html($environment['server_info']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="PHP Version"><?php
+					</tr>
+					<tr>
+						<td data-export-label="PHP Version"><?php
 
-            esc_html_e('PHP version', 'woocommerce');
+            esc_html_e('PHP version', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+						<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The version of PHP installed on your hosting server.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The version of PHP installed on your hosting server.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
-
+						<td>
+							<?php
                 echo '<mark class="yes">' . esc_html($environment['php_version']) . '</mark>';
                 ?>
-            			</td>
-            		</tr>
-            		<?php
+						</td>
+					</tr>
+					<?php
 
             if (function_exists('ini_get')) :
                 ?>
-            			<tr>
-            				<td data-export-label="PHP Post Max Size"><?php
+						<tr>
+							<td data-export-label="PHP Post Max Size"><?php
 
-                esc_html_e('PHP post max size', 'woocommerce');
+                esc_html_e('PHP post max size', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The largest filesize that can be contained in one post.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The largest filesize that can be contained in one post.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+							<td><?php
 
                 echo esc_html(size_format($environment['php_post_max_size']));
                 ?></td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="PHP Time Limit"><?php
+						</tr>
+						<tr>
+							<td data-export-label="PHP Time Limit"><?php
 
-                esc_html_e('PHP time limit', 'woocommerce');
+                esc_html_e('PHP time limit', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The amount of time (in seconds) that your site will spend on a single operation before timing out (to avoid server lockups)', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The amount of time (in seconds) that your site will spend on a single operation before timing out (to avoid server lockups)', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+							<td><?php
 
                 echo esc_html($environment['php_max_execution_time']);
                 ?></td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="PHP Max Input Vars"><?php
+						</tr>
+						<tr>
+							<td data-export-label="PHP Max Input Vars"><?php
 
-                esc_html_e('PHP max input vars', 'woocommerce');
+                esc_html_e('PHP max input vars', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The maximum number of variables your server can use for a single function to avoid overloads.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The maximum number of variables your server can use for a single function to avoid overloads.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+							<td><?php
 
                 echo esc_html($environment['php_max_input_vars']);
                 ?></td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="cURL Version"><?php
+						</tr>
+						<tr>
+							<td data-export-label="cURL Version"><?php
 
-                esc_html_e('cURL version', 'woocommerce');
+                esc_html_e('cURL version', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The version of cURL installed on your server.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The version of cURL installed on your server.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+							<td><?php
 
                 echo esc_html($environment['curl_version']);
                 ?></td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="SUHOSIN Installed"><?php
+						</tr>
+						<tr>
+							<td data-export-label="SUHOSIN Installed"><?php
 
-                esc_html_e('SUHOSIN installed', 'woocommerce');
+                esc_html_e('SUHOSIN installed', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('Suhosin is an advanced protection system for PHP installations. It was designed to protect your servers on the one hand against a number of well known problems in PHP applications and on the other hand against potential unknown vulnerabilities within these applications or the PHP core itself. If enabled on your server, Suhosin may need to be configured to increase its data submission limits.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('Suhosin is an advanced protection system for PHP installations. It was designed to protect your servers on the one hand against a number of well known problems in PHP applications and on the other hand against potential unknown vulnerabilities within these applications or the PHP core itself. If enabled on your server, Suhosin may need to be configured to increase its data submission limits.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+							<td><?php
 
                 echo $environment['suhosin_installed'] ? '<span class="dashicons dashicons-yes"></span>' : '&ndash;';
                 ?></td>
-            			</tr>
-            		<?php endif;
+						</tr>
+					<?php endif;
 
             ?>
 
-            		<?php
+						<?php
 
             if ($environment['mysql_version']) :
                 ?>
-            			<tr>
-            				<td data-export-label="MySQL Version"><?php
+						<tr>
+							<td data-export-label="MySQL Version"><?php
 
-                esc_html_e('MySQL version', 'woocommerce');
+                esc_html_e('MySQL version', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The version of MySQL installed on your hosting server.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The version of MySQL installed on your hosting server.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td>
-            					<?php
+							<td>
+								<?php
                 if (version_compare($environment['mysql_version'], '5.6', '<') && ! strstr($environment['mysql_version_string'], 'MariaDB')) {
                     /* Translators: %1$s: MySQL version, %2$s: Recommended MySQL version. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%1$s - We recommend a minimum MySQL version of 5.6. See: %2$s', 'woocommerce'), esc_html($environment['mysql_version_string']), '<a href="https://wordpress.org/about/requirements/" target="_blank">' . esc_html__('WordPress requirements', 'woocommerce') . '</a>') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%1$s - We recommend a minimum MySQL version of 5.6. See: %2$s', 'bocs-wordpress'), esc_html($environment['mysql_version_string']), '<a href="https://wordpress.org/about/requirements/" target="_blank">' . esc_html__('WordPress requirements', 'bocs-wordpress') . '</a>') . '</mark>';
                 } else {
                     echo '<mark class="yes">' . esc_html($environment['mysql_version_string']) . '</mark>';
                 }
                 ?>
-            				</td>
-            			</tr>
-            		<?php endif;
+							</td>
+						</tr>
+					<?php endif;
 
             ?>
-            		<tr>
-            			<td data-export-label="Max Upload Size"><?php
+						<tr>
+							<td data-export-label="Max Upload Size"><?php
 
-            esc_html_e('Max upload size', 'woocommerce');
+            esc_html_e('Max upload size', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The largest filesize that can be uploaded to your WordPress installation.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The largest filesize that can be uploaded to your WordPress installation.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html(size_format($environment['max_upload_size']));
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Default Timezone is UTC"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Default Timezone is UTC"><?php
 
-            esc_html_e('Default timezone is UTC', 'woocommerce');
+            esc_html_e('Default timezone is UTC', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The default timezone for your server.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The default timezone for your server.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ('UTC' !== $environment['default_timezone']) {
                     /* Translators: %s: default timezone.. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Default timezone is %s - it should be UTC', 'woocommerce'), esc_html($environment['default_timezone'])) . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Default timezone is %s - it should be UTC', 'bocs-wordpress'), esc_html($environment['default_timezone'])) . '</mark>';
                 } else {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="fsockopen/cURL"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="fsockopen/cURL"><?php
 
-            esc_html_e('fsockopen/cURL', 'woocommerce');
+            esc_html_e('fsockopen/cURL', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Payment gateways can use cURL to communicate with remote servers to authorize payments, other plugins may also use it when communicating with remote services.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Payment gateways can use cURL to communicate with remote servers to authorize payments, other plugins may also use it when communicating with remote services.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['fsockopen_or_curl_enabled']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Your server does not have fsockopen or cURL enabled - PayPal IPN and other scripts which communicate with other servers will not work. Contact your hosting provider.', 'woocommerce') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Your server does not have fsockopen or cURL enabled - PayPal IPN and other scripts which communicate with other servers will not work. Contact your hosting provider.', 'bocs-wordpress') . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="SoapClient"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="SoapClient"><?php
 
-            esc_html_e('SoapClient', 'woocommerce');
+            esc_html_e('SoapClient', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Some webservices like shipping use SOAP to get information from remote servers, for example, live shipping quotes from FedEx require SOAP to be installed.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Some webservices like shipping use SOAP to get information from remote servers, for example, live shipping quotes from FedEx require SOAP to be installed.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['soapclient_enabled']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s classname and link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not have the %s class enabled - some gateway plugins which use SOAP may not work as expected.', 'woocommerce'), '<a href="https://php.net/manual/en/class.soapclient.php">SoapClient</a>') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not have the %s class enabled - some gateway plugins which use SOAP may not work as expected.', 'bocs-wordpress'), '<a href="https://php.net/manual/en/class.soapclient.php">SoapClient</a>') . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="DOMDocument"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="DOMDocument"><?php
 
-            esc_html_e('DOMDocument', 'woocommerce');
+            esc_html_e('DOMDocument', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('HTML/Multipart emails use DOMDocument to generate inline CSS in templates.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('HTML/Multipart emails use DOMDocument to generate inline CSS in templates.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['domdocument_enabled']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s: classname and link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not have the %s class enabled - HTML/Multipart emails, and also some extensions, will not work without DOMDocument.', 'woocommerce'), '<a href="https://php.net/manual/en/class.domdocument.php">DOMDocument</a>') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not have the %s class enabled - HTML/Multipart emails, and also some extensions, will not work without DOMDocument.', 'bocs-wordpress'), '<a href="https://php.net/manual/en/class.domdocument.php">DOMDocument</a>') . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="GZip"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="GZip"><?php
 
-            esc_html_e('GZip', 'woocommerce');
+            esc_html_e('GZip', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('GZip (gzopen) is used to open the GEOIP database from MaxMind.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('GZip (gzopen) is used to open the GEOIP database from MaxMind.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['gzip_enabled']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s: classname and link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not support the %s function - this is required to use the GeoIP database from MaxMind.', 'woocommerce'), '<a href="https://php.net/manual/en/zlib.installation.php">gzopen</a>') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not support the %s function - this is required to use the GeoIP database from MaxMind.', 'bocs-wordpress'), '<a href="https://php.net/manual/en/zlib.installation.php">gzopen</a>') . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Multibyte String"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Multibyte String"><?php
 
-            esc_html_e('Multibyte string', 'woocommerce');
+            esc_html_e('Multibyte string', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Multibyte String (mbstring) is used to convert character encoding, like for emails or converting characters to lowercase.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Multibyte String (mbstring) is used to convert character encoding, like for emails or converting characters to lowercase.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['mbstring_enabled']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s: classname and link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not support the %s functions - this is required for better character encoding. Some fallbacks will be used instead for it.', 'woocommerce'), '<a href="https://php.net/manual/en/mbstring.installation.php">mbstring</a>') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('Your server does not support the %s functions - this is required for better character encoding. Some fallbacks will be used instead for it.', 'bocs-wordpress'), '<a href="https://php.net/manual/en/mbstring.installation.php">mbstring</a>') . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Remote Post"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Remote Post"><?php
 
-            esc_html_e('Remote post', 'woocommerce');
+            esc_html_e('Remote post', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('PayPal uses this method of communicating when sending back transaction information.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('PayPal uses this method of communicating when sending back transaction information.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['remote_post_successful']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s: function name. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%s failed. Contact your hosting provider.', 'woocommerce'), 'wp_remote_post()') . ' ' . esc_html($environment['remote_post_response']) . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%s failed. Contact your hosting provider.', 'bocs-wordpress'), 'wp_remote_post()') . ' ' . esc_html($environment['remote_post_response']) . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Remote Get"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Remote Get"><?php
 
-            esc_html_e('Remote get', 'woocommerce');
+            esc_html_e('Remote get', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('WooCommerce plugins may use this method of communication when checking for plugin updates.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('WooCommerce plugins may use this method of communication when checking for plugin updates.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($environment['remote_get_successful']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s: function name. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%s failed. Contact your hosting provider.', 'woocommerce'), 'wp_remote_get()') . ' ' . esc_html($environment['remote_get_response']) . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%s failed. Contact your hosting provider.', 'bocs-wordpress'), 'wp_remote_get()') . ' ' . esc_html($environment['remote_get_response']) . '</mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<?php
+							</td>
+						</tr>
+						<?php
             $rows = apply_filters('woocommerce_system_status_environment_rows', array());
             foreach ($rows as $row) {
                 if (! empty($row['success'])) {
@@ -946,736 +706,637 @@ echo wp_create_nonce("bocs_sync_options");
                     $icon = '<span class="dashicons dashicons-no-alt"></span>';
                 }
                 ?>
-            			<tr>
-            				<td data-export-label="<?php
+						<tr>
+							<td data-export-label="<?php
 
                 echo esc_attr($row['name']);
                 ?>"><?php
 
                 echo esc_html($row['name']);
                 ?>:</td>
-            				<td class="help"><?php
+							<td class="help"><?php
 
                 echo esc_html(isset($row['help']) ? $row['help'] : '');
                 ?></td>
-            				<td>
-            					<mark class="<?php
+							<td>
+								<mark class="<?php
 
                 echo esc_attr($css_class);
                 ?>">
-            						<?php
+										<?php
 
                 echo wp_kses_post($icon);
                 ?> <?php
 
                 echo wp_kses_data(! empty($row['note']) ? $row['note'] : '');
                 ?>
-            					</mark>
-            				</td>
-            			</tr>
-            			<?php
+								</mark>
+							</td>
+						</tr>
+						<?php
             }
             ?>
-            	</tbody>
-            </table>
-            <br />
-            <table id="status-database" class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            	<tr>
-            		<th colspan="3" data-export-label="Database">
-            			<h2>
-            				<?php
-                esc_html_e('Database', 'woocommerce');
-                $missing_tables = WC_Install::verify_base_tables(false);
-                if (0 === count($missing_tables)) {
-                    echo "";
-                } else {
-                    ?>
-
-                        		<br>
-                        		<strong style="color:#a00;">
-                        			<span class="dashicons dashicons-warning"></span>
-                        			<?php
-                    echo esc_html(sprintf(
-                        // translators: Comma separated list of missing tables.
-                        __('Missing base tables: %s. Some WooCommerce functionality may not work as expected.', 'woocommerce'), implode(', ', $missing_tables)));
-                    ?>
-                        		</strong>
-
-                        		<?php
-                }
-                ?>
-            			</h2>
-            		</th>
-            	</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="WC Database Version"><?php
-
-            esc_html_e('WooCommerce database version', 'woocommerce');
-            ?>:</td>
-            			<td class="help"><?php
-
-            echo wc_help_tip(esc_html__('The database version for WooCommerce. This should be the same as your WooCommerce version.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
-            ?></td>
-            			<td><?php
-
-            echo esc_html($database['wc_database_version']);
-            ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="WC Database Prefix"><?php
-
-            esc_html_e('Database prefix', 'woocommerce');
-            ?></td>
-            			<td class="help">&nbsp;</td>
-            			<td>
-            				<?php
-                if (strlen($database['database_prefix']) > 20) {
-                    /* Translators: %1$s: Database prefix, %2$s: Docs link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . sprintf(esc_html__('%1$s - We recommend using a prefix with less than 20 characters. See: %2$s', 'woocommerce'), esc_html($database['database_prefix']), '<a href="https://docs.woocommerce.com/document/completed-order-email-doesnt-contain-download-links/#section-2" target="_blank">' . esc_html__('How to update your database table prefix', 'woocommerce') . '</a>') . '</mark>';
-                } else {
-                    echo '<mark class="yes">' . esc_html($database['database_prefix']) . '</mark>';
-                }
-                ?>
-            			</td>
-            		</tr>
-
-            		<?php
-
-            if (! empty($database['database_size']) && ! empty($database['database_tables'])) :
-                ?>
-            			<tr>
-            				<td><?php
-
-                esc_html_e('Total Database Size', 'woocommerce');
-                ?></td>
-            				<td class="help">&nbsp;</td>
-            				<td><?php
-
-                printf('%.2fMB', esc_html($database['database_size']['data'] + $database['database_size']['index']));
-                ?></td>
-            			</tr>
-
-            			<tr>
-            				<td><?php
-
-                esc_html_e('Database Data Size', 'woocommerce');
-                ?></td>
-            				<td class="help">&nbsp;</td>
-            				<td><?php
-
-                printf('%.2fMB', esc_html($database['database_size']['data']));
-                ?></td>
-            			</tr>
-
-            			<tr>
-            				<td><?php
-
-                esc_html_e('Database Index Size', 'woocommerce');
-                ?></td>
-            				<td class="help">&nbsp;</td>
-            				<td><?php
-
-                printf('%.2fMB', esc_html($database['database_size']['index']));
-                ?></td>
-            			</tr>
-
-            			<?php
-
-                foreach ($database['database_tables']['woocommerce'] as $table => $table_data) {
-                    ?>
-            				<tr>
-            					<td><?php
-
-                    echo esc_html($table);
-                    ?></td>
-            					<td class="help">&nbsp;</td>
-            					<td>
-            						<?php
-                    if (! $table_data) {
-                        echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Table does not exist', 'woocommerce') . '</mark>';
-                    } else {
-                        /* Translators: %1$f: Table size, %2$f: Index size, %3$s Engine. */
-                        printf(esc_html__('Data: %1$.2fMB + Index: %2$.2fMB + Engine %3$s', 'woocommerce'), esc_html(wc_format_decimal($table_data['data'], 2)), esc_html(wc_format_decimal($table_data['index'], 2)), esc_html($table_data['engine']));
-                    }
-                    ?>
-            					</td>
-            				</tr>
-            			<?php
-                }
-                ?>
-
-            			<?php
-
-                foreach ($database['database_tables']['other'] as $table => $table_data) {
-                    ?>
-            				<tr>
-            					<td><?php
-
-                    echo esc_html($table);
-                    ?></td>
-            					<td class="help">&nbsp;</td>
-            					<td>
-            						<?php
-                    /* Translators: %1$f: Table size, %2$f: Index size, %3$s Engine. */
-                    printf(esc_html__('Data: %1$.2fMB + Index: %2$.2fMB + Engine %3$s', 'woocommerce'), esc_html(wc_format_decimal($table_data['data'], 2)), esc_html(wc_format_decimal($table_data['index'], 2)), esc_html($table_data['engine']));
-                    ?>
-            					</td>
-            				</tr>
-            			<?php
-                }
-                ?>
-            		<?php
-
-            else :
-                ?>
-            			<tr>
-            				<td><?php
-
-                esc_html_e('Database information:', 'woocommerce');
-                ?></td>
-            				<td class="help">&nbsp;</td>
-            				<td>
-            					<?php
-                esc_html_e('Unable to retrieve database information. Usually, this is not a problem, and it only means that your install is using a class that replaces the WordPress database class (e.g., HyperDB) and WooCommerce is unable to get database information.', 'woocommerce');
-                ?>
-            				</td>
-            			</tr>
-            		<?php
-
-            endif;
-            ?>
-            	</tbody>
-            </table>
-            <br />
-            <?php
+					</tbody>
+				</table>
+				<br />
+				<table id="status-database" class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Database">
+							<h2><?php esc_html_e('Database', 'bocs-wordpress'); ?></h2>
+						</th>
+					</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td data-export-label="MySQL Version">
+								<?php esc_html_e('MySQL version', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The version of MySQL installed on your hosting server.', 'bocs-wordpress')); ?>
+							</td>
+							<td>
+								<?php
+								if (version_compare($environment['mysql_version'], '5.6', '<') && !strstr($environment['mysql_version_string'], 'MariaDB')) {
+									printf(
+										'<mark class="error"><span class="dashicons dashicons-warning"></span> %s</mark>',
+										sprintf(
+											/* translators: 1: MySQL version 2: Recommended MySQL version */
+											esc_html__('%1$s - We recommend a minimum MySQL version of 5.6. See: %2$s', 'bocs-wordpress'),
+											esc_html($environment['mysql_version_string']),
+											'<a href="https://wordpress.org/about/requirements/" target="_blank">' . 
+											esc_html__('WordPress requirements', 'bocs-wordpress') . 
+											'</a>'
+										)
+									);
+								} else {
+									echo '<mark class="yes">' . esc_html($environment['mysql_version_string']) . '</mark>';
+								}
+								?>
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Max Upload Size">
+								<?php esc_html_e('Max upload size', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The largest filesize that can be uploaded to your WordPress installation.', 'bocs-wordpress')); ?>
+							</td>
+							<td><?php echo esc_html(size_format($environment['max_upload_size'])); ?></td>
+						</tr>
+						<tr>
+							<td data-export-label="Default Timezone">
+								<?php esc_html_e('Default timezone', 'bocs-wordpress'); ?>:
+							</td>
+							<td class="help">
+								<?php echo wc_help_tip(esc_html__('The default timezone for your server.', 'bocs-wordpress')); ?>
+							</td>
+							<td>
+								<?php
+								if ('UTC' !== $environment['default_timezone']) {
+									printf(
+										'<mark class="error"><span class="dashicons dashicons-warning"></span> %s</mark>',
+										sprintf(
+											/* translators: %s: default timezone */
+											esc_html__('Default timezone is %s - it should be UTC', 'bocs-wordpress'),
+											esc_html($environment['default_timezone'])
+										)
+									);
+								} else {
+									echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
+								}
+								?>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<br />
+				<?php
 
             if ($post_type_counts) :
                 ?>
-            	<table class="wc_status_table widefat" cellspacing="0">
-            		<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Post Type Counts"><h2><?php
+					<table class="wc_status_table widefat" cellspacing="0">
+						<thead>
+						<tr>
+							<th colspan="3" data-export-label="Post Type Counts"><h2><?php
 
-                esc_html_e('Post Type Counts', 'woocommerce');
+                esc_html_e('Post Type Counts', 'bocs-wordpress');
                 ?></h2></th>
-            		</tr>
-            		</thead>
-            		<tbody>
-            			<?php
+						</tr>
+						</thead>
+						<tbody>
+							<?php
                 foreach ($post_type_counts as $ptype) {
                     ?>
-            				<tr>
-            					<td><?php
+								<tr>
+									<td><?php
 
                     echo esc_html($ptype['type']);
                     ?></td>
-            					<td class="help">&nbsp;</td>
-            					<td><?php
+									<td class="help">&nbsp;</td>
+									<td><?php
 
                     echo absint($ptype['count']);
                     ?></td>
-            				</tr>
-            				<?php
+								</tr>
+								<?php
                 }
                 ?>
-            		</tbody>
-            	</table>
-            	<br />
-            <?php endif;
+						</tbody>
+					</table>
+					<br />
+				<?php endif;
 
-            ?>
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Security"><h2><?php
+                ?>
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Security"><h2><?php
 
-            esc_html_e('Security', 'woocommerce');
+            esc_html_e('Security', 'bocs-wordpress');
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="Secure connection (HTTPS)"><?php
+					</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td data-export-label="Secure connection (HTTPS)"><?php
 
-            esc_html_e('Secure connection (HTTPS)', 'woocommerce');
+            esc_html_e('Secure connection (HTTPS)', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is the connection to your store secure?', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Is the connection to your store secure?', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
 
                 if ($security['secure_connection']) :
                     ?>
-            					<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
-            				<?php
+									<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
+								<?php
 
                 else :
                     ?>
-            					<mark class="error"><span class="dashicons dashicons-warning"></span>
-            					<?php
+									<mark class="error"><span class="dashicons dashicons-warning"></span>
+									<?php
                     /* Translators: %s: docs link. */
-                    echo wp_kses_post(sprintf(__('Your store is not using HTTPS. <a href="%s" target="_blank">Learn more about HTTPS and SSL Certificates</a>.', 'woocommerce'), 'https://docs.woocommerce.com/document/ssl-and-https/'));
+                    echo wp_kses_post(sprintf(__('Your store is not using HTTPS. <a href="%s" target="_blank">Learn more about HTTPS and SSL Certificates</a>.', 'bocs-wordpress'), 'https://docs.woocommerce.com/document/ssl-and-https/'));
                     ?>
-            					</mark>
-            				<?php
+									</mark>
+								<?php
 
                 endif;
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Hide errors from visitors"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Hide errors from visitors"><?php
 
-            esc_html_e('Hide errors from visitors', 'woocommerce');
+            esc_html_e('Hide errors from visitors', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Error messages can contain sensitive information about your store environment. These should be hidden from untrusted visitors.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Error messages can contain sensitive information about your store environment. These should be hidden from untrusted visitors.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
 
                 if ($security['hide_errors']) :
                     ?>
-            					<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
-            				<?php
+									<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>
+								<?php
 
                 else :
                     ?>
-            					<mark class="error"><span class="dashicons dashicons-warning"></span><?php
+									<mark class="error"><span class="dashicons dashicons-warning"></span><?php
 
-                    esc_html_e('Error messages should not be shown to visitors.', 'woocommerce');
+                    esc_html_e('Error messages should not be shown to visitors.', 'bocs-wordpress');
                     ?></mark>
-            				<?php
+								<?php
 
                 endif;
                 ?>
-            			</td>
-            		</tr>
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Active Plugins (<?php
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<br />
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Active Plugins (<?php
 
             echo count($active_plugins);
             ?>)"><h2><?php
 
-            esc_html_e('Active plugins', 'woocommerce');
+            esc_html_e('Active plugins', 'bocs-wordpress');
             ?> (<?php
 
             echo count($active_plugins);
             ?>)</h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<?php
+					</tr>
+					</thead>
+					<tbody>
+						<?php
 
             bocs_output_plugins_info($active_plugins, $untested_plugins);
             ?>
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Inactive Plugins (<?php
+					</tbody>
+				</table>
+				<br />
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Inactive Plugins (<?php
 
             echo count($inactive_plugins);
             ?>)"><h2><?php
 
-            esc_html_e('Inactive plugins', 'woocommerce');
+            esc_html_e('Inactive plugins', 'bocs-wordpress');
             ?> (<?php
 
             echo count($inactive_plugins);
             ?>)</h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<?php
+					</tr>
+					</thead>
+					<tbody>
+						<?php
 
             bocs_output_plugins_info($inactive_plugins, $untested_plugins);
             ?>
-            	</tbody>
-            </table>
-            <br />
-            <?php
+					</tbody>
+				</table>
+				<br />
+				<?php
             if (0 < count($dropins_mu_plugins['dropins'])) :
                 ?>
-            	<table class="wc_status_table widefat" cellspacing="0">
-            		<thead>
-            			<tr>
-            				<th colspan="3" data-export-label="Dropin Plugins (<?php
+					<table class="wc_status_table widefat" cellspacing="0">
+						<thead>
+						<tr>
+							<th colspan="3" data-export-label="Dropin Plugins (<?php
 
                 echo count($dropins_mu_plugins['dropins']);
                 ?>)"><h2><?php
 
-                esc_html_e('Dropin Plugins', 'woocommerce');
+                esc_html_e('Dropin Plugins', 'bocs-wordpress');
                 ?> (<?php
 
                 echo count($dropins_mu_plugins['dropins']);
                 ?>)</h2></th>
-            			</tr>
-            		</thead>
-            		<tbody>
-            			<?php
+						</tr>
+						</thead>
+						<tbody>
+							<?php
                 foreach ($dropins_mu_plugins['dropins'] as $dropin) {
                     ?>
-            				<tr>
-            					<td><?php
+								<tr>
+									<td><?php
 
                     echo wp_kses_post($dropin['plugin']);
                     ?></td>
-            					<td class="help">&nbsp;</td>
-            					<td><?php
+									<td class="help">&nbsp;</td>
+									<td><?php
 
                     echo wp_kses_post($dropin['name']);
                     ?>
-            				</tr>
-            				<?php
+								</tr>
+								<?php
                 }
                 ?>
-            		</tbody>
-            	</table>
-            	<br />
-            	<?php
+						</tbody>
+					</table>
+					<br />
+				<?php
             endif;
 
             if (0 < count($dropins_mu_plugins['mu_plugins'])) :
                 ?>
-            	<table class="wc_status_table widefat" cellspacing="0">
-            		<thead>
-            			<tr>
-            				<th colspan="3" data-export-label="Must Use Plugins (<?php
+					<table class="wc_status_table widefat" cellspacing="0">
+						<thead>
+						<tr>
+							<th colspan="3" data-export-label="Must Use Plugins (<?php
 
                 echo count($dropins_mu_plugins['mu_plugins']);
                 ?>)"><h2><?php
 
-                esc_html_e('Must Use Plugins', 'woocommerce');
+                esc_html_e('Must Use Plugins', 'bocs-wordpress');
                 ?> (<?php
 
                 echo count($dropins_mu_plugins['mu_plugins']);
                 ?>)</h2></th>
-            			</tr>
-            		</thead>
-            		<tbody>
-            			<?php
+						</tr>
+						</thead>
+						<tbody>
+							<?php
                 foreach ($dropins_mu_plugins['mu_plugins'] as $mu_plugin) { // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
                     $plugin_name = esc_html($mu_plugin['name']);
                     if (! empty($mu_plugin['url'])) {
-                        $plugin_name = '<a href="' . esc_url($mu_plugin['url']) . '" aria-label="' . esc_attr__('Visit plugin homepage', 'woocommerce') . '" target="_blank">' . $plugin_name . '</a>';
+                        $plugin_name = '<a href="' . esc_url($mu_plugin['url']) . '" aria-label="' . esc_attr__('Visit plugin homepage', 'bocs-wordpress') . '" target="_blank">' . $plugin_name . '</a>';
                     }
                     ?>
-            				<tr>
-            					<td><?php
+								<tr>
+									<td><?php
 
                     echo wp_kses_post($plugin_name);
                     ?></td>
-            					<td class="help">&nbsp;</td>
-            					<td>
-            					<?php
+									<td class="help">&nbsp;</td>
+									<td>
+									<?php
                     /* translators: %s: plugin author */
-                    printf(esc_html__('by %s', 'woocommerce'), esc_html($mu_plugin['author_name']));
+                    printf(esc_html__('by %s', 'bocs-wordpress'), esc_html($mu_plugin['author_name']));
                     echo ' &ndash; ' . esc_html($mu_plugin['version']);
                     ?>
-            				</tr>
-            				<?php
+								</tr>
+								<?php
                 }
                 ?>
-            		</tbody>
-            	</table>
-            	<br />
-            <?php endif;
+						</tbody>
+					</table>
+					<br />
+				<?php endif;
 
-            ?>
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Settings"><h2><?php
+                ?>
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Settings"><h2><?php
 
-            esc_html_e('Settings', 'woocommerce');
+            esc_html_e('Settings', 'bocs-wordpress');
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="API Enabled"><?php
+					</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td data-export-label="API Enabled"><?php
 
-            esc_html_e('API enabled', 'woocommerce');
+            esc_html_e('API enabled', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Does your site have REST API enabled?', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Does your site have REST API enabled?', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo $settings['api_enabled'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Force SSL"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Force SSL"><?php
 
-            esc_html_e('Force SSL', 'woocommerce');
+            esc_html_e('Force SSL', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Does your site force a SSL Certificate for transactions?', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Does your site force a SSL Certificate for transactions?', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo $settings['force_ssl'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Currency"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Currency"><?php
 
-            esc_html_e('Currency', 'woocommerce');
+            esc_html_e('Currency', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('What currency prices are listed at in the catalog and which currency gateways will take payments in.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('What currency prices are listed at in the catalog and which currency gateways will take payments in.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['currency']);
             ?> (<?php
 
             echo esc_html($settings['currency_symbol']);
             ?>)</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Currency Position"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Currency Position"><?php
 
-            esc_html_e('Currency position', 'woocommerce');
+            esc_html_e('Currency position', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The position of the currency symbol.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The position of the currency symbol.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['currency_position']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Thousand Separator"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Thousand Separator"><?php
 
-            esc_html_e('Thousand separator', 'woocommerce');
+            esc_html_e('Thousand separator', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The thousand separator of displayed prices.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The thousand separator of displayed prices.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['thousand_separator']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Decimal Separator"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Decimal Separator"><?php
 
-            esc_html_e('Decimal separator', 'woocommerce');
+            esc_html_e('Decimal separator', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The decimal separator of displayed prices.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The decimal separator of displayed prices.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['decimal_separator']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Number of Decimals"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Number of Decimals"><?php
 
-            esc_html_e('Number of decimals', 'woocommerce');
+            esc_html_e('Number of decimals', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The number of decimal points shown in displayed prices.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The number of decimal points shown in displayed prices.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['number_of_decimals']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Taxonomies: Product Types"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Taxonomies: Product Types"><?php
 
-            esc_html_e('Taxonomies: Product types', 'woocommerce');
+            esc_html_e('Taxonomies: Product types', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('A list of taxonomy terms that can be used in regard to order/product statuses.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('A list of taxonomy terms that can be used in regard to order/product statuses.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 $display_terms = array();
                 foreach ($settings['taxonomies'] as $slug => $name) {
                     $display_terms[] = strtolower($name) . ' (' . $slug . ')';
                 }
                 echo implode(', ', array_map('esc_html', $display_terms));
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Taxonomies: Product Visibility"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Taxonomies: Product Visibility"><?php
 
-            esc_html_e('Taxonomies: Product visibility', 'woocommerce');
+            esc_html_e('Taxonomies: Product visibility', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('A list of taxonomy terms used for product visibility.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('A list of taxonomy terms used for product visibility.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 $display_terms = array();
                 foreach ($settings['product_visibility_terms'] as $slug => $name) {
                     $display_terms[] = strtolower($name) . ' (' . $slug . ')';
                 }
                 echo implode(', ', array_map('esc_html', $display_terms));
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Connected to WooCommerce.com"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Connected to WooCommerce.com"><?php
 
-            esc_html_e('Connected to WooCommerce.com', 'woocommerce');
+            esc_html_e('Connected to WooCommerce.com', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is your site connected to WooCommerce.com?', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Is your site connected to WooCommerce.com?', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo 'yes' === $settings['woocommerce_com_connected'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Enforce Approved Product Download Directories"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Enforce Approved Product Download Directories"><?php
 
-            esc_html_e('Enforce Approved Product Download Directories', 'woocommerce');
+            esc_html_e('Enforce Approved Product Download Directories', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is your site enforcing the use of Approved Product Download Directories?', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Is your site enforcing the use of Approved Product Download Directories?', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo $settings['enforce_approved_download_dirs'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
+						</tr>
 
-            		<tr>
-            			<td data-export-label="HPOS feature screen enabled"><?php
+						<tr>
+							<td data-export-label="HPOS feature screen enabled"><?php
 
-            esc_html_e('HPOS feature screen enabled:', 'woocommerce');
+            esc_html_e('HPOS feature screen enabled:', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is HPOS feature screen enabled?', 'woocommerce'));
+            echo wc_help_tip(esc_html__('Is HPOS feature screen enabled?', 'bocs-wordpress'));
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo isset($settings['HPOS_feature_screen_enabled']) ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="HPOS feature enabled"><?php
+						</tr>
+						<tr>
+							<td data-export-label="HPOS feature enabled"><?php
 
-            esc_html_e('HPOS enabled:', 'woocommerce');
+            esc_html_e('HPOS enabled:', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is HPOS enabled?', 'woocommerce'));
+            echo wc_help_tip(esc_html__('Is HPOS enabled?', 'bocs-wordpress'));
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo $settings['HPOS_enabled'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Order datastore"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Order datastore"><?php
 
-            esc_html_e('Order datastore:', 'woocommerce');
+            esc_html_e('Order datastore:', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Datastore currently in use for orders.', 'woocommerce'));
+            echo wc_help_tip(esc_html__('Datastore currently in use for orders.', 'bocs-wordpress'));
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($settings['order_datastore']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="HPOS data sync enabled"><?php
+						</tr>
+						<tr>
+							<td data-export-label="HPOS data sync enabled"><?php
 
-            esc_html_e('HPOS data sync enabled:', 'woocommerce');
+            esc_html_e('HPOS data sync enabled:', 'bocs-wordpress');
             ?></td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Is data sync enabled for HPOS?', 'woocommerce'));
+            echo wc_help_tip(esc_html__('Is data sync enabled for HPOS?', 'bocs-wordpress'));
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo $settings['HPOS_sync_enabled'] ? '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>' : '<mark class="no">&ndash;</mark>';
             ?></td>
-            		</tr>
+						</tr>
 
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="WC Pages"><h2><?php
+					</tbody>
+				</table>
+				<br />
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="WC Pages"><h2><?php
 
-            esc_html_e('WooCommerce pages', 'woocommerce');
+            esc_html_e('WooCommerce pages', 'bocs-wordpress');
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<?php
+					</tr>
+					</thead>
+					<tbody>
+						<?php
             $alt = 1;
             foreach ($wp_pages as $_page) {
                 $found_error = false;
 
                 if ($_page['page_id']) {
                     /* Translators: %s: page name. */
-                    $page_name = '<a href="' . get_edit_post_link($_page['page_id']) . '" aria-label="' . sprintf(esc_html__('Edit %s page', 'woocommerce'), esc_html($_page['page_name'])) . '">' . esc_html($_page['page_name']) . '</a>';
+                    $page_name = '<a href="' . get_edit_post_link($_page['page_id']) . '" aria-label="' . sprintf(esc_html__('Edit %s page', 'bocs-wordpress'), esc_html($_page['page_name'])) . '">' . esc_html($_page['page_name']) . '</a>';
                 } else {
                     $page_name = esc_html($_page['page_name']);
                 }
 
                 echo '<tr><td data-export-label="' . esc_attr($page_name) . '">' . wp_kses_post($page_name) . ':</td>';
                 /* Translators: %s: page name. */
-                echo '<td class="help">' . wc_help_tip(sprintf(esc_html__('The URL of your %s page (along with the Page ID).', 'woocommerce'), $page_name)) . '</td><td>';
+                echo '<td class="help">' . wc_help_tip(sprintf(esc_html__('The URL of your %s page (along with the Page ID).', 'bocs-wordpress'), $page_name)) . '</td><td>';
 
                 // Page ID check.
                 if (! $_page['page_set']) {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Page not set', 'woocommerce') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Page not set', 'bocs-wordpress') . '</mark>';
                     $found_error = true;
                 } elseif (! $_page['page_exists']) {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Page ID is set, but the page does not exist', 'woocommerce') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Page ID is set, but the page does not exist', 'bocs-wordpress') . '</mark>';
                     $found_error = true;
                 } elseif (! $_page['page_visible']) {
                     /* Translators: %s: docs link. */
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . wp_kses_post(sprintf(__('Page visibility should be <a href="%s" target="_blank">public</a>', 'woocommerce'), 'https://wordpress.org/support/article/content-visibility/')) . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . wp_kses_post(sprintf(__('Page visibility should be <a href="%s" target="_blank">public</a>', 'bocs-wordpress'), 'https://wordpress.org/support/article/content-visibility/')) . '</mark>';
                     $found_error = true;
                 } else {
                     // Shortcode and block check.
                     if ($_page['shortcode_required'] || $_page['block_required']) {
                         if (! $_page['shortcode_present'] && ! $_page['block_present']) {
                             /* Translators: %1$s: shortcode text, %2$s: block slug. */
-                            echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . ($_page['block_required'] ? sprintf(esc_html__('Page does not contain the %1$s shortcode or the %2$s block.', 'woocommerce'), esc_html($_page['shortcode']), esc_html($_page['block'])) : sprintf(esc_html__('Page does not contain the %s shortcode.', 'woocommerce'), esc_html($_page['shortcode']))) . '</mark>'; /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                            echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . ($_page['block_required'] ? sprintf(esc_html__('Page does not contain the %1$s shortcode or the %2$s block.', 'bocs-wordpress'), esc_html($_page['shortcode']), esc_html($_page['block'])) : sprintf(esc_html__('Page does not contain the %s shortcode.', 'bocs-wordpress'), esc_html($_page['shortcode']))) . '</mark>'; /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                             $found_error = true;
                         }
                     }
@@ -1688,139 +1349,139 @@ echo wp_create_nonce("bocs_sync_options");
                 echo '</td></tr>';
             }
             ?>
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Theme"><h2><?php
+					</tbody>
+				</table>
+				<br />
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Theme"><h2><?php
 
-            esc_html_e('Theme', 'woocommerce');
+            esc_html_e('Theme', 'bocs-wordpress');
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<tr>
-            			<td data-export-label="Name"><?php
+					</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td data-export-label="Name"><?php
 
-            esc_html_e('Name', 'woocommerce');
+            esc_html_e('Name', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The name of the current active theme.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The name of the current active theme.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($theme['name']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Version"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Version"><?php
 
-            esc_html_e('Version', 'woocommerce');
+            esc_html_e('Version', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The installed version of the current active theme.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The installed version of the current active theme.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if (version_compare($theme['version'], $theme['version_latest'], '<')) {
                     /* translators: 1: current version. 2: latest version */
-                    echo esc_html(sprintf(__('%1$s (update to version %2$s is available)', 'woocommerce'), $theme['version'], $theme['version_latest']));
+                    echo esc_html(sprintf(__('%1$s (update to version %2$s is available)', 'bocs-wordpress'), $theme['version'], $theme['version_latest']));
                 } else {
                     echo esc_html($theme['version']);
                 }
                 ?>
-            			</td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Author URL"><?php
+							</td>
+						</tr>
+						<tr>
+							<td data-export-label="Author URL"><?php
 
-            esc_html_e('Author URL', 'woocommerce');
+            esc_html_e('Author URL', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('The theme developers URL.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('The theme developers URL.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td><?php
+							<td><?php
 
             echo esc_html($theme['author_url']);
             ?></td>
-            		</tr>
-            		<tr>
-            			<td data-export-label="Child Theme"><?php
+						</tr>
+						<tr>
+							<td data-export-label="Child Theme"><?php
 
-            esc_html_e('Child theme', 'woocommerce');
+            esc_html_e('Child theme', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Displays whether or not the current theme is a child theme.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Displays whether or not the current theme is a child theme.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if ($theme['is_child_theme']) {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 } else {
                     /* Translators: %s docs link. */
-                    echo '<span class="dashicons dashicons-no-alt"></span> &ndash; ' . wp_kses_post(sprintf(__('If you are modifying WooCommerce on a parent theme that you did not build personally we recommend using a child theme. See: <a href="%s" target="_blank">How to create a child theme</a>', 'woocommerce'), 'https://developer.wordpress.org/themes/advanced-topics/child-themes/'));
+                    echo '<span class="dashicons dashicons-no-alt"></span> &ndash; ' . wp_kses_post(sprintf(__('If you are modifying WooCommerce on a parent theme that you did not build personally we recommend using a child theme. See: <a href="%s" target="_blank">How to create a child theme</a>', 'bocs-wordpress'), 'https://developer.wordpress.org/themes/advanced-topics/child-themes/'));
                 }
                 ?>
-            				</td>
-            		</tr>
-            		<?php
+							</td>
+						</tr>
+						<?php
 
             if ($theme['is_child_theme']) :
                 ?>
-            			<tr>
-            				<td data-export-label="Parent Theme Name"><?php
+							<tr>
+								<td data-export-label="Parent Theme Name"><?php
 
-                esc_html_e('Parent theme name', 'woocommerce');
+                esc_html_e('Parent theme name', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+								<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The name of the parent theme.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The name of the parent theme.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+								<td><?php
 
                 echo esc_html($theme['parent_name']);
                 ?></td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="Parent Theme Version"><?php
+							</tr>
+							<tr>
+								<td data-export-label="Parent Theme Version"><?php
 
-                esc_html_e('Parent theme version', 'woocommerce');
+                esc_html_e('Parent theme version', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+								<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The installed version of the parent theme.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The installed version of the parent theme.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td>
-            					<?php
+								<td>
+									<?php
                 echo esc_html($theme['parent_version']);
                 if (version_compare($theme['parent_version'], $theme['parent_version_latest'], '<')) {
                     /* translators: %s: parent theme latest version */
-                    echo ' &ndash; <strong style="color:red;">' . sprintf(esc_html__('%s is available', 'woocommerce'), esc_html($theme['parent_version_latest'])) . '</strong>';
+                    echo ' &ndash; <strong style="color:red;">' . sprintf(esc_html__('%s is available', 'bocs-wordpress'), esc_html($theme['parent_version_latest'])) . '</strong>';
                 }
                 ?>
-            				</td>
-            			</tr>
-            			<tr>
-            				<td data-export-label="Parent Theme Author URL"><?php
+								</td>
+							</tr>
+							<tr>
+								<td data-export-label="Parent Theme Author URL"><?php
 
-                esc_html_e('Parent theme author URL', 'woocommerce');
+                esc_html_e('Parent theme author URL', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help"><?php
+								<td class="help"><?php
 
-                echo wc_help_tip(esc_html__('The parent theme developers URL.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+                echo wc_help_tip(esc_html__('The parent theme developers URL.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
                 ?></td>
-            				<td><?php
+								<td><?php
 
                 echo esc_html($theme['parent_author_url']);
                 ?></td>
-            			</tr>
-            		<?php endif ?>
+							</tr>
+						<?php endif ?>
 
 
 
@@ -1831,57 +1492,57 @@ echo wp_create_nonce("bocs_sync_options");
 
 
 
-            		<tr>
-            			<td data-export-label="WooCommerce Support"><?php
+						<tr>
+							<td data-export-label="WooCommerce Support"><?php
 
-            esc_html_e('WooCommerce support', 'woocommerce');
+            esc_html_e('WooCommerce support', 'bocs-wordpress');
             ?>:</td>
-            			<td class="help"><?php
+							<td class="help"><?php
 
-            echo wc_help_tip(esc_html__('Displays whether or not the current active theme declares WooCommerce support.', 'woocommerce')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
+            echo wc_help_tip(esc_html__('Displays whether or not the current active theme declares WooCommerce support.', 'bocs-wordpress')); /* phpcs:ignore WordPress.XSS.EscapeOutput.OutputNotEscaped */
             ?></td>
-            			<td>
-            				<?php
+							<td>
+								<?php
                 if (! $theme['has_woocommerce_support']) {
-                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Not declared', 'woocommerce') . '</mark>';
+                    echo '<mark class="error"><span class="dashicons dashicons-warning"></span> ' . esc_html__('Not declared', 'bocs-wordpress') . '</mark>';
                 } else {
                     echo '<mark class="yes"><span class="dashicons dashicons-yes"></span></mark>';
                 }
                 ?>
-            			</td>
-            		</tr>
-            	</tbody>
-            </table>
-            <br />
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            		<tr>
-            			<th colspan="3" data-export-label="Templates"><h2><?php
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<br />
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Templates"><h2><?php
 
-            esc_html_e('Templates', 'woocommerce');
+            esc_html_e('Templates', 'bocs-wordpress');
             ?><?php
 
-            echo wc_help_tip(esc_html__('This section shows any files that are overriding the default WooCommerce template pages.', 'woocommerce'));
+            echo wc_help_tip(esc_html__('This section shows any files that are overriding the default WooCommerce template pages.', 'bocs-wordpress'));
             ?></h2></th>
-            		</tr>
-            	</thead>
-            	<tbody>
-            		<?php
+					</tr>
+					</thead>
+					<tbody>
+						<?php
 
             if ($theme['has_woocommerce_file']) :
                 ?>
-            		<tr>
-            			<td data-export-label="Archive Template"><?php
+							<tr>
+								<td data-export-label="Archive Template"><?php
 
-                esc_html_e('Archive template', 'woocommerce');
+                esc_html_e('Archive template', 'bocs-wordpress');
                 ?>:</td>
-            			<td class="help">&nbsp;</td>
-            			<td><?php
+								<td class="help">&nbsp;</td>
+								<td><?php
 
-                esc_html_e('Your theme has a woocommerce.php file, you will not be able to override the woocommerce/archive-product.php custom template since woocommerce.php has priority over archive-product.php. This is intended to prevent display issues.', 'woocommerce');
+                esc_html_e('Your theme has a woocommerce.php file, you will not be able to override the woocommerce/archive-product.php custom template since woocommerce.php has priority over archive-product.php. This is intended to prevent display issues.', 'bocs-wordpress');
                 ?></td>
-            		</tr>
-            		<?php endif ?>
+							</tr>
+						<?php endif ?>
 
 
 
@@ -1892,18 +1553,18 @@ echo wp_create_nonce("bocs_sync_options");
 
 
 
-            		<?php
+						<?php
 
             if (! empty($theme['overrides'])) :
                 ?>
-            			<tr>
-            				<td data-export-label="Overrides"><?php
+							<tr>
+								<td data-export-label="Overrides"><?php
 
-                esc_html_e('Overrides', 'woocommerce');
+                esc_html_e('Overrides', 'bocs-wordpress');
                 ?></td>
-            				<td class="help">&nbsp;</td>
-            				<td>
-            					<?php
+								<td class="help">&nbsp;</td>
+								<td>
+									<?php
                 $total_overrides = count($theme['overrides']);
                 for ($i = 0; $i < $total_overrides; $i ++) {
                     $override = $theme['overrides'][$i];
@@ -1911,7 +1572,7 @@ echo wp_create_nonce("bocs_sync_options");
                         $current_version = $override['version'] ? $override['version'] : '-';
                         printf(
             								/* Translators: %1$s: Template name, %2$s: Template version, %3$s: Core version. */
-            								esc_html__('%1$s version %2$s is out of date. The core version is %3$s', 'woocommerce'), '<code>' . esc_html($override['file']) . '</code>', '<strong style="color:red">' . esc_html($current_version) . '</strong>', esc_html($override['core_version']));
+            								esc_html__('%1$s version %2$s is out of date. The core version is %3$s', 'bocs-wordpress'), '<code>' . esc_html($override['file']) . '</code>', '<strong style="color:red">' . esc_html($current_version) . '</strong>', esc_html($override['core_version']));
                     } else {
                         echo esc_html($override['file']);
                     }
@@ -1921,223 +1582,223 @@ echo wp_create_nonce("bocs_sync_options");
                     echo '<br />';
                 }
                 ?>
-            				</td>
-            			</tr>
-            		<?php
+								</td>
+							</tr>
+						<?php
 
             else :
                 ?>
-            			<tr>
-            				<td data-export-label="Overrides"><?php
+							<tr>
+								<td data-export-label="Overrides"><?php
 
-                esc_html_e('Overrides', 'woocommerce');
+                esc_html_e('Overrides', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help">&nbsp;</td>
-            				<td>&ndash;</td>
-            			</tr>
-            		<?php
+								<td class="help">&nbsp;</td>
+								<td>&ndash;</td>
+							</tr>
+						<?php
 
             endif;
             ?>
 
-            		<?php
+						<?php
 
             if (true === $theme['has_outdated_templates']) :
                 ?>
-            			<tr>
-            				<td data-export-label="Outdated Templates"><?php
+							<tr>
+								<td data-export-label="Outdated Templates"><?php
 
-                esc_html_e('Outdated templates', 'woocommerce');
+                esc_html_e('Outdated templates', 'bocs-wordpress');
                 ?>:</td>
-            				<td class="help">&nbsp;</td>
-            				<td>
-            					<mark class="error">
-            						<span class="dashicons dashicons-warning"></span>
-            					</mark>
-            					<a href="https://docs.woocommerce.com/document/fix-outdated-templates-woocommerce/" target="_blank">
-            						<?php
+								<td class="help">&nbsp;</td>
+								<td>
+									<mark class="error">
+										<span class="dashicons dashicons-warning"></span>
+									</mark>
+									<a href="https://docs.woocommerce.com/document/fix-outdated-templates-woocommerce/" target="_blank">
+										<?php
 
-                esc_html_e('Learn how to update', 'woocommerce');
+                esc_html_e('Learn how to update', 'bocs-wordpress');
                 ?>
-            					</a>
-            				</td>
-            			</tr>
-            		<?php endif;
+									</a>
+								</td>
+							</tr>
+						<?php endif;
 
             ?>
-            	</tbody>
-            </table>
-			<br />
-            <?php
+					</tbody>
+				</table>
+				<br />
+				<?php
 
-            do_action('woocommerce_system_status_report');
-            ?>
+                do_action('woocommerce_system_status_report');
+                ?>
 
-            <table class="wc_status_table widefat" cellspacing="0">
-            	<thead>
-            	<tr>
-            		<th colspan="3" data-export-label="Status report information"><h2><?php
+				<table class="wc_status_table widefat" cellspacing="0">
+					<thead>
+					<tr>
+						<th colspan="3" data-export-label="Status report information"><h2><?php
 
-            esc_html_e('Status report information', 'woocommerce');
+            esc_html_e('Status report information', 'bocs-wordpress');
             ?><?php
 
-            echo wc_help_tip(esc_html__('This section shows information about this status report.', 'woocommerce'));
+            echo wc_help_tip(esc_html__('This section shows information about this status report.', 'bocs-wordpress'));
             ?></h2></th>
-            	</tr>
-            	</thead>
-            	<tbody>
-            	<tr>
-            		<td data-export-label="Generated at"><?php
+					</tr>
+					</thead>
+					<tbody>
+					<tr>
+						<td data-export-label="Generated at"><?php
 
-            esc_html_e('Generated at', 'woocommerce');
+            esc_html_e('Generated at', 'bocs-wordpress');
             ?>:</td>
-            		<td class="help">&nbsp;</td>
-            		<td><?php
+						<td class="help">&nbsp;</td>
+						<td><?php
 
             echo esc_html(current_time('Y-m-d H:i:s P'));
             ?></td>
 
-            	</tr>
-            	</tbody>
-            </table>
-		</section>
-		<section id="developer-mode" class="tab-panel">
-			<h2>Test</h2>
-			<div class="notice notice-warning">
-				<h3>For Bocs developers only</h3>
-				<h4>WARNING: Ensure to re-publish any pages containing the widgets when testing and also when deactivating.</h4>
-				<div>
-					<form method="post">
-						<label>
-							<input type="checkbox" id="developer_mode" name="developer_mode" <?php echo $options['developer_mode'] === 'on' ? 'checked' : ''; ?>>
-							Developer Mode
-						</label>
+					</tr>
+					</tbody>
+				</table>
+			</section>
+			<section id="developer-mode" class="tab-panel">
+				<h2>Test</h2>
+				<div class="notice notice-warning">
+					<h3>For Bocs developers only</h3>
+					<h4>WARNING: Ensure to re-publish any pages containing the widgets when testing and also when deactivating.</h4>
+					<div>
+						<form method="post">
+							<label>
+								<input type="checkbox" id="developer_mode" name="developer_mode" <?php echo $options['developer_mode'] === 'on' ? 'checked' : ''; ?>>
+								Developer Mode
+							</label>
+							<br />
+							<br />
+							<input type="hidden" name="action" value="update">
+							<input type="hidden" name="option_page" value="developer_mode">
+							<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
+						</form>
 						<br />
-						<br />
-						<input type="hidden" name="action" value="update">
-						<input type="hidden" name="option_page" value="developer_mode">
-						<button type="submit" class="button-primary woocommerce-save-button">Submit</button>
-					</form>
-					<br />
+					</div>
 				</div>
-			</div>
-		</section>
+			</section>
+		</div>
 	</div>
-</div>
-<script>
-	jQuery("select#bocs_all_module").change(function() {
+	<script>
+		jQuery("select#bocs_all_module").change(function() {
 
-		jQuery("select#bocs_product_module").attr("disabled", "disabled");
-		jQuery("select#bocs_bocs_module").attr("disabled", "disabled");
-		jQuery("select#bocs_contact_module").attr("disabled", "disabled");
-		jQuery("select#bocs_order_module").attr("disabled", "disabled");
-		jQuery("select#bocs_invoice_module").attr("disabled", "disabled");
-		jQuery("select#bocs_shipping_module").attr("disabled", "disabled");
-		jQuery("select#bocs_tax_module").attr("disabled", "disabled");
-		jQuery("select#bocs_category_module").attr("disabled", "disabled");
-		jQuery("select#bocs_subscription_module").attr("disabled", "disabled");
+			jQuery("select#bocs_product_module").attr("disabled", "disabled");
+			jQuery("select#bocs_bocs_module").attr("disabled", "disabled");
+			jQuery("select#bocs_contact_module").attr("disabled", "disabled");
+			jQuery("select#bocs_order_module").attr("disabled", "disabled");
+			jQuery("select#bocs_invoice_module").attr("disabled", "disabled");
+			jQuery("select#bocs_shipping_module").attr("disabled", "disabled");
+			jQuery("select#bocs_tax_module").attr("disabled", "disabled");
+			jQuery("select#bocs_category_module").attr("disabled", "disabled");
+			jQuery("select#bocs_subscription_module").attr("disabled", "disabled");
 
-		if (jQuery(this).val() == "custom") {
+			if (jQuery(this).val() == "custom") {
 
-			jQuery("select#bocs_product_module").removeAttr("disabled");
-			jQuery("select#bocs_bocs_module").removeAttr("disabled");
-			jQuery("select#bocs_contact_module").removeAttr("disabled");
-			jQuery("select#bocs_order_module").removeAttr("disabled");
-			jQuery("select#bocs_invoice_module").removeAttr("disabled");
-			jQuery("select#bocs_shipping_module").removeAttr("disabled");
-			jQuery("select#bocs_tax_module").removeAttr("disabled");
-			jQuery("select#bocs_category_module").removeAttr("disabled");
-			jQuery("select#bocs_subscription_module").removeAttr("disabled");
-		} else {
-			jQuery("select#bocs_product_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_bocs_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_contact_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_order_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_invoice_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_shipping_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_tax_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_category_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-			jQuery("select#bocs_subscription_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
-		}
-	});
+				jQuery("select#bocs_product_module").removeAttr("disabled");
+				jQuery("select#bocs_bocs_module").removeAttr("disabled");
+				jQuery("select#bocs_contact_module").removeAttr("disabled");
+				jQuery("select#bocs_order_module").removeAttr("disabled");
+				jQuery("select#bocs_invoice_module").removeAttr("disabled");
+				jQuery("select#bocs_shipping_module").removeAttr("disabled");
+				jQuery("select#bocs_tax_module").removeAttr("disabled");
+				jQuery("select#bocs_category_module").removeAttr("disabled");
+				jQuery("select#bocs_subscription_module").removeAttr("disabled");
+			} else {
+				jQuery("select#bocs_product_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_bocs_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_contact_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_order_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_invoice_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_shipping_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_tax_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_category_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+				jQuery("select#bocs_subscription_module option[value=" + jQuery(this).val() + "]").attr('selected', 'selected');
+			}
+		});
 
-	jQuery("#syncNow").click(function() {
+		jQuery("#syncNow").click(function() {
 
-		// sync the Bocs
-		const bocsValue = jQuery("select#bocs_bocs_module").val();
+			// sync the Bocs
+			const bocsValue = jQuery("select#bocs_bocs_module").val();
 
-		if (bocsValue == "both" || bocsValue == "b2w") {
-			// we will sync from bocs to wordpress
+			if (bocsValue == "both" || bocsValue == "b2w") {
+				// we will sync from bocs to wordpress
 
-			// get the list of available bocs
-			jQuery.ajax({
-				url: "<?php
+				// get the list of available bocs
+				jQuery.ajax({
+					url: "<?php
 
     echo BOCS_API_URL . "bocs";
     ?>",
-				// cache: false,
-				type: "GET",
-				beforeSend: function(xhr) {
-					xhr.setRequestHeader("Accept", "application/json");
-					xhr.setRequestHeader("Organization", "<?php
+					// cache: false,
+					type: "GET",
+					beforeSend: function(xhr) {
+						xhr.setRequestHeader("Accept", "application/json");
+						xhr.setRequestHeader("Organization", "<?php
 
     echo $options['bocs_headers']['organization'];
     ?>");
-					xhr.setRequestHeader("Store", "<?php
+						xhr.setRequestHeader("Store", "<?php
 
     echo $options['bocs_headers']['store']?>");
-					xhr.setRequestHeader("Authorization", "<?php
+						xhr.setRequestHeader("Authorization", "<?php
 
     echo $options['bocs_headers']['authorization']?>");
-				},
-				success: function(response) {
-					// we will sync the bocs to wordpress
-					if (response.data) {
+					},
+					success: function(response) {
+						// we will sync the bocs to wordpress
+						if (response.data) {
 
+						}
+					},
+					error: function(xhr) {
+						console.error(xhr);
 					}
-				},
-				error: function(xhr) {
-					console.error(xhr);
+				});
+			}
+
+		});
+	</script>
+	<script type="text/javascript">
+	jQuery(document).ready(function($) {
+		// Toggle test/live sections
+		$('input[name="bocs_plugin_options[stripe][test_mode]"]').change(function() {
+			var isTestMode = $(this).is(':checked');
+			
+			if (isTestMode) {
+				$('.test-keys').removeClass('hidden');
+				$('.live-keys').addClass('hidden');
+			} else {
+				$('.test-keys').addClass('hidden');
+				$('.live-keys').removeClass('hidden');
+			}
+		});
+
+		// Add show/hide password functionality
+		$('.test-keys input[type="password"], .live-keys input[type="password"]').each(function() {
+			var $input = $(this);
+			var $td = $input.closest('td');
+			
+			// Add show/hide toggle button
+			var $toggle = $('<button type="button" class="button button-secondary show-hide-key">Show</button>');
+			$td.find('.description').append('<br>').append($toggle);
+
+			$toggle.click(function(e) {
+				e.preventDefault();
+				if ($input.attr('type') === 'password') {
+					$input.attr('type', 'text');
+					$toggle.text('Hide');
+				} else {
+					$input.attr('type', 'password');
+					$toggle.text('Show');
 				}
 			});
-		}
-
+		});
 	});
-</script>
-<script type="text/javascript">
-jQuery(document).ready(function($) {
-    // Toggle test/live sections
-    $('input[name="bocs_plugin_options[stripe][test_mode]"]').change(function() {
-        var isTestMode = $(this).is(':checked');
-        
-        if (isTestMode) {
-            $('.test-keys').removeClass('hidden');
-            $('.live-keys').addClass('hidden');
-        } else {
-            $('.test-keys').addClass('hidden');
-            $('.live-keys').removeClass('hidden');
-        }
-    });
-
-    // Add show/hide password functionality
-    $('.test-keys input[type="password"], .live-keys input[type="password"]').each(function() {
-        var $input = $(this);
-        var $td = $input.closest('td');
-        
-        // Add show/hide toggle button
-        var $toggle = $('<button type="button" class="button button-secondary show-hide-key">Show</button>');
-        $td.find('.description').append('<br>').append($toggle);
-
-        $toggle.click(function(e) {
-            e.preventDefault();
-            if ($input.attr('type') === 'password') {
-                $input.attr('type', 'text');
-                $toggle.text('Hide');
-            } else {
-                $input.attr('type', 'password');
-                $toggle.text('Show');
-            }
-        });
-    });
-});
-</script>
+	</script>
