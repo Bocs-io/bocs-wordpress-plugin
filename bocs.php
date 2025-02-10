@@ -337,7 +337,7 @@ function deactivate_bocs_plugin() {
  */
 function action_bocs_plugin($links) {
     $links = array_merge(array(
-        '<a href="' . esc_url(admin_url('/options-general.php?page=bocs')) . '">' . __('Settings', 'bocs-wordpress') . '</a>'
+        '<a href="' . esc_url(admin_url('/options-general.php?bocs-settings')) . '">' . __('Settings', 'bocs-wordpress') . '</a>'
     ), $links);
     return $links;
 }
