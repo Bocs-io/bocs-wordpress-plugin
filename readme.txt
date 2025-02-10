@@ -1,3 +1,7 @@
+v0.0.110 02/10/2025
+* Added the address editor on the subscriptions page
+* Settings minor corrections on the admin side
+
 v0.0.109 02/06/2025
 * Use github for the updater instead of the old method S3
 * Added the updater for the plugin for pre-release and release for the github repository
