@@ -20,21 +20,6 @@ $options = get_option('bocs_plugin_options');
 $discount_percent = 0; // or whatever default value is appropriate
 $frequency_text = ''; // or whatever default value is appropriate
 
-// Check if $subscriptions is a WP_Error before proceeding
-if (is_wp_error($subscriptions)) {
-    ?>
-    <div class="woocommerce-message woocommerce-error">
-        <?php 
-        echo esc_html__('No active subscriptions found. Your subscriptions may have been deleted or are no longer available.', 'bocs-wordpress');
-        if (WP_DEBUG) {
-            echo ' Error: ' . esc_html($subscriptions->get_error_message());
-        }
-        ?>
-    </div>
-    <?php
-    return;
-}
-
 ?>
 
 <div id="bocs-subscriptions-accordion" class="woocommerce-subscriptions-wrapper">
@@ -45,8 +30,7 @@ if (is_wp_error($subscriptions)) {
             $subscription_name = '';
             if (!empty(trim($subscription['bocs']['name']))) {
                 $subscription_name = sprintf(
-                    esc_html__('%s (Order #%s)', 'bocs-wordpress'),
-                    $subscription['bocs']['name'],
+                    esc_html__($subscription['bocs']['name'] . ' (Order #%s)', 'bocs-wordpress'),
                     $subscription['externalSourceParentOrderId']
                 );
             } elseif (!empty($subscription['externalSourceParentOrderId'])) {
@@ -103,7 +87,7 @@ if (is_wp_error($subscriptions)) {
                                 </span>
                                 <?php if ($subscription['discountTotal'] > 0): ?>
                                     <span class="subscription-discount">
-                                        (<?php echo sprintf(esc_html__('Includes %s discount', 'woocommerce'), 
+                                        (<?php echo sprintf(esc_html__('Includes %s discount', 'bocs-wordpress'), 
                                             wc_price($subscription['discountTotal'])); ?>)
                                     </span>
                                 <?php endif; ?>
@@ -130,7 +114,7 @@ if (is_wp_error($subscriptions)) {
                                     } else {
                                         $period = rtrim($period, 's');
                                     }
-                                    echo esc_html(sprintf(__('Every %d %s', 'woocommerce'), $frequency, $period));
+                                    echo esc_html(sprintf(__('Every %d %s', 'bocs-wordpress'), $frequency, $period));
                                 ?></span>
                             </div>
                             <div class="total-items">
@@ -141,6 +125,33 @@ if (is_wp_error($subscriptions)) {
                                         : 0;
                                     echo $items_count . ' ' . esc_html(_n('item', 'items', $items_count, 'bocs-wordpress')); 
                                 ?></span>
+                            </div>
+                        </div>
+
+                        <div class="subscription-row">
+                            <div class="billing-address">
+                                <span class="subscription-label"><?php esc_html_e('Billing Address', 'bocs-wordpress'); ?></span>
+                                <?php if (!empty($subscription['billing'])): ?>
+                                    <address>
+                                        <?php
+                                        $billing = $subscription['billing'];
+                                        echo esc_html(implode(', ', array_filter([
+                                            $billing['firstName'] . ' ' . $billing['lastName'],
+                                            $billing['address1'],
+                                            $billing['address2'],
+                                            $billing['city'],
+                                            $billing['state'],
+                                            $billing['postcode'],
+                                            $billing['country']
+                                        ])));
+                                        ?>
+                                    </address>
+                                    <button class="edit-address-link" data-type="billing">
+                                        <?php esc_html_e('Edit Billing Address', 'bocs-wordpress'); ?>
+                                    </button>
+                                <?php else: ?>
+                                    <span><?php esc_html_e('No address provided', 'bocs-wordpress'); ?></span>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -162,6 +173,9 @@ if (is_wp_error($subscriptions)) {
                                         ])));
                                         ?>
                                     </address>
+                                    <button class="edit-address-link" data-type="shipping">
+                                        <?php esc_html_e('Edit Shipping Address', 'bocs-wordpress'); ?>
+                                    </button>
                                 <?php else: ?>
                                     <span><?php esc_html_e('No address provided', 'bocs-wordpress'); ?></span>
                                 <?php endif; ?>
@@ -205,7 +219,7 @@ if (is_wp_error($subscriptions)) {
         <div class="subscription-navigation">
             <a href="#" class="back-to-subscription"><?php esc_html_e('Back to subscription', 'bocs-wordpress'); ?></a>
             <span class="nav-separator">|</span>
-            <span class="nav-item"><?php esc_html_e('Dashboard', 'bocs-wordpress'); ?></span>
+            <span class="nav-item">Dashboard</span>
             <span class="nav-separator">→</span>
             <span class="nav-item subscription-name"></span>
         </div>
@@ -252,7 +266,7 @@ if (is_wp_error($subscriptions)) {
                     <div class="frequency-options">
                         <div class="frequency-options-loading" style="display: none;">
                             <div class="loading-spinner"></div>
-                            <p><?php esc_html_e('Loading frequency options...', 'bocs-wordpress'); ?></p>
+                            <p>Loading frequency options...</p>
                         </div>
                         <div class="frequency-options-content"></div>
                     </div>
@@ -296,12 +310,12 @@ if (is_wp_error($subscriptions)) {
                             <div class="pause-duration">
                                 <div class="pause-options-loading" style="display: none;">
                                     <div class="loading-spinner"></div>
-                                    <p><?php esc_html_e('Loading pause options...', 'bocs-wordpress'); ?></p>
+                                    <p>Loading pause options...</p>
                                 </div>
                                 <div class="pause-options-content"></div>
                                 <label class="frequency-option">
                                     <input type="radio" name="pause_duration" value="custom_date">
-                                    <span class="radio-label"><?php esc_html_e('Skip to Date', 'bocs-wordpress'); ?></span>
+                                    <span class="radio-label">Skip to Date</span>
                                 </label>
                                 <input type="date" name="new_date"
                                        min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
@@ -333,7 +347,7 @@ if (is_wp_error($subscriptions)) {
                 </div>
                 <?php if (!empty($subscription['promos'])): ?>
                     <div class="promo-tag">
-                        <?php echo esc_html($subscription['promos'][0] ?? esc_html__('FREE PRODUCT FOR LIFE', 'bocs-wordpress')); ?>
+                        <?php echo esc_html($subscription['promos'][0] ?? 'FREE PRODUCT FOR LIFE'); ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -1293,6 +1307,75 @@ if (is_wp_error($subscriptions)) {
     font-weight: 500;
     color: var(--wc-primary, #7f54b3);
 }
+
+.edit-address-link {
+    display: inline-block;
+    margin-top: 0.5em;
+    padding: 0.3em 0.8em;
+    font-size: 0.9em;
+    color: var(--wc-primary, #7f54b3);
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-address-link:hover {
+    background: var(--wc-primary, #7f54b3);
+    color: #fff;
+}
+
+.address-editor {
+    display: none;
+    margin-top: 1em;
+    padding: 1em;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.address-editor form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1em;
+}
+
+.address-editor .form-row {
+    margin-bottom: 1em;
+}
+
+.address-editor .form-row.full-width {
+    grid-column: 1 / -1;
+}
+
+.address-editor label {
+    display: block;
+    margin-bottom: 0.5em;
+    font-weight: 500;
+}
+
+.address-editor input,
+.address-editor select {
+    width: 100%;
+    padding: 0.5em;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.address-editor .button-group {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 1em;
+    justify-content: flex-end;
+    margin-top: 1em;
+}
+
+@media screen and (max-width: 768px) {
+    .address-editor form {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <!-- JavaScript Implementation -->
@@ -1321,6 +1404,9 @@ jQuery(document).ready(function($) {
      * Contains all event handling functions for subscription interactions
      */
     const eventHandlers = {
+        // Add subscription data storage at class level
+        subscriptionData: null,
+
         /**
          * View Details Handler
          * Fetches and displays detailed subscription information
@@ -1361,12 +1447,14 @@ jQuery(document).ready(function($) {
                     throw new Error('Invalid API response structure');
                 }
 
-                const subscriptionData = response.data;
+                // Store subscription data for other handlers to use
+                this.subscriptionData = response.data;
+
                 const detailsView = $('#subscription-details-view');
                 const boxItemsContainer = detailsView.find('.box-items');
                 const earlyRenewButton = detailsView.find('.header-actions button');
                 
-                if (subscriptionData.subscriptionStatus === 'active') {
+                if (response.data.subscriptionStatus === 'active') {
                     earlyRenewButton.show();
                 } else {
                     earlyRenewButton.hide();
@@ -1382,13 +1470,13 @@ jQuery(document).ready(function($) {
 
                 // Update subscription details
                 detailsView.find('.subscription-name').text(
-                    `Subscription (Order #${subscriptionData.externalSourceParentOrderId})`
+                    `Subscription (Order #${response.data.externalSourceParentOrderId})`
                 );
 
                 // Process and display line items
-                if (subscriptionData.lineItems && Array.isArray(subscriptionData.lineItems)) {
+                if (response.data.lineItems && Array.isArray(response.data.lineItems)) {
                     // First, collect all product IDs
-                    const productIds = subscriptionData.lineItems.map(item => item.externalSourceId);
+                    const productIds = response.data.lineItems.map(item => item.externalSourceId);
                     
                     // Fetch product details from WooCommerce
                     $.ajax({
@@ -1404,7 +1492,7 @@ jQuery(document).ready(function($) {
                                 const products = response.data;
                                 boxItemsContainer.empty()
                                 // Now process line items with product details
-                                subscriptionData.lineItems.forEach(item => {
+                                response.data.lineItems.forEach(item => {
                                     const productDetails = products[item.externalSourceId] || {};
                                     const productName = productDetails.name || `Product ID: ${item.externalSourceId}`;
                                     const productSku = productDetails.sku ? ` (SKU: ${productDetails.sku})` : '';
@@ -1447,9 +1535,9 @@ jQuery(document).ready(function($) {
                 }
 
                 // Update frequency display
-                if (subscriptionData.frequency) {
-                    const freq = subscriptionData.frequency.frequency;
-                    const unit = subscriptionData.frequency.timeUnit;
+                if (response.data.frequency) {
+                    const freq = response.data.frequency.frequency;
+                    const unit = response.data.frequency.timeUnit;
                     if (freq && unit) {
                         detailsView.find('.current-frequency').text(
                             `Every ${freq} ${unit}`
@@ -1466,7 +1554,7 @@ jQuery(document).ready(function($) {
                 }
 
                 // Calculate and update totals
-                const calculations = subscriptionData.lineItems.reduce((acc, item) => {
+                const calculations = response.data.lineItems.reduce((acc, item) => {
                     const itemSubtotal = parseFloat(item.price) * parseInt(item.quantity);
                     const itemTotal = parseFloat(item.total);
                     return {
@@ -1478,7 +1566,7 @@ jQuery(document).ready(function($) {
                 const totalDiscount = calculations.subtotal - calculations.totalAfterDiscount;
 
                 // Update totals display
-                helpers.updateTotalsDisplay(calculations.subtotal, totalDiscount, subscriptionData.total);
+                helpers.updateTotalsDisplay(calculations.subtotal, totalDiscount, response.data.total);
 
                 // Hide subscriptions list and show details
                 $('#bocs-subscriptions-accordion').hide();
@@ -1488,11 +1576,11 @@ jQuery(document).ready(function($) {
                 helpers.hideNotification();
 
                 // After successful subscription data fetch, load frequencies
-                if (subscriptionData.bocs && subscriptionData.bocs.id) {
-                    console.log('Loading frequencies for BOCS ID:', subscriptionData.bocs.id);
-                    await helpers.loadFrequencyOptions(subscriptionData.bocs.id, subscriptionData.frequency);
+                if (response.data.bocs && response.data.bocs.id) {
+                    console.log('Loading frequencies for BOCS ID:', response.data.bocs.id);
+                    await helpers.loadFrequencyOptions(response.data.bocs.id, response.data.frequency);
                 } else {
-                    console.warn('No BOCS ID found in subscription data:', subscriptionData);
+                    console.warn('No BOCS ID found in subscription data:', response.data);
                 }
 
             } catch (error) {
@@ -1751,6 +1839,253 @@ jQuery(document).ready(function($) {
             
             // Show the schedule editor
             detailsSection.find('.schedule-editor').show();
+        },
+
+        /**
+         * Edit Address Handler
+         * Shows the address editing interface
+         */
+        editAddress: async function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const addressType = button.data('type');
+            const addressContainer = button.closest(`.${addressType}-address`);
+            
+            // Add loading state to button
+            const originalButtonText = button.html();
+            button.prop('disabled', true)
+                  .addClass('button-loading')
+                  .html('<span class="loading-spinner"></span> Loading...');
+            
+            // Find the subscription section and get the subscription ID
+            const subscriptionSection = addressContainer.closest('.subscription-section');
+            const subscriptionId = subscriptionSection.find('.subscription_renewal_early').data('subscription-id');
+            
+            if (!subscriptionId) {
+                console.error('No subscription ID found');
+                // Reset button state
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+                return;
+            }
+            
+            try {
+                if (!eventHandlers.subscriptionData || eventHandlers.subscriptionData.id !== subscriptionId) {
+                    await eventHandlers.fetchSubscriptionData(subscriptionId);
+                }
+                
+                eventHandlers.renderAddressEditor(addressType, addressContainer);
+            } catch (error) {
+                console.error('Error in editAddress:', error);
+                helpers.showNotification('Failed to load address details. Please try again.', 'error');
+                // Reset button on error
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        },
+
+        /**
+         * Fetch Subscription Data
+         * Retrieves subscription data from the API
+         */
+        fetchSubscriptionData: async function(subscriptionId) {
+            try {
+                helpers.showNotification('Loading subscription details...', 'loading');
+                
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                    method: 'GET',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (!response.data) {
+                    throw new Error('Invalid API response structure');
+                }
+
+                eventHandlers.subscriptionData = response.data;
+                helpers.hideNotification();
+                
+                return response.data;
+            } catch (error) {
+                console.error('Error fetching subscription data:', error);
+                helpers.showNotification('Failed to load subscription details. Please try again.', 'error');
+                throw error;
+            }
+        },
+
+        /**
+         * Render Address Editor
+         * Creates and displays the address editing interface
+         */
+        renderAddressEditor: function(addressType, addressContainer) {
+            if (!addressContainer.find('.address-editor').length) {
+                const addressData = addressType === 'billing' ? 
+                    eventHandlers.subscriptionData.billing : 
+                    eventHandlers.subscriptionData.shipping;
+
+                const editorHtml = `
+                    <div class="address-editor">
+                        <form class="edit-address-form" data-type="${addressType}">
+                            <div class="form-row">
+                                <label for="${addressType}_first_name"><?php esc_html_e('First Name', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_first_name" name="firstName" value="${addressData.firstName}" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="${addressType}_last_name"><?php esc_html_e('Last Name', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_last_name" name="lastName" value="${addressData.lastName}" required>
+                            </div>
+                            <div class="form-row full-width">
+                                <label for="${addressType}_address1"><?php esc_html_e('Address Line 1', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_address1" name="address1" value="${addressData.address1}" required>
+                            </div>
+                            <div class="form-row full-width">
+                                <label for="${addressType}_address2"><?php esc_html_e('Address Line 2', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_address2" name="address2" value="${addressData.address2 || ''}">
+                            </div>
+                            <div class="form-row">
+                                <label for="${addressType}_city"><?php esc_html_e('City', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_city" name="city" value="${addressData.city}" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="${addressType}_state"><?php esc_html_e('State', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_state" name="state" value="${addressData.state}" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="${addressType}_postcode"><?php esc_html_e('Postcode', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_postcode" name="postcode" value="${addressData.postcode}" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="${addressType}_country"><?php esc_html_e('Country', 'bocs-wordpress'); ?></label>
+                                <input type="text" id="${addressType}_country" name="country" value="${addressData.country}" required>
+                            </div>
+                            <div class="button-group">
+                                <button type="button" class="cancel-address-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
+                                <button type="submit" class="save-address woocommerce-button button alt">
+                                    <?php esc_html_e('Save Address', 'bocs-wordpress'); ?>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+                addressContainer.append(editorHtml);
+            }
+            
+            // Show editor and hide button
+            addressContainer.find('.address-editor').show();
+            addressContainer.find('.edit-address-link').hide();
+        },
+
+        /**
+         * Save Address Handler
+         * Handles the submission of address updates
+         */
+        saveAddress: async function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const button = form.find('.save-address');
+            const addressType = form.data('type');
+            
+            // Get subscription ID from the subscription section
+            const subscriptionSection = form.closest('.subscription-section');
+            const subscriptionId = subscriptionSection.find('.subscription_renewal_early').data('subscription-id');
+            
+            if (!subscriptionId) {
+                console.error('No subscription ID found');
+                helpers.showNotification('Could not find subscription details', 'error');
+                return;
+            }
+
+            // Store subscriptionId in the form for reference
+            form.data('subscription-id', subscriptionId);
+
+            // Add loading state to button
+            const originalButtonText = button.html();
+            button.prop('disabled', true)
+                  .addClass('button-loading')
+                  .html('<span class="loading-spinner"></span> Saving...');
+
+            try {
+                // Collect form data into the correct format
+                const addressData = {
+                    firstName: form.find(`[name="firstName"]`).val(),
+                    lastName: form.find(`[name="lastName"]`).val(),
+                    country: form.find(`[name="country"]`).val(),
+                    address1: form.find(`[name="address1"]`).val(),
+                    address2: form.find(`[name="address2"]`).val() || '',
+                    city: form.find(`[name="city"]`).val(),
+                    state: form.find(`[name="state"]`).val(),
+                    postcode: form.find(`[name="postcode"]`).val(),
+                    company: '',
+                    phone: '',
+                    email: addressType === 'billing' ? '<?php echo esc_js(wp_get_current_user()->user_email); ?>' : ''
+                };
+
+                // Prepare the update payload with only the address being updated
+                const updatePayload = {
+                    [addressType]: addressData
+                };
+
+                console.log('Sending update payload for subscription:', subscriptionId, updatePayload);
+
+                // Send update request with explicit subscriptionId in URL
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                    method: 'PUT',
+                    data: JSON.stringify(updatePayload),
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (!response || response.code === undefined) {
+                    throw new Error('Invalid API response');
+                }
+
+                if (response.code === 200) {
+                    // Update stored subscription data
+                    eventHandlers.subscriptionData = response.data;
+
+                    // Update displayed address
+                    const addressContainer = form.closest(`.${addressType}-address`);
+                    const addressDisplay = addressContainer.find('address');
+                    const formattedAddress = [
+                        `${addressData.firstName} ${addressData.lastName}`,
+                        addressData.address1,
+                        addressData.address2,
+                        addressData.city,
+                        addressData.state,
+                        addressData.postcode,
+                        addressData.country
+                    ].filter(Boolean).join(', ');
+
+                    addressDisplay.text(formattedAddress);
+
+                    // Hide editor and show edit button
+                    form.closest('.address-editor').hide();
+                    addressContainer.find('.edit-address-link').show();
+
+                    helpers.showNotification('Address updated successfully', 'success');
+                } else {
+                    throw new Error(response.message || 'Failed to update address');
+                }
+            } catch (error) {
+                console.error('Error updating address:', error);
+                helpers.showNotification('Failed to update address. Please try again.', 'error');
+            } finally {
+                // Reset button state
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
         }
     };
 
@@ -2047,96 +2382,75 @@ jQuery(document).ready(function($) {
                 $('input[name="new_date"]').prop('disabled', false);
             }
         })
-        .on('click', '.details-section:has(.schedule-editor) .edit-link', eventHandlers.editSchedule);
+        .on('click', '.details-section:has(.schedule-editor) .edit-link', eventHandlers.editSchedule)
+        .on('click', '.edit-address-link', eventHandlers.editAddress)
+        .on('click', '.cancel-address-edit', function(e) {
+            e.preventDefault();
+            const editor = $(this).closest('.address-editor');
+            editor.hide();
+            editor.closest('.billing-address, .shipping-address').find('.edit-address-link').show();
+        })
+        .on('submit', '.edit-address-form', async function(e) {
+            e.preventDefault();
+            const form = $(this);
+            const addressType = form.data('type');
+            const submitButton = form.find('.save-address');
+            const originalButtonText = submitButton.html();
 
-    $('.save-schedule').on('click', async function(e) {
-        e.preventDefault();
-        const button = $(this);
-        const originalButtonText = button.html();
-        
-        const selectedOption = $('input[name="pause_duration"]:checked');
-        if (!selectedOption.length) {
-            helpers.showNotification('Please select a pause duration or custom date', 'error');
-            return;
-        }
-
-        try {
-            // Show loading state
-            button.prop('disabled', true)
-                  .addClass('button-loading')
-                  .html('<span class="loading-spinner"></span> Updating schedule...');
-            
-            helpers.showNotification('Updating subscription schedule...', 'loading');
-
-            // Calculate the next payment date
-            let nextPaymentDate = new Date('<?php echo $next_payment_date->format('Y-m-d'); ?>');
-
-            if (selectedOption.val() === 'custom_date') {
-                const customDate = $('input[name="new_date"]').val();
-                if (!customDate) {
-                    throw new Error('Please select a valid date');
-                }
-                nextPaymentDate = new Date(customDate);
-            } else {
-                const frequency = parseInt(selectedOption.data('frequency'));
-                const timeUnit = selectedOption.data('time-unit');
+            try {
+                submitButton.prop('disabled', true)
+                           .addClass('button-loading')
+                           .html('<span class="loading-spinner"></span> Saving...');
                 
-                if (timeUnit.toLowerCase() === 'month' || timeUnit.toLowerCase() === 'months') {
-                    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + frequency);
-                } else if (timeUnit.toLowerCase() === 'week' || timeUnit.toLowerCase() === 'weeks') {
-                    nextPaymentDate.setDate(nextPaymentDate.getDate() + (frequency * 7));
-                } else if (timeUnit.toLowerCase() === 'day' || timeUnit.toLowerCase() === 'days') {
-                    nextPaymentDate.setDate(nextPaymentDate.getDate() + frequency);
-                } else if (timeUnit.toLowerCase() === 'year' || timeUnit.toLowerCase() === 'years') {
-                    nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + frequency);
+                helpers.showNotification('Updating address...', 'loading');
+
+                // Collect form data
+                const formData = {};
+                form.serializeArray().forEach(item => {
+                    formData[item.name] = item.value;
+                });
+
+                // Prepare update payload
+                const updatePayload = {
+                    [addressType]: formData
+                };
+
+                // Send update to API
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
+                    method: 'PUT',
+                    data: JSON.stringify(updatePayload),
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update displayed address
+                    const addressText = Object.values(formData).filter(Boolean).join(', ');
+                    form.closest(`.${addressType}-address`).find('address').text(addressText);
+
+                    // Hide editor and show edit button
+                    form.closest('.address-editor').hide();
+                    form.closest(`.${addressType}-address`).find('.edit-address-link').show();
+
+                    helpers.showNotification('Address updated successfully', 'success');
+                } else {
+                    throw new Error(response.message || 'Failed to update address');
                 }
+            } catch (error) {
+                console.error('Error updating address:', error);
+                helpers.showNotification('Failed to update address. Please try again.', 'error');
+            } finally {
+                submitButton.prop('disabled', false)
+                           .removeClass('button-loading')
+                           .html(originalButtonText);
             }
-        }
-
-        // Prepare the payload
-        const updatePayload = {
-            nextPaymentDateGmt: nextPaymentDate.toISOString()
-        };
-
-        // Send update to API
-        const response = await $.ajax({
-            url: `<?php echo BOCS_API_URL; ?>subscriptions/${activeSubscriptionId}`,
-            method: 'PUT',
-            data: JSON.stringify(updatePayload),
-            contentType: 'application/json',
-            beforeSend: function(xhr) {
-                xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-            }
-        });
-
-        if (response.code === 200) {
-            // Update the displayed next payment date in the subscription details
-            const formattedDate = nextPaymentDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            $('.date-value').text(formattedDate);
-
-            // Update the date in the subscription list if visible
-            const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${activeSubscriptionId}"]`)
-                .closest('.wc-subscription');
-            if (subscriptionInList.length) {
-                subscriptionInList.find('.next-payment time').text(formattedDate);
-            }
-
-            // Hide the schedule editor
-            $('.schedule-editor').hide();
-            $('.edit-link').show();
-
-            helpers.showNotification('Schedule updated successfully', 'success');
-        } else {
-            throw new Error(response.message || 'Failed to update schedule');
-        }
-    });
+        })
+        .on('submit', '.edit-address-form', eventHandlers.saveAddress);
 
     // Function to calculate and display next payment date
     function updateNextPaymentPreview() {
