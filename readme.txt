@@ -1,3 +1,7 @@
+v0.0.111 02/11/2025
+* Errors on the loading line itemms were corrected
+* Background errors were corrected during the updating the address
+
 v0.0.110 02/10/2025
 * Added the address editor on the subscriptions page
 * Settings minor corrections on the admin side
