@@ -35,6 +35,7 @@ class Bocs
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
         $this->define_bocs_email_api();
+        $this->define_product_hooks();
     }
 
     /**
@@ -61,6 +62,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
 
         $this->loader = new Loader();
     }
@@ -248,6 +250,21 @@ class Bocs
     {
         $email_api = new Bocs_Email_API();
         $this->loader->add_action('rest_api_init', $email_api, 'register_routes');
+    }
+
+    /**
+     * Define hooks for WooCommerce product functionality
+     */
+    private function define_product_hooks()
+    {
+        $product = new Bocs_Product();
+        
+        // Register AJAX actions for product price and details
+        $this->loader->add_action('wp_ajax_get_product_price', $product, 'get_product_price_callback');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_price', $product, 'get_product_price_callback');
+        
+        $this->loader->add_action('wp_ajax_get_product_details', $product, 'get_product_details_ajax');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_details', $product, 'get_product_details_ajax');
     }
 
     /**

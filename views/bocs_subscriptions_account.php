@@ -1433,7 +1433,7 @@ jQuery(document).ready(function($) {
                 button.prop('disabled', true).addClass('button-loading');
                 helpers.showNotification('Fetching subscription details...', 'loading');
 
-                const response = await $.ajax({
+                const subscriptionResponse = await $.ajax({
                     url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
                     method: 'GET',
                     beforeSend: function(xhr) {
@@ -1443,18 +1443,18 @@ jQuery(document).ready(function($) {
                     }
                 });
 
-                if (!response.data) {
-                    throw new Error('Invalid API response structure');
+                if (!subscriptionResponse.data) {
+                    throw new Error(bocsTranslations.invalidResponseStructure);
                 }
 
                 // Store subscription data for other handlers to use
-                this.subscriptionData = response.data;
+                this.subscriptionData = subscriptionResponse.data;
 
                 const detailsView = $('#subscription-details-view');
                 const boxItemsContainer = detailsView.find('.box-items');
                 const earlyRenewButton = detailsView.find('.header-actions button');
                 
-                if (response.data.subscriptionStatus === 'active') {
+                if (subscriptionResponse.data.subscriptionStatus === 'active') {
                     earlyRenewButton.show();
                 } else {
                     earlyRenewButton.hide();
@@ -1464,19 +1464,22 @@ jQuery(document).ready(function($) {
                 boxItemsContainer.empty().append(`
                     <div class="box-items-loading">
                         <div class="loading-spinner"></div>
-                        <p>Loading subscription items...</p>
+                        <p><?php esc_html_e('Loading subscription items...', 'bocs-wordpress'); ?></p>
                     </div>
                 `);
 
                 // Update subscription details
                 detailsView.find('.subscription-name').text(
-                    `Subscription (Order #${response.data.externalSourceParentOrderId})`
+                    `<?php esc_html_e('Subscription (Order #', 'bocs-wordpress'); ?>${subscriptionResponse.data.externalSourceParentOrderId})`
                 );
 
                 // Process and display line items
-                if (response.data.lineItems && Array.isArray(response.data.lineItems)) {
+                if (subscriptionResponse.data.lineItems && Array.isArray(subscriptionResponse.data.lineItems)) {
                     // First, collect all product IDs
-                    const productIds = response.data.lineItems.map(item => item.externalSourceId);
+                    const productIds = subscriptionResponse.data.lineItems.map(item => item.externalSourceId);
+                    
+                    // Store line items for later use
+                    const subscriptionLineItems = subscriptionResponse.data.lineItems;
                     
                     // Fetch product details from WooCommerce
                     $.ajax({
@@ -1487,15 +1490,16 @@ jQuery(document).ready(function($) {
                             product_ids: productIds,
                             nonce: '<?php echo wp_create_nonce("get_product_details"); ?>'
                         },
-                        success: function(response) {
-                            if (response.success && response.data) {
-                                const products = response.data;
-                                boxItemsContainer.empty()
+                        success: function(productResponse) {
+                            if (productResponse.success && productResponse.data) {
+                                const products = productResponse.data;
+                                boxItemsContainer.empty();
+                                
                                 // Now process line items with product details
-                                response.data.lineItems.forEach(item => {
+                                subscriptionLineItems.forEach(item => {
                                     const productDetails = products[item.externalSourceId] || {};
-                                    const productName = productDetails.name || `Product ID: ${item.externalSourceId}`;
-                                    const productSku = productDetails.sku ? ` (SKU: ${productDetails.sku})` : '';
+                                    const productName = productDetails.name || `<?php esc_html_e('Product ID:', 'bocs-wordpress'); ?> ${item.externalSourceId}`;
+                                    const productSku = productDetails.sku ? ` (<?php esc_html_e('SKU:', 'bocs-wordpress'); ?> ${productDetails.sku})` : '';
                                     
                                     const itemHtml = `
                                         <div class="box-item" 
@@ -1526,18 +1530,23 @@ jQuery(document).ready(function($) {
                                     `;
                                     boxItemsContainer.append(itemHtml);
                                 });
+                            } else {
+                                boxItemsContainer.html(`<p><?php esc_html_e('Error loading product details', 'bocs-wordpress'); ?></p>`);
                             }
                         },
                         error: function(xhr, status, error) {
                             console.error('Error fetching product details:', error);
+                            boxItemsContainer.html(`<p><?php esc_html_e('Failed to load product details', 'bocs-wordpress'); ?></p>`);
                         }
                     });
+                } else {
+                    boxItemsContainer.html(`<p><?php esc_html_e('No items found in this subscription', 'bocs-wordpress'); ?></p>`);
                 }
 
                 // Update frequency display
-                if (response.data.frequency) {
-                    const freq = response.data.frequency.frequency;
-                    const unit = response.data.frequency.timeUnit;
+                if (subscriptionResponse.data.frequency) {
+                    const freq = subscriptionResponse.data.frequency.frequency;
+                    const unit = subscriptionResponse.data.frequency.timeUnit;
                     if (freq && unit) {
                         detailsView.find('.current-frequency').text(
                             `Every ${freq} ${unit}`
@@ -1554,7 +1563,7 @@ jQuery(document).ready(function($) {
                 }
 
                 // Calculate and update totals
-                const calculations = response.data.lineItems.reduce((acc, item) => {
+                const calculations = subscriptionResponse.data.lineItems.reduce((acc, item) => {
                     const itemSubtotal = parseFloat(item.price) * parseInt(item.quantity);
                     const itemTotal = parseFloat(item.total);
                     return {
@@ -1566,7 +1575,7 @@ jQuery(document).ready(function($) {
                 const totalDiscount = calculations.subtotal - calculations.totalAfterDiscount;
 
                 // Update totals display
-                helpers.updateTotalsDisplay(calculations.subtotal, totalDiscount, response.data.total);
+                helpers.updateTotalsDisplay(calculations.subtotal, totalDiscount, subscriptionResponse.data.total);
 
                 // Hide subscriptions list and show details
                 $('#bocs-subscriptions-accordion').hide();
@@ -1576,11 +1585,11 @@ jQuery(document).ready(function($) {
                 helpers.hideNotification();
 
                 // After successful subscription data fetch, load frequencies
-                if (response.data.bocs && response.data.bocs.id) {
-                    console.log('Loading frequencies for BOCS ID:', response.data.bocs.id);
-                    await helpers.loadFrequencyOptions(response.data.bocs.id, response.data.frequency);
+                if (subscriptionResponse.data.bocs && subscriptionResponse.data.bocs.id) {
+                    console.log('Loading frequencies for BOCS ID:', subscriptionResponse.data.bocs.id);
+                    await helpers.loadFrequencyOptions(subscriptionResponse.data.bocs.id, subscriptionResponse.data.frequency);
                 } else {
-                    console.warn('No BOCS ID found in subscription data:', response.data);
+                    console.warn('No BOCS ID found in subscription data:', subscriptionResponse.data);
                 }
 
             } catch (error) {
