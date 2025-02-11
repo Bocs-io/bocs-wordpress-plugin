@@ -1987,53 +1987,71 @@ jQuery(document).ready(function($) {
          */
         saveAddress: async function(e) {
             e.preventDefault();
+            e.stopImmediatePropagation();
+            
             const form = $(this);
+            const formId = form.data('type') + '-form'; // Create unique identifier
+            
+            // Check if this form is already being processed
+            if (window.processingForms && window.processingForms[formId]) {
+                console.log('Form submission already in progress');
+                return;
+            }
+            
+            // Initialize processing forms tracker if it doesn't exist
+            window.processingForms = window.processingForms || {};
+            window.processingForms[formId] = true;
+            
             const button = form.find('.save-address');
             const addressType = form.data('type');
+            let originalButtonText = button.html();
             
             // Get subscription ID from the subscription section
             const subscriptionSection = form.closest('.subscription-section');
             const subscriptionId = subscriptionSection.find('.subscription_renewal_early').data('subscription-id');
             
-            if (!subscriptionId) {
-                console.error('No subscription ID found');
+            if (!subscriptionId || subscriptionId === 'null' || subscriptionId === 'undefined') {
+                console.error('Invalid subscription ID:', subscriptionId);
                 helpers.showNotification('Could not find subscription details', 'error');
+                delete window.processingForms[formId];
                 return;
             }
 
-            // Store subscriptionId in the form for reference
-            form.data('subscription-id', subscriptionId);
-
-            // Add loading state to button
-            const originalButtonText = button.html();
-            button.prop('disabled', true)
-                  .addClass('button-loading')
-                  .html('<span class="loading-spinner"></span> Saving...');
-
             try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Saving...');
+
                 // Collect form data into the correct format
                 const addressData = {
-                    firstName: form.find(`[name="firstName"]`).val(),
-                    lastName: form.find(`[name="lastName"]`).val(),
-                    country: form.find(`[name="country"]`).val(),
-                    address1: form.find(`[name="address1"]`).val(),
-                    address2: form.find(`[name="address2"]`).val() || '',
-                    city: form.find(`[name="city"]`).val(),
-                    state: form.find(`[name="state"]`).val(),
-                    postcode: form.find(`[name="postcode"]`).val(),
+                    firstName: form.find(`[name="firstName"]`).val().trim(),
+                    lastName: form.find(`[name="lastName"]`).val().trim(),
+                    country: form.find(`[name="country"]`).val().trim(),
+                    address1: form.find(`[name="address1"]`).val().trim(),
+                    address2: form.find(`[name="address2"]`).val().trim() || '',
+                    city: form.find(`[name="city"]`).val().trim(),
+                    state: form.find(`[name="state"]`).val().trim(),
+                    postcode: form.find(`[name="postcode"]`).val().trim(),
                     company: '',
                     phone: '',
                     email: addressType === 'billing' ? '<?php echo esc_js(wp_get_current_user()->user_email); ?>' : ''
                 };
 
-                // Prepare the update payload with only the address being updated
+                // Validate required fields
+                const requiredFields = ['firstName', 'lastName', 'country', 'address1', 'city', 'state', 'postcode'];
+                const missingFields = requiredFields.filter(field => !addressData[field]);
+                
+                if (missingFields.length > 0) {
+                    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+                }
+
                 const updatePayload = {
                     [addressType]: addressData
                 };
 
-                console.log('Sending update payload for subscription:', subscriptionId, updatePayload);
+                console.log(`Updating ${addressType} address for subscription:`, subscriptionId, updatePayload);
 
-                // Send update request with explicit subscriptionId in URL
+                // Single AJAX request with explicit error handling
                 const response = await $.ajax({
                     url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
                     method: 'PUT',
@@ -2046,13 +2064,16 @@ jQuery(document).ready(function($) {
                     }
                 });
 
-                if (!response || response.code === undefined) {
-                    throw new Error('Invalid API response');
+                // Validate response
+                if (!response || typeof response !== 'object') {
+                    throw new Error('Invalid API response format');
                 }
 
                 if (response.code === 200) {
                     // Update stored subscription data
-                    eventHandlers.subscriptionData = response.data;
+                    if (response.data) {
+                        eventHandlers.subscriptionData = response.data;
+                    }
 
                     // Update displayed address
                     const addressContainer = form.closest(`.${addressType}-address`);
@@ -2079,12 +2100,18 @@ jQuery(document).ready(function($) {
                 }
             } catch (error) {
                 console.error('Error updating address:', error);
-                helpers.showNotification('Failed to update address. Please try again.', 'error');
+                helpers.showNotification(
+                    error.message || 'Failed to update address. Please try again.',
+                    'error'
+                );
             } finally {
+                // Reset form processing state
+                delete window.processingForms[formId];
+                
                 // Reset button state
                 button.prop('disabled', false)
                       .removeClass('button-loading')
-                      .html(originalButtonText);
+                      .html(originalButtonText || 'Save Address');
             }
         }
     };
@@ -2502,6 +2529,32 @@ jQuery(document).ready(function($) {
         if ($('input[name="pause_duration"][value="custom_date"]').is(':checked')) {
             updateNextPaymentPreview();
         }
+    });
+
+    // Remove any existing handlers first
+    $(document).off('submit', '.edit-address-form');
+    
+    // Add form submission handler with namespace to prevent multiple bindings
+    $(document).on('submit.addressUpdate', '.edit-address-form', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation(); // Stop any other handlers from firing
+        
+        // Call saveAddress with proper context
+        return eventHandlers.saveAddress.call(this, e);
+    });
+    
+    // Update cancel button handler
+    $(document).off('click', '.cancel-address-edit');
+    $(document).on('click.addressCancel', '.cancel-address-edit', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        const editor = $(this).closest('.address-editor');
+        const addressContainer = editor.closest('.billing-address, .shipping-address');
+        
+        // Hide editor and show edit button
+        editor.hide();
+        addressContainer.find('.edit-address-link').show();
     });
 });
 </script>
