@@ -43,8 +43,25 @@ class Bocs_Account
      */
     public function bocs_account_menu_item($items)
     {
-        $items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-wordpress');
-        return $items;
+        // Remove the original menu item
+        $logout = $items['customer-logout'] ?? null;
+        unset($items['customer-logout']);
+        
+        // Insert Bocs Subscriptions after Orders
+        $new_items = array();
+        foreach ($items as $key => $value) {
+            $new_items[$key] = $value;
+            if ($key === 'orders') {
+                $new_items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-wordpress');
+            }
+        }
+        
+        // Add logout back at the end
+        if ($logout) {
+            $new_items['customer-logout'] = $logout;
+        }
+        
+        return $new_items;
     }
 
     /**
