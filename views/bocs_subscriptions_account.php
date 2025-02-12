@@ -66,11 +66,40 @@ $frequency_text = ''; // or whatever default value is appropriate
     ?>
             <div class="wc-subscription <?php echo esc_attr($row_class); ?>">
                 <h3 class="accordion-header">
-                    <span class="subscription-title"><?php echo esc_html($subscription_name); ?></span>
+                    <span class="subscription-title">
+                        <?php echo esc_html($subscription_name); ?>
+                    </span>
+                    <span class="divider">|</span>
+                    <span class="subscription-amount">
+                        <span class="woocommerce-Price-currencySymbol"><?php echo get_woocommerce_currency_symbol(); ?></span>
+                        <?php echo number_format($subscription['total'], 2); ?>
+                    </span>
+                    <span class="divider">|</span>
+                    <span class="subscription-frequency">
+                        <?php
+                            $frequency = isset($subscription['frequency']['frequency']) ? $subscription['frequency']['frequency'] : 1;
+                            $period = isset($subscription['frequency']['timeUnit']) ? $subscription['frequency']['timeUnit'] : '';
+                            if ($frequency > 1) {
+                                $period = rtrim($period, 's') . 's';
+                            } else {
+                                $period = rtrim($period, 's');
+                            }
+                            echo esc_html(sprintf(__('Every %d %s', 'bocs-wordpress'), $frequency, $period));
+                        ?>
+                    </span>
+                    <span class="divider">|</span>
+                    <span class="subscription-next-payment">
+                        <?php 
+                            echo esc_html(sprintf(
+                                __('Next payment: %s', 'bocs-wordpress'),
+                                $next_payment_date->format('l, j F Y')
+                            )); 
+                        ?>
+                    </span>
                 </h3>
                 <div class="accordion-content">
                     <div class="subscription-header-sticky">
-                        <span class="subscription-title"><?php echo esc_html($subscription_name); ?></span>
+                        <span class="subscription-title"></span>
                         <span class="subscription-status status-<?php echo esc_attr(strtolower($subscription['subscriptionStatus']) ); ?>">
                             <?php echo ucfirst($subscription['subscriptionStatus']); ?>
                         </span>
@@ -81,7 +110,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                                 <span class="subscription-label"><?php esc_html_e('Total Amount', 'bocs-wordpress'); ?></span>
                                 <span class="woocommerce-Price-amount amount">
                                     <?php if (!empty($subscription['currency'])): ?>
-                                        <span class="woocommerce-Price-currencySymbol"><?php echo get_woocommerce_currency_symbol($subscription['currency']); ?></span>
+                                        <span class="woocommerce-Price-currencySymbol"><?php echo get_woocommerce_currency_symbol(); ?></span>
                                     <?php endif; ?>
                                     <?php echo number_format($subscription['total'], 2); ?>
                                 </span>
@@ -675,13 +704,73 @@ $frequency_text = ''; // or whatever default value is appropriate
 
 .accordion-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 1.5em;
+    padding: 1em 1.5em;
     margin: 0;
-    padding: 1em;
     border: 1px solid var(--wc-secondary);
     cursor: pointer;
-    min-height: 3.5em; /* Ensures consistent height */
+    background: #fff;
+    transition: background-color 0.2s ease;
+}
+
+.accordion-header:hover {
+    background-color: #f8f8f8;
+}
+
+.accordion-header span {
+    white-space: nowrap;
+    color: #333;
+}
+
+.subscription-title {
+    flex: 1;
+    white-space: normal;
+    font-weight: 600;
+    min-width: 200px;
+}
+
+.subscription-amount {
+    font-weight: 600;
+    color: var(--wc-primary, #7f54b3);
+}
+
+.subscription-frequency,
+.subscription-next-payment {
+    color: #666;
+    font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 1024px) {
+    .accordion-header {
+        flex-wrap: wrap;
+        gap: 0.5em;
+    }
+
+    .subscription-title {
+        flex: 100%;
+        margin-bottom: 0.5em;
+    }
+
+    .subscription-amount,
+    .subscription-frequency,
+    .subscription-next-payment {
+        flex: 1;
+        min-width: 150px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .accordion-header {
+        padding: 1em;
+    }
+
+    .subscription-amount,
+    .subscription-frequency,
+    .subscription-next-payment {
+        font-size: 0.85em;
+    }
 }
 
 /**

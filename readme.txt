@@ -1,3 +1,8 @@
+v0.0.112 02/11/2025
+* Added the divider on the subscriptions page
+* Added more info on the accordion header
+* Moved the menu item under the orders
+
 v0.0.111 02/11/2025
 * Errors on the loading line itemms were corrected
 * Background errors were corrected during the updating the address
