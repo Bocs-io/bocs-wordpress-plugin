@@ -227,10 +227,16 @@ $frequency_text = ''; // or whatever default value is appropriate
                         </div>
 
                         <div class="subscription-actions">
-                            <a href="#" class="woocommerce-button button update-box"><?php esc_html_e('Update My Box', 'bocs-wordpress'); ?></a>
+                            <button class="woocommerce-button button update-box" id="update_<?php echo esc_attr($subscription['id']); ?>">
+                                <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
+                            </button>
                             <button class="woocommerce-button button alt view-details" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
                                 <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
+                            </button>
+                            <button class="woocommerce-button button edit-payment-method" 
+                                data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
+                                <?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?>
                             </button>
                         </div>
                     </div>
