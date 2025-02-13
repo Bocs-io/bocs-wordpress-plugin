@@ -2660,5 +2660,94 @@ jQuery(document).ready(function($) {
         editor.hide();
         addressContainer.find('.edit-address-link').show();
     });
+
+    // Add to the existing event bindings
+    $(document)
+        .on('click', '.edit-payment-method', async function(e) {
+            e.preventDefault();
+            const button = $(this);
+            const subscriptionId = button.data('subscription-id');
+            const originalButtonText = button.html();
+
+            if (!subscriptionId) {
+                console.error('No subscription ID found');
+                helpers.showNotification('Unable to update payment method - missing subscription ID', 'error');
+                return;
+            }
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Preparing payment method update...', 'loading');
+
+                // First, verify the subscription exists in BOCS
+                const bocsResponse = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                    method: 'GET',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (!bocsResponse.data) {
+                    throw new Error('Subscription not found in BOCS');
+                }
+
+                // Then initiate the payment update process
+                const response = await $.ajax({
+                    url: wc_add_to_cart_params.ajax_url,
+                    method: 'POST',
+                    data: {
+                        action: 'get_payment_update_session',
+                        subscription_id: subscriptionId,
+                        bocs_subscription: JSON.stringify(bocsResponse.data),
+                        security: '<?php echo wp_create_nonce("bocs_update_payment_method"); ?>'
+                    },
+                    dataType: 'json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+                    }
+                });
+
+                if (response.success && response.data.redirect_url) {
+                    window.location.href = response.data.redirect_url;
+                } else {
+                    throw new Error(response.data?.message || 'Failed to initialize payment update');
+                }
+
+            } catch (error) {
+                console.error('Error updating payment method:', error);
+                
+                // Enhanced error reporting
+                const errorMessage = error.responseJSON?.data?.message 
+                    || error.responseText 
+                    || error.message 
+                    || 'Unknown error occurred';
+                    
+                helpers.showNotification(
+                    `Payment update failed: ${errorMessage}. Please try again or contact support.`,
+                    'error'
+                );
+
+                // Log detailed error information if available
+                if (error.responseJSON) {
+                    console.log('Detailed error:', error.responseJSON);
+                }
+            } finally {
+                // Reset button state
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+                
+                // Hide loading notification
+                helpers.hideNotification();
+            }
+        });
 });
 </script>

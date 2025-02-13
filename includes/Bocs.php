@@ -63,6 +63,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_Method.php';
 
         $this->loader = new Loader();
     }
@@ -92,6 +93,12 @@ class Bocs
         $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
         $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
+
+        $bocs_payment_method = new Bocs_Payment_Method();
+        $this->loader->add_action('wp_ajax_bocs_create_payment_update_session', $bocs_payment_method, 'bocs_create_payment_update_session');
+        $this->loader->add_action('template_redirect', $bocs_payment_method, 'bocs_handle_payment_update');
+        $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'bocs_enqueue_stripe_js');
+        $this->loader->add_action('wp_ajax_get_payment_update_session', $bocs_payment_method, 'bocs_get_payment_update_session');
     }
 
     /**
