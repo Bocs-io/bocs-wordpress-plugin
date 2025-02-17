@@ -98,7 +98,7 @@ class Bocs_Updater {
         add_filter('upgrader_post_install', array($this, 'after_install'), 10, 3);
         
         // Add new hooks for duplicate plugin detection
-        add_filter('wp_handle_upload_prefilter', array($this, 'check_plugin_duplicate'));
+        add_filter('wp_handle_upload_prefilter', array($this, 'check_for_duplicate_plugin'));
         add_action('admin_notices', array($this, 'show_duplicate_notice'));
         
         // Force an immediate check
@@ -310,12 +310,51 @@ class Bocs_Updater {
      * @param  array $file Array of upload data
      * @return array Modified file data
      */
-    public function check_plugin_duplicate($file) {
-        if (!empty($file['name']) && strpos(strtolower($file['name']), 'bocs') !== false) {
-            // Store in transient that we detected a duplicate upload attempt
-            set_transient('bocs_duplicate_upload_attempt', true, 30);
+    public function check_for_duplicate_plugin($source) {
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
-        return $file;
+
+        $all_plugins = get_plugins();
+        $bocs_instances = 0;
+
+        foreach ($all_plugins as $plugin_path => $plugin_data) {
+            // More robust check for plugin name
+            $plugin_name = isset($plugin_data['Name']) ? $plugin_data['Name'] : '';
+            if (empty($plugin_name)) {
+                continue;
+            }
+            
+            if (strpos(strtolower($plugin_name), 'bocs') !== false) {
+                $bocs_instances++;
+            }
+        }
+
+        if ($bocs_instances > 0) {
+            // Create a properly formatted error message
+            $message = '<div class="error">';
+            $message .= '<p>' . esc_html__('Warning: Another instance of the Bocs plugin was detected.', 'bocs-wordpress') . '</p>';
+            $message .= '<p>' . esc_html__('You can either:', 'bocs-wordpress') . '</p>';
+            $message .= '<ul style="list-style-type: disc; margin-left: 20px;">';
+            $message .= '<li>' . esc_html__('Deactivate and delete the existing Bocs plugin before installing a new version, or', 'bocs-wordpress') . '</li>';
+            $message .= '<li>' . esc_html__('Use the Update button if available to update the existing plugin', 'bocs-wordpress') . '</li>';
+            $message .= '</ul>';
+            $message .= '<p><a href="' . esc_url(admin_url('plugins.php')) . '" class="button button-secondary">';
+            $message .= esc_html__('← Go back to plugins page', 'bocs-wordpress');
+            $message .= '</a></p>';
+            $message .= '</div>';
+
+            wp_die(
+                $message,
+                esc_html__('Installation Stopped', 'bocs-wordpress'),
+                array(
+                    'back_link' => false,
+                    'response'  => 403
+                )
+            );
+        }
+
+        return $source;
     }
 
     /**
