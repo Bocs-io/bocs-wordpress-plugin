@@ -1,3 +1,11 @@
+v0.0.115 02/19/2025
+* Added the payment methods modal
+* Added Stripe Elements
+* Added the Stripe PHP library
+* Able to edit the payment method on the subscriptions page
+* Added payment methods to the WooCommerce payment methods list
+* Added payment methods to the WooCommerce Payment Tokens
+
 v0.0.114 02/18/2025
 * Added the activate subscription button
 * Added modal for the activate subscription
