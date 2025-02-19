@@ -14,5 +14,8 @@
             "@update-po",
             "@make-mo"
         ]
+    },
+    "require": {
+        "stripe/stripe-php": "^16.5"
     }
-} 
+}
