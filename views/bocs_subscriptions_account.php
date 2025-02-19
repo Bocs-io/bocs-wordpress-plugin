@@ -131,6 +131,13 @@ $frequency_text = ''; // or whatever default value is appropriate
                                 >
                                     <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
                                 </button>
+                                <!-- Add Edit Payment Method button -->
+                                <button 
+                                    class="woocommerce-button button edit-payment-method" 
+                                    data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
+                                >
+                                    <?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?>
+                                </button>
                             <?php else: ?>
                                 <button 
                                     class="woocommerce-button button bocs-button subscription_activate" 

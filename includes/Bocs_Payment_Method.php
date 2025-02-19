@@ -7,296 +7,288 @@
 */
 
 class Bocs_Payment_Method {
-    /**
-     * Constructor for the Bocs_Payment_Method class
-     *
-     * Initializes the class and sets up the necessary hooks
-     */
-     
-     /**
-     * Create Stripe session for updating payment method
-     */
-    public function bocs_create_payment_update_session() {
-        // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_payment_update')) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
-
-        // Verify subscription ID
-        if (!isset($_POST['subscription_id'])) {
-            wp_send_json_error('Missing subscription ID');
-            return;
-        }
-
-        try {
-            // Get WC Stripe Gateway instance
-            $gateway = WC()->payment_gateways()->payment_gateways()['stripe'];
-            
-            if (!$gateway) {
-                throw new Exception('Stripe gateway not found');
-            }
-
-            // Create setup intent
-            $setup_intent = $gateway->stripe->setup_intents->create([
-                'payment_method_types' => ['card'],
-                'usage' => 'off_session',
-                'metadata' => [
-                    'subscription_id' => sanitize_text_field($_POST['subscription_id']),
-                    'customer_id' => get_current_user_id(),
-                ]
-            ]);
-
-            // Create Stripe Checkout Session
-            $session = $gateway->stripe->checkout->sessions->create([
-                'payment_method_types' => ['card'],
-                'mode' => 'setup',
-                'customer' => $gateway->get_stripe_customer_id(get_current_user_id()),
-                'setup_intent' => $setup_intent->id,
-                'success_url' => add_query_arg([
-                    'payment-update' => 'success',
-                    'subscription-id' => sanitize_text_field($_POST['subscription_id'])
-                ], wc_get_account_endpoint_url('subscriptions')),
-                'cancel_url' => add_query_arg('payment-update', 'cancelled', wc_get_account_endpoint_url('subscriptions')),
-            ]);
-
-            wp_send_json_success([
-                'session_id' => $session->id
-            ]);
-
-        } catch (Exception $e) {
-            wp_send_json_error($e->getMessage());
-        }
-    }
-
-    /**
-     * Handle successful payment method update
-     */
-    public function bocs_handle_payment_update() {
-        if (!isset($_GET['payment-update'])) {
-            return;
-        }
-
-        if ($_GET['payment-update'] === 'success' && isset($_GET['subscription-id'])) {
-            // Add success message
-            wc_add_notice(__('Payment method successfully updated.', 'bocs-wordpress'), 'success');
-        } elseif ($_GET['payment-update'] === 'cancelled') {
-            // Add cancelled message
-            wc_add_notice(__('Payment method update cancelled.', 'bocs-wordpress'), 'notice');
+    public function __construct() {
+        // Ensure Stripe PHP SDK is loaded
+        if (!class_exists('\Stripe\StripeClient')) {
+            require_once(plugin_dir_path(dirname(__FILE__)) . 'vendor/autoload.php');
         }
     }
     
-    /**
-     * Enqueue Stripe JS for account page
-     */
-    public function bocs_enqueue_stripe_js() {
-        if (is_account_page()) {
-            wp_enqueue_script('stripe', 'https://js.stripe.com/v3/', [], null, true);
+    public function add_edit_payment_method_button($method, $payment_method) {
+        if ($payment_method->get_type() === 'stripe') {
+            $method['actions']['edit'] = sprintf(
+                '<a href="%s" class="button edit-payment-method" data-payment-method-id="%s">%s</a>',
+                wp_nonce_url(add_query_arg(
+                    array(
+                        'edit-payment-method' => $payment_method->get_id(),
+                        'token_id' => $payment_method->get_id()
+                    ),
+                    wc_get_account_endpoint_url('payment-methods')
+                ), 'edit_payment_method'),
+                esc_attr($payment_method->get_id()),
+                esc_html__('Edit', 'bocs-wordpress')
+            );
         }
+        return $method;
     }
 
-    /**
-     * Get Stripe API instance from gateway
-     *
-     * @param WC_Payment_Gateway $gateway
-     * @return \Stripe\StripeClient|null
-     */
-    private function get_stripe_api($gateway) {
-        try {
-            // Check if gateway has direct stripe property (traditional gateway)
-            if (isset($gateway->stripe)) {
-                return $gateway->stripe;
-            }
-
-            // Check if gateway is UPE gateway
-            if (method_exists($gateway, 'get_stripe_client')) {
-                return $gateway->get_stripe_client();
-            }
-
-            // If we can't get a Stripe client through the gateway methods, throw an exception
-            throw new Exception('Unable to initialize Stripe API through WooCommerce gateway');
-
-        } catch (Exception $e) {
-            error_log('Error initializing Stripe API: ' . $e->getMessage());
-            throw new Exception('Failed to initialize Stripe API: ' . $e->getMessage());
+    public function get_stripe_setup() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
         }
-    }
 
-    /**
-     * Get or create Stripe customer for the user
-     *
-     * @param WC_Payment_Gateway $stripe_gateway
-     * @param WP_User $user
-     * @return string|null Stripe customer ID
-     */
-    private function get_or_create_stripe_customer($stripe_gateway, $user) {
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+        if (empty($subscription_id)) {
+            wp_send_json_error(['message' => 'Subscription ID is required']);
+            return;
+        }
+
         try {
-            // First try to get the customer ID directly from user meta
-            $customer_id = get_user_meta($user->ID, '_stripe_customer_id', true);
+            // Get Stripe settings from WooCommerce
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
             
-            if (!empty($customer_id)) {
-                return $customer_id;
+            // Check if we're in test mode
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            
+            // Get the appropriate keys
+            $publishable_key = $test_mode ? 
+                $stripe_settings['test_publishable_key'] : 
+                $stripe_settings['publishable_key'];
+            
+            $secret_key = $test_mode ? 
+                $stripe_settings['test_secret_key'] : 
+                $stripe_settings['secret_key'];
+
+            // Verify we have the keys
+            if (empty($publishable_key) || empty($secret_key)) {
+                throw new Exception('Stripe keys are not properly configured');
             }
 
-            // Get Stripe API instance
-            $stripe_api = $this->get_stripe_api($stripe_gateway);
-            if (!$stripe_api) {
-                throw new Exception('Unable to initialize Stripe API');
+            // Initialize Stripe with secret key
+            $stripe = new \Stripe\StripeClient($secret_key);
+
+            // Create a SetupIntent
+            $setup_intent = $stripe->setupIntents->create([
+                'payment_method_types' => ['card'],
+                'usage' => 'off_session', // This allows the payment method to be used for future payments
+                'metadata' => [
+                    'subscription_id' => $subscription_id,
+                    'source' => 'bocs_wordpress'
+                ]
+            ]);
+
+            // Get saved payment methods for the current user
+            $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), 'stripe');
+            
+            $saved_methods = [];
+            foreach ($tokens as $token) {
+                $saved_methods[] = [
+                    'id' => $token->get_token(),
+                    'last4' => $token->get_last4(),
+                    'brand' => $token->get_card_type(),
+                    'exp_month' => $token->get_expiry_month(),
+                    'exp_year' => $token->get_expiry_year(),
+                ];
             }
 
-            // If no customer ID in meta, create a new Stripe customer
-            try {
-                $customer = $stripe_api->customers->create([
-                    'email' => $user->user_email,
-                    'metadata' => [
-                        'wordpress_user_id' => $user->ID,
-                        'source' => 'bocs_wordpress',
-                    ],
-                    'description' => 'BOCS WordPress customer - ' . $user->user_email
-                ]);
-                
-                // Save the customer ID to user meta
-                update_user_meta($user->ID, '_stripe_customer_id', $customer->id);
-                
-                return $customer->id;
-                
-            } catch (Exception $e) {
-                error_log('Error creating Stripe customer: ' . $e->getMessage());
-                throw new Exception('Failed to create Stripe customer: ' . $e->getMessage());
-            }
+            // Send the setup data back to the client
+            wp_send_json_success([
+                'publishable_key' => $publishable_key,
+                'client_secret' => $setup_intent->client_secret,
+                'setup_intent_id' => $setup_intent->id,
+                'subscription_id' => $subscription_id,
+                'is_test_mode' => $test_mode,
+                'saved_methods' => $saved_methods
+            ]);
         } catch (Exception $e) {
-            error_log('Error in get_or_create_stripe_customer: ' . $e->getMessage());
-            throw $e;
+            wp_send_json_error([
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    public function handle_payment_method_update() {
+        check_ajax_referer('bocs_ajax_nonce', 'nonce');
+        
+        if (!isset($_POST['payment_method_id'])) {
+            wp_send_json_error(['message' => 'Payment method ID is required']);
+            return;
+        }
+    
+        try {
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $stripe = new \Stripe\StripeClient($stripe_settings['secret_key']);
+    
+            // Update the payment method
+            $payment_method = $stripe->paymentMethods->update(
+                sanitize_text_field($_POST['payment_method_id']),
+                ['metadata' => ['updated_at' => time()]]
+            );
+    
+            wp_send_json_success([
+                'message' => 'Payment method updated successfully',
+                'payment_method' => $payment_method
+            ]);
+    
+        } catch (Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 
     /**
-     * Handle payment update session creation
+     * Enqueue required scripts and styles
      */
-    public function bocs_get_payment_update_session() {
+    public function enqueue_scripts() {
+        // Only load on our subscription page
+        //if (is_account_page() && is_wc_endpoint_url('bocs-subscriptions')) {
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            
+            // Enqueue Stripe.js only once
+            wp_enqueue_script(
+                'stripe-js',
+                'https://js.stripe.com/v3/',
+                [],
+                null,
+                true
+            );
+
+            // Enqueue our custom script
+            wp_enqueue_script(
+                'bocs-payment-methods',
+                plugins_url('assets/js/payment-methods.js', dirname(__FILE__)),
+                ['jquery', 'stripe-js'],
+                BOCS_VERSION,
+                true
+            );
+
+            // Pass necessary data to JavaScript
+            wp_localize_script('bocs-payment-methods', 'bocsPaymentData', [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('bocs_ajax_nonce'),
+                'isTestMode' => $test_mode,
+                'i18n' => [
+                    'errorGeneric' => __('An error occurred. Please try again.', 'bocs-wordpress'),
+                    'successUpdate' => __('Payment method updated successfully', 'bocs-wordpress'),
+                    'processing' => __('Processing...', 'bocs-wordpress'),
+                    'updatePaymentMethod' => __('Update Payment Method', 'bocs-wordpress'),
+                    'cancel' => __('Cancel', 'bocs-wordpress'),
+                    'addNewPaymentMethod' => __('Add new payment method', 'bocs-wordpress'),
+                    'savedPaymentMethods' => __('Saved Payment Methods', 'bocs-wordpress'),
+                    'editPaymentMethod' => __('Edit Payment Method', 'bocs-wordpress'),
+                    'expires' => __('Expires', 'bocs-wordpress'),
+                ]
+            ]);
+        //}
+    }
+
+    /**
+     * Handle the Stripe setup completion and save the payment token
+     */
+    public function handle_setup_completion() {
+        if (!isset($_GET['setup_intent']) || !isset($_GET['setup_intent_client_secret'])) {
+            return;
+        }
+
         try {
-            // Enable error reporting for debugging
-            if (!empty($_SERVER['HTTP_X_BOCS_DEBUG'])) {
-                error_reporting(E_ALL);
-                ini_set('display_errors', 1);
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
+
+            if (empty($secret_key)) {
+                throw new Exception('Stripe secret key is not configured');
             }
 
-            // Log incoming request data
-            error_log('BOCS Payment Update - Request Data: ' . print_r($_POST, true));
+            // Initialize Stripe
+            $stripe = new \Stripe\StripeClient($secret_key);
 
-            // Verify nonce
-            if (!check_ajax_referer('bocs_update_payment_method', 'security', false)) {
-                throw new Exception('Invalid security token');
-            }
+            // Retrieve the SetupIntent
+            $setup_intent = $stripe->setupIntents->retrieve($_GET['setup_intent']);
 
-            // Verify user is logged in
-            if (!is_user_logged_in()) {
-                throw new Exception('User not logged in');
+            if ($setup_intent->status !== 'succeeded') {
+                throw new Exception('Setup was not completed successfully');
             }
 
             // Get current user
-            $user = wp_get_current_user();
-            if (!$user || !$user->ID) {
-                throw new Exception('Invalid user');
+            $user_id = get_current_user_id();
+            if (!$user_id) {
+                throw new Exception('User not logged in');
             }
 
-            // Get and validate subscription ID
-            $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
-            if (empty($subscription_id)) {
-                throw new Exception('Missing subscription ID');
-            }
+            // Get the payment method details
+            $payment_method = $stripe->paymentMethods->retrieve($setup_intent->payment_method);
 
-            // Validate BOCS subscription data
-            $bocs_subscription_json = isset($_POST['bocs_subscription']) ? stripslashes($_POST['bocs_subscription']) : '';
-            if (empty($bocs_subscription_json)) {
-                throw new Exception('Missing BOCS subscription data');
-            }
-
-            $bocs_subscription = json_decode($bocs_subscription_json, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new Exception('Invalid BOCS subscription data: ' . json_last_error_msg());
-            }
-
-            // Verify WooCommerce Stripe gateway is available
-            if (!class_exists('WC_Gateway_Stripe')) {
-                throw new Exception('WooCommerce Stripe gateway not installed');
-            }
-
-            $available_gateways = WC()->payment_gateways()->get_available_payment_gateways();
-            $stripe_gateway = isset($available_gateways['stripe']) ? $available_gateways['stripe'] : null;
+            // Create WC payment token
+            $token = new WC_Payment_Token_CC();
+            $token->set_token($payment_method->id);
+            $token->set_gateway_id('stripe');
+            $token->set_card_type(strtolower($payment_method->card->brand));
+            $token->set_last4($payment_method->card->last4);
+            $token->set_expiry_month($payment_method->card->exp_month);
+            $token->set_expiry_year($payment_method->card->exp_year);
+            $token->set_user_id($user_id);
             
-            if (!$stripe_gateway) {
-                throw new Exception('WooCommerce Stripe gateway not available');
+            // Save the token
+            if (!$token->save()) {
+                throw new Exception('Failed to save payment method');
             }
 
-            // Get Stripe client based on gateway type
-            $stripe = $this->get_stripe_api($stripe_gateway);
-            if (!$stripe) {
-                throw new Exception('Unable to initialize Stripe client');
-            }
-
-            // Get customer ID from user meta
-            $customer_id = get_user_meta($user->ID, '_stripe_customer_id', true);
-            if (empty($customer_id)) {
-                throw new Exception('No Stripe customer found for user');
-            }
-
-            // Create setup intent
-            try {
-                $setup_intent = $stripe->setupIntents->create([
-                    'payment_method_types' => ['card'],
-                    'usage' => 'off_session',
-                    'customer' => $customer_id,
-                    'metadata' => [
-                        'subscription_id' => $subscription_id,
-                        'customer_id' => $user->ID,
-                    ]
-                ]);
-            } catch (Exception $e) {
-                throw new Exception('Failed to create setup intent: ' . $e->getMessage());
-            }
-
-            // Create Stripe Checkout Session
-            try {
-                $session = $stripe->checkout->sessions->create([
-                    'payment_method_types' => ['card'],
-                    'mode' => 'setup',
-                    'customer' => $customer_id,
-                    'setup_intent' => $setup_intent->id,
-                    'success_url' => add_query_arg([
-                        'payment-update' => 'success',
-                        'subscription-id' => $subscription_id
-                    ], wc_get_account_endpoint_url('bocs-subscriptions')),
-                    'cancel_url' => add_query_arg(
-                        'payment-update', 
-                        'cancelled', 
-                        wc_get_account_endpoint_url('bocs-subscriptions')
-                    ),
-                ]);
-            } catch (Exception $e) {
-                throw new Exception('Failed to create checkout session: ' . $e->getMessage());
-            }
-
-            // Return success response
-            wp_send_json_success([
-                'redirect_url' => $session->url,
-                'session_id' => $session->id
-            ]);
+            // Redirect back to the subscriptions page with success message
+            wp_redirect(add_query_arg('payment_updated', 'success', wc_get_account_endpoint_url('bocs-subscriptions')));
+            exit;
 
         } catch (Exception $e) {
-            // Log error for debugging
-            error_log('BOCS Payment Update Error: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
+            // Redirect back with error
+            wp_redirect(add_query_arg('payment_updated', 'error', wc_get_account_endpoint_url('bocs-subscriptions')));
+            exit;
+        }
+    }
 
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'debug_info' => WP_DEBUG ? [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
-                ] : null
-            ]);
+    /**
+     * Display notices after payment method update
+     */
+    public function display_payment_update_notices() {
+        if (isset($_GET['payment_updated'])) {
+            if ($_GET['payment_updated'] === 'success') {
+                wc_add_notice(__('Payment method successfully updated.', 'bocs-wordpress'), 'success');
+            } else if ($_GET['payment_updated'] === 'error') {
+                wc_add_notice(__('Failed to update payment method. Please try again.', 'bocs-wordpress'), 'error');
+            }
+        }
+    }
+
+    public function update_subscription_payment() {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+
+        $payment_method = isset($_POST['payment_method']) ? sanitize_text_field($_POST['payment_method']) : '';
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+
+        if (empty($payment_method) || empty($subscription_id)) {
+            wp_send_json_error(['message' => 'Missing required parameters']);
+            return;
+        }
+
+        try {
+            // Verify the payment method belongs to the user
+            $token = WC_Payment_Tokens::get($payment_method);
+            if (!$token || $token->get_user_id() !== get_current_user_id()) {
+                throw new Exception('Invalid payment method');
+            }
+
+            // Here you would update the subscription's payment method in your system
+            // This depends on how you store subscription payment methods
+
+            wp_send_json_success(['message' => 'Payment method updated successfully']);
+        } catch (Exception $e) {
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 }

@@ -95,10 +95,20 @@ class Bocs
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
 
         $bocs_payment_method = new Bocs_Payment_Method();
-        $this->loader->add_action('wp_ajax_bocs_create_payment_update_session', $bocs_payment_method, 'bocs_create_payment_update_session');
-        $this->loader->add_action('template_redirect', $bocs_payment_method, 'bocs_handle_payment_update');
-        $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'bocs_enqueue_stripe_js');
-        $this->loader->add_action('wp_ajax_get_payment_update_session', $bocs_payment_method, 'bocs_get_payment_update_session');
+        $this->loader->add_filter('woocommerce_payment_methods_list_item', $bocs_payment_method, 'add_edit_payment_method_button', 10, 2);
+        
+        // Add new AJAX action for Stripe setup
+        $this->loader->add_action('wp_ajax_bocs_get_stripe_setup', $bocs_payment_method, 'get_stripe_setup');
+        $this->loader->add_action('wp_ajax_bocs_update_payment_method', $bocs_payment_method, 'handle_payment_method_update');
+
+        // Add action to handle setup completion
+        $this->loader->add_action('init', $bocs_payment_method, 'handle_setup_completion');
+        // Add action to display notices
+        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_payment_method, 'display_payment_update_notices');
+        // Add AJAX action for updating subscription payment method
+        $this->loader->add_action('wp_ajax_bocs_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
+        // Add scripts and styles
+        $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'enqueue_scripts');
     }
 
     /**
