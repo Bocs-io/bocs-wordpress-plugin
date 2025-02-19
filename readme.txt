@@ -1,3 +1,14 @@
+v0.0.114 02/18/2025
+* Added the activate subscription button
+* Added modal for the activate subscription
+* Added modal for the cancel subscription
+* Fix the issue on the redirect after the activation or cancellation of the subscription
+
+v0.0.113 02/16/2025
+* Added the check for duplicate plugin during pre-uploading of the plugin
+* Fix update account information
+* Update the settings link and label
+
 v0.0.112 02/11/2025
 * Added the divider on the subscriptions page
 * Added more info on the accordion header

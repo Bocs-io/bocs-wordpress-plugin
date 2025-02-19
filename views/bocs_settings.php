@@ -143,7 +143,7 @@ $secret_key = $stripe_settings['secret_key'] ?? '';
 						</tr>
 						<tr valign="top">
 							<th scope="row" class="titledesc">
-								<label><?php esc_html_e('BOCS API Key', 'bocs-wordpress'); ?></label>
+								<label><?php esc_html_e('API Key', 'bocs-wordpress'); ?></label>
 							</th>
 							<td class="forminp forminp-text">
 								<input class="regular-text" type="text" name="bocs_plugin_options[bocs_headers][authorization]" id="bocsAuthorization" value="<?php echo esc_attr($options['bocs_headers']['authorization'] ?? ''); ?>" />
