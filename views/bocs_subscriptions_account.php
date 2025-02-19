@@ -137,7 +137,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                                     id="activate_<?php echo esc_attr($subscription['id']); ?>"
                                     data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
                                 >
-                                    <?php esc_html_e('Activate', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -2810,7 +2810,7 @@ jQuery(document).ready(function($) {
                                     id="activate_${subscriptionId}"
                                     data-subscription-id="${subscriptionId}"
                                 >
-                                    <?php esc_html_e('Activate', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             `);
                         }
@@ -2834,7 +2834,7 @@ jQuery(document).ready(function($) {
                                     id="activate_${subscriptionId}"
                                     data-subscription-id="${subscriptionId}"
                                 >
-                                    <?php esc_html_e('Activate', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             `);
                         }
@@ -3034,7 +3034,7 @@ jQuery(document).ready(function($) {
                                     id="activate_${subscriptionId}"
                                     data-subscription-id="${subscriptionId}"
                                 >
-                                    <?php esc_html_e('Activate', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             `);
                         }
@@ -3058,7 +3058,7 @@ jQuery(document).ready(function($) {
                                     id="activate_${subscriptionId}"
                                     data-subscription-id="${subscriptionId}"
                                 >
-                                    <?php esc_html_e('Activate', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             `);
                         }
