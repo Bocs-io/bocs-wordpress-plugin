@@ -100,8 +100,6 @@ class Bocs_Account
             }
         }
 
-        error_log('URL: ' . $url);
-
         if (isset($url)) {
             $helper = new Bocs_Helper();
             $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
