@@ -3,27 +3,47 @@
 /**
  * Bocs Payment Method Class
  *
- * Handles the payment method functionality for Bocs subscriptions
-*/
+ * Handles payment method management for Bocs subscriptions, including:
+ * - Stripe payment method setup and management
+ * - Payment token handling
+ * - Payment method updates for subscriptions
+ *
+ * @package Bocs
+ * @since 0.0.115
+ */
 
 class Bocs_Payment_Method {
+    /**
+     * Constructor.
+     *
+     * Initialize payment method handling and set up required hooks.
+     *
+     * @since 0.0.115
+     */
     public function __construct() {
         // Ensure Stripe PHP SDK is loaded
         if (!class_exists('\Stripe\StripeClient')) {
             require_once(plugin_dir_path(dirname(__FILE__)) . 'vendor/autoload.php');
         }
+        
+        // Add hooks for payment tokens
+        add_filter('woocommerce_payment_methods_list_item', array($this, 'add_edit_payment_method_button'), 10, 2);
+        add_action('woocommerce_payment_token_deleted', array($this, 'payment_token_deleted'), 10, 2);
+        add_filter('woocommerce_get_customer_payment_tokens', array($this, 'get_customer_payment_tokens'), 10, 3);
     }
     
+    /**
+     * Add edit button to payment method list items.
+     *
+     * Adds an edit button to each payment method in the customer's payment methods list.
+     *
+     * @since 0.0.115
+     * @param array             $method         Payment method data array.
+     * @param WC_Payment_Token $payment_method Payment token object.
+     * @return array Modified payment method data array.
+     */
     public function add_edit_payment_method_button($method, $payment_method) {
         try {
-            // Log the incoming data
-            error_log('Payment Method Data: ' . print_r([
-                'method' => $method,
-                'payment_method_type' => get_class($payment_method),
-                'payment_method_id' => $payment_method instanceof WC_Payment_Token ? $payment_method->get_id() : 'not a token'
-            ], true));
-
-            // Debug the payment method type
             if ($payment_method instanceof WC_Payment_Token) {
                 // Add edit button for all payment methods, not just stripe
                 $method['actions']['edit'] = sprintf(
@@ -41,12 +61,19 @@ class Bocs_Payment_Method {
             }
             return $method;
         } catch (Exception $e) {
-            error_log('Error in add_edit_payment_method_button: ' . $e->getMessage());
-            error_log('Stack trace: ' . $e->getTraceAsString());
             return $method; // Return original method if there's an error
         }
     }
 
+    /**
+     * Set up Stripe payment configuration.
+     *
+     * Creates a Stripe SetupIntent and returns necessary configuration for the frontend.
+     * Handles test/live mode settings and retrieves saved payment methods.
+     *
+     * @since 0.0.115
+     * @return void Sends JSON response.
+     */
     public function get_stripe_setup() {
         // Verify nonce
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
@@ -125,6 +152,14 @@ class Bocs_Payment_Method {
         }
     }
     
+    /**
+     * Handle payment method updates.
+     *
+     * Processes AJAX requests to update payment method details in Stripe.
+     *
+     * @since 0.0.115
+     * @return void Sends JSON response.
+     */
     public function handle_payment_method_update() {
         check_ajax_referer('bocs_ajax_nonce', 'nonce');
         
@@ -154,7 +189,12 @@ class Bocs_Payment_Method {
     }
 
     /**
-     * Enqueue required scripts and styles
+     * Enqueue payment-related scripts and styles.
+     *
+     * Loads Stripe.js and custom payment handling scripts with localized data.
+     *
+     * @since 0.0.115
+     * @return void
      */
     public function enqueue_scripts() {
         // Only load on our subscription page
@@ -202,7 +242,13 @@ class Bocs_Payment_Method {
     }
 
     /**
-     * Handle the Stripe setup completion and save the payment token
+     * Handle Stripe setup completion.
+     *
+     * Processes the redirect after Stripe setup, saves payment tokens,
+     * and updates subscription payment details.
+     *
+     * @since 0.0.115
+     * @return void
      */
     public function handle_setup_completion() {
         if (!isset($_GET['setup_intent']) || !isset($_GET['setup_intent_client_secret'])) {
@@ -253,24 +299,14 @@ class Bocs_Payment_Method {
             // Get the payment method details
             $payment_method = $stripe->paymentMethods->retrieve($setup_intent->payment_method);
 
-            // Attach payment method to customer
+            // Attach payment method to customer if needed
             if ($payment_method->customer !== $customer_id) {
                 $stripe->paymentMethods->attach($payment_method->id, [
                     'customer' => $customer_id
                 ]);
             }
 
-            // Create WC payment token
-            error_log("🔄 Creating WooCommerce payment token...\n");
-            error_log("📝 Payment Method Data: " . print_r([
-                'id' => $payment_method->id,
-                'card_brand' => $payment_method->card->brand,
-                'last4' => $payment_method->card->last4,
-                'exp_month' => $payment_method->card->exp_month,
-                'exp_year' => $payment_method->card->exp_year,
-                'user_id' => $user_id
-            ], true) . "\n");
-
+            // Create and save WC payment token
             $token = new WC_Payment_Token_CC();
             
             // Set token data
@@ -281,134 +317,21 @@ class Bocs_Payment_Method {
             $token->set_expiry_month($payment_method->card->exp_month);
             $token->set_expiry_year($payment_method->card->exp_year);
             $token->set_user_id($user_id);
-            
-            // Validate token data before saving
-            if (!$token->validate()) {
-                error_log("❌ Payment token validation failed. Token data: " . print_r($token->get_data(), true) . "\n");
-                throw new Exception('Payment token validation failed');
-            }
-            
-            error_log("✅ Token validation successful\n");
-            
+
             // Save the token
-            error_log("🔄 Attempting to save token with data: " . print_r($token->get_data(), true) . "\n");
-            
-            global $wpdb;
-            // Enable query logging
-            $wpdb->show_errors();
-            
-            $save_result = $token->save();
-            error_log("📊 Token save result: " . ($save_result ? 'true' : 'false') . "\n");
-            error_log("🔍 Token ID after save: " . $token->get_id() . "\n");
-            error_log("🔧 Last database query: " . $wpdb->last_query . "\n");
-            error_log("🔧 Last database error: " . $wpdb->last_error . "\n");
-            
-            if (!$save_result) {
-                error_log("❌ Failed to save token to database\n");
+            if (!$token->save()) {
                 throw new Exception('Failed to save payment token');
             }
 
-            // Verify the token exists in the database
-            $token_exists = $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
-                $token->get_id()
-            ));
-
-            error_log("🔍 Token exists in database? " . ($token_exists ? 'Yes' : 'No') . "\n");
-
-            if (!$token_exists) {
-                // Try to insert directly if WooCommerce's save failed
-                $insert_result = $wpdb->insert(
-                    $wpdb->prefix . 'woocommerce_payment_tokens',
-                    array(
-                        'token' => $payment_method->id,
-                        'user_id' => $user_id,
-                        'gateway_id' => 'stripe',
-                        'type' => 'CC',
-                        'is_default' => 0
-                    ),
-                    array('%s', '%d', '%s', '%s', '%d')
-                );
-
-                error_log("🔄 Manual insert result: " . ($insert_result ? 'Success' : 'Failed') . "\n");
-                if (!$insert_result) {
-                    error_log("❌ Manual insert error: " . $wpdb->last_error . "\n");
-                } else {
-                    $token_id = $wpdb->insert_id;
-                    error_log("✅ Manual insert ID: " . $token_id . "\n");
-                    
-                    // Insert token meta
-                    $meta_data = array(
-                        array('last4', $payment_method->card->last4),
-                        array('card_type', strtolower($payment_method->card->brand)),
-                        array('expiry_month', $payment_method->card->exp_month),
-                        array('expiry_year', $payment_method->card->exp_year)
-                    );
-
-                    foreach ($meta_data as $meta) {
-                        $wpdb->insert(
-                            $wpdb->prefix . 'woocommerce_payment_tokenmeta',
-                            array(
-                                'payment_token_id' => $token_id,
-                                'meta_key' => $meta[0],
-                                'meta_value' => $meta[1]
-                            ),
-                            array('%d', '%s', '%s')
-                        );
-                    }
-                }
-            }
-
-            // Verify token was saved with retries
-            $max_retries = 3;
-            $retry_count = 0;
-            $saved_token = null;
-
-            while ($retry_count < $max_retries) {
-                error_log("🔄 Verification attempt " . ($retry_count + 1) . " of " . $max_retries . "\n");
-                
-                $saved_token = WC_Payment_Tokens::get($token->get_id());
-                error_log("📊 Retrieved token data: " . ($saved_token ? print_r($saved_token->get_data(), true) : 'null') . "\n");
-                
-                if ($saved_token) {
-                    error_log("✅ Token verified in database on attempt " . ($retry_count + 1) . "\n");
-                    break;
-                }
-                
-                $retry_count++;
-                if ($retry_count < $max_retries) {
-                    error_log("⏳ Waiting before retry...\n");
-                    sleep(1); // Wait 1 second before retry
-                }
-            }
-
+            // Verify token was saved
+            $saved_token = WC_Payment_Tokens::get($token->get_id());
             if (!$saved_token) {
-                error_log("❌ Token verification failed after {$max_retries} attempts\n");
-                error_log("🔧 Available tokens for user: " . print_r(WC_Payment_Tokens::get_customer_tokens($user_id), true) . "\n");
-                throw new Exception('Token was not properly saved to database');
+                throw new Exception('Token verification failed after save');
             }
 
-            // Check the database tables directly
-            global $wpdb;
-            $token_id = $token->get_id();
-            
-            // Check woocommerce_payment_tokens table
-            $tokens_table = $wpdb->get_row(
-                $wpdb->prepare(
-                    "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
-                    $token_id
-                )
-            );
-            error_log("🔍 Token in woocommerce_payment_tokens: " . print_r($tokens_table, true) . "\n");
-
-            // Check woocommerce_payment_tokenmeta table
-            $token_meta = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokenmeta WHERE payment_token_id = %d",
-                    $token_id
-                )
-            );
-            error_log("🔍 Token meta in woocommerce_payment_tokenmeta: " . print_r($token_meta, true) . "\n");
+            // Update token meta
+            update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
+            update_metadata('payment_token', $token->get_id(), '_stripe_source_id', $payment_method->id);
 
             // Update Bocs subscription with new payment details
             $subscription_id = $setup_intent->metadata->subscription_id;
@@ -479,14 +402,18 @@ class Bocs_Payment_Method {
             exit;
 
         } catch (Exception $e) {
-            // Redirect back with error
             wp_redirect(add_query_arg('payment_updated', 'error', wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
         }
     }
 
     /**
-     * Display notices after payment method update
+     * Display payment update notices.
+     *
+     * Shows success/error messages after payment method updates.
+     *
+     * @since 0.0.115
+     * @return void
      */
     public function display_payment_update_notices() {
         if (isset($_GET['payment_updated'])) {
@@ -498,6 +425,14 @@ class Bocs_Payment_Method {
         }
     }
 
+    /**
+     * Update subscription payment method.
+     *
+     * Handles AJAX requests to update a subscription's payment method.
+     *
+     * @since 0.0.115
+     * @return void Sends JSON response.
+     */
     public function update_subscription_payment() {
         if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
             wp_send_json_error(['message' => 'Invalid security token']);
@@ -526,5 +461,45 @@ class Bocs_Payment_Method {
         } catch (Exception $e) {
             wp_send_json_error(['message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Handle payment token deletion.
+     *
+     * Cleans up metadata when a payment token is deleted.
+     *
+     * @since 0.0.115
+     * @param int             $token_id The payment token ID being deleted.
+     * @param WC_Payment_Token $token    The payment token being deleted.
+     * @return void
+     */
+    public function payment_token_deleted($token_id, $token) {
+        // Clean up any associated metadata
+        delete_metadata('payment_token', $token_id, '_stripe_customer_id');
+        delete_metadata('payment_token', $token_id, '_stripe_source_id');
+    }
+
+    /**
+     * Filter customer payment tokens.
+     *
+     * Ensures payment tokens are properly loaded with metadata.
+     *
+     * @since 0.0.115
+     * @param array  $tokens      Array of payment token objects.
+     * @param int    $customer_id Customer ID.
+     * @param string $gateway_id  Payment gateway ID.
+     * @return array Filtered array of payment token objects.
+     */
+    public function get_customer_payment_tokens($tokens, $customer_id, $gateway_id) {
+        if ($gateway_id === 'stripe') {
+            // Ensure tokens are properly loaded
+            foreach ($tokens as $token) {
+                if ($token instanceof WC_Payment_Token_CC) {
+                    // Load any missing meta data if needed
+                    $token->read_meta_data();
+                }
+            }
+        }
+        return $tokens;
     }
 }
