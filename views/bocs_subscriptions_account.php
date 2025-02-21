@@ -131,13 +131,6 @@ $frequency_text = ''; // or whatever default value is appropriate
                                 >
                                     <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
                                 </button>
-                                <!-- Add Edit Payment Method button -->
-                                <button 
-                                    class="woocommerce-button button edit-payment-method" 
-                                    data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
-                                >
-                                    <?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?>
-                                </button>
                             <?php else: ?>
                                 <button 
                                     class="woocommerce-button button bocs-button subscription_activate" 
@@ -176,7 +169,12 @@ $frequency_text = ''; // or whatever default value is appropriate
 
                         <div class="subscription-row">
                             <div class="billing-address">
-                                <span class="subscription-label"><?php esc_html_e('Billing Address', 'bocs-wordpress'); ?></span>
+                                <span class="subscription-label">
+                                    <?php esc_html_e('Billing Address', 'bocs-wordpress'); ?>
+                                    <button class="edit-address-link" data-type="billing">
+                                        <?php esc_html_e('Edit', 'bocs-wordpress'); ?>
+                                    </button>
+                                </span>
                                 <?php if (!empty($subscription['billing'])): ?>
                                     <address>
                                         <?php
@@ -192,9 +190,6 @@ $frequency_text = ''; // or whatever default value is appropriate
                                         ])));
                                         ?>
                                     </address>
-                                    <button class="edit-address-link" data-type="billing">
-                                        <?php esc_html_e('Edit Billing Address', 'bocs-wordpress'); ?>
-                                    </button>
                                 <?php else: ?>
                                     <span><?php esc_html_e('No address provided', 'bocs-wordpress'); ?></span>
                                 <?php endif; ?>
@@ -203,7 +198,12 @@ $frequency_text = ''; // or whatever default value is appropriate
 
                         <div class="subscription-row">
                             <div class="shipping-address">
-                                <span class="subscription-label"><?php esc_html_e('Shipping Address', 'bocs-wordpress'); ?></span>
+                                <span class="subscription-label">
+                                    <?php esc_html_e('Shipping Address', 'bocs-wordpress'); ?>
+                                    <button class="edit-address-link" data-type="shipping">
+                                        <?php esc_html_e('Edit', 'bocs-wordpress'); ?>
+                                    </button>
+                                </span>
                                 <?php if (!empty($subscription['shipping'])): ?>
                                     <address>
                                         <?php
@@ -219,9 +219,6 @@ $frequency_text = ''; // or whatever default value is appropriate
                                         ])));
                                         ?>
                                     </address>
-                                    <button class="edit-address-link" data-type="shipping">
-                                        <?php esc_html_e('Edit Shipping Address', 'bocs-wordpress'); ?>
-                                    </button>
                                 <?php else: ?>
                                     <span><?php esc_html_e('No address provided', 'bocs-wordpress'); ?></span>
                                 <?php endif; ?>
@@ -887,7 +884,9 @@ $frequency_text = ''; // or whatever default value is appropriate
 }
 
 .subscription-label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     color: var(--wc-secondary);
     margin-bottom: 0.5em;
 }
@@ -1421,72 +1420,30 @@ $frequency_text = ''; // or whatever default value is appropriate
 }
 
 .edit-address-link {
-    display: inline-block;
-    margin-top: 0.5em;
-    padding: 0.3em 0.8em;
-    font-size: 0.9em;
+    background: none;
+    border: none;
     color: var(--wc-primary, #7f54b3);
-    background: transparent;
-    border: 1px solid currentColor;
-    border-radius: 3px;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: normal;
     cursor: pointer;
-    transition: all 0.2s ease;
+    text-decoration: underline;
+    transition: color 0.2s ease;
 }
 
 .edit-address-link:hover {
-    background: var(--wc-primary, #7f54b3);
-    color: #fff;
+    color: var(--wc-primary-dark, #654497);
 }
 
-.address-editor {
-    display: none;
-    margin-top: 1em;
-    padding: 1em;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+.billing-address,
+.shipping-address {
+    flex: 1;
 }
 
-.address-editor form {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1em;
-}
-
-.address-editor .form-row {
-    margin-bottom: 1em;
-}
-
-.address-editor .form-row.full-width {
-    grid-column: 1 / -1;
-}
-
-.address-editor label {
-    display: block;
-    margin-bottom: 0.5em;
-    font-weight: 500;
-}
-
-.address-editor input,
-.address-editor select {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-}
-
-.address-editor .button-group {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 1em;
-    justify-content: flex-end;
-    margin-top: 1em;
-}
-
-@media screen and (max-width: 768px) {
-    .address-editor form {
-        grid-template-columns: 1fr;
-    }
+address {
+    font-style: normal;
+    line-height: 1.5;
+    margin: 0;
 }
 
 /* Modal Styles */
