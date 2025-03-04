@@ -73,7 +73,19 @@ class Bocs_Account
     }
 
     /**
-     * Display content for the My Account Bocs Subscriptions page
+     * Display content for the My Account Bocs Subscriptions page.
+     *
+     * Retrieves and displays user's Bocs subscriptions by searching through multiple identifiers:
+     * 1. Bocs customer ID (if exists)
+     * 2. WordPress user ID (as external source ID)
+     * 3. User's email address
+     *
+     * @since      0.0.116
+     * @access     public
+     *
+     * @global     WP_User $current_user WordPress current user object.
+     *
+     * @return     void
      */
     public function bocs_endpoint_content()
     {
@@ -82,27 +94,51 @@ class Bocs_Account
         $data = false;
         $url = '';
 
+        // Only proceed if we have a logged-in user
         if (! empty($user_id)) {
             $bocs_customer_id = get_user_meta($user_id, 'bocs_user_id', true);
             $url = BOCS_API_URL . 'subscriptions';
+            $current_user = wp_get_current_user();
 
+            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
+                error_log(sprintf(
+                    '[Bocs Debug] User ID: %d, Bocs Customer ID: %s, Email: %s',
+                    $user_id,
+                    $bocs_customer_id,
+                    $current_user->user_email
+                ));
+            }
+
+            // If user has a Bocs customer ID, use it as primary identifier
             if (! empty($bocs_customer_id)) {
                 $url = BOCS_API_URL . 'subscriptions?query=customer.id:' . urlencode($bocs_customer_id);
             } else {
-                $url = BOCS_API_URL . 'subscriptions?query=customer.externalSourceId:' . urlencode($user_id);
+                // Otherwise, search by WordPress user ID and email
+                $query_parts = [];
+                $query_parts[] = 'customer.externalSourceId:' . urlencode($user_id);
+                if ($current_user->exists()) {
+                    $query_parts[] = 'billing.email:' . urlencode($current_user->user_email);
+                }
+                $url = BOCS_API_URL . 'subscriptions?query=' . implode(' OR ', $query_parts);
+            }
+
+            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
+                error_log(sprintf('[Bocs Debug] API Request URL: %s', $url));
             }
         }
 
-        if ( empty($url) ) {
-            $current_user = wp_get_current_user();
-            if ($current_user->exists()) {
-                $url = BOCS_API_URL . 'subscriptions?query=billing.email:' . urlencode($current_user->user_email);
-            }
-        }
-
+        // Fetch and display subscriptions if we have a valid URL
         if (isset($url)) {
             $helper = new Bocs_Helper();
             $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+
+            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
+                error_log(sprintf(
+                    '[Bocs Debug] API Response: %s',
+                    wp_json_encode($subscriptions, JSON_PRETTY_PRINT)
+                ));
+            }
+
             $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_subscriptions_account.php';
 
             if (file_exists($template_path)) {
