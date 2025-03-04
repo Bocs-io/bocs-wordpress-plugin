@@ -88,7 +88,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                         ?>
                     </span>
                     <span class="divider">|</span>
-                    <span class="subscription-next-payment">
+                    <span class="subscription-next-payment" data-next-payment="<?php echo $subscription['nextPaymentDateGmt']; ?>">
                         <?php 
                             echo esc_html(sprintf(
                                 __('Next payment: %s', 'bocs-wordpress'),
@@ -2631,7 +2631,8 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        let nextPaymentDate = new Date('<?php echo $next_payment_date->format('Y-m-d'); ?>');
+        // Get next payment date from the data attribute instead of PHP echo
+        let nextPaymentDate = new Date($('.subscription-next-payment').data('next-payment'));
 
         if (selectedOption.val() === 'custom_date') {
             const customDate = $('input[name="new_date"]').val();
