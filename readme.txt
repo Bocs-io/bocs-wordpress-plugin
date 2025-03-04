@@ -1,3 +1,7 @@
+v0.0.116 03/04/2025
+* Fix on the list of user's subscriptions
+* Fix on the update plugin, dev mode should get the latest, either a release or pre-release version
+
 v0.0.115 02/19/2025
 * Added the payment methods modal
 * Added Stripe Elements
