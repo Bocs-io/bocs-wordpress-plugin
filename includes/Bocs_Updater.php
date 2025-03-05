@@ -305,39 +305,75 @@ class Bocs_Updater {
     /**
      * Check for duplicate plugin uploads
      *
+     * Checks for existing BOCS plugin installations.
+     * Allows installation only if:
+     * 1. No existing BOCS plugin is installed, or
+     * 2. The uploading version is newer than the existing version
+     *
      * @since  0.0.113
      * @access public
-     * @param  array $file Array of upload data
-     * @return array Modified file data
+     * @param  string $source Path to the temporary plugin directory
+     * @return string Path to the temporary plugin directory
      */
     public function check_for_duplicate_plugin($source) {
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
 
+        // First check if the uploading plugin is BOCS
+        if (!file_exists($source)) {
+            return $source;
+        }
+
+        // Get the plugin data from the uploading file
+        $plugin_data = get_plugin_data($source . '/bocs.php', false, false);
+        if (empty($plugin_data) || empty($plugin_data['Name'])) {
+            return $source;
+        }
+
+        // If this is not a BOCS plugin upload, return early
+        if (strtolower($plugin_data['Name']) !== 'bocs') {
+            return $source;
+        }
+
+        // Get the version of the uploading plugin
+        $uploading_version = isset($plugin_data['Version']) ? $plugin_data['Version'] : '0.0.0';
+
+        // Now check for existing BOCS installations
         $all_plugins = get_plugins();
-        $bocs_instances = 0;
+        $existing_bocs = null;
 
         foreach ($all_plugins as $plugin_path => $plugin_data) {
-            // More robust check for plugin name
             $plugin_name = isset($plugin_data['Name']) ? $plugin_data['Name'] : '';
             if (empty($plugin_name)) {
                 continue;
             }
             
-            if (strpos(strtolower($plugin_name), 'bocs') !== false) {
-                $bocs_instances++;
+            if (strtolower($plugin_name) === 'bocs') {
+                $existing_bocs = array(
+                    'path' => $plugin_path,
+                    'version' => isset($plugin_data['Version']) ? $plugin_data['Version'] : '0.0.0'
+                );
+                break;
             }
         }
 
-        if ($bocs_instances > 0) {
+        // If BOCS exists and the uploading version is not newer
+        if ($existing_bocs && version_compare($uploading_version, $existing_bocs['version'], '<=')) {
             // Create a properly formatted error message
             $message = '<div class="error">';
-            $message .= '<p>' . esc_html__('Warning: Another instance of the Bocs plugin was detected.', 'bocs-wordpress') . '</p>';
+            $message .= '<p>' . sprintf(
+                esc_html__('Warning: Another instance of the Bocs plugin (version %s) was detected.', 'bocs-wordpress'),
+                $existing_bocs['version']
+            ) . '</p>';
+            $message .= '<p>' . sprintf(
+                esc_html__('The version you are trying to install (%s) is not newer than the existing version.', 'bocs-wordpress'),
+                $uploading_version
+            ) . '</p>';
             $message .= '<p>' . esc_html__('You can either:', 'bocs-wordpress') . '</p>';
             $message .= '<ul style="list-style-type: disc; margin-left: 20px;">';
-            $message .= '<li>' . esc_html__('Deactivate and delete the existing Bocs plugin before installing a new version, or', 'bocs-wordpress') . '</li>';
-            $message .= '<li>' . esc_html__('Use the Update button if available to update the existing plugin', 'bocs-wordpress') . '</li>';
+            $message .= '<li>' . esc_html__('Deactivate and delete the existing Bocs plugin before installing this version, or', 'bocs-wordpress') . '</li>';
+            $message .= '<li>' . esc_html__('Use the Update button if available to update the existing plugin to a newer version', 'bocs-wordpress') . '</li>';
             $message .= '</ul>';
             $message .= '<p><a href="' . esc_url(admin_url('plugins.php')) . '" class="button button-secondary">';
             $message .= esc_html__('← Go back to plugins page', 'bocs-wordpress');

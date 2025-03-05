@@ -389,13 +389,13 @@ class Admin
 
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
-            wp_enqueue_script(
+            /*wp_enqueue_script(
                 'bocs-stripe-checkout-js',
                 plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
                 array('jquery'),
                 '20240611.8',
                 true
-            );
+            );*/
 
             wp_enqueue_script(
                 'bocs-checkout-js', 
