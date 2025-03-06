@@ -297,55 +297,60 @@ class Bocs_Updater {
     public function after_install($response, $hook_extra, $result) {
         global $wp_filesystem;
 
-        // Check for duplicate BOCS installations
-        if (!function_exists('get_plugins')) {
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
-        }
-
-        // Get the plugin data from the installed plugin
-        $plugin_data = get_plugin_data($result['destination'] . '/bocs.php', false, false);
-        if (empty($plugin_data) || empty($plugin_data['Name'])) {
-            return $result;
-        }
-
-        // If this is not a BOCS plugin, return early
-        if (strtolower($plugin_data['Name']) !== 'bocs') {
-            return $result;
-        }
-
-        // Get the version of the installed plugin
-        $installed_version = isset($plugin_data['Version']) ? $plugin_data['Version'] : '0.0.0';
-
-        // Now check for existing BOCS installations
-        $all_plugins = get_plugins();
-        $existing_bocs = array();
-
-        foreach ($all_plugins as $plugin_path => $plugin_info) {
-            $plugin_name = isset($plugin_info['Name']) ? $plugin_info['Name'] : '';
-            if (empty($plugin_name)) {
-                continue;
+        // First check if the installed plugin is BOCS
+        $bocs_main_file = $result['destination'] . '/bocs.php';
+        
+        // Only continue with duplicate detection if this is the BOCS plugin
+        if (file_exists($bocs_main_file)) {
+            // Check for duplicate BOCS installations
+            if (!function_exists('get_plugins')) {
+                require_once ABSPATH . 'wp-admin/includes/plugin.php';
             }
             
-            // Skip the plugin we just installed
-            $plugin_dir = dirname(plugin_basename($result['destination'] . '/bocs.php'));
-            if (strpos($plugin_path, $plugin_dir) === 0) {
-                continue;
-            }
+            // Get the plugin data from the installed plugin
+            $plugin_data = get_plugin_data($bocs_main_file, false, false);
             
-            if (strtolower($plugin_name) === 'bocs') {
-                $existing_bocs[] = array(
-                    'path' => $plugin_path,
-                    'version' => isset($plugin_info['Version']) ? $plugin_info['Version'] : '0.0.0'
-                );
+            // If this is a BOCS plugin, check for duplicates
+            if (!empty($plugin_data) && !empty($plugin_data['Name']) && strtolower($plugin_data['Name']) === 'bocs') {
+                // Get the version of the installed plugin
+                $installed_version = isset($plugin_data['Version']) ? $plugin_data['Version'] : '0.0.0';
+                
+                // Get the current plugin path for comparison
+                $current_plugin_path = plugin_basename($bocs_main_file);
+                $current_plugin_dir = dirname($current_plugin_path);
+
+                // Now check for existing BOCS installations
+                $all_plugins = get_plugins();
+                $existing_bocs = array();
+
+                foreach ($all_plugins as $plugin_path => $plugin_info) {
+                    // Skip the plugin we just installed
+                    if (strpos($plugin_path, $current_plugin_dir) === 0) {
+                        continue;
+                    }
+                    
+                    // Check if the plugin file ends with 'bocs.php'
+                    if (basename($plugin_path) === 'bocs.php') {
+                        $plugin_name = isset($plugin_info['Name']) ? $plugin_info['Name'] : '';
+                        
+                        // Double-check the name to confirm it's a BOCS plugin
+                        if (!empty($plugin_name) && strtolower($plugin_name) === 'bocs') {
+                            $existing_bocs[] = array(
+                                'path' => $plugin_path,
+                                'version' => isset($plugin_info['Version']) ? $plugin_info['Version'] : '0.0.0'
+                            );
+                        }
+                    }
+                }
+
+                // If we found other BOCS installations, store them for later notice
+                if (!empty($existing_bocs)) {
+                    update_option('bocs_duplicate_plugins', $existing_bocs);
+                }
             }
         }
 
-        // If we found other BOCS installations, store them for later notice
-        if (!empty($existing_bocs)) {
-            update_option('bocs_duplicate_plugins', $existing_bocs);
-        }
-
-        // Continue with the original functionality
+        // Continue with the original functionality - move the plugin to its final location
         $wp_filesystem->move($result['destination'], $this->plugin_path);
         $result['destination'] = $this->plugin_path;
         $this->activate_plugin();
@@ -363,41 +368,44 @@ class Bocs_Updater {
             return;
         }
         
-        // Get current plugin data
+        // Get current plugin data safely
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
         
-        $current_plugin_data = get_plugin_data($this->file, false, false);
-        $current_version = isset($current_plugin_data['Version']) ? $current_plugin_data['Version'] : '0.0.0';
-        
-        echo '<div class="notice notice-warning is-dismissible">';
-        echo '<p><strong>' . esc_html__('Multiple BOCS Plugin Installations Detected', 'bocs-wordpress') . '</strong></p>';
-        echo '<p>' . esc_html__('The following BOCS plugin installations were found:', 'bocs-wordpress') . '</p>';
-        echo '<ul>';
-        
-        // Current plugin
-        echo '<li>' . sprintf(
-            esc_html__('Current: %s (version %s)', 'bocs-wordpress'),
-            plugin_basename($this->file),
-            $current_version
-        ) . '</li>';
-        
-        // Other plugins
-        foreach ($duplicate_plugins as $plugin) {
+        // Make sure the file exists before trying to get plugin data
+        if (file_exists($this->file)) {
+            $current_plugin_data = get_plugin_data($this->file, false, false);
+            $current_version = isset($current_plugin_data['Version']) ? $current_plugin_data['Version'] : '0.0.0';
+            
+            echo '<div class="notice notice-warning is-dismissible">';
+            echo '<p><strong>' . esc_html__('Multiple BOCS Plugin Installations Detected', 'bocs-wordpress') . '</strong></p>';
+            echo '<p>' . esc_html__('The following BOCS plugin installations were found:', 'bocs-wordpress') . '</p>';
+            echo '<ul>';
+            
+            // Current plugin
             echo '<li>' . sprintf(
-                esc_html__('Additional: %s (version %s)', 'bocs-wordpress'),
-                $plugin['path'],
-                $plugin['version']
+                esc_html__('Current: %s (version %s)', 'bocs-wordpress'),
+                plugin_basename($this->file),
+                $current_version
             ) . '</li>';
+            
+            // Other plugins
+            foreach ($duplicate_plugins as $plugin) {
+                echo '<li>' . sprintf(
+                    esc_html__('Additional: %s (version %s)', 'bocs-wordpress'),
+                    $plugin['path'],
+                    $plugin['version']
+                ) . '</li>';
+            }
+            
+            echo '</ul>';
+            echo '<p>' . esc_html__('Having multiple BOCS plugins installed may cause conflicts. Please deactivate and remove the older versions.', 'bocs-wordpress') . '</p>';
+            echo '<p><a href="' . esc_url(admin_url('plugins.php')) . '" class="button button-primary">';
+            echo esc_html__('Manage Plugins', 'bocs-wordpress');
+            echo '</a></p>';
+            echo '</div>';
         }
-        
-        echo '</ul>';
-        echo '<p>' . esc_html__('Having multiple BOCS plugins installed may cause conflicts. Please deactivate and remove the older versions.', 'bocs-wordpress') . '</p>';
-        echo '<p><a href="' . esc_url(admin_url('plugins.php')) . '" class="button button-primary">';
-        echo esc_html__('Manage Plugins', 'bocs-wordpress');
-        echo '</a></p>';
-        echo '</div>';
         
         // Clear the option after displaying the notice
         delete_option('bocs_duplicate_plugins');
