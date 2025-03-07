@@ -57,10 +57,20 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
+
+        // Check if WooCommerce is active and email class exists
+        if (function_exists('WC')) {
+            if (!class_exists('WC_Email', false)) {
+                include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
+            }
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+        }
+
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_Method.php';
@@ -227,33 +237,45 @@ class Bocs
 
     public function define_email_hooks()
     {
+        // Initialize email classes
+        $bocs_email = new Bocs_Email();
+        
+        // Add basic initialization
+        $this->loader->add_action('init', $bocs_email, 'init', 10);
+        
+        // Initialize email classes after WooCommerce is loaded
+        $this->loader->add_action('woocommerce_init', $bocs_email, 'init_email_classes', 10);
+    }
+
+    /**
+     * Initialize email classes after WooCommerce is loaded
+     */
+    public function init_email_classes() {
+        // Processing Renewal Order Email
         $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
-        // $bocs_email = new Bocs_Email();
-
-        // $this->loader->add_filter('woocommerce_email_classes', $bocs_email, 'add_bocs_processing_renewal_email_class', 10, 1);
-
-        // $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_on-hold_to_processing', $processing_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_processing', $processing_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
 
+        // Completed Renewal Order Email
         $completed_orders = new WC_Bocs_Email_Completed_Renewal_Order();
-        // $this->loader->add_action('woocommerce_order_status_pending_to_completed', $completed_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_completed', $completed_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_completed', $completed_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_completed', $completed_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_processing_to_completed', $completed_orders, 'trigger', 10, 1);
 
+        // On-hold Renewal Order Email
         $onhold_orders = new WC_Bocs_Email_On_Hold_Renewal_Order();
-        // $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_on-hold', $onhold_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_on-hold', $onhold_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
 
+        // Customer Renewal Invoice Email
         $renewal_invoice = new WC_Bocs_Email_Customer_Renewal_Invoice();
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed', $renewal_invoice, 'trigger', 10, 1);
+
+        // Subscription Switched Email
+        $subscription_switched = new WC_Bocs_Email_Subscription_Switched();
+        $this->loader->add_action('bocs_subscription_switched', $subscription_switched, 'trigger', 10, 2);
     }
 
     public function define_checkout_page_hooks()
