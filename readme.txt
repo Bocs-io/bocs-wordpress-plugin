@@ -1,3 +1,9 @@
+v0.0.117 03/07/2025
+* Improve plugin duplicate detection with additional checks
+* Improve duplicate plugin detection and notifications
+* Fix on the error when installing any other plugins
+* Fixes on the checkout when filling up any form as a guest
+
 v0.0.116 03/04/2025
 * Fix on the list of user's subscriptions
 * Fix on the update plugin, dev mode should get the latest, either a release or pre-release version
