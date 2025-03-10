@@ -1,0 +1,21 @@
+{
+    "scripts": {
+        "make-pot": "wp i18n make-pot . languages/bocs-wordpress.pot --domain=bocs-wordpress",
+        "update-po": [
+            "wp i18n update-po languages/bocs-wordpress.pot languages/bocs-wordpress-en_US.po",
+            "wp i18n update-po languages/bocs-wordpress.pot languages/bocs-wordpress-en_AU.po"
+        ],
+        "make-mo": [
+            "wp i18n make-mo languages/bocs-wordpress-en_US.po languages/bocs-wordpress-en_US.mo",
+            "wp i18n make-mo languages/bocs-wordpress-en_AU.po languages/bocs-wordpress-en_AU.mo"
+        ],
+        "i18n": [
+            "@make-pot",
+            "@update-po",
+            "@make-mo"
+        ]
+    },
+    "require": {
+        "stripe/stripe-php": "^16.5"
+    }
+}

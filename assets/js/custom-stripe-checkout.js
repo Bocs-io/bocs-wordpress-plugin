@@ -1,32 +1,58 @@
-/**
- * Custom Stripe Checkout Functionality
- * This script handles the automatic checking and state management of the "Save Card Info" checkbox
- * in the WooCommerce Stripe checkout form.
- */
-jQuery(document).ready(function ($) {
+// Wait for jQuery to be loaded and then execute
+(function($) {
+    // Wait for the page to be fully loaded
+    $(document).ready(function() {
+        // Wait for any dynamic content to load using a small delay
+        setTimeout(function() {
+            // Handle account creation checkbox
+            const checkoutForm = $('form[aria-label="Checkout"]');
+            const contactFields = checkoutForm.find('#contact-fields');
+            
+            const textElement = contactFields.find(':contains("Create an account with")').filter(function() {
+                return $(this).children().length === 0;
+            });
 
-    // First timeout: Ensure "Save Card Info" checkbox is checked by default
-    setTimeout(function () {
-        // Check if the save card checkbox exists
-        if ($("div.wc-block-components-payment-methods__save-card-info input[type='checkbox']").length > 0) {
-            // Auto-check the "Save Card Info" checkbox
-            $("div.wc-block-components-payment-methods__save-card-info input[type='checkbox']").prop('checked', true);
-        }
-    }, 5000); // Wait 5 seconds for elements to load
+            if (textElement.length > 0) {
+                const checkbox = textElement.closest('#contact-fields').find('input[type="checkbox"]');
+                
+                if (checkbox.length > 0) {
+                    if (!checkbox.is(':checked')) {
+                        checkbox.prop('checked', true)
+                            .trigger('change')
+                            .trigger('input')
+                            .trigger('click');
+                            
+                        setTimeout(() => {
+                            checkbox.prop('checked', true).trigger('change');
+                        }, 1000);
+                    }
+                }
+            }
 
-    // Second timeout: Handle checkbox state based on saved payment methods
-    setTimeout(function () {
-        // Check if there are any saved payment tokens
-        if ($("input[name='radio-control-wc-payment-method-saved-tokens']").length === 0) {
-            // If no saved tokens exist:
-            // 1. Check the "Save Card Info" checkbox
-            // 2. Disable the checkbox to prevent unchecking
-            $("div.wc-block-components-payment-methods__save-card-info input[type='checkbox']").prop('checked', true);
-            $("div.wc-block-components-payment-methods__save-card-info input[type='checkbox']").prop('disabled', true);
-        } else {
-            // If saved tokens exist, enable the checkbox to allow user choice
-            $("div.wc-block-components-payment-methods__save-card-info input[type='checkbox']").prop('disabled', false);
-        }
-    }, 5000); // Wait 5 seconds for elements to load
-
-});
+            // Handle save payment information checkbox
+            const paymentMethod = checkoutForm.find('#payment-method');
+            const saveCardCheckbox = paymentMethod.find('.wc-block-components-payment-methods__save-card-info input[type="checkbox"]');
+            
+            if (saveCardCheckbox.length > 0) {
+                if (!saveCardCheckbox.is(':checked')) {
+                    saveCardCheckbox.prop('checked', true)
+                        .trigger('change')
+                        .trigger('input')
+                        .trigger('click');
+                        
+                    setTimeout(() => {
+                        saveCardCheckbox.prop('checked', true).trigger('change');
+                    }, 1000);
+                }
+                
+                if (saveCardCheckbox.is(':checked')) {
+                    console.log('Save payment checkbox was successfully checked');
+                } else {
+                    console.log('Failed to check save payment checkbox');
+                }
+            } else {
+                console.log('Save payment checkbox not found');
+            }
+        }, 1000);
+    });
+})(jQuery);
