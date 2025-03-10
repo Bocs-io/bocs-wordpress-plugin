@@ -1,3 +1,6 @@
+v0.0.118 03/10/2025
+* added email templates
+
 v0.0.117 03/07/2025
 * Improve plugin duplicate detection with additional checks
 * Improve duplicate plugin detection and notifications
