@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer On-hold Renewal Order email
+ * Customer Renewal Invoice email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-on-hold-renewal-order.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-renewal-invoice.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -17,7 +17,7 @@ do_action('woocommerce_email_header', $email_heading, $email); ?>
 
 <?php /* translators: %s: Customer first name */ ?>
 <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
-<p><?php esc_html_e('Thanks for your renewal order. It\'s on-hold until we confirm your payment has been received. In the meantime, here\'s a reminder of your order:', 'bocs-wordpress'); ?></p>
+<p><?php esc_html_e('A new invoice has been generated for your subscription renewal order. To ensure uninterrupted service, please process this payment at your earliest convenience.', 'bocs-wordpress'); ?></p>
 
 <?php
 // Display Bocs App attribution

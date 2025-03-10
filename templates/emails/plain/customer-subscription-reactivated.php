@@ -1,8 +1,8 @@
 <?php
 /**
- * Subscription Switched email (plain text)
+ * Customer Subscription Reactivated email (plain text)
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/subscription-switched.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/customer-subscription-reactivated.php.
  *
  * @package Bocs/Templates/Emails/Plain
  * @version 1.0.0
@@ -14,18 +14,27 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
 echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
+echo "BOCS.IO - SUBSCRIPTION REACTIVATED\n\n";
+
 /* translators: %s: Customer first name */
 echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
-echo esc_html__('Your subscription has been switched successfully. Your new subscription details are shown below for your reference:', 'bocs-wordpress') . "\n\n";
 
-// For subscription, check the parent order for Bocs App attribution
-$parent_order_id = $subscription->get_parent_id();
-$source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
+echo esc_html__('Great news! Your subscription has been successfully reactivated and is now active again.', 'bocs-wordpress') . "\n\n";
+
+// Display Bocs App attribution
+$source_type = get_post_meta($subscription->get_id(), '_wc_order_attribution_source_type', true);
+$utm_source = get_post_meta($subscription->get_id(), '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-    echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
+    echo "** " . esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . " **\n\n";
 }
+
+echo esc_html__('You can view your subscription details at the link below:', 'bocs-wordpress') . "\n";
+echo esc_url($subscription->get_view_order_url()) . "\n\n";
+
+echo "----------------------------------------\n";
+echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
+echo "----------------------------------------\n\n";
 
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
@@ -57,4 +66,4 @@ if ($additional_content) {
     echo "\n\n----------------------------------------\n\n";
 }
 
-echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 
+echo "Bocs.io - " . wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 

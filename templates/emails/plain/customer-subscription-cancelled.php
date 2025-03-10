@@ -1,8 +1,8 @@
 <?php
 /**
- * Subscription Switched email (plain text)
+ * Customer Subscription Cancelled email (plain text)
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/subscription-switched.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/customer-subscription-cancelled.php.
  *
  * @package Bocs/Templates/Emails/Plain
  * @version 1.0.0
@@ -16,16 +16,18 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
 echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
-echo esc_html__('Your subscription has been switched successfully. Your new subscription details are shown below for your reference:', 'bocs-wordpress') . "\n\n";
+echo esc_html__('Your subscription has been cancelled. We\'re sorry to see you go!', 'bocs-wordpress') . "\n\n";
 
-// For subscription, check the parent order for Bocs App attribution
-$parent_order_id = $subscription->get_parent_id();
+// Display Bocs App attribution
+$parent_order_id = is_callable(array($subscription, 'get_parent_id')) ? $subscription->get_parent_id() : $subscription->get_id();
 $source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
 $utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
+
+echo esc_html__('Here are the details of your cancelled subscription:', 'bocs-wordpress') . "\n\n";
 
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.

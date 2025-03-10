@@ -6,7 +6,7 @@
  *
  * @package    Bocs
  * @subpackage Bocs/includes/emails
- * @since      0.0.1
+ * @since      0.0.118
  */
 
 if (!defined('ABSPATH')) {
@@ -38,14 +38,13 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
      */
     public function __construct() {
         $this->id             = 'bocs_customer_renewal_invoice';
-        $this->title         = __('Customer Renewal Invoice', 'bocs-wordpress-plugin');
-        $this->description   = __('This email is sent to customers when their renewal invoice is generated.', 'bocs-wordpress-plugin');
         $this->customer_email = true;
+        $this->title          = __('[Bocs] Customer Renewal Invoice', 'bocs-wordpress');
+        $this->description    = __('Customer renewal invoice emails are sent when a renewal order is created requiring payment.', 'bocs-wordpress');
         $this->template_html  = 'emails/customer-renewal-invoice.php';
         $this->template_plain = 'emails/plain/customer-renewal-invoice.php';
-        $this->template_base  = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
+        $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
-            '{site_title}'   => $this->get_blogname(),
             '{order_date}'   => '',
             '{order_number}' => '',
         );
@@ -60,7 +59,7 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
      * @return string
      */
     public function get_default_subject() {
-        return __('Invoice for renewal order {order_number}', 'bocs-wordpress-plugin');
+        return __('[Bocs] Invoice for renewal order {order_number}', 'bocs-wordpress');
     }
 
     /**
@@ -69,7 +68,7 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
      * @return string
      */
     public function get_default_heading() {
-        return __('Invoice for Renewal Order', 'bocs-wordpress-plugin');
+        return __('Invoice for Renewal Order', 'bocs-wordpress');
     }
 
     /**
@@ -83,10 +82,17 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
         if ($order_id) {
             $this->object = wc_get_order($order_id);
             if (is_a($this->object, 'WC_Order')) {
-                $this->recipient = $this->object->get_billing_email();
+                // Check if this order has the required meta data
+                $source_type = get_post_meta($order_id, '_wc_order_attribution_source_type', true);
+                $utm_source = get_post_meta($order_id, '_wc_order_attribution_utm_source', true);
+                
+                // Only proceed if the order meets Bocs requirements
+                if ($source_type === 'referral' && $utm_source === 'Bocs App') {
+                    $this->recipient = $this->object->get_billing_email();
 
-                $this->placeholders['{order_date}']   = wc_format_datetime($this->object->get_date_created());
-                $this->placeholders['{order_number}'] = $this->object->get_order_number();
+                    $this->placeholders['{order_date}']   = wc_format_datetime($this->object->get_date_created());
+                    $this->placeholders['{order_number}'] = $this->object->get_order_number();
+                }
             }
         }
 
@@ -145,7 +151,7 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
      * @return string
      */
     public function get_default_additional_content() {
-        return __('Please pay for this order to continue your subscription.', 'bocs-wordpress-plugin');
+        return __('Please pay for this order to continue your subscription.', 'bocs-wordpress');
     }
 
     /**
@@ -154,40 +160,40 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email {
     public function init_form_fields() {
         $this->form_fields = array(
             'enabled' => array(
-                'title'         => __('Enable/Disable', 'bocs-wordpress-plugin'),
+                'title'         => __('Enable/Disable', 'bocs-wordpress'),
                 'type'         => 'checkbox',
-                'label'        => __('Enable this email notification', 'bocs-wordpress-plugin'),
+                'label'        => __('Enable this email notification', 'bocs-wordpress'),
                 'default'      => 'yes',
             ),
             'subject' => array(
-                'title'         => __('Subject', 'bocs-wordpress-plugin'),
+                'title'         => __('Subject', 'bocs-wordpress'),
                 'type'         => 'text',
-                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress-plugin'), '<code>{site_title}, {order_date}, {order_number}</code>'),
+                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '<code>{site_title}, {order_date}, {order_number}</code>'),
                 'placeholder'  => $this->get_default_subject(),
                 'default'      => '',
                 'desc_tip'     => true,
             ),
             'heading' => array(
-                'title'         => __('Email Heading', 'bocs-wordpress-plugin'),
+                'title'         => __('Email Heading', 'bocs-wordpress'),
                 'type'         => 'text',
-                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress-plugin'), '<code>{site_title}, {order_date}, {order_number}</code>'),
+                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '<code>{site_title}, {order_date}, {order_number}</code>'),
                 'placeholder'  => $this->get_default_heading(),
                 'default'      => '',
                 'desc_tip'     => true,
             ),
             'additional_content' => array(
-                'title'       => __('Additional content', 'bocs-wordpress-plugin'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress-plugin'),
+                'title'       => __('Additional content', 'bocs-wordpress'),
+                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
                 'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('N/A', 'bocs-wordpress-plugin'),
+                'placeholder' => __('N/A', 'bocs-wordpress'),
                 'type'        => 'textarea',
                 'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,
             ),
             'email_type' => array(
-                'title'         => __('Email type', 'bocs-wordpress-plugin'),
+                'title'         => __('Email type', 'bocs-wordpress'),
                 'type'         => 'select',
-                'description'  => __('Choose which format of email to send.', 'bocs-wordpress-plugin'),
+                'description'  => __('Choose which format of email to send.', 'bocs-wordpress'),
                 'default'      => 'html',
                 'class'        => 'email_type wc-enhanced-select',
                 'options'      => $this->get_email_type_options(),

@@ -15,8 +15,16 @@ echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
-echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress-plugin'), esc_html($order->get_billing_first_name())) . "\n\n";
-echo esc_html__('Just to let you know — we\'ve received your renewal order and it is now being processed:', 'bocs-wordpress-plugin') . "\n\n";
+echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
+echo esc_html__('Just to let you know — we\'ve received your renewal order and it is now being processed:', 'bocs-wordpress') . "\n\n";
+
+// Display Bocs App attribution
+$source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
+$utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
+
+if ($source_type === 'referral' && $utm_source === 'Bocs App') {
+    echo esc_html__('This order was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
+}
 
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.

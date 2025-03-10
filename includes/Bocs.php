@@ -69,6 +69,11 @@ class Bocs
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-welcome.php';
+            // New email classes
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-renewal-payment.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
         }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';

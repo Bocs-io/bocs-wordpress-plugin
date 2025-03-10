@@ -1,48 +1,35 @@
 <?php
 /**
- * Bocs Processing Renewal Order Email Class
+ * Class WC_Bocs_Email_Failed_Renewal_Payment
  *
- * Handles email notifications for processing subscription renewal orders.
- *
- * @package    Bocs
- * @subpackage Bocs/includes/emails
- * @since      0.0.118
+ * @package Bocs\Emails
  */
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Check if WooCommerce is active
-if (!function_exists('WC')) {
-    return;
-}
-
-// Load WooCommerce email classes if not already loaded
-if (!class_exists('WC_Email', false)) {
-    include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
-}
-
-if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order')) :
-
 /**
- * Processing Renewal Order Email Class
+ * Failed Renewal Payment Email
  *
- * @class    WC_Bocs_Email_Processing_Renewal_Order
- * @extends  WC_Email
+ * An email sent to the customer when a renewal payment fails.
+ *
+ * @class       WC_Bocs_Email_Failed_Renewal_Payment
+ * @version     0.0.118
+ * @extends     WC_Email
  */
-class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
+class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
 
     /**
      * Constructor
      */
     public function __construct() {
-        $this->id             = 'bocs_processing_renewal_order';
+        $this->id             = 'bocs_failed_renewal_payment';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] Processing Renewal Order', 'bocs-wordpress');
-        $this->description    = __('Processing renewal order emails are sent to customers when their renewal orders are marked processing.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-processing-renewal-order.php';
-        $this->template_plain = 'emails/plain/customer-processing-renewal-order.php';
+        $this->title          = __('[Bocs] Failed Renewal Payment', 'bocs-wordpress');
+        $this->description    = __('Failed renewal payment emails are sent when an automatic renewal payment fails.', 'bocs-wordpress');
+        $this->template_html  = 'emails/customer-failed-renewal-payment.php';
+        $this->template_plain = 'emails/plain/customer-failed-renewal-payment.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -59,7 +46,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
      * @return string
      */
     public function get_default_subject() {
-        return __('[Bocs] Your {site_title} renewal order has been received!', 'bocs-wordpress');
+        return __('[Bocs] Renewal payment failed for order {order_number}', 'bocs-wordpress');
     }
 
     /**
@@ -68,7 +55,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
      * @return string
      */
     public function get_default_heading() {
-        return __('Processing Renewal Order', 'bocs-wordpress');
+        return __('Renewal Payment Failed', 'bocs-wordpress');
     }
 
     /**
@@ -115,9 +102,9 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'     => false,
-                'plain_text'        => false,
-                'email'             => $this,
+                'sent_to_admin'      => false,
+                'plain_text'         => false,
+                'email'              => $this,
             ),
             '',
             $this->template_base
@@ -136,9 +123,9 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'     => false,
-                'plain_text'        => true,
-                'email'             => $this,
+                'sent_to_admin'      => false,
+                'plain_text'         => true,
+                'email'              => $this,
             ),
             '',
             $this->template_base
@@ -151,58 +138,54 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
      * @return string
      */
     public function get_default_additional_content() {
-        return __('Thanks for your continued business.', 'bocs-wordpress');
+        return __('Please update your payment method to ensure uninterrupted service for your subscription.', 'bocs-wordpress');
     }
 
     /**
-     * Initialize Settings Form Fields
+     * Initialise settings form fields.
      */
     public function init_form_fields() {
         $this->form_fields = array(
-            'enabled' => array(
-                'title'         => __('Enable/Disable', 'bocs-wordpress'),
-                'type'         => 'checkbox',
-                'label'        => __('Enable this email notification', 'bocs-wordpress'),
-                'default'      => 'yes',
+            'enabled'            => array(
+                'title'   => __('Enable/Disable', 'bocs-wordpress'),
+                'type'    => 'checkbox',
+                'label'   => __('Enable this email notification', 'bocs-wordpress'),
+                'default' => 'yes',
             ),
-            'subject' => array(
-                'title'         => __('Subject', 'bocs-wordpress'),
-                'type'         => 'text',
-                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '<code>{site_title}, {order_date}, {order_number}</code>'),
-                'placeholder'  => $this->get_default_subject(),
-                'default'      => '',
-                'desc_tip'     => true,
+            'subject'            => array(
+                'title'       => __('Subject', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Renewal payment failed for order {order_number}</code>.', 'bocs-wordpress'),
+                'placeholder' => $this->get_default_subject(),
+                'default'     => '',
             ),
-            'heading' => array(
-                'title'         => __('Email Heading', 'bocs-wordpress'),
-                'type'         => 'text',
-                'description'  => sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '<code>{site_title}, {order_date}, {order_number}</code>'),
-                'placeholder'  => $this->get_default_heading(),
-                'default'      => '',
-                'desc_tip'     => true,
+            'heading'            => array(
+                'title'       => __('Email Heading', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Renewal Payment Failed</code>.', 'bocs-wordpress'),
+                'placeholder' => $this->get_default_heading(),
+                'default'     => '',
             ),
             'additional_content' => array(
                 'title'       => __('Additional content', 'bocs-wordpress'),
                 'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
                 'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('N/A', 'bocs-wordpress'),
+                'placeholder' => __('Please update your payment method to ensure uninterrupted service for your subscription.', 'bocs-wordpress'),
                 'type'        => 'textarea',
                 'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,
             ),
-            'email_type' => array(
-                'title'         => __('Email type', 'bocs-wordpress'),
-                'type'         => 'select',
-                'description'  => __('Choose which format of email to send.', 'bocs-wordpress'),
-                'default'      => 'html',
-                'class'        => 'email_type wc-enhanced-select',
-                'options'      => $this->get_email_type_options(),
-                'desc_tip'     => true,
+            'email_type'         => array(
+                'title'       => __('Email type', 'bocs-wordpress'),
+                'type'        => 'select',
+                'description' => __('Choose which format of email to send.', 'bocs-wordpress'),
+                'default'     => 'html',
+                'class'       => 'email_type wc-enhanced-select',
+                'options'     => $this->get_email_type_options(),
+                'desc_tip'    => true,
             ),
         );
     }
-}
-
-endif;
-
-return new WC_Bocs_Email_Processing_Renewal_Order();
+} 

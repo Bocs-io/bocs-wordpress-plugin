@@ -6,7 +6,7 @@
  *
  * @package    Bocs
  * @subpackage Bocs/includes
- * @since      0.0.1
+ * @since      0.0.118
  */
 
 class Bocs_Account
@@ -80,7 +80,7 @@ class Bocs_Account
      * 2. WordPress user ID (as external source ID)
      * 3. User's email address
      *
-     * @since      0.0.116
+     * @since      0.0.118
      * @access     public
      *
      * @global     WP_User $current_user WordPress current user object.

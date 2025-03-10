@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer On-hold Renewal Order email
+ * Customer Welcome email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-on-hold-renewal-order.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-welcome.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -17,16 +17,18 @@ do_action('woocommerce_email_header', $email_heading, $email); ?>
 
 <?php /* translators: %s: Customer first name */ ?>
 <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
-<p><?php esc_html_e('Thanks for your renewal order. It\'s on-hold until we confirm your payment has been received. In the meantime, here\'s a reminder of your order:', 'bocs-wordpress'); ?></p>
+<p><?php esc_html_e('Welcome to Bocs! Thank you for your first purchase. We\'re excited to have you as a customer.', 'bocs-wordpress'); ?></p>
 
 <?php
-// Display Bocs App attribution
-$source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
+// Display Bocs ID information
+$bocs_id = get_post_meta($order->get_id(), '__bocs_bocs_id', true);
 
-if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
-<p><strong><?php esc_html_e('This order was created through the Bocs App.', 'bocs-wordpress'); ?></strong></p>
+if (!empty($bocs_id)) : ?>
+<p><strong><?php printf(esc_html__('Your Bocs ID: %s', 'bocs-wordpress'), esc_html($bocs_id)); ?></strong></p>
+<p><?php esc_html_e('This is your first purchase through the Bocs platform. Your Bocs ID helps us identify your account and provide you with seamless service.', 'bocs-wordpress'); ?></p>
 <?php endif; ?>
+
+<p><?php esc_html_e('Here are the details of your order:', 'bocs-wordpress'); ?></p>
 
 <?php
 

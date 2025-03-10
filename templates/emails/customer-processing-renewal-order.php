@@ -16,8 +16,17 @@ defined('ABSPATH') || exit;
 do_action('woocommerce_email_header', $email_heading, $email); ?>
 
 <?php /* translators: %s: Customer first name */ ?>
-<p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress-plugin'), esc_html($order->get_billing_first_name())); ?></p>
-<p><?php esc_html_e('Just to let you know &mdash; we\'ve received your renewal order and it is now being processed:', 'bocs-wordpress-plugin'); ?></p>
+<p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
+<p><?php esc_html_e('Just to let you know &mdash; we\'ve received your renewal order and it is now being processed:', 'bocs-wordpress'); ?></p>
+
+<?php
+// Display Bocs App attribution
+$source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
+$utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
+
+if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
+<p><strong><?php esc_html_e('This order was created through the Bocs App.', 'bocs-wordpress'); ?></strong></p>
+<?php endif; ?>
 
 <?php
 

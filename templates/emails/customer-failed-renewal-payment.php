@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer On-hold Renewal Order email
+ * Customer Failed Renewal Payment email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-on-hold-renewal-order.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-failed-renewal-payment.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -17,7 +17,7 @@ do_action('woocommerce_email_header', $email_heading, $email); ?>
 
 <?php /* translators: %s: Customer first name */ ?>
 <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
-<p><?php esc_html_e('Thanks for your renewal order. It\'s on-hold until we confirm your payment has been received. In the meantime, here\'s a reminder of your order:', 'bocs-wordpress'); ?></p>
+<p><?php esc_html_e('We\'re sorry, but the renewal payment for your subscription has failed. This could be due to an expired card, insufficient funds, or a change in your payment details.', 'bocs-wordpress'); ?></p>
 
 <?php
 // Display Bocs App attribution
@@ -27,6 +27,8 @@ $utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source'
 if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
 <p><strong><?php esc_html_e('This order was created through the Bocs App.', 'bocs-wordpress'); ?></strong></p>
 <?php endif; ?>
+
+<p><?php esc_html_e('Please update your payment information in your account to avoid any interruption in your subscription. Here are the details of the order that failed to process:', 'bocs-wordpress'); ?></p>
 
 <?php
 
