@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Welcome
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -12,16 +16,29 @@ if (!defined('ABSPATH')) {
 /**
  * Welcome Email for First Bocs Purchase
  *
- * An email sent to the customer when they make their first purchase through Bocs.
+ * An email sent to customers when they make their first purchase through Bocs.
+ * This handles the email notification sent to the customer after their initial Bocs purchase.
  *
  * @class       WC_Bocs_Email_Welcome
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Welcome extends WC_Email {
 
     /**
+     * Bocs ID associated with this order.
+     *
+     * @var string
+     */
+    public $bocs_id;
+
+    /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_welcome';
@@ -38,15 +55,15 @@ class WC_Bocs_Email_Welcome extends WC_Email {
 
         // Call parent constructor
         parent::__construct();
-
-        // Other settings
-        $this->recipient = $this->get_option('recipient', get_option('admin_email'));
+        
+        // Do not set a default recipient - we'll set it in the trigger method based on the order
     }
 
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Welcome to {site_title}!', 'bocs-wordpress');
@@ -55,7 +72,8 @@ class WC_Bocs_Email_Welcome extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Welcome to Bocs on {site_title}', 'bocs-wordpress');
@@ -64,6 +82,7 @@ class WC_Bocs_Email_Welcome extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
+     * @since 1.0.0
      * @param int $order_id The order ID.
      */
     public function trigger($order_id) {
@@ -72,21 +91,35 @@ class WC_Bocs_Email_Welcome extends WC_Email {
         if ($order_id) {
             $this->object = wc_get_order($order_id);
             if (is_a($this->object, 'WC_Order')) {
-                // Check if this order has the required meta data
-                $bocs_id = get_post_meta($order_id, '__bocs_bocs_id', true);
+                // First check order meta
+                $bocs_bocs_id = $this->object->get_meta('__bocs_bocs_id');
+                $bocs_collections_id = $this->object->get_meta('__bocs_collections_id');
+                $bocs_frequency_id = $this->object->get_meta('__bocs_frequency_id');
                 
-                // Check if the order does NOT have the attribution meta keys
-                $source_type = get_post_meta($order_id, '_wc_order_attribution_source_type', true);
-                $utm_source = get_post_meta($order_id, '_wc_order_attribution_utm_source', true);
-                
-                // Only proceed if:
-                // 1. Order has a non-empty bocs_id
-                // 2. Order does NOT have attribution meta keys (or they're empty)
-                if (!empty($bocs_id) && empty($source_type) && empty($utm_source)) {
-                    $this->recipient = $this->object->get_billing_email();
+                // If meta is empty, check session
+                if (empty($bocs_bocs_id) && isset(WC()->session)) {
+                    $bocs_value = WC()->session->get('bocs');
+                    if (empty($bocs_value) && isset($_COOKIE['__bocs_id'])) {
+                        $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
+                    }
+                    if (!empty($bocs_value)) {
+                        $bocs_bocs_id = $bocs_value;
+                    }
+                }
 
+                // Check attribution source
+                $utm_source = $this->object->get_meta('_wc_order_attribution_utm_source');
+                
+                // Send welcome email if any Bocs ID exists
+                $has_bocs_id = !empty($bocs_bocs_id) || !empty($bocs_collections_id) || !empty($bocs_frequency_id);
+                
+                if ($has_bocs_id) {
+                    $this->recipient = $this->object->get_billing_email();
                     $this->placeholders['{order_date}']   = wc_format_datetime($this->object->get_date_created());
                     $this->placeholders['{order_number}'] = $this->object->get_order_number();
+                    
+                    // Set the Bocs ID for the email template
+                    $this->bocs_id = $bocs_bocs_id ?: $bocs_collections_id ?: $bocs_frequency_id;
                 }
             }
         }
@@ -101,7 +134,8 @@ class WC_Bocs_Email_Welcome extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -122,7 +156,8 @@ class WC_Bocs_Email_Welcome extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -143,7 +178,8 @@ class WC_Bocs_Email_Welcome extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('Thanks for choosing Bocs. We look forward to serving you!', 'bocs-wordpress');
@@ -151,6 +187,8 @@ class WC_Bocs_Email_Welcome extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(

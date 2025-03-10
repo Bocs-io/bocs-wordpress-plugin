@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Subscription_Paused
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,15 +17,22 @@ if (!defined('ABSPATH')) {
  * Subscription Paused Email
  *
  * An email sent to the customer when a subscription is paused/put on-hold.
+ * This email notifies customers that their subscription has been temporarily paused
+ * and provides information on how and when the subscription can be reactivated.
  *
  * @class       WC_Bocs_Email_Subscription_Paused
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Subscription_Paused extends WC_Email {
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_subscription_paused';
@@ -43,7 +54,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Your {site_title} subscription has been paused', 'bocs-wordpress');
@@ -52,7 +64,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Subscription Paused', 'bocs-wordpress');
@@ -61,7 +74,9 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
+     * @since 1.0.0
      * @param int $subscription_id The subscription ID.
+     * @return void
      */
     public function trigger($subscription_id) {
         $this->setup_locale();
@@ -110,7 +125,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -131,7 +147,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -152,7 +169,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('Your subscription will remain on hold until it\'s reactivated. You can reactivate it at any time by logging into your account.', 'bocs-wordpress');
@@ -160,6 +178,8 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(

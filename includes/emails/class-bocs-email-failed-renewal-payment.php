@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Failed_Renewal_Payment
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,15 +17,23 @@ if (!defined('ABSPATH')) {
  * Failed Renewal Payment Email
  *
  * An email sent to the customer when a renewal payment fails.
+ * This notification informs customers about failed subscription renewal payments
+ * and provides instructions for updating their payment method to maintain
+ * uninterrupted service.
  *
  * @class       WC_Bocs_Email_Failed_Renewal_Payment
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_failed_renewal_payment';
@@ -43,7 +55,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Renewal payment failed for order {order_number}', 'bocs-wordpress');
@@ -52,7 +65,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Renewal Payment Failed', 'bocs-wordpress');
@@ -61,7 +75,9 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
+     * @since 1.0.0
      * @param int $order_id The order ID.
+     * @return void
      */
     public function trigger($order_id) {
         $this->setup_locale();
@@ -93,7 +109,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -114,7 +131,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -135,7 +153,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('Please update your payment method to ensure uninterrupted service for your subscription.', 'bocs-wordpress');
@@ -143,6 +162,8 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(

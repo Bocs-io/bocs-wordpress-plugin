@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Payment_Retry
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,15 +17,23 @@ if (!defined('ABSPATH')) {
  * Payment Retry Email
  *
  * An email sent to the customer when a failed payment is about to be retried.
+ * This notification is sent before an automated payment retry attempt occurs,
+ * giving customers an opportunity to update their payment method or ensure 
+ * adequate funds are available.
  *
  * @class       WC_Bocs_Email_Payment_Retry
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Payment_Retry extends WC_Email {
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_payment_retry';
@@ -44,7 +56,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Payment retry scheduled for your {site_title} subscription', 'bocs-wordpress');
@@ -53,7 +66,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Payment Retry Scheduled', 'bocs-wordpress');
@@ -62,8 +76,10 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
-     * @param int $order_id The order ID.
+     * @since 1.0.0
+     * @param int    $order_id   The order ID.
      * @param string $retry_date The date of the scheduled retry (optional).
+     * @return void
      */
     public function trigger($order_id, $retry_date = '') {
         $this->setup_locale();
@@ -98,7 +114,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -120,7 +137,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -142,7 +160,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('If you want to update your payment method before the retry, please log in to your account.', 'bocs-wordpress');
@@ -150,6 +169,8 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(

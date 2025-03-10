@@ -1,5 +1,15 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
+/**
+ * Class WC_Bocs_Email_Subscription_Switched
+ *
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
+ */
+
+if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
@@ -13,17 +23,35 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
-if ( ! class_exists( 'WC_Bocs_Email_Subscription_Switched' ) ) :
+if (!class_exists('WC_Bocs_Email_Subscription_Switched')) :
 
 /**
  * Subscription Switched Email
  *
- * Email sent to customer when their subscription is switched
+ * An email sent to the customer when their subscription plan is switched.
+ * This email notifies customers when they've successfully changed to a different 
+ * subscription plan, providing details about their new subscription terms.
+ *
+ * @class       WC_Bocs_Email_Subscription_Switched
+ * @version     0.0.118
+ * @package     Bocs\Emails
+ * @extends     WC_Email
  */
 class WC_Bocs_Email_Subscription_Switched extends WC_Email {
 
     /**
+     * Old subscription data before the switch.
+     *
+     * @var array
+     */
+    public $old_subscription_data;
+
+    /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_subscription_switched';
@@ -43,14 +71,15 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
 
         // Other settings
         $this->manual = true;
-        $this->heading = $this->get_option( 'heading', $this->get_default_heading() );
-        $this->subject = $this->get_option( 'subject', $this->get_default_subject() );
+        $this->heading = $this->get_option('heading', $this->get_default_heading());
+        $this->subject = $this->get_option('subject', $this->get_default_subject());
     }
 
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Your subscription has been switched', 'bocs-wordpress');
@@ -59,16 +88,19 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
-        return __( 'Subscription Switched', 'bocs-wordpress' );
+        return __('Subscription Switched', 'bocs-wordpress');
     }
 
     /**
      * Trigger the sending of this email.
      *
+     * @since 1.0.0
      * @param int $subscription_id The subscription ID.
+     * @return void
      */
     public function trigger($subscription_id) {
         $this->setup_locale();
@@ -105,7 +137,8 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -115,9 +148,9 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 'old_subscription_data' => $this->old_subscription_data,
                 'email_heading'         => $this->get_heading(),
                 'additional_content'    => $this->get_additional_content(),
-                'sent_to_admin'        => false,
-                'plain_text'           => false,
-                'email'                => $this,
+                'sent_to_admin'         => false,
+                'plain_text'            => false,
+                'email'                 => $this,
             ),
             '',
             $this->template_base
@@ -127,7 +160,8 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -137,9 +171,9 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 'old_subscription_data' => $this->old_subscription_data,
                 'email_heading'         => $this->get_heading(),
                 'additional_content'    => $this->get_additional_content(),
-                'sent_to_admin'        => false,
-                'plain_text'           => true,
-                'email'                => $this,
+                'sent_to_admin'         => false,
+                'plain_text'            => true,
+                'email'                 => $this,
             ),
             '',
             $this->template_base
@@ -149,56 +183,59 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
-        return __( 'Thanks for using {site_title}!', 'bocs-wordpress' );
+        return __('Thanks for using {site_title}!', 'bocs-wordpress');
     }
 
     /**
-     * Initialize Settings Form Fields
+     * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(
-            'enabled' => array(
-                'title'         => __( 'Enable/Disable', 'bocs-wordpress' ),
-                'type'         => 'checkbox',
-                'label'        => __( 'Enable this email notification', 'bocs-wordpress' ),
-                'default'      => 'yes',
+            'enabled'            => array(
+                'title'   => __('Enable/Disable', 'bocs-wordpress'),
+                'type'    => 'checkbox',
+                'label'   => __('Enable this email notification', 'bocs-wordpress'),
+                'default' => 'yes',
             ),
-            'subject' => array(
-                'title'         => __( 'Subject', 'bocs-wordpress' ),
-                'type'         => 'text',
-                'description'  => sprintf( __( 'Available placeholders: %s', 'bocs-wordpress' ), '<code>{site_title}, {order_date}, {order_number}</code>' ),
-                'placeholder'  => $this->get_default_subject(),
-                'default'      => '',
-                'desc_tip'     => true,
+            'subject'            => array(
+                'title'       => __('Subject', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your subscription has been switched</code>.', 'bocs-wordpress'),
+                'placeholder' => $this->get_default_subject(),
+                'default'     => '',
             ),
-            'heading' => array(
-                'title'         => __( 'Email Heading', 'bocs-wordpress' ),
-                'type'         => 'text',
-                'description'  => sprintf( __( 'Available placeholders: %s', 'bocs-wordpress' ), '<code>{site_title}, {order_date}, {order_number}</code>' ),
-                'placeholder'  => $this->get_default_heading(),
-                'default'      => '',
-                'desc_tip'     => true,
+            'heading'            => array(
+                'title'       => __('Email Heading', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Subscription Switched</code>.', 'bocs-wordpress'),
+                'placeholder' => $this->get_default_heading(),
+                'default'     => '',
             ),
             'additional_content' => array(
-                'title'       => __( 'Additional content', 'bocs-wordpress' ),
-                'description' => __( 'Text to appear below the main email content.', 'bocs-wordpress' ),
+                'title'       => __('Additional content', 'bocs-wordpress'),
+                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
                 'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __( 'N/A', 'bocs-wordpress' ),
+                'placeholder' => __('Thanks for using {site_title}!', 'bocs-wordpress'),
                 'type'        => 'textarea',
                 'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,
             ),
-            'email_type' => array(
-                'title'         => __( 'Email type', 'bocs-wordpress' ),
-                'type'         => 'select',
-                'description'  => __( 'Choose which format of email to send.', 'bocs-wordpress' ),
-                'default'      => 'html',
-                'class'        => 'email_type wc-enhanced-select',
-                'options'      => $this->get_email_type_options(),
-                'desc_tip'     => true,
+            'email_type'         => array(
+                'title'       => __('Email type', 'bocs-wordpress'),
+                'type'        => 'select',
+                'description' => __('Choose which format of email to send.', 'bocs-wordpress'),
+                'default'     => 'html',
+                'class'       => 'email_type wc-enhanced-select',
+                'options'     => $this->get_email_type_options(),
+                'desc_tip'    => true,
             ),
         );
     }

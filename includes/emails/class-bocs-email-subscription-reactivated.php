@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Subscription_Reactivated
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,21 +17,28 @@ if (!defined('ABSPATH')) {
  * Subscription Reactivated Email
  *
  * An email sent to the customer when a subscription is reactivated.
+ * Triggers when a customer reactivates their previously paused or canceled subscription.
+ * Provides the customer with confirmation of the reactivation and details about their subscription.
  *
  * @class       WC_Bocs_Email_Subscription_Reactivated
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_subscription_reactivated';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Subscription Reactivated', 'bocs-wordpress');
-        $this->description    = __('Subscription reactivated emails are sent when a paused subscription is reactivated.', 'bocs-wordpress');
+        $this->description    = __('Subscription reactivated emails are sent when customers reactivate their subscriptions.', 'bocs-wordpress');
         $this->template_html  = 'emails/customer-subscription-reactivated.php';
         $this->template_plain = 'emails/plain/customer-subscription-reactivated.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
@@ -43,7 +54,8 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Your {site_title} subscription has been reactivated', 'bocs-wordpress');
@@ -52,7 +64,8 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Subscription Reactivated', 'bocs-wordpress');
@@ -61,6 +74,7 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
+     * @since 1.0.0
      * @param int $subscription_id The subscription ID.
      */
     public function trigger($subscription_id) {
@@ -110,7 +124,8 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
@@ -131,7 +146,8 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
@@ -152,14 +168,17 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
-        return __('Your subscription is now active and future payments will be processed as scheduled.', 'bocs-wordpress');
+        return __('Thank you for reactivating your subscription with us. We\'re excited to continue serving you!', 'bocs-wordpress');
     }
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(
@@ -189,7 +208,7 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
                 'title'       => __('Additional content', 'bocs-wordpress'),
                 'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
                 'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('Your subscription is now active and future payments will be processed as scheduled.', 'bocs-wordpress'),
+                'placeholder' => __('Thank you for reactivating your subscription with us. We\'re excited to continue serving you!', 'bocs-wordpress'),
                 'type'        => 'textarea',
                 'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,

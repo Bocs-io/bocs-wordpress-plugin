@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Payment_Method_Update
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,15 +17,31 @@ if (!defined('ABSPATH')) {
  * Payment Method Update Required Email
  *
  * An email sent to the customer when their payment method needs to be updated.
+ * This notification informs customers when their payment method is about to expire
+ * or has been declined, prompting them to update their payment information to
+ * avoid subscription interruptions.
  *
  * @class       WC_Bocs_Email_Payment_Method_Update
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
 
     /**
+     * Update reason text
+     *
+     * @since 1.0.0
+     * @var string
+     */
+    protected $update_reason;
+
+    /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_payment_method_update';
@@ -43,7 +63,8 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Action Required: Update Your Payment Method', 'bocs-wordpress');
@@ -52,7 +73,8 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Payment Method Update Required', 'bocs-wordpress');
@@ -61,8 +83,10 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
-     * @param int $subscription_id The subscription ID.
-     * @param string $reason The reason for the update (optional).
+     * @since 1.0.0
+     * @param int    $subscription_id The subscription ID.
+     * @param string $reason          The reason for the update (optional).
+     * @return void
      */
     public function trigger($subscription_id, $reason = '') {
         $this->setup_locale();
@@ -114,19 +138,20 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
             $this->template_html,
             array(
-                'subscription'   => $this->object,
-                'email_heading'  => $this->get_heading(),
+                'subscription'       => $this->object,
+                'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'  => false,
-                'plain_text'     => false,
-                'email'          => $this,
-                'update_reason'  => $this->update_reason,
+                'sent_to_admin'      => false,
+                'plain_text'         => false,
+                'email'              => $this,
+                'update_reason'      => $this->update_reason,
             ),
             '',
             $this->template_base
@@ -136,19 +161,20 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
             $this->template_plain,
             array(
-                'subscription'   => $this->object,
-                'email_heading'  => $this->get_heading(),
+                'subscription'       => $this->object,
+                'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'  => false,
-                'plain_text'     => true,
-                'email'          => $this,
-                'update_reason'  => $this->update_reason,
+                'sent_to_admin'      => false,
+                'plain_text'         => true,
+                'email'              => $this,
+                'update_reason'      => $this->update_reason,
             ),
             '',
             $this->template_base
@@ -158,7 +184,8 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('Please update your payment method as soon as possible to avoid any interruption to your subscription.', 'bocs-wordpress');
@@ -166,6 +193,8 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(

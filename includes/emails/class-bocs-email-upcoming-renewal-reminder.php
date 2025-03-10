@@ -2,7 +2,11 @@
 /**
  * Class WC_Bocs_Email_Upcoming_Renewal_Reminder
  *
- * @package Bocs\Emails
+ * @package     Bocs\Emails
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 
 if (!defined('ABSPATH')) {
@@ -13,15 +17,22 @@ if (!defined('ABSPATH')) {
  * Upcoming Renewal Reminder Email
  *
  * An email sent to the customer a few days before a subscription renewal.
+ * This email notifies customers about an upcoming subscription renewal payment
+ * and provides details about the renewal date and payment amount.
  *
  * @class       WC_Bocs_Email_Upcoming_Renewal_Reminder
  * @version     0.0.118
+ * @package     Bocs\Emails
  * @extends     WC_Email
  */
 class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_upcoming_renewal_reminder';
@@ -44,7 +55,8 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Get email subject.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email subject
      */
     public function get_default_subject() {
         return __('[Bocs] Your {site_title} subscription will renew soon', 'bocs-wordpress');
@@ -53,7 +65,8 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Get email heading.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default email heading
      */
     public function get_default_heading() {
         return __('Upcoming Subscription Renewal', 'bocs-wordpress');
@@ -62,8 +75,10 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
-     * @param int $subscription_id The subscription ID.
-     * @param string $renewal_date The date of the upcoming renewal.
+     * @since 1.0.0
+     * @param int    $subscription_id The subscription ID.
+     * @param string $renewal_date    The date of the upcoming renewal.
+     * @return void
      */
     public function trigger($subscription_id, $renewal_date = '') {
         $this->setup_locale();
@@ -114,19 +129,20 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Get content html.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email HTML content
      */
     public function get_content_html() {
         return wc_get_template_html(
             $this->template_html,
             array(
-                'subscription'      => $this->object,
-                'email_heading'     => $this->get_heading(),
+                'subscription'       => $this->object,
+                'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'     => false,
-                'plain_text'        => false,
-                'email'             => $this,
-                'renewal_date'      => $this->placeholders['{renewal_date}'],
+                'sent_to_admin'      => false,
+                'plain_text'         => false,
+                'email'              => $this,
+                'renewal_date'       => $this->placeholders['{renewal_date}'],
             ),
             '',
             $this->template_base
@@ -136,19 +152,20 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Get content plain.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Email plain text content
      */
     public function get_content_plain() {
         return wc_get_template_html(
             $this->template_plain,
             array(
-                'subscription'      => $this->object,
-                'email_heading'     => $this->get_heading(),
+                'subscription'       => $this->object,
+                'email_heading'      => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'     => false,
-                'plain_text'        => true,
-                'email'             => $this,
-                'renewal_date'      => $this->placeholders['{renewal_date}'],
+                'sent_to_admin'      => false,
+                'plain_text'         => true,
+                'email'              => $this,
+                'renewal_date'       => $this->placeholders['{renewal_date}'],
             ),
             '',
             $this->template_base
@@ -158,7 +175,8 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Default content to show below main email content.
      *
-     * @return string
+     * @since 1.0.0
+     * @return string Default additional content
      */
     public function get_default_additional_content() {
         return __('If you wish to make any changes to your subscription before the renewal, please contact us.', 'bocs-wordpress');
@@ -166,6 +184,8 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
 
     /**
      * Initialise settings form fields.
+     *
+     * @since 1.0.0
      */
     public function init_form_fields() {
         $this->form_fields = array(
