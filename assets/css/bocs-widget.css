@@ -1,0 +1,139 @@
+/* Remove default bullets */
+#bocsUL  {
+    list-style-type: none;
+    cursor: pointer;
+}
+
+/* Remove margins and padding from the parent ul */
+#bocsUL  {
+    margin: 0;
+    padding: 0;
+}
+
+#bocsUL li {
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
+    list-style: none;
+}
+
+/* Style the bocsCaret/arrow */
+.bocsCaret {
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
+}
+
+/* Create the bocsCaret/arrow with a unicode, and style it */
+.bocsCaret::before {
+    content: "\25B6";
+    color: black;
+    display: inline-block;
+    margin-right: 10px;
+    font-size: 12px;
+}
+
+/* Rotate the bocsCaret/arrow icon when clicked on (using JavaScript) */
+.bocsCaret-down::before {
+    transform: rotate(90deg);
+}
+
+/* Hide the bocsNested list */
+.bocsNested {
+    display: none;
+}
+
+/* Show the bocsNested list when the user clicks on the bocsCaret/arrow (with JavaScript) */
+.active {
+    display: block;
+}
+
+#bocsUL li.active {
+    display: block;
+    font-weight: bold;
+    text-decoration: underline;
+    background-color: #CCCCCC;
+}
+
+
+div.bocs-block-widget-types,
+div.bocs-block-widget-options {
+    display:block;
+}
+
+div.bocs-block-widget-blocs,
+div.bocs-block-widget-collections,
+div.bocs-block-widget-collections-options,
+div.bocs-block-widget-blocs-options {
+    display: inline-block;
+}
+
+div.bocs-block-widget-blocs,
+div.bocs-block-widget-blocs-options {
+    margin-right: 50px;
+}
+
+div.bocs-block-widget-collections-options,
+div.bocs-block-widget-blocs-options {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 10px;
+    background-color: #FFF;
+    padding: 8px;
+    box-shadow: 0 0 0 1px #1e1e1e;
+    opacity: 1;
+    z-index: 1;
+    /*transform: translateX(420px) translateY(381px) translateY(0em) scale(1) translateZ(0px);
+    transform-origin: 0% 0% 0px;*/
+}
+
+div.bocs-block-widget-collections-options > ul,
+div.bocs-block-widget-blocs-options > ul{
+    list-style-type: none;
+    margin:0;
+    padding:0;
+}
+
+div.bocs-block-widget-blocs > span.dashicons.dashicons-arrow-down-alt2,
+div.bocs-block-widget-collections > span.dashicons.dashicons-arrow-down-alt2{
+    margin-top: 10px;
+}
+
+div.bocs-block-widget-blocs > span.dashicons.dashicons-arrow-down-alt2.toolbar,
+div.bocs-block-widget-collections > span.dashicons.dashicons-arrow-down-alt2.toolbar{
+    margin-top: 0;
+}
+
+div.bocs-block-widget-collections-options > ul li,
+div.bocs-block-widget-blocs-options > ul li{
+    cursor: pointer;
+}
+
+div.bocs-block-widget-collections-options > ul li:hover,
+div.bocs-block-widget-blocs-options > ul li:hover {
+    /*background-color: beige;
+    font-weight: bold;*/
+}
+
+.bocs-dropdown-menu .components-dropdown-menu__toggle {
+    position: relative;
+}
+.bocs-dropdown-menu .components-dropdown-menu__toggle::after {
+    content: '\f078'; /* FontAwesome down icon */
+    font-family: 'FontAwesome';
+    position: absolute;
+    top: 50%;
+    right: -5px;
+    transform: translateY(-50%);
+}
+
+div.bocs-dropdown-menu > button {
+    margin-right: 15px;
+}
+
+p.bocs-widget-description,
+p.bocs-widget-selected-desc{
+    display: inline;
+    position: relative;
+    top: -25px;
+}
