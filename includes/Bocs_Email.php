@@ -39,6 +39,9 @@ class Bocs_Email
             include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
         }
 
+        // Load all Bocs email classes
+        $this->load_email_classes();
+
         // Add email classes
         if (class_exists('WC_Bocs_Email_Processing_Renewal_Order')) {
             $email_classes['WC_Bocs_Email_Processing_Renewal_Order'] = new WC_Bocs_Email_Processing_Renewal_Order();
@@ -58,7 +61,6 @@ class Bocs_Email
         if (class_exists('WC_Bocs_Email_Welcome')) {
             $email_classes['WC_Bocs_Email_Welcome'] = new WC_Bocs_Email_Welcome();
         }
-        // Add new email classes
         if (class_exists('WC_Bocs_Email_Failed_Renewal_Payment')) {
             $email_classes['WC_Bocs_Email_Failed_Renewal_Payment'] = new WC_Bocs_Email_Failed_Renewal_Payment();
         }
@@ -68,15 +70,52 @@ class Bocs_Email
         if (class_exists('WC_Bocs_Email_Subscription_Cancelled')) {
             $email_classes['WC_Bocs_Email_Subscription_Cancelled'] = new WC_Bocs_Email_Subscription_Cancelled();
         }
-
-        // Add custom email classes
-        $email_classes['WC_Bocs_Email_Payment_Method_Update'] = new WC_Bocs_Email_Payment_Method_Update();
-        $email_classes['WC_Bocs_Email_Payment_Retry'] = new WC_Bocs_Email_Payment_Retry();
-        $email_classes['WC_Bocs_Email_Subscription_Paused'] = new WC_Bocs_Email_Subscription_Paused();
-        $email_classes['WC_Bocs_Email_Subscription_Reactivated'] = new WC_Bocs_Email_Subscription_Reactivated();
-        $email_classes['WC_Bocs_Email_Manual_Renewal_Reminder'] = new WC_Bocs_Email_Manual_Renewal_Reminder();
+        if (class_exists('WC_Bocs_Email_Payment_Method_Update')) {
+            $email_classes['WC_Bocs_Email_Payment_Method_Update'] = new WC_Bocs_Email_Payment_Method_Update();
+        }
+        if (class_exists('WC_Bocs_Email_Payment_Retry')) {
+            $email_classes['WC_Bocs_Email_Payment_Retry'] = new WC_Bocs_Email_Payment_Retry();
+        }
+        if (class_exists('WC_Bocs_Email_Subscription_Paused')) {
+            $email_classes['WC_Bocs_Email_Subscription_Paused'] = new WC_Bocs_Email_Subscription_Paused();
+        }
+        if (class_exists('WC_Bocs_Email_Subscription_Reactivated')) {
+            $email_classes['WC_Bocs_Email_Subscription_Reactivated'] = new WC_Bocs_Email_Subscription_Reactivated();
+        }
+        if (class_exists('WC_Bocs_Email_Manual_Renewal_Reminder')) {
+            $email_classes['WC_Bocs_Email_Manual_Renewal_Reminder'] = new WC_Bocs_Email_Manual_Renewal_Reminder();
+        }
 
         return $email_classes;
+    }
+
+    /**
+     * Load all BOCS email classes
+     */
+    public function load_email_classes() {
+        $email_class_files = array(
+            'class-bocs-email-processing-renewal-order.php',
+            'class-bocs-email-completed-renewal-order.php',
+            'class-bocs-email-on-hold-renewal-order.php',
+            'class-bocs-email-customer-renewal-invoice.php',
+            'class-bocs-email-subscription-switched.php',
+            'class-bocs-email-welcome.php',
+            'class-bocs-email-failed-renewal-payment.php',
+            'class-bocs-email-upcoming-renewal-reminder.php',
+            'class-bocs-email-subscription-cancelled.php',
+            'class-bocs-email-payment-method-update.php',
+            'class-bocs-email-payment-retry.php',
+            'class-bocs-email-subscription-paused.php',
+            'class-bocs-email-subscription-reactivated.php',
+            'class-bocs-email-manual-renewal-reminder.php'
+        );
+
+        foreach ($email_class_files as $file) {
+            $file_path = BOCS_PLUGIN_DIR . 'includes/emails/' . $file;
+            if (file_exists($file_path)) {
+                include_once $file_path;
+            }
+        }
     }
 
     /**
@@ -88,6 +127,9 @@ class Bocs_Email
         if (!$mailer) {
             return;
         }
+
+        // Load all Bocs email classes
+        $this->load_email_classes();
 
         // Map our email IDs to WooCommerce default email IDs
         $email_mapping = array(
@@ -233,6 +275,9 @@ class Bocs_Email
         if (!function_exists('WC')) {
             return;
         }
+
+        // Load all Bocs email classes
+        $this->load_email_classes();
 
         // Processing Renewal Order Email
         if (class_exists('WC_Bocs_Email_Processing_Renewal_Order')) {

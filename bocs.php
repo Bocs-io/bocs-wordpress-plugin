@@ -366,6 +366,14 @@ function bocs_check_woocommerce() {
     return true;
 }
 
+// Define plugin constants
+define('BOCS_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('BOCS_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('BOCS_TEMPLATE_PATH', BOCS_PLUGIN_DIR . 'templates/');
+
+/**
+ * Initialize the plugin.
+ */
 function run_plugin() {
     // Only run the check after plugins are loaded
     if (!did_action('plugins_loaded')) {
