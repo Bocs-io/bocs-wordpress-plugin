@@ -17,25 +17,33 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 /* translators: %s: Customer first name */
 echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
 
-if (!empty($expiry_date)) {
-    echo sprintf(esc_html__('This is a reminder that your subscription will expire on %s if you don\'t renew it.', 'bocs-wordpress'), $expiry_date) . "\n\n";
-} else {
-    echo esc_html__('This is a friendly reminder that your subscription will expire soon if you don\'t renew it.', 'bocs-wordpress') . "\n\n";
+// translators: %1$s: date, %2$s: subscription number
+printf(
+    esc_html__('This is a reminder that your subscription #%2$s will expire on %1$s. To renew, please make a manual payment before your expiration date to avoid any interruption in service.', 'bocs-wordpress'),
+    esc_html(date_i18n(wc_date_format(), $subscription->get_time('end', 'site'))),
+    esc_html($subscription->get_order_number())
+) . "\n\n";
+
+echo esc_html__('RENEWAL REQUIRED', 'bocs-wordpress') . "\n\n";
+
+echo esc_html__('Please use the link below to renew your subscription.', 'bocs-wordpress') . "\n";
+
+$renewal_url = $subscription->get_view_order_url();
+if (!empty($renewal_url)) {
+    echo esc_html__('Renew Now:', 'bocs-wordpress') . ' ' . esc_url($renewal_url) . "\n\n";
 }
 
-// Display Bocs App attribution
-$parent_order_id = is_callable(array($subscription, 'get_parent_id')) ? $subscription->get_parent_id() : $subscription->get_id();
-$source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
+// Check for Bocs App attribution
+$source_type = get_post_meta($subscription->get_id(), '_wc_order_attribution_source_type', true);
+$utm_source = get_post_meta($subscription->get_id(), '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
 
-echo esc_html__('To ensure uninterrupted service, please renew your subscription by visiting the link below:', 'bocs-wordpress') . "\n\n";
-echo esc_url($renewal_url) . "\n\n";
-
-echo esc_html__('Here are the details of your subscription:', 'bocs-wordpress') . "\n\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
@@ -44,7 +52,9 @@ echo esc_html__('Here are the details of your subscription:', 'bocs-wordpress') 
  */
 do_action('woocommerce_email_order_details', $subscription, $sent_to_admin, $plain_text, $email);
 
-echo "\n----------------------------------------\n\n";
+echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /*
  * @hooked WC_Emails::order_meta() Shows order meta data.
@@ -57,14 +67,13 @@ do_action('woocommerce_email_order_meta', $subscription, $sent_to_admin, $plain_
  */
 do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $plain_text, $email);
 
-echo "\n----------------------------------------\n\n";
-
-/**
- * Show user-defined additional content - this is set in each email's settings.
- */
 if ($additional_content) {
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n\n----------------------------------------\n\n";
+    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
+
+echo esc_html__('If you have any questions or need assistance with your renewal, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
+echo esc_html__('Thank you for your continued business with Bocs!', 'bocs-wordpress') . "\n\n";
 
 echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 

@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer Payment Retry email
+ * Customer Subscription Cancelled email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-payment-retry.php.
+ * This template can be overridden by copying it to yourtheme/bocs-wordpress/emails/bocs-customer-subscription-cancelled.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -14,25 +14,13 @@ defined('ABSPATH') || exit;
  * @hooked WC_Emails::email_header() Output the email header
  */
 do_action('woocommerce_email_header', $email_heading, $email);
-
-// Include email styles
-include(dirname(__FILE__) . '/email-styles.php');
 ?>
 
 <div class="bocs-email-container">
     <?php /* translators: %s: Customer first name */ ?>
     <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())); ?></p>
     
-    <p>
-        <?php 
-        /* translators: %1$s: subscription ID, %2$s: retry date */
-        printf(
-            esc_html__('The automatic payment to renew your subscription #%1$s has failed. We will automatically retry the payment on %2$s.', 'bocs-wordpress'),
-            esc_html($subscription->get_id()),
-            esc_html(date_i18n(wc_date_format(), strtotime($retry_time)))
-        ); 
-        ?>
-    </p>
+    <p><?php esc_html_e('Your subscription has been cancelled. Your subscription details are shown below for your reference:', 'bocs-wordpress'); ?></p>
     
     <?php
     // For subscription, check the parent order for Bocs App attribution
@@ -48,26 +36,10 @@ include(dirname(__FILE__) . '/email-styles.php');
     
     <div class="subscription-details">
         <p>
-            <span class="subscription-status status-active"><?php esc_html_e('Payment Retry', 'bocs-wordpress'); ?></span>
+            <span class="subscription-status status-cancelled"><?php esc_html_e('Cancelled', 'bocs-wordpress'); ?></span>
         </p>
-        <p>
-            <?php 
-            /* translators: %s: payment retry date */
-            printf(
-                esc_html__('Next payment retry: %s', 'bocs-wordpress'),
-                '<strong>' . esc_html(date_i18n(wc_date_format(), strtotime($retry_time))) . '</strong>'
-            ); 
-            ?>
-        </p>
+        <p><?php esc_html_e('Your subscription has been cancelled and will not renew.', 'bocs-wordpress'); ?></p>
     </div>
-
-    <p><?php esc_html_e('To avoid any service interruption, you can update your payment information before the next retry:', 'bocs-wordpress'); ?></p>
-    
-    <p style="text-align: center; margin: 30px 0;">
-        <a href="<?php echo esc_url($subscription->get_view_order_url()); ?>" class="bocs-button">
-            <?php esc_html_e('Update Payment Method', 'bocs-wordpress'); ?>
-        </a>
-    </p>
 
     <h2><?php esc_html_e('Subscription Details', 'bocs-wordpress'); ?></h2>
 </div>
@@ -100,11 +72,11 @@ do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $
     <?php endif; ?>
 
     <p>
-        <?php esc_html_e('If you need assistance with your payment method, please contact our customer support team.', 'bocs-wordpress'); ?>
+        <?php esc_html_e('If you\'d like to resubscribe in the future, please visit our website.', 'bocs-wordpress'); ?>
     </p>
     
     <p>
-        <?php esc_html_e('Thank you for choosing Bocs!', 'bocs-wordpress'); ?>
+        <?php esc_html_e('Thank you for being a customer at Bocs!', 'bocs-wordpress'); ?>
     </p>
 </div>
 
@@ -112,5 +84,4 @@ do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $
 /*
  * @hooked WC_Emails::email_footer() Output the email footer
  */
-do_action('woocommerce_email_footer', $email);
-?> 
+do_action('woocommerce_email_footer', $email); 

@@ -55,19 +55,41 @@ define('BOCS_API_ENDPOINTS', [
 /**
  * Determine environment and set API endpoints
  */
-$options = get_option('bocs_plugin_options', ['developer_mode' => 'off']);
-$developer_mode = isset($options['developer_mode']) ? sanitize_text_field($options['developer_mode']) : 'off';
-define('BOCS_ENVIRONMENT', $developer_mode === 'on' ? 'dev' : 'prod');
+try {
+    $options = get_option('bocs_plugin_options', ['developer_mode' => 'off']);
+    $developer_mode = isset($options['developer_mode']) ? sanitize_text_field($options['developer_mode']) : 'off';
+    define('BOCS_ENVIRONMENT', $developer_mode === 'on' ? 'dev' : 'prod');
 
-$api_base = BOCS_API_ENDPOINTS[BOCS_ENVIRONMENT];
+    $api_base = BOCS_API_ENDPOINTS[BOCS_ENVIRONMENT];
 
-/**
- * Define all API-related constants
- */
-define('BOCS_API_URL', $api_base . '/');
-define('VITE_API_EXTERNAL_URL', $api_base);
-define('NEXT_PUBLIC_API_EXTERNAL_URL', $api_base);
-define('BOCS_LIST_WIDGETS_URL', BOCS_API_URL . 'list-widgets/');
+    /**
+     * Define all API-related constants
+     */
+    define('BOCS_API_URL', $api_base . '/');
+    define('VITE_API_EXTERNAL_URL', $api_base);
+    define('NEXT_PUBLIC_API_EXTERNAL_URL', $api_base);
+    define('BOCS_LIST_WIDGETS_URL', BOCS_API_URL . 'list-widgets/');
+} catch (Exception $e) {
+    // Log the error but don't crash the site
+    error_log('BOCS API initialization error: ' . $e->getMessage());
+    
+    // Set fallback API URLs to prevent fatal errors
+    if (!defined('BOCS_ENVIRONMENT')) {
+        define('BOCS_ENVIRONMENT', 'prod');
+    }
+    if (!defined('BOCS_API_URL')) {
+        define('BOCS_API_URL', 'https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod/');
+    }
+    if (!defined('VITE_API_EXTERNAL_URL')) {
+        define('VITE_API_EXTERNAL_URL', 'https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod');
+    }
+    if (!defined('NEXT_PUBLIC_API_EXTERNAL_URL')) {
+        define('NEXT_PUBLIC_API_EXTERNAL_URL', 'https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod');
+    }
+    if (!defined('BOCS_LIST_WIDGETS_URL')) {
+        define('BOCS_LIST_WIDGETS_URL', 'https://hudaq97o4b.execute-api.ap-southeast-2.amazonaws.com/prod/list-widgets/');
+    }
+}
 
 /**
  * Load Action Scheduler if not already loaded
@@ -372,12 +394,70 @@ define('BOCS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('BOCS_TEMPLATE_PATH', BOCS_PLUGIN_DIR . 'templates/');
 
 /**
+ * Add filter to support template overrides in theme bocs-wordpress directory
+ */
+add_filter('woocommerce_locate_template', 'bocs_locate_template', 10, 4);
+
+/**
+ * Backwards compatibility - ensure we can handle both 3 and 4 parameter calls
+ * This is only needed if WC is passing fewer parameters than expected
+ */
+function bocs_locate_template_compat($template, $template_name, $template_path) {
+    return bocs_locate_template($template, $template_name, $template_path);
+}
+add_filter('wc_get_template_part', 'bocs_locate_template_compat', 10, 3);
+
+/**
+ * Custom template locator for BOCS templates.
+ *
+ * @param string $template      Template file path
+ * @param string $template_name Template name
+ * @param string $template_path Template path
+ * @param string $default_path  Default path (optional)
+ * @return string Modified template path
+ */
+function bocs_locate_template($template, $template_name, $template_path, $default_path = '') {
+    // Log parameters for debugging (uncomment when needed)
+    /*
+    error_log('BOCS template locator called:');
+    error_log('Template: ' . $template);
+    error_log('Template name: ' . $template_name);
+    error_log('Template path: ' . $template_path);
+    error_log('Default path: ' . $default_path);
+    */
+    
+    // Bail early if not a BOCS template
+    if (!(strpos($template_name, 'bocs-') === 0 || 
+        strpos($template_name, 'emails/bocs-') !== false || 
+        strpos($template_name, 'emails/plain/bocs-') !== false)) {
+        return $template;
+    }
+    
+    // Look for template in yourtheme/bocs-wordpress/ directory first
+    $theme_template = locate_template(array(
+        'bocs-wordpress/' . $template_name,
+    ));
+    
+    if ($theme_template) {
+        return $theme_template;
+    }
+    
+    // Next, look in the plugin's templates directory
+    $plugin_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
+    if (file_exists($plugin_template)) {
+        return $plugin_template;
+    }
+    
+    return $template;
+}
+
+/**
  * Initialize the plugin.
  */
 function run_plugin() {
-    // Only run the check after plugins are loaded
-    if (!did_action('plugins_loaded')) {
-        add_action('plugins_loaded', 'run_plugin');
+    // Only run after WooCommerce is fully initialized to ensure all classes are loaded
+    if (!did_action('woocommerce_init')) {
+        add_action('woocommerce_init', 'run_plugin', 20); // Higher priority to ensure WC is fully loaded
         return;
     }
     
@@ -391,7 +471,18 @@ function run_plugin() {
 add_action('plugin_action_links_' . plugin_basename(__FILE__), 'action_bocs_plugin', 10);
 register_activation_hook(__FILE__, 'activate_bocs_plugin');
 register_deactivation_hook(__FILE__, 'deactivate_bocs_plugin');
-run_plugin();
+
+// Make sure the plugin initializes after WooCommerce is fully loaded
+add_action('plugins_loaded', function() {
+    // Add a safety check before hooking into woocommerce_init
+    if (function_exists('WC')) {
+        // Hook with a delay to ensure WooCommerce is fully initialized
+        add_action('woocommerce_init', 'run_plugin', 20);
+    } else {
+        // If WooCommerce doesn't exist, check on plugins_loaded in case it's activated later
+        add_action('plugins_loaded', 'run_plugin', 20);
+    }
+}, 5);
 
 /**
  * Initialize the plugin updater in admin area

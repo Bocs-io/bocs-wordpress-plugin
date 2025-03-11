@@ -46,10 +46,10 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_payment_method_update';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] Payment Method Update Required', 'bocs-wordpress');
-        $this->description    = __('Payment method update emails are sent when a customer\'s payment method is about to expire or has been declined.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-payment-method-update.php';
-        $this->template_plain = 'emails/plain/customer-payment-method-update.php';
+        $this->title          = __('[Bocs] Payment Method Update', 'bocs-wordpress');
+        $this->description    = __('Payment method update emails are sent when a customer updates their payment method.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-payment-method-update.php';
+        $this->template_plain = 'emails/plain/bocs-customer-payment-method-update.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{subscription_date}'   => '',

@@ -16,15 +16,23 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
 echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
-echo esc_html__('Just to let you know — we\'ve received your renewal order and it is now being processed:', 'bocs-wordpress') . "\n\n";
 
-// Display Bocs App attribution
+echo esc_html__('Just to let you know — we\'ve received your renewal order, and it is now being processed. Here are the details of your order:', 'bocs-wordpress') . "\n\n";
+
+// Check for Bocs App attribution
 $source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
 $utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This order was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
+
+echo esc_html__('PROCESSING', 'bocs-wordpress') . "\n";
+echo esc_html__('Your renewal order is now being processed. Your subscription will be updated shortly.', 'bocs-wordpress') . "\n\n";
+
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('ORDER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
@@ -33,7 +41,9 @@ if ($source_type === 'referral' && $utm_source === 'Bocs App') {
  */
 do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
 
-echo "\n----------------------------------------\n\n";
+echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /*
  * @hooked WC_Emails::order_meta() Shows order meta data.
@@ -46,14 +56,13 @@ do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $
  */
 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
 
-echo "\n----------------------------------------\n\n";
-
-/**
- * Show user-defined additional content - this is set in each email's settings.
- */
 if ($additional_content) {
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n\n----------------------------------------\n\n";
+    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
+
+echo esc_html__('If you have any questions about your order, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
+echo esc_html__('Thank you for your continued business with Bocs!', 'bocs-wordpress') . "\n\n";
 
 echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 

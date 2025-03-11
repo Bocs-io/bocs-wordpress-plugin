@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer On-hold Renewal Order email
+ * Customer Welcome email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-on-hold-renewal-order.php.
+ * This template can be overridden by copying it to yourtheme/bocs-wordpress/emails/bocs-customer-welcome.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -20,37 +20,25 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <?php /* translators: %s: Customer first name */ ?>
     <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
     
-    <p><?php esc_html_e('Thanks for your renewal order. It\'s on hold until we confirm payment has been received. For your reference, your order details are shown below.', 'bocs-wordpress'); ?></p>
-    
+    <p><?php esc_html_e('Welcome to Bocs! Thank you for your first purchase. We\'re excited to have you as a customer.', 'bocs-wordpress'); ?></p>
+
     <?php
-    // Check for Bocs App attribution
-    $source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
-    $utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
+    // Display Bocs ID information
+    $bocs_id = get_post_meta($order->get_id(), '__bocs_bocs_id', true);
 
-    if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
+    if (!empty($bocs_id)) : ?>
     <div class="bocs-app-notice">
-        <p><span class="bocs-highlight"><?php esc_html_e('This order was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
+        <p><span class="bocs-highlight"><?php printf(esc_html__('Your Bocs ID: %s', 'bocs-wordpress'), esc_html($bocs_id)); ?></span></p>
+        <p><?php esc_html_e('This is your first purchase through the Bocs platform. Your Bocs ID helps us identify your account and provide you with seamless service.', 'bocs-wordpress'); ?></p>
     </div>
-    <?php endif; ?>
-
-    <?php if ($order->get_payment_method_title()) : ?>
-    <div class="subscription-details">
-        <p>
-            <span class="subscription-status status-paused"><?php esc_html_e('Payment Pending', 'bocs-wordpress'); ?></span>
-        </p>
-        <p>
-            <?php 
-            /* translators: %s: payment method */
-            printf(
-                esc_html__('Payment method: %s', 'bocs-wordpress'),
-                '<strong>' . esc_html($order->get_payment_method_title()) . '</strong>'
-            ); 
-            ?>
-        </p>
+    <?php else: ?>
+    <div class="bocs-app-notice">
+        <p><?php esc_html_e('This is your first purchase. Welcome to the Bocs platform!', 'bocs-wordpress'); ?></p>
     </div>
     <?php endif; ?>
 
     <h2><?php esc_html_e('Order Details', 'bocs-wordpress'); ?></h2>
+    <p><?php esc_html_e('Here are the details of your order:', 'bocs-wordpress'); ?></p>
 </div>
 
 <?php
@@ -81,11 +69,11 @@ do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_t
     <?php endif; ?>
 
     <p>
-        <?php esc_html_e('If you have any questions about your order or payment status, please contact our customer support team.', 'bocs-wordpress'); ?>
+        <?php esc_html_e('If you have any questions about your order, please contact our customer support team.', 'bocs-wordpress'); ?>
     </p>
     
     <p>
-        <?php esc_html_e('Thank you for your continued business with Bocs!', 'bocs-wordpress'); ?>
+        <?php esc_html_e('Thank you for choosing Bocs!', 'bocs-wordpress'); ?>
     </p>
 </div>
 

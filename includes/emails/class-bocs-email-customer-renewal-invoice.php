@@ -23,6 +23,20 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
+// Check if parent invoice class exists or try to load it
+if (!class_exists('WC_Email_Customer_Invoice', false)) {
+    $parent_class_file = WC_ABSPATH . 'includes/emails/class-wc-email-customer-invoice.php';
+    if (file_exists($parent_class_file)) {
+        include_once $parent_class_file;
+    }
+    
+    // If parent class still doesn't exist after attempting to load, log error and return
+    if (!class_exists('WC_Email_Customer_Invoice', false)) {
+        error_log('Bocs: WC_Email_Customer_Invoice class not found. Cannot initialize WC_Bocs_Email_Customer_Renewal_Invoice.');
+        return;
+    }
+}
+
 if (!class_exists('WC_Bocs_Email_Customer_Renewal_Invoice')) :
 
 /**
@@ -46,11 +60,11 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      */
     public function __construct() {
         $this->id             = 'bocs_customer_renewal_invoice';
-        $this->title          = __('[Bocs] Customer Renewal Invoice', 'bocs-wordpress');
-        $this->description    = __('Renewal invoice emails are sent to customers when a subscription renewal payment is due.', 'bocs-wordpress');
+        $this->title          = __('[Bocs] Subscription Renewal Invoice', 'bocs-wordpress');
+        $this->description    = __('Renewal invoice emails are sent to customers when a renewal has been created and needs payment.', 'bocs-wordpress');
         $this->customer_email = true;
-        $this->template_html  = 'emails/customer-renewal-invoice.php';
-        $this->template_plain = 'emails/plain/customer-renewal-invoice.php';
+        $this->template_html  = 'emails/bocs-customer-renewal-invoice.php';
+        $this->template_plain = 'emails/plain/bocs-customer-renewal-invoice.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -67,9 +81,10 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      * Defines the default subject line for the customer renewal invoice email.
      *
      * @since 1.0.0
+     * @param bool $paid Whether the order has been paid or not
      * @return string Default email subject
      */
-    public function get_default_subject() {
+    public function get_default_subject($paid = false) {
         return __('[Bocs] Subscription Renewal Invoice for Order {order_number}', 'bocs-wordpress');
     }
 
@@ -79,15 +94,44 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      * Defines the default heading for the customer renewal invoice email.
      *
      * @since 1.0.0
+     * @param bool $paid Whether the order has been paid or not
      * @return string Default email heading
      */
-    public function get_default_heading() {
+    public function get_default_heading($paid = false) {
         return __('Subscription Renewal Invoice', 'bocs-wordpress');
     }
 
     /**
-     * Trigger the sending of this email.
+     * Get email subject.
      *
+     * @return string
+     */
+    public function get_subject() {
+        if ($this->object->has_status(array('completed', 'processing'))) {
+            $subject = $this->get_option('subject_paid', $this->get_default_subject(true));
+            return apply_filters('woocommerce_email_subject_customer_renewal_invoice_paid', $this->format_string($subject), $this->object, $this);
+        }
+
+        $subject = $this->get_option('subject', $this->get_default_subject());
+        return apply_filters('woocommerce_email_subject_customer_renewal_invoice', $this->format_string($subject), $this->object, $this);
+    }
+
+    /**
+     * Get email heading.
+     *
+     * @return string
+     */
+    public function get_heading() {
+        if ($this->object->has_status(wc_get_is_paid_statuses())) {
+            $heading = $this->get_option('heading_paid', $this->get_default_heading(true));
+            return apply_filters('woocommerce_email_heading_customer_renewal_invoice_paid', $this->format_string($heading), $this->object, $this);
+        }
+
+        $heading = $this->get_option('heading', $this->get_default_heading());
+        return apply_filters('woocommerce_email_heading_customer_renewal_invoice', $this->format_string($heading), $this->object, $this);
+    }
+
+    /**
      * @since 1.0.0
      * @param int       $order_id The order ID.
      * @param WC_Order  $order Optional. The order object.
@@ -188,6 +232,8 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      * @since 1.0.0
      */
     public function init_form_fields() {
+        $placeholder_text = sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '<code>' . esc_html(implode('</code>, <code>', array_keys($this->placeholders))) . '</code>');
+        
         $this->form_fields = array(
             'enabled'            => array(
                 'title'   => __('Enable/Disable', 'bocs-wordpress'),
@@ -199,7 +245,7 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Subscription Renewal Invoice for Order {order_number}</code>.', 'bocs-wordpress'),
+                'description' => $placeholder_text,
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),
@@ -207,13 +253,29 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Subscription Renewal Invoice</code>.', 'bocs-wordpress'),
+                'description' => $placeholder_text,
                 'placeholder' => $this->get_default_heading(),
+                'default'     => '',
+            ),
+            'subject_paid'       => array(
+                'title'       => __('Subject (paid)', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => $placeholder_text,
+                'placeholder' => $this->get_default_subject(true),
+                'default'     => '',
+            ),
+            'heading_paid'       => array(
+                'title'       => __('Email Heading (paid)', 'bocs-wordpress'),
+                'type'        => 'text',
+                'desc_tip'    => true,
+                'description' => $placeholder_text,
+                'placeholder' => $this->get_default_heading(true),
                 'default'     => '',
             ),
             'additional_content' => array(
                 'title'       => __('Additional content', 'bocs-wordpress'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
+                'description' => __('Text to appear below the main email content.', 'bocs-wordpress') . ' ' . $placeholder_text,
                 'css'         => 'width:400px; height: 75px;',
                 'placeholder' => __('Thanks for using Bocs. We hope you enjoy your subscription!', 'bocs-wordpress'),
                 'type'        => 'textarea',

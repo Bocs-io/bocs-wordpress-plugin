@@ -50,6 +50,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Updater.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Sync.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Curl.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_API_Handler.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Error_Logs_List_Table.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Log_Handler.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Shortcode.php';
@@ -58,11 +59,39 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
 
-        // Check if WooCommerce is active and email class exists
+        // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {
+            // Load core WooCommerce email classes
             if (!class_exists('WC_Email', false)) {
                 include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
             }
+            
+            // Ensure WooCommerce parent email classes are loaded
+            $wc_email_classes = array(
+                'WC_Email' => 'emails/class-wc-email.php', // Base class first
+                'WC_Email_Customer_Completed_Order' => 'emails/class-wc-email-customer-completed-order.php',
+                'WC_Email_Customer_Processing_Order' => 'emails/class-wc-email-customer-processing-order.php',
+                'WC_Email_Customer_On_Hold_Order' => 'emails/class-wc-email-customer-on-hold-order.php',
+                'WC_Email_Customer_Invoice' => 'emails/class-wc-email-customer-invoice.php',
+                'WC_Email_Failed_Order' => 'emails/class-wc-email-failed-order.php',
+                'WC_Email_Customer_Note' => 'emails/class-wc-email-customer-note.php',
+                'WC_Email_Customer_Reset_Password' => 'emails/class-wc-email-customer-reset-password.php',
+                'WC_Email_Customer_New_Account' => 'emails/class-wc-email-customer-new-account.php'
+            );
+            
+            // Try to include all email classes
+            foreach ($wc_email_classes as $class => $path) {
+                if (!class_exists($class, false)) {
+                    $full_path = WC_ABSPATH . 'includes/' . $path;
+                    if (file_exists($full_path)) {
+                        include_once $full_path;
+                    } else {
+                        error_log("Bocs: Unable to find WooCommerce email class file: {$path}");
+                    }
+                }
+            }
+            
+            // Now load our custom email classes
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';

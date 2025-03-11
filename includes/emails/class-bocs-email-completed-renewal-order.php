@@ -23,7 +23,21 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
-if (!class_exists('WC_Bocs_Email_Completed_Renewal_Order')) :
+// Load parent class for completed orders if not already loaded
+if (!class_exists('WC_Email_Customer_Completed_Order', false)) {
+    if (file_exists(WC_ABSPATH . 'includes/emails/class-wc-email-customer-completed-order.php')) {
+        include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-completed-order.php';
+    } else {
+        // If the parent class cannot be found, log an error and return
+        if (function_exists('wc_get_logger')) {
+            $logger = wc_get_logger();
+            $logger->error('Cannot load WC_Email_Customer_Completed_Order class. BOCS email classes cannot be initialized.');
+        }
+        return;
+    }
+}
+
+if (!class_exists('WC_Bocs_Email_Completed_Renewal_Order') && class_exists('WC_Email_Customer_Completed_Order')) :
 
 /**
  * Class WC_Bocs_Email_Completed_Renewal_Order
@@ -47,10 +61,10 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
     public function __construct() {
         $this->id             = 'bocs_customer_completed_renewal_order';
         $this->title          = __('[Bocs] Completed Renewal Order', 'bocs-wordpress');
-        $this->description    = __('Completed renewal order emails are sent to customers when their renewal orders are marked complete and usually indicate that their renewal order goods are on their way.', 'bocs-wordpress');
+        $this->description    = __('Completed renewal order emails are sent to customers when their renewal orders are marked as completed.', 'bocs-wordpress');
         $this->customer_email = true;
-        $this->template_html  = 'emails/customer-completed-renewal-order.php';
-        $this->template_plain = 'emails/plain/customer-completed-renewal-order.php';
+        $this->template_html  = 'emails/bocs-customer-completed-renewal-order.php';
+        $this->template_plain = 'emails/plain/bocs-customer-completed-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -67,6 +81,7 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
      * Defines the default subject line for the completed renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email subject
      */
     public function get_default_subject() {
@@ -79,6 +94,7 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
      * Defines the default heading for the completed renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email heading
      */
     public function get_default_heading() {
@@ -90,13 +106,14 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
      *
      * @since 1.0.0
      * @param int $order_id The order ID.
+     * @param WC_Order|bool $order Order object.
      * @return void
      */
-    public function trigger($order_id) {
+    public function trigger($order_id, $order = false) {
         $this->setup_locale();
 
         if ($order_id) {
-            $this->object = wc_get_order($order_id);
+            $this->object = $order ? $order : wc_get_order($order_id);
             
             if (is_a($this->object, 'WC_Order')) {
                 // Check parent subscription or order for Bocs attribution

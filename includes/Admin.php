@@ -43,6 +43,69 @@ class Admin
                 'Content-Type' => 'application/json'
             ];
         }
+        
+        // Add action for testing welcome email
+        add_action('admin_post_test_welcome_email_direct', array($this, 'test_welcome_email_direct'));
+        
+        // Add action to trigger welcome email after checkout
+        add_action('woocommerce_checkout_order_processed', array($this, 'trigger_welcome_email_after_checkout'), 99, 3);
+        
+        // Also hook into thank you page just to be sure
+        add_action('woocommerce_thankyou', array($this, 'trigger_welcome_email_on_thankyou'), 10, 1);
+    }
+
+    /**
+     * Test the Bocs Welcome Email functionality
+     */
+    public function test_welcome_email() {
+        // Security check
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized access');
+        }
+        
+        // Find the most recent order
+        $orders = wc_get_orders(array(
+            'limit' => 1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ));
+        
+        if (empty($orders)) {
+            wp_die('No orders found to test with');
+        }
+        
+        $order = $orders[0];
+        $order_id = $order->get_id();
+        
+        // Force load the welcome email class
+        if (!class_exists('WC_Bocs_Email_Welcome')) {
+            require_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+        }
+        
+        // Create an instance and trigger the email
+        $welcome_email = new WC_Bocs_Email_Welcome();
+        
+        // Force-enable the email
+        $welcome_email->enabled = 'yes';
+        
+        // Send the email
+        $welcome_email->trigger($order_id);
+        
+        // Create output
+        echo '<div style="max-width: 800px; margin: 20px auto; padding: 20px; background: #fff; border: 1px solid #ccc;">';
+        echo '<h1>Bocs Welcome Email Test</h1>';
+        echo '<p>Attempted to send welcome email for order #' . esc_html($order_id) . '</p>';
+        echo '<p>Sent to: ' . esc_html($order->get_billing_email()) . '</p>';
+        echo '<p>Please check your email inbox. If you don\'t receive the email, please check:</p>';
+        echo '<ul>';
+        echo '<li>Your spam folder</li>';
+        echo '<li>WordPress email configuration</li>';
+        echo '<li>Server email sending capability</li>';
+        echo '</ul>';
+        echo '<p><a href="' . esc_url(admin_url()) . '">Return to Dashboard</a></p>';
+        echo '</div>';
+        
+        exit;
     }
 
     /**
@@ -667,10 +730,131 @@ class Admin
             $this,
             'bocs_settings_page'
         ]);
+        
+        // Add submenu for testing the welcome email
+        add_submenu_page(
+            "bocs",
+            "Test Welcome Email", 
+            "Test Welcome Email",
+            "manage_options",
+            "admin-post.php?action=test_welcome_email_direct",
+            null
+        );
+        
         // add_submenu_page("bocs", "Sync Store", "Sync Store", "manage_options", 'bocs-sync-store', [$this, 'bocs_sync_store_page'] );
         // add_submenu_page("bocs", "Error Logs", "Error Logs", "manage_options", 'bocs-error-logs', [$this, 'bocs_error_logs_page'] );
 
         remove_submenu_page('bocs', 'bocs');
+        
+        // Register a direct action for testing the welcome email
+        add_action('admin_post_test_welcome_email_direct', array($this, 'test_welcome_email_direct'));
+    }
+    
+    /**
+     * Test the welcome email directly with a specific order
+     */
+    public function test_welcome_email_direct() {
+        // Security check
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized access');
+        }
+        
+        // Get the most recent order
+        $orders = wc_get_orders(array(
+            'limit' => 5,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ));
+        
+        if (empty($orders)) {
+            wp_die('No orders found to test with');
+        }
+        
+        // Output HTML header
+        echo '<!DOCTYPE html><html><head>';
+        echo '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">';
+        echo '<title>Bocs Welcome Email Test</title>';
+        echo '<style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; line-height: 1.6; padding: 20px; }
+            .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+            h1 { color: #23282d; }
+            .order-list { margin: 20px 0; }
+            .order { margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; }
+            .order:hover { background: #f9f9f9; }
+            .button { display: inline-block; background: #0073aa; color: #fff; padding: 5px 15px; text-decoration: none; border-radius: 3px; }
+            .button:hover { background: #005d87; }
+            .button.danger { background: #d63638; }
+            .button.danger:hover { background: #a00; }
+            .result { margin-top: 20px; padding: 15px; background: #f0f0f1; border-left: 4px solid #0073aa; }
+            .error { border-left-color: #d63638; }
+        </style>';
+        echo '</head><body>';
+        echo '<div class="container">';
+        echo '<h1>Bocs Welcome Email Test</h1>';
+        
+        // If an order was selected for testing
+        if (isset($_GET['order_id'])) {
+            $order_id = intval($_GET['order_id']);
+            $order = wc_get_order($order_id);
+            
+            if ($order) {
+                // Clear any 'already sent' flag if requested
+                if (isset($_GET['reset']) && $_GET['reset'] === '1') {
+                    delete_post_meta($order_id, '_bocs_welcome_email_sent');
+                    echo '<div class="result">Reset "already sent" flag for order #' . esc_html($order_id) . '</div>';
+                }
+                
+                // Force load the welcome email class
+                if (!class_exists('WC_Bocs_Email_Welcome')) {
+                    require_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+                }
+                
+                // Create an instance and trigger the email
+                $welcome_email = new WC_Bocs_Email_Welcome();
+                
+                // Force-enable the email
+                $welcome_email->enabled = 'yes';
+                
+                // Send the email
+                $welcome_email->trigger($order_id);
+                
+                echo '<div class="result">';
+                echo '<p>Attempted to send welcome email for order #' . esc_html($order_id) . '</p>';
+                echo '<p>Sent to: ' . esc_html($order->get_billing_email()) . '</p>';
+                echo '</div>';
+            } else {
+                echo '<div class="result error">Order #' . esc_html($order_id) . ' not found.</div>';
+            }
+        }
+        
+        // Show list of recent orders for testing
+        echo '<h2>Select an order to test:</h2>';
+        echo '<div class="order-list">';
+        
+        foreach ($orders as $order) {
+            $order_id = $order->get_id();
+            $already_sent = get_post_meta($order_id, '_bocs_welcome_email_sent', true) === 'yes';
+            
+            echo '<div class="order">';
+            echo '<p><strong>Order #' . esc_html($order_id) . '</strong> - ' . esc_html($order->get_date_created()->date('Y-m-d H:i:s')) . '<br>';
+            echo 'Customer: ' . esc_html($order->get_billing_first_name() . ' ' . $order->get_billing_last_name()) . ' (' . esc_html($order->get_billing_email()) . ')<br>';
+            echo 'Status: ' . esc_html(wc_get_order_status_name($order->get_status())) . '</p>';
+            
+            if ($already_sent) {
+                echo '<p><strong>Welcome email already sent for this order.</strong></p>';
+                echo '<a href="' . esc_url(admin_url('admin-post.php?action=test_welcome_email_direct&order_id=' . $order_id . '&reset=1')) . '" class="button danger">Reset & Send Again</a> ';
+            } else {
+                echo '<a href="' . esc_url(admin_url('admin-post.php?action=test_welcome_email_direct&order_id=' . $order_id)) . '" class="button">Send Welcome Email</a>';
+            }
+            
+            echo '</div>';
+        }
+        
+        echo '</div>';
+        echo '<p><a href="' . esc_url(admin_url()) . '">Return to Dashboard</a></p>';
+        echo '</div></body></html>';
+        
+        exit;
     }
 
     public function bocs_list_subscriptions()
@@ -1910,6 +2094,11 @@ class Admin
 
         // Persist all meta data changes to the database
         $order->save();
+        
+        // Trigger welcome email for the new order
+        $this->trigger_welcome_email_after_checkout($order_id, $posted_data, $order);
+        
+        return $order_id;
     }
 
     /**
@@ -2904,6 +3093,87 @@ class Admin
             exit;
         } else {
             wp_die(esc_html__('Failed to cancel subscription', 'bocs-wordpress'));
+        }
+    }
+
+    /**
+     * Explicitly trigger welcome email after checkout is processed
+     */
+    public function trigger_welcome_email_after_checkout($order_id, $posted_data, $order) {
+        if (!$order_id || !$order) {
+            return;
+        }
+        
+        // Check if we've already sent this welcome email
+        $already_sent = get_post_meta($order_id, '_bocs_welcome_email_sent', true);
+        if ($already_sent === 'yes') {
+            return;
+        }
+        
+        // Force load the welcome email class
+        if (!class_exists('WC_Bocs_Email_Welcome')) {
+            if (defined('BOCS_PLUGIN_DIR') && file_exists(BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php')) {
+                require_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+            } else {
+                return;
+            }
+        }
+        
+        try {
+            // Create an instance and trigger the email
+            $welcome_email = new WC_Bocs_Email_Welcome();
+            
+            // Force-enable the email
+            $welcome_email->enabled = 'yes';
+            
+            // Send the email
+            $welcome_email->trigger($order_id, $order);
+            
+            // Mark as sent
+            update_post_meta($order_id, '_bocs_welcome_email_sent', 'yes');
+        } catch (Exception $e) {
+            // Silently continue
+        }
+    }
+    
+    /**
+     * Trigger welcome email on thank you page as a backup
+     */
+    public function trigger_welcome_email_on_thankyou($order_id) {
+        // Check if we've already sent this welcome email
+        $already_sent = get_post_meta($order_id, '_bocs_welcome_email_sent', true);
+        if ($already_sent === 'yes') {
+            return;
+        }
+        
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+        
+        // Force load the welcome email class
+        if (!class_exists('WC_Bocs_Email_Welcome')) {
+            if (defined('BOCS_PLUGIN_DIR') && file_exists(BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php')) {
+                require_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+            } else {
+                return;
+            }
+        }
+        
+        try {
+            // Create an instance and trigger the email
+            $welcome_email = new WC_Bocs_Email_Welcome();
+            
+            // Force-enable the email
+            $welcome_email->enabled = 'yes';
+            
+            // Send the email
+            $welcome_email->trigger($order_id, $order);
+            
+            // Mark as sent
+            update_post_meta($order_id, '_bocs_welcome_email_sent', 'yes');
+        } catch (Exception $e) {
+            // Silently continue
         }
     }
 }

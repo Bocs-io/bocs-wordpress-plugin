@@ -1,12 +1,12 @@
 <?php
 /**
- * Class WC_Bocs_Email_On_Hold_Renewal_Order
+ * Bocs On Hold Renewal Order Email Class
  *
- * @package     Bocs\Emails
- * @version     0.0.118
- * @since       0.0.118
- * @author      Bocs
- * @category    Emails
+ * Handles email notifications for on-hold subscription renewal orders.
+ *
+ * @package    Bocs
+ * @subpackage Bocs/includes/emails
+ * @since      0.0.118
  */
 
 if (!defined('ABSPATH')) {
@@ -23,23 +23,30 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
+// Load parent class for on-hold orders if not already loaded
 if (!class_exists('WC_Email_Customer_On_Hold_Order', false)) {
-    include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-on-hold-order.php';
+    if (file_exists(WC_ABSPATH . 'includes/emails/class-wc-email-customer-on-hold-order.php')) {
+        include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-on-hold-order.php';
+    } else {
+        // If the parent class cannot be found, log an error and return
+        if (function_exists('wc_get_logger')) {
+            $logger = wc_get_logger();
+            $logger->error('Cannot load WC_Email_Customer_On_Hold_Order class. BOCS email classes cannot be initialized.');
+        }
+        return;
+    }
 }
 
-if (!class_exists('WC_Bocs_Email_On_Hold_Renewal_Order')) :
+if (!class_exists('WC_Bocs_Email_On_Hold_Renewal_Order') && class_exists('WC_Email_Customer_On_Hold_Order')) :
 
 /**
- * On Hold Renewal Order Email
+ * Class WC_Bocs_Email_On_Hold_Renewal_Order
  *
- * An email sent to the customer when a subscription renewal order is placed on-hold.
- * This email notifies customers that their renewal order is pending payment or 
- * additional verification before processing can continue.
- *
- * @class       WC_Bocs_Email_On_Hold_Renewal_Order
- * @version     0.0.118
  * @package     Bocs\Emails
- * @extends     WC_Email_Customer_On_Hold_Order
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Order {
 
@@ -62,9 +69,9 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
         $this->id             = 'bocs_on_hold_renewal_order';
         $this->customer_email = true;
         $this->title          = __('[Bocs] On-hold Renewal Order', 'bocs-wordpress');
-        $this->description    = __('On-hold renewal order emails are sent to customers when their renewal orders are marked on-hold.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-on-hold-renewal-order.php';
-        $this->template_plain = 'emails/plain/customer-on-hold-renewal-order.php';
+        $this->description    = __('On-hold renewal order emails are sent to customers when their renewal orders are placed on-hold.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-on-hold-renewal-order.php';
+        $this->template_plain = 'emails/plain/bocs-customer-on-hold-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -81,6 +88,7 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
      * Defines the default subject line for the on-hold renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email subject
      */
     public function get_default_subject() {
@@ -93,6 +101,7 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
      * Defines the default heading for the on-hold renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email heading
      */
     public function get_default_heading() {
@@ -104,13 +113,14 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
      *
      * @since 1.0.0
      * @param int $order_id The order ID.
+     * @param WC_Order|bool $order Order object.
      * @return void
      */
-    public function trigger($order_id) {
+    public function trigger($order_id, $order = false) {
         $this->setup_locale();
 
         if ($order_id) {
-            $this->object = wc_get_order($order_id);
+            $this->object = $order ? $order : wc_get_order($order_id);
             if (is_a($this->object, 'WC_Order')) {
                 // Check parent subscription or order for Bocs attribution
                 $parent_id = get_post_meta($order_id, '_subscription_renewal', true);

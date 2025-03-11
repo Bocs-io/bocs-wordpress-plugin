@@ -39,9 +39,9 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
         $this->id             = 'bocs_payment_retry';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Payment Retry', 'bocs-wordpress');
-        $this->description    = __('Payment retry emails are sent when a previously failed payment is about to be retried.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-payment-retry.php';
-        $this->template_plain = 'emails/plain/customer-payment-retry.php';
+        $this->description    = __('Payment retry emails are sent when an automatic subscription payment fails and will be retried.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-payment-retry.php';
+        $this->template_plain = 'emails/plain/bocs-customer-payment-retry.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',

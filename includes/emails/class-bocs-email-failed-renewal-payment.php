@@ -13,6 +13,24 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+// Check if WooCommerce is active
+if (!function_exists('WC')) {
+    return;
+}
+
+// Load WooCommerce email classes if not already loaded
+if (!class_exists('WC_Email', false)) {
+    include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
+    
+    // If parent class still doesn't exist after attempting to load, log error and return
+    if (!class_exists('WC_Email', false)) {
+        error_log('Bocs: WC_Email class not found. Cannot initialize WC_Bocs_Email_Failed_Renewal_Payment.');
+        return;
+    }
+}
+
+if (!class_exists('WC_Bocs_Email_Failed_Renewal_Payment')) :
+
 /**
  * Failed Renewal Payment Email
  *
@@ -39,9 +57,9 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
         $this->id             = 'bocs_failed_renewal_payment';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Failed Renewal Payment', 'bocs-wordpress');
-        $this->description    = __('Failed renewal payment emails are sent when an automatic renewal payment fails.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-failed-renewal-payment.php';
-        $this->template_plain = 'emails/plain/customer-failed-renewal-payment.php';
+        $this->description    = __('Failed renewal payment emails are sent to customers when automatic subscription renewal payments fail.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-failed-renewal-payment.php';
+        $this->template_plain = 'emails/plain/bocs-customer-failed-renewal-payment.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -209,4 +227,5 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
             ),
         );
     }
-} 
+}
+endif; 

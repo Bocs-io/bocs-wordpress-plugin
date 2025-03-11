@@ -13,26 +13,38 @@ defined('ABSPATH') || exit;
 /*
  * @hooked WC_Emails::email_header() Output the email header
  */
-do_action('woocommerce_email_header', $email_heading, $email); ?>
+do_action('woocommerce_email_header', $email_heading, $email);
+?>
 
-<?php /* translators: %s: Customer first name */ ?>
-<p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())); ?></p>
-<p><?php esc_html_e('Your subscription has been cancelled. We\'re sorry to see you go!', 'bocs-wordpress'); ?></p>
+<div class="bocs-email-container">
+    <?php /* translators: %s: Customer first name */ ?>
+    <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())); ?></p>
+    
+    <p><?php esc_html_e('Your subscription has been cancelled. Your subscription details are shown below for your reference:', 'bocs-wordpress'); ?></p>
+    
+    <?php
+    // For subscription, check the parent order for Bocs App attribution
+    $parent_order_id = is_callable(array($subscription, 'get_parent_id')) ? $subscription->get_parent_id() : $subscription->get_id();
+    $source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
+    $utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
+
+    if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
+    <div class="bocs-app-notice">
+        <p><span class="bocs-highlight"><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
+    </div>
+    <?php endif; ?>
+    
+    <div class="subscription-details">
+        <p>
+            <span class="subscription-status status-cancelled"><?php esc_html_e('Cancelled', 'bocs-wordpress'); ?></span>
+        </p>
+        <p><?php esc_html_e('Your subscription has been cancelled and will not renew.', 'bocs-wordpress'); ?></p>
+    </div>
+
+    <h2><?php esc_html_e('Subscription Details', 'bocs-wordpress'); ?></h2>
+</div>
 
 <?php
-// Display Bocs App attribution
-$parent_order_id = is_callable(array($subscription, 'get_parent_id')) ? $subscription->get_parent_id() : $subscription->get_id();
-$source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
-
-if ($source_type === 'referral' && $utm_source === 'Bocs App') : ?>
-<p><strong><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></strong></p>
-<?php endif; ?>
-
-<p><?php esc_html_e('Here are the details of your cancelled subscription:', 'bocs-wordpress'); ?></p>
-
-<?php
-
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
  * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
@@ -50,14 +62,25 @@ do_action('woocommerce_email_order_meta', $subscription, $sent_to_admin, $plain_
  * @hooked WC_Emails::email_address() Shows email address
  */
 do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $plain_text, $email);
+?>
 
-/**
- * Show user-defined additional content - this is set in each email's settings.
- */
-if ($additional_content) {
-    echo wp_kses_post(wpautop(wptexturize($additional_content)));
-}
+<div class="bocs-email-container">
+    <?php if ($additional_content) : ?>
+        <div class="bocs-email-content">
+            <?php echo wp_kses_post(wpautop(wptexturize($additional_content))); ?>
+        </div>
+    <?php endif; ?>
 
+    <p>
+        <?php esc_html_e('If you\'d like to resubscribe in the future, please visit our website.', 'bocs-wordpress'); ?>
+    </p>
+    
+    <p>
+        <?php esc_html_e('Thank you for being a customer at Bocs!', 'bocs-wordpress'); ?>
+    </p>
+</div>
+
+<?php
 /*
  * @hooked WC_Emails::email_footer() Output the email footer
  */

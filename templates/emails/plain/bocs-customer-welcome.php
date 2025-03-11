@@ -2,7 +2,7 @@
 /**
  * Customer Welcome email (plain text)
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/customer-welcome.php.
+ * This template can be overridden by copying it to yourtheme/bocs-wordpress/emails/plain/bocs-customer-welcome.php.
  *
  * @package Bocs/Templates/Emails/Plain
  * @version 1.0.0

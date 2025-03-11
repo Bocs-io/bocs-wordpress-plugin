@@ -39,8 +39,8 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         $this->customer_email = true;
         $this->title          = __('[Bocs] Subscription Cancelled', 'bocs-wordpress');
         $this->description    = __('Subscription cancelled emails are sent when customers cancel their subscriptions.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-subscription-cancelled.php';
-        $this->template_plain = 'emails/plain/customer-subscription-cancelled.php';
+        $this->template_html  = 'emails/bocs-customer-subscription-cancelled.php';
+        $this->template_plain = 'emails/plain/bocs-customer-subscription-cancelled.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{subscription_date}'   => '',

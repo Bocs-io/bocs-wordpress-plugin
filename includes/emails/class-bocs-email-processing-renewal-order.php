@@ -1,12 +1,12 @@
 <?php
 /**
- * Class WC_Bocs_Email_Processing_Renewal_Order
+ * Bocs Processing Renewal Order Email Class
  *
- * @package     Bocs\Emails
- * @version     0.0.118
- * @since       0.0.118
- * @author      Bocs
- * @category    Emails
+ * Handles email notifications for processing subscription renewal orders.
+ *
+ * @package    Bocs
+ * @subpackage Bocs/includes/emails
+ * @since      0.0.118
  */
 
 if (!defined('ABSPATH')) {
@@ -23,23 +23,30 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
+// Load parent class for processing orders if not already loaded
 if (!class_exists('WC_Email_Customer_Processing_Order', false)) {
-    include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-processing-order.php';
+    if (file_exists(WC_ABSPATH . 'includes/emails/class-wc-email-customer-processing-order.php')) {
+        include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-processing-order.php';
+    } else {
+        // If the parent class cannot be found, log an error and return
+        if (function_exists('wc_get_logger')) {
+            $logger = wc_get_logger();
+            $logger->error('Cannot load WC_Email_Customer_Processing_Order class. BOCS email classes cannot be initialized.');
+        }
+        return;
+    }
 }
 
-if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order')) :
+if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order') && class_exists('WC_Email_Customer_Processing_Order')):
 
 /**
- * Processing Renewal Order Email
+ * Class WC_Bocs_Email_Processing_Renewal_Order
  *
- * An email sent to the customer when a subscription renewal order is being processed.
- * This email notifies customers that their renewal payment was received and the order
- * is being processed. It's typically sent when payment is successful but before fulfillment.
- *
- * @class       WC_Bocs_Email_Processing_Renewal_Order
- * @version     0.0.118
  * @package     Bocs\Emails
- * @extends     WC_Email_Customer_Processing_Order
+ * @version     0.0.118
+ * @since       0.0.118
+ * @author      Bocs
+ * @category    Emails
  */
 class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processing_Order {
 
@@ -62,9 +69,9 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
         $this->id             = 'bocs_processing_renewal_order';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Processing Renewal Order', 'bocs-wordpress');
-        $this->description    = __('Processing renewal order emails are sent to customers when their renewal orders are marked processing.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-processing-renewal-order.php';
-        $this->template_plain = 'emails/plain/customer-processing-renewal-order.php';
+        $this->description    = __('Processing renewal order emails are sent to customers when their renewal order is processed.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-processing-renewal-order.php';
+        $this->template_plain = 'emails/plain/bocs-customer-processing-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -81,6 +88,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      * Defines the default subject line for the processing renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email subject
      */
     public function get_default_subject() {
@@ -93,6 +101,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      * Defines the default heading for the processing renewal order email.
      *
      * @since 1.0.0
+     * @since 3.1.0 in WooCommerce core
      * @return string Default email heading
      */
     public function get_default_heading() {
@@ -104,13 +113,14 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      *
      * @since 1.0.0
      * @param int $order_id The order ID.
+     * @param WC_Order|bool $order Order object.
      * @return void
      */
-    public function trigger($order_id) {
+    public function trigger($order_id, $order = false) {
         $this->setup_locale();
 
         if ($order_id) {
-            $this->object = wc_get_order($order_id);
+            $this->object = $order ? $order : wc_get_order($order_id);
             if (is_a($this->object, 'WC_Order')) {
                 // Check parent subscription or order for Bocs attribution
                 $parent_id = get_post_meta($order_id, '_subscription_renewal', true);

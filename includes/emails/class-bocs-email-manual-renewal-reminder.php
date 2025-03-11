@@ -13,6 +13,24 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+// Check if WooCommerce is active
+if (!function_exists('WC')) {
+    return;
+}
+
+// Load WooCommerce email classes if not already loaded
+if (!class_exists('WC_Email', false)) {
+    include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
+    
+    // If parent class still doesn't exist after attempting to load, log error and return
+    if (!class_exists('WC_Email', false)) {
+        error_log('Bocs: WC_Email class not found. Cannot initialize WC_Bocs_Email_Manual_Renewal_Reminder.');
+        return;
+    }
+}
+
+if (!class_exists('WC_Bocs_Email_Manual_Renewal_Reminder')) :
+
 /**
  * Manual Renewal Reminder Email
  *
@@ -38,9 +56,9 @@ class WC_Bocs_Email_Manual_Renewal_Reminder extends WC_Email {
         $this->id             = 'bocs_manual_renewal_reminder';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Manual Renewal Reminder', 'bocs-wordpress');
-        $this->description    = __('Manual renewal reminder emails are sent to customers when they need to manually renew their subscriptions.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-manual-renewal-reminder.php';
-        $this->template_plain = 'emails/plain/customer-manual-renewal-reminder.php';
+        $this->description    = __('Manual renewal reminder emails are sent to customers before a subscription expires if it requires manual renewal.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-manual-renewal-reminder.php';
+        $this->template_plain = 'emails/plain/bocs-customer-manual-renewal-reminder.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{subscription_date}'   => '',
@@ -243,4 +261,6 @@ class WC_Bocs_Email_Manual_Renewal_Reminder extends WC_Email {
             ),
         );
     }
-} 
+}
+
+endif;

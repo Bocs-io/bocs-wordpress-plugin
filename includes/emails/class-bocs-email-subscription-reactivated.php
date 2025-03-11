@@ -38,9 +38,9 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
         $this->id             = 'bocs_subscription_reactivated';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Subscription Reactivated', 'bocs-wordpress');
-        $this->description    = __('Subscription reactivated emails are sent when customers reactivate their subscriptions.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-subscription-reactivated.php';
-        $this->template_plain = 'emails/plain/customer-subscription-reactivated.php';
+        $this->description    = __('Subscription reactivated emails are sent to customers when their subscriptions are reactivated.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-subscription-reactivated.php';
+        $this->template_plain = 'emails/plain/bocs-customer-subscription-reactivated.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{subscription_date}'   => '',

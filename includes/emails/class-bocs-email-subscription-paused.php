@@ -38,9 +38,9 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
         $this->id             = 'bocs_subscription_paused';
         $this->customer_email = true;
         $this->title          = __('[Bocs] Subscription Paused', 'bocs-wordpress');
-        $this->description    = __('Subscription paused emails are sent when a subscription is put on-hold.', 'bocs-wordpress');
-        $this->template_html  = 'emails/customer-subscription-paused.php';
-        $this->template_plain = 'emails/plain/customer-subscription-paused.php';
+        $this->description    = __('Subscription paused emails are sent to customers when their subscriptions are paused.', 'bocs-wordpress');
+        $this->template_html  = 'emails/bocs-customer-subscription-paused.php';
+        $this->template_plain = 'emails/plain/bocs-customer-subscription-paused.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{subscription_date}'   => '',

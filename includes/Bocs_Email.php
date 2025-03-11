@@ -58,9 +58,17 @@ class Bocs_Email
         if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
             $email_classes['WC_Bocs_Email_Subscription_Switched'] = new WC_Bocs_Email_Subscription_Switched();
         }
+        
+        // Make sure welcome email is ALWAYS registered
         if (class_exists('WC_Bocs_Email_Welcome')) {
             $email_classes['WC_Bocs_Email_Welcome'] = new WC_Bocs_Email_Welcome();
+        } else {
+            include_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+            if (class_exists('WC_Bocs_Email_Welcome')) {
+                $email_classes['WC_Bocs_Email_Welcome'] = new WC_Bocs_Email_Welcome();
+            }
         }
+        
         if (class_exists('WC_Bocs_Email_Failed_Renewal_Payment')) {
             $email_classes['WC_Bocs_Email_Failed_Renewal_Payment'] = new WC_Bocs_Email_Failed_Renewal_Payment();
         }
@@ -265,6 +273,10 @@ class Bocs_Email
 
         // Disable corresponding WooCommerce emails
         add_action('woocommerce_init', array($this, 'disable_wc_emails'));
+        
+        // Register direct test endpoint for welcome email
+        add_action('wp_ajax_test_bocs_welcome_email', array($this, 'test_welcome_email'));
+        add_action('wp_ajax_nopriv_test_bocs_welcome_email', array($this, 'test_welcome_email'));
     }
 
     /**
@@ -315,21 +327,20 @@ class Bocs_Email
             add_action('bocs_subscription_switched', array($subscription_switched, 'trigger'), 10, 2);
         }
         
-        // Welcome Email - only trigger for new orders (non-renewal)
+        // Welcome Email - Make it trigger on multiple key WooCommerce hooks
         if (class_exists('WC_Bocs_Email_Welcome')) {
             $welcome_email = new WC_Bocs_Email_Welcome();
             
-            // Trigger welcome email on specific transitions that indicate new orders
+            // Hook into all order creation and status change events
+            add_action('woocommerce_new_order', array($welcome_email, 'trigger'), 10, 1);
             add_action('woocommerce_order_status_pending_to_processing', array($welcome_email, 'trigger'), 10, 1);
             add_action('woocommerce_order_status_pending_to_completed', array($welcome_email, 'trigger'), 10, 1);
+            add_action('woocommerce_order_status_on-hold_to_processing', array($welcome_email, 'trigger'), 10, 1);
+            add_action('woocommerce_checkout_order_processed', array($welcome_email, 'trigger'), 10, 1);
+            add_action('woocommerce_thankyou', array($welcome_email, 'trigger'), 10, 1);
             
-            // Also trigger on order creation with these statuses
-            add_action('woocommerce_new_order', function($order_id) use ($welcome_email) {
-                $order = wc_get_order($order_id);
-                if ($order && ($order->get_status() === 'processing' || $order->get_status() === 'completed')) {
-                    $welcome_email->trigger($order_id);
-                }
-            }, 10, 1);
+            // Also force it on WooCommerce payment complete
+            add_action('woocommerce_payment_complete', array($welcome_email, 'trigger'), 10, 1);
         }
 
         // Failed Renewal Payment Email
@@ -395,6 +406,45 @@ class Bocs_Email
             add_action('woocommerce_subscription_status_cancelled', array($subscription_cancelled, 'trigger'), 10, 1);
             add_action('woocommerce_subscription_status_active_to_cancelled', array($subscription_cancelled, 'trigger'), 10, 1);
         }
+    }
+
+    /**
+     * Test function to trigger welcome email directly
+     */
+    public function test_welcome_email() {
+        // Check if WooCommerce is active
+        if (!function_exists('WC')) {
+            wp_die('WooCommerce is not active');
+        }
+        
+        $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+        
+        if (!$order_id) {
+            // Get the most recent order
+            $orders = wc_get_orders(array('limit' => 1, 'orderby' => 'date', 'order' => 'DESC'));
+            if (!empty($orders)) {
+                $order_id = $orders[0]->get_id();
+            }
+        }
+        
+        if ($order_id) {
+            // Load the welcome email class
+            require_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-welcome.php';
+            
+            $welcome_email = new WC_Bocs_Email_Welcome();
+            
+            // Force enable the email
+            $welcome_email->enabled = 'yes';
+            
+            // Send the email
+            $welcome_email->trigger($order_id);
+            
+            echo 'Attempted to send welcome email for order #' . $order_id;
+        } else {
+            echo 'No orders found';
+        }
+        
+        wp_die();
     }
 }
 

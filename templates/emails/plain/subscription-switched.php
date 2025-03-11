@@ -27,6 +27,9 @@ if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
 
+echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
+echo "----------------------------------------\n\n";
+
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
  * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
@@ -49,12 +52,14 @@ do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $
 
 echo "\n----------------------------------------\n\n";
 
-/**
- * Show user-defined additional content - this is set in each email's settings.
- */
+// Additional content
 if ($additional_content) {
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n\n----------------------------------------\n\n";
+    echo "\n\n";
 }
 
-echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 
+echo esc_html__('If you have any questions about your subscription, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
+echo esc_html__('Thank you for choosing Bocs!', 'bocs-wordpress') . "\n\n";
+
+echo "\n----------------------------------------\n\n";
+echo esc_html(wp_strip_all_tags(get_option('woocommerce_email_footer_text', ''))); 

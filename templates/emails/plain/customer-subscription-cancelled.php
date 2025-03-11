@@ -16,32 +16,42 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
 echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
-echo esc_html__('Your subscription has been cancelled. We\'re sorry to see you go!', 'bocs-wordpress') . "\n\n";
 
-// Display Bocs App attribution
-$parent_order_id = is_callable(array($subscription, 'get_parent_id')) ? $subscription->get_parent_id() : $subscription->get_id();
-$source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
+/* translators: %1$s: subscription ID */
+echo sprintf(esc_html__('Your subscription #%1$s has been cancelled. No further payments will be processed.', 'bocs-wordpress'), esc_html($subscription->get_id())) . "\n\n";
+
+echo esc_html__('SUBSCRIPTION CANCELLED', 'bocs-wordpress') . "\n\n";
+
+// Check for Bocs App attribution
+$source_type = get_post_meta($subscription->get_id(), '_wc_order_attribution_source_type', true);
+$utm_source = get_post_meta($subscription->get_id(), '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
 
-echo esc_html__('Here are the details of your cancelled subscription:', 'bocs-wordpress') . "\n\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-/*
- * @hooked WC_Emails::order_details() Shows the order details table.
- * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
- * @hooked WC_Structured_Data::output_structured_data() Outputs structured data.
- */
-do_action('woocommerce_email_order_details', $subscription, $sent_to_admin, $plain_text, $email);
+// Output subscription details
+echo esc_html__('Product:', 'bocs-wordpress') . ' ';
+$subscription_items = $subscription->get_items();
+if (!empty($subscription_items)) {
+    $product_names = array();
+    foreach ($subscription_items as $item) {
+        $product_names[] = $item->get_name();
+    }
+    echo implode(', ', $product_names) . "\n";
+}
 
-echo "\n----------------------------------------\n\n";
+echo esc_html__('Price:', 'bocs-wordpress') . ' ' . wp_kses_post($subscription->get_formatted_order_total()) . "\n";
+echo esc_html__('Frequency:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_period_interval_strings($subscription->get_billing_interval())) . ' ' . esc_html(wcs_get_subscription_period_strings(1, $subscription->get_billing_period())) . "\n";
+echo esc_html__('Status:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_status_name($subscription->get_status())) . "\n\n";
 
-/*
- * @hooked WC_Emails::order_meta() Shows order meta data.
- */
-do_action('woocommerce_email_order_meta', $subscription, $sent_to_admin, $plain_text, $email);
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /*
  * @hooked WC_Emails::customer_details() Shows customer details
@@ -49,14 +59,13 @@ do_action('woocommerce_email_order_meta', $subscription, $sent_to_admin, $plain_
  */
 do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $plain_text, $email);
 
-echo "\n----------------------------------------\n\n";
-
-/**
- * Show user-defined additional content - this is set in each email's settings.
- */
 if ($additional_content) {
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n\n----------------------------------------\n\n";
+    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
+
+echo esc_html__('If you would like to resubscribe in the future, please visit our website.', 'bocs-wordpress') . "\n\n";
+echo esc_html__('We hope to see you again soon! If you have any questions, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
 
 echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 
