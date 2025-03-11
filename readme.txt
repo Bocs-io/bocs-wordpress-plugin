@@ -1,3 +1,7 @@
+v0.0.119 03/10/2025
+* Welcome Email implemented
+* Subscription Renewal Invoice implemented
+
 v0.0.118 03/10/2025
 * added email templates
 
