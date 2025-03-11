@@ -36,6 +36,7 @@ class Bocs
         $this->define_sync_hooks();
         $this->define_bocs_email_api();
         $this->define_product_hooks();
+        $this->define_order_hooks();
     }
 
     /**
@@ -58,6 +59,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
 
         // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {
@@ -338,6 +340,15 @@ class Bocs
         
         $this->loader->add_action('wp_ajax_get_product_details', $product, 'get_product_details_ajax');
         $this->loader->add_action('wp_ajax_nopriv_get_product_details', $product, 'get_product_details_ajax');
+    }
+
+    /**
+     * Define order-related hooks
+     */
+    private function define_order_hooks()
+    {
+        $order_hooks = new Bocs_Order_Hooks();
+        // The hooks are registered in the class constructor
     }
 
     /**

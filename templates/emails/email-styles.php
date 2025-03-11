@@ -325,4 +325,134 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
             display: block !important;
         }
     }
+
+    /* Bocs specific styles */
+    .bocs-email-container {
+        padding: 0 12px;
+        max-width: 100%;
+    }
+
+    .bocs-renewal-notice {
+        background-color: #f8f9fa;
+        border-left: 4px solid <?php echo esc_attr($bocs_primary); ?>;
+        padding: 15px 20px;
+        margin-bottom: 30px;
+        border-radius: 4px;
+    }
+
+    .bocs-app-notice {
+        background-color: #fff8e1;
+        padding: 12px 15px;
+        margin-bottom: 25px;
+        border-radius: 4px;
+        border: 1px dashed #ffc107;
+    }
+
+    .bocs-highlight {
+        color: #ff6b00;
+        font-weight: 500;
+    }
+
+    .bocs-order-status {
+        background-color: <?php echo esc_attr($bocs_secondary); ?>;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border: 1px solid #e5e5e5;
+    }
+
+    .bocs-order-status h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: <?php echo esc_attr($heading_text); ?>;
+        font-size: 18px;
+    }
+
+    .status-label {
+        margin-bottom: 15px;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 30px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+        background-color: #fff8e1;
+        color: #ff6d00;
+    }
+
+    .status-processing {
+        background-color: #e1f5fe;
+        color: #0288d1;
+    }
+
+    .status-on-hold {
+        background-color: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .status-completed {
+        background-color: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .status-failed {
+        background-color: #ffebee;
+        color: #d32f2f;
+    }
+
+    .status-cancelled {
+        background-color: #f5f5f5;
+        color: #616161;
+    }
+
+    .bocs-action-button {
+        text-align: center;
+        margin: 25px 0 10px;
+    }
+
+    .bocs-button {
+        background-color: <?php echo esc_attr($bocs_primary); ?>;
+        border-radius: 4px;
+        color: <?php echo esc_attr($base); ?> !important;
+        display: inline-block;
+        font-weight: 500;
+        line-height: 100%;
+        margin: 0;
+        text-align: center;
+        text-decoration: none !important;
+        font-size: 14px;
+        padding: 12px 25px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .bocs-email-content {
+        margin-bottom: 25px;
+        padding: 0 5px;
+    }
+
+    .bocs-email-footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e5e5;
+        color: #757575;
+        font-size: 13px;
+    }
+
+    h2 {
+        color: <?php echo esc_attr($heading_text); ?>;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 130%;
+        margin: 0 0 18px;
+        text-align: left;
+    }
 </style> 

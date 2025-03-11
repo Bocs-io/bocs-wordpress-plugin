@@ -60,11 +60,11 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      */
     public function __construct() {
         $this->id             = 'bocs_customer_renewal_invoice';
-        $this->title          = __('[Bocs] Subscription Renewal Invoice', 'bocs-wordpress');
-        $this->description    = __('Renewal invoice emails are sent to customers when a renewal has been created and needs payment.', 'bocs-wordpress');
+        $this->title          = __('[Bocs] Customer Renewal Invoice', 'bocs-wordpress');
+        $this->description    = __('Renewal invoice emails are sent to customers when a subscription renewal payment fails or an automatic subscription renewal payment is authorized.', 'bocs-wordpress');
         $this->customer_email = true;
-        $this->template_html  = 'emails/bocs-customer-renewal-invoice.php';
-        $this->template_plain = 'emails/plain/bocs-customer-renewal-invoice.php';
+        $this->template_html  = 'emails/customer-renewal-invoice.php';
+        $this->template_plain = 'emails/plain/customer-renewal-invoice.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',

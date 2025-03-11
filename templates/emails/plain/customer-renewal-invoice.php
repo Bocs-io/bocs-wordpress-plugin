@@ -10,63 +10,111 @@
 
 defined('ABSPATH') || exit;
 
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+// Direct content generation without relying on hooks and output buffering
+$content = '';
 
-/* translators: %s: Customer first name */
-echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
+// Add email heading
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+$content .= esc_html(wp_strip_all_tags($email_heading)) . "\n";
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-if ($order->get_status() === 'pending') {
-    echo esc_html__('A renewal order has been created for your subscription. To pay for this order please use the following link:', 'bocs-wordpress') . "\n\n";
-    echo esc_url($order->get_checkout_payment_url()) . "\n\n";
+// Greeting
+$content .= sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
+
+// Renewal information
+$content .= sprintf(esc_html__('Your subscription renewal invoice for order #%s is now available.', 'bocs-wordpress'), $order->get_order_number()) . "\n\n";
+
+// Payment information
+if ($order->has_status('pending')) {
+    $content .= esc_html__('To ensure uninterrupted service, please submit payment at your earliest convenience.', 'bocs-wordpress') . "\n";
+    $content .= esc_html__('Payment Link:', 'bocs-wordpress') . " " . esc_url($order->get_checkout_payment_url()) . "\n\n";
 } else {
-    echo esc_html__('A renewal order has been generated for your subscription. Your payment will be processed automatically, but you can find the details of the order below:', 'bocs-wordpress') . "\n\n";
+    $content .= esc_html__('Your payment method will be charged automatically, so no action is required on your part.', 'bocs-wordpress') . "\n\n";
 }
-
-echo esc_html__('RENEWAL ORDER', 'bocs-wordpress') . "\n\n";
 
 // Check for Bocs App attribution
 $source_type = get_post_meta($order->get_id(), '_wc_order_attribution_source_type', true);
 $utm_source = get_post_meta($order->get_id(), '_wc_order_attribution_utm_source', true);
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-    echo esc_html__('This order was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
+    $content .= "** " . esc_html__('This order was created through the Bocs App.', 'bocs-wordpress') . " **\n\n";
 }
 
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html__('ORDER DETAILS', 'bocs-wordpress') . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+// Order status section
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+$content .= esc_html__('ORDER STATUS', 'bocs-wordpress') . "\n";
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-/*
- * @hooked WC_Emails::order_details() Shows the order details table.
- * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
- * @hooked WC_Structured_Data::output_structured_data() Outputs structured data.
- */
-do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
+$content .= esc_html__('Status:', 'bocs-wordpress') . " " . esc_html(wc_get_order_status_name($order->get_status())) . "\n";
 
-echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+if ($order->has_status('pending')) {
+    $content .= esc_html__('Your renewal payment is required to maintain your subscription.', 'bocs-wordpress') . "\n\n";
+} else {
+    $content .= esc_html__('Your subscription is active and your renewal payment is being processed automatically.', 'bocs-wordpress') . "\n\n";
+}
 
-/*
- * @hooked WC_Emails::order_meta() Shows order meta data.
- */
-do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);
+// Order details section
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+$content .= esc_html__('ORDER DETAILS', 'bocs-wordpress') . "\n";
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-/*
- * @hooked WC_Emails::customer_details() Shows customer details
- * @hooked WC_Emails::email_address() Shows email address
- */
-do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
+// Items
+foreach ($order->get_items() as $item_id => $item) {
+    $product = $item->get_product();
+    $content .= $item->get_name() . " × " . $item->get_quantity() . " - " . $order->get_formatted_line_subtotal($item) . "\n";
+}
 
+$content .= "\n";
+
+// Order totals
+$content .= esc_html__('Subtotal:', 'bocs-wordpress') . " " . $order->get_subtotal_to_display() . "\n";
+
+// Tax (if any)
+if (wc_tax_enabled() && $order->get_total_tax() > 0) {
+    $content .= esc_html__('Tax:', 'bocs-wordpress') . " " . wc_price($order->get_total_tax()) . "\n";
+}
+
+// Payment method
+$content .= esc_html__('Payment Method:', 'bocs-wordpress') . " " . $order->get_payment_method_title() . "\n";
+
+// Total
+$content .= esc_html__('Total:', 'bocs-wordpress') . " " . $order->get_formatted_order_total() . "\n\n";
+
+// Customer details section
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+$content .= esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
+$content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+
+// Billing address
+$content .= esc_html__('Billing Address:', 'bocs-wordpress') . "\n";
+$content .= preg_replace('#<br\s*/?>#i', "\n", $order->get_formatted_billing_address()) . "\n";
+if ($order->get_billing_phone()) {
+    $content .= esc_html__('Phone:', 'bocs-wordpress') . " " . $order->get_billing_phone() . "\n";
+}
+if ($order->get_billing_email()) {
+    $content .= esc_html__('Email:', 'bocs-wordpress') . " " . $order->get_billing_email() . "\n";
+}
+$content .= "\n";
+
+// Shipping address
+if ($order->needs_shipping_address()) {
+    $content .= esc_html__('Shipping Address:', 'bocs-wordpress') . "\n";
+    $content .= preg_replace('#<br\s*/?>#i', "\n", $order->get_formatted_shipping_address()) . "\n\n";
+}
+
+// Additional content
 if ($additional_content) {
-    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-    echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+    $content .= "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+    $content .= esc_html(wp_strip_all_tags(wptexturize($additional_content)));
+    $content .= "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
 
-echo esc_html__('If you have any questions about your order or need assistance, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
-echo esc_html__('Thank you for your continued business with Bocs!', 'bocs-wordpress') . "\n\n";
+// Footer info
+$content .= esc_html__('If you have any questions about your subscription, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
+$content .= esc_html__('Thank you for your continued business with Bocs!', 'bocs-wordpress') . "\n\n";
 
-echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 
+// Footer
+$content .= wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text')));
+
+// Output all at once
+echo $content; 

@@ -63,8 +63,8 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
         $this->title          = __('[Bocs] Completed Renewal Order', 'bocs-wordpress');
         $this->description    = __('Completed renewal order emails are sent to customers when their renewal orders are marked as completed.', 'bocs-wordpress');
         $this->customer_email = true;
-        $this->template_html  = 'emails/bocs-customer-completed-renewal-order.php';
-        $this->template_plain = 'emails/plain/bocs-customer-completed-renewal-order.php';
+        $this->template_html  = 'emails/customer-completed-renewal-order.php';
+        $this->template_plain = 'emails/plain/customer-completed-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',

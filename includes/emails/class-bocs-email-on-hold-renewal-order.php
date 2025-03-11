@@ -66,12 +66,12 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
      * @since 1.0.0
      */
     public function __construct() {
-        $this->id             = 'bocs_on_hold_renewal_order';
+        $this->id             = 'bocs_customer_on_hold_renewal_order';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] On-hold Renewal Order', 'bocs-wordpress');
-        $this->description    = __('On-hold renewal order emails are sent to customers when their renewal orders are placed on-hold.', 'bocs-wordpress');
-        $this->template_html  = 'emails/bocs-customer-on-hold-renewal-order.php';
-        $this->template_plain = 'emails/plain/bocs-customer-on-hold-renewal-order.php';
+        $this->title          = __('[Bocs] On-Hold Renewal Order', 'bocs-wordpress');
+        $this->description    = __('On-hold renewal order emails are sent to customers when their renewal orders are marked on-hold.', 'bocs-wordpress');
+        $this->template_html  = 'emails/customer-on-hold-renewal-order.php';
+        $this->template_plain = 'emails/plain/customer-on-hold-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',

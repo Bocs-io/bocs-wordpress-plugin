@@ -70,8 +70,8 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
         $this->customer_email = true;
         $this->title          = __('[Bocs] Processing Renewal Order', 'bocs-wordpress');
         $this->description    = __('Processing renewal order emails are sent to customers when their renewal order is processed.', 'bocs-wordpress');
-        $this->template_html  = 'emails/bocs-customer-processing-renewal-order.php';
-        $this->template_plain = 'emails/plain/bocs-customer-processing-renewal-order.php';
+        $this->template_html  = 'emails/customer-processing-renewal-order.php';
+        $this->template_plain = 'emails/plain/customer-processing-renewal-order.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
         $this->placeholders   = array(
             '{order_date}'   => '',
@@ -132,6 +132,12 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                 $source_type = get_post_meta($parent_id, '_wc_order_attribution_source_type', true);
                 $utm_source = get_post_meta($parent_id, '_wc_order_attribution_utm_source', true);
                 
+                // Debug log the values
+                error_log("Bocs Renewal Email Debug - Order ID: " . $order_id);
+                error_log("Parent ID: " . $parent_id);
+                error_log("Source Type: " . $source_type);
+                error_log("UTM Source: " . $utm_source);
+                
                 // Only proceed if this is a Bocs order
                 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
                     $this->recipient = $this->object->get_billing_email();
@@ -151,12 +157,17 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                     } elseif (!empty($bocs_subscription_id)) {
                         $this->bocs_id = $bocs_subscription_id;
                     }
+                } else {
+                    error_log("Bocs Renewal Email not sent - not a Bocs App order");
                 }
             }
         }
 
         if ($this->is_enabled() && $this->get_recipient()) {
+            error_log("Bocs Renewal Email - Sending email to: " . $this->get_recipient());
             $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+        } else {
+            error_log("Bocs Renewal Email not sent - enabled: " . ($this->is_enabled() ? "yes" : "no") . ", recipient: " . $this->get_recipient());
         }
 
         $this->restore_locale();

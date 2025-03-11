@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer Completed Renewal Order email
+ * Customer invoice email
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-completed-renewal-order.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/customer-invoice.php.
  *
  * @package Bocs/Templates/Emails
  * @version 1.0.0
@@ -20,9 +20,31 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <?php /* translators: %s: Customer first name */ ?>
     <p><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())); ?></p>
     
-    <div style="background-color: #f8f9fa; border-left: 4px solid #3C7B7C; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px;">
-        <p style="font-size: 16px; margin-bottom: 10px;"><?php esc_html_e('We\'re happy to let you know that your subscription renewal order has been completed.', 'bocs-wordpress'); ?></p>
-        <p style="margin-bottom: 5px;"><?php esc_html_e('Your order details are shown below for your reference.', 'bocs-wordpress'); ?></p>
+    <div style="background-color: #f8f9fa; border-left: 4px solid #3C7B7C; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;">
+        <?php if ($order->needs_payment()) : ?>
+            <p style="font-size: 16px; margin-bottom: 15px;">
+                <?php
+                printf(
+                    esc_html__('An order has been created for you on %1$s. Your invoice is below, with a link to make payment when you\'re ready.', 'bocs-wordpress'),
+                    esc_html(get_bloginfo('name', 'display'))
+                );
+                ?>
+            </p>
+            <div style="text-align: center; margin: 15px 0;">
+                <a href="<?php echo esc_url($order->get_checkout_payment_url()); ?>" style="background-color: #3C7B7C; border-radius: 4px; color: #ffffff !important; display: inline-block; font-weight: 500; line-height: 100%; margin: 0; text-align: center; text-decoration: none !important; font-size: 14px; padding: 12px 25px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <?php esc_html_e('Pay for this order', 'bocs-wordpress'); ?>
+                </a>
+            </div>
+        <?php else : ?>
+            <p style="font-size: 16px; margin-bottom: 15px;">
+                <?php
+                printf(
+                    esc_html__('Here are the details of your order placed on %s.', 'bocs-wordpress'),
+                    esc_html(wc_format_datetime($order->get_date_created()))
+                );
+                ?>
+            </p>
+        <?php endif; ?>
     </div>
     
     <?php
@@ -37,12 +59,24 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <?php endif; ?>
 
     <div style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 30px; border: 1px solid #e5e5e5;">
+        <h3 style="margin-top: 0; margin-bottom: 15px; color: #333333; font-size: 18px;"><?php esc_html_e('Order Status', 'bocs-wordpress'); ?></h3>
         <p style="margin-bottom: 15px;">
-            <span style="display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; background-color: #e8f5e9; color: #388e3c;">
-                <?php esc_html_e('Order Complete', 'bocs-wordpress'); ?>
+            <?php 
+            $status = $order->get_status();
+            $status_colors = array(
+                'pending' => 'background-color: #fff8e1; color: #ff6d00;',
+                'processing' => 'background-color: #e1f5fe; color: #0288d1;',
+                'on-hold' => 'background-color: #f3e5f5; color: #7b1fa2;',
+                'completed' => 'background-color: #e8f5e9; color: #388e3c;',
+                'failed' => 'background-color: #ffebee; color: #d32f2f;',
+                'cancelled' => 'background-color: #f5f5f5; color: #616161;'
+            );
+            $status_style = isset($status_colors[$status]) ? $status_colors[$status] : 'background-color: #f5f5f5; color: #616161;';
+            ?>
+            <span style="display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; <?php echo $status_style; ?>">
+                <?php echo esc_html(wc_get_order_status_name($status)); ?>
             </span>
         </p>
-        <p><?php esc_html_e('Your subscription is active and your renewal order has been processed successfully.', 'bocs-wordpress'); ?></p>
     </div>
 
     <h2 style="color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 500; line-height: 130%; margin: 0 0 18px; text-align: left;"><?php esc_html_e('Order Details', 'bocs-wordpress'); ?></h2>
@@ -81,7 +115,7 @@ do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_t
         </p>
         
         <p>
-            <?php esc_html_e('Thank you for your continued business with Bocs!', 'bocs-wordpress'); ?>
+            <?php esc_html_e('Thank you for your business with Bocs!', 'bocs-wordpress'); ?>
         </p>
     </div>
 </div>
