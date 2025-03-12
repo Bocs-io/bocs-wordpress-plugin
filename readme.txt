@@ -1,10 +1,14 @@
+v0.0.120 03/12/2025
+* email template branding
+* sending of renewal order
+* sending of emails if the renewal order was updated to processing
+
 v0.0.119 03/11/2025
 * Welcome Email implemented
 * Subscription Renewal Invoice implemented
 * Email template override paths have been updated to use the `yourtheme/bocs-wordpress/emails/` directory instead of `yourtheme/woocommerce/emails/`
 * All email template filenames now have a `bocs-` prefix to avoid conflicts with other plugins
 * Added template override documentation in README.md
-
 
 v0.0.118 03/10/2025
 * added email templates
