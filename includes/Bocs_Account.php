@@ -101,12 +101,7 @@ class Bocs_Account
             $current_user = wp_get_current_user();
 
             if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                error_log(sprintf(
-                    '[Bocs Debug] User ID: %d, Bocs Customer ID: %s, Email: %s',
-                    $user_id,
-                    $bocs_customer_id,
-                    $current_user->user_email
-                ));
+                // Removed debug error_log
             }
 
             // If user has a Bocs customer ID, use it as primary identifier
@@ -123,7 +118,7 @@ class Bocs_Account
             }
 
             if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                error_log(sprintf('[Bocs Debug] API Request URL: %s', $url));
+                // Removed debug error_log
             }
         }
 
@@ -133,10 +128,7 @@ class Bocs_Account
             $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
 
             if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                error_log(sprintf(
-                    '[Bocs Debug] API Response: %s',
-                    wp_json_encode($subscriptions, JSON_PRETTY_PRINT)
-                ));
+                // Removed debug error_log
             }
 
             $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_subscriptions_account.php';

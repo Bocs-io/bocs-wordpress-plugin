@@ -57,7 +57,7 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
     }
 
     #template_header {
-        background-color: <?php echo esc_attr($bocs_primary); ?>;
+        background-color: <?php echo esc_attr($bocs_primary); ?> !important;
         border-radius: 6px 6px 0 0 !important;
         color: <?php echo esc_attr($base); ?>;
         border-bottom: 0;
@@ -73,13 +73,15 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
     }
 
     #template_header h1 {
-        color: <?php echo esc_attr($base); ?>;
+        color: <?php echo esc_attr($base); ?> !important;
         font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         font-size: 30px;
         font-weight: 300;
         line-height: 150%;
         margin: 0;
         text-align: left;
+        text-shadow: none !important;
+        background-color: inherit;
     }
 
     #template_body {
@@ -135,7 +137,7 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
     
     .bocs-button {
         display: inline-block;
-        background-color: <?php echo esc_attr($bocs_accent); ?>;
+        background-color: <?php echo esc_attr($bocs_primary); ?>;
         color: <?php echo esc_attr($base); ?> !important;
         text-decoration: none;
         padding: 12px 24px;
@@ -148,7 +150,8 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         background-color: <?php echo esc_attr($bocs_secondary); ?>;
         border-left: 4px solid <?php echo esc_attr($bocs_primary); ?>;
         padding: 15px;
-        margin: 20px 0;
+        margin-bottom: 20px;
+        border-radius: 4px;
     }
     
     .bocs-highlight {
@@ -179,12 +182,12 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
 
     h1 {
         font-size: 22px;
-        color: <?php echo esc_attr($bocs_primary); ?>;
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
     }
 
     h2 {
         font-size: 20px;
-        color: <?php echo esc_attr($bocs_primary); ?>;
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
         display: block;
         font-weight: bold;
         margin: 0 0 18px;
@@ -199,7 +202,7 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
     }
 
     a {
-        color: <?php echo esc_attr($bocs_primary); ?>;
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
         text-decoration: underline;
     }
 
@@ -236,7 +239,7 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         background-color: #d9534f;
     }
 
-    /* Tables */
+    /* Override WooCommerce colors with Bocs styles */
     table.td {
         color: <?php echo esc_attr($text); ?>;
         border: 1px solid #e5e5e5;
@@ -446,13 +449,45 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         font-size: 13px;
     }
 
-    h2 {
-        color: <?php echo esc_attr($heading_text); ?>;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 22px;
-        font-weight: 500;
-        line-height: 130%;
-        margin: 0 0 18px;
-        text-align: left;
+    /* Force override all remaining WooCommerce purple elements */
+    h2, .h2, h2 a, .h2 a {
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
+    }
+
+    .woocommerce h2, 
+    #template_container h2, 
+    [style*="color: #7f54b3"],
+    [style*="color:#7f54b3"] {
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
+    }
+
+    #template_header,
+    [style*="background-color: #7f54b3"],
+    [style*="background-color:#7f54b3"],
+    [bgcolor="#7f54b3"] {
+        background-color: <?php echo esc_attr($bocs_primary); ?> !important;
+        text-shadow: none !important;
+    }
+
+    a,
+    a:hover,
+    a:visited,
+    a:active,
+    [style*="color: #7f54b3"],
+    [style*="color:#7f54b3"] {
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
+    }
+
+    .address a {
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
+    }
+
+    #credit a {
+        color: <?php echo esc_attr($bocs_primary); ?> !important;
+    }
+
+    #template_container #template_header h1,
+    #template_container #template_header h1[style*="text-shadow"] {
+        text-shadow: none !important;
     }
 </style> 

@@ -208,8 +208,6 @@
 </table>
 <?php
 
-error_log('related_orders: ' . json_encode($related_orders));
-
 /**
  * Related Orders Section
  * Displays all orders associated with this subscription.

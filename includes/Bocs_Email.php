@@ -216,7 +216,7 @@ class Bocs_Email
         // Add filters for each email type
         foreach ($email_mapping as $bocs_email_id => $wc_email_ids) {
             foreach ($wc_email_ids as $wc_email_id) {
-                add_filter("woocommerce_email_enabled_{$wc_email_id}", function($enabled, $order = null) use ($bocs_email_id) {
+                add_filter("woocommerce_email_enabled_{$wc_email_id}", function($enabled, $order = null) use ($bocs_email_id, $wc_email_id) {
                     // If no order object is provided, check if we're in a subscription context
                     if (!$order && function_exists('wcs_get_subscription')) {
                         global $wp;
@@ -231,7 +231,20 @@ class Bocs_Email
                     }
 
                     // Get the order ID (handle both orders and subscriptions)
-                    $order_id = is_callable(array($order, 'get_parent_id')) ? $order->get_parent_id() : $order->get_id();
+                    $order_id = is_callable(array($order, 'get_id')) ? $order->get_id() : 0;
+                    
+                    // Check if this is a subscription renewal order
+                    $is_renewal = false;
+                    if ($order_id) {
+                        $is_renewal = get_post_meta($order_id, '_subscription_renewal', true);
+                    }
+                    
+                    // Always disable WooCommerce default emails for subscription renewal orders
+                    // to prevent duplicate emails
+                    if ($is_renewal) {
+                        error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for renewal order #{$order_id} - using Bocs email instead");
+                        return false;
+                    }
                     
                     // Check parent order if this is a subscription and has a parent
                     if (is_callable(array($order, 'get_parent_id')) && $order->get_parent_id()) {
@@ -240,6 +253,7 @@ class Bocs_Email
                         $utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
                         
                         if ($source_type === 'referral' && $utm_source === 'Bocs App') {
+                            error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for order with Bocs App parent #{$parent_order_id}");
                             return false;
                         }
                     }
@@ -250,6 +264,7 @@ class Bocs_Email
 
                     // If this is a Bocs order, disable the corresponding WooCommerce email
                     if ($source_type === 'referral' && $utm_source === 'Bocs App') {
+                        error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for Bocs App order #{$order_id}");
                         return false;
                     }
 
@@ -283,6 +298,14 @@ class Bocs_Email
      * Initialize email classes after WooCommerce is loaded
      */
     public function init_email_classes() {
+        // Prevent duplicate email registrations
+        static $emails_initialized = false;
+        if ($emails_initialized) {
+            error_log("Bocs: Prevented duplicate email hook registration");
+            return;
+        }
+        $emails_initialized = true;
+        
         // Make sure WooCommerce is loaded
         if (!function_exists('WC')) {
             return;

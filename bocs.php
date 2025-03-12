@@ -417,14 +417,7 @@ add_filter('wc_get_template_part', 'bocs_locate_template_compat', 10, 3);
  * @return string Modified template path
  */
 function bocs_locate_template($template, $template_name, $template_path, $default_path = '') {
-    // Log parameters for debugging (uncomment when needed)
-    /*
-    error_log('BOCS template locator called:');
-    error_log('Template: ' . $template);
-    error_log('Template name: ' . $template_name);
-    error_log('Template path: ' . $template_path);
-    error_log('Default path: ' . $default_path);
-    */
+    // Removed non-critical debug logging
     
     // Bail early if not a BOCS template
     if (!(strpos($template_name, 'bocs-') === 0 || 
@@ -450,6 +443,105 @@ function bocs_locate_template($template, $template_name, $template_path, $defaul
     
     return $template;
 }
+
+/**
+ * Override WooCommerce email templates with our custom Bocs email templates
+ */
+function bocs_override_wc_email_templates($located, $template_name, $args, $template_path, $default_path) {
+    // Only target email templates 
+    if (strpos($template_name, 'emails/') === 0) {
+        // Check if we have a Bocs version of this template
+        $bocs_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
+        
+        if (file_exists($bocs_template)) {
+            return $bocs_template;
+        }
+        
+        // Also handle email-styles.php specifically since it's critical for branding
+        if ($template_name === 'emails/email-styles.php') {
+            $bocs_styles = plugin_dir_path(__FILE__) . 'templates/emails/email-styles.php';
+            if (file_exists($bocs_styles)) {
+                return $bocs_styles;
+            }
+        }
+        
+        // Also handle email-header.php and email-footer.php
+        if ($template_name === 'emails/email-header.php' || $template_name === 'emails/email-footer.php') {
+            $bocs_file = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
+            if (file_exists($bocs_file)) {
+                return $bocs_file;
+            }
+        }
+    }
+    
+    return $located;
+}
+add_filter('wc_get_template', 'bocs_override_wc_email_templates', 99, 5);
+
+/**
+ * Helper function to replace WooCommerce colors with Bocs colors
+ * 
+ * @param string $content The content to process
+ * @return string The processed content
+ */
+function bocs_replace_woocommerce_colors($content) {
+    // Replace background colors
+    $content = str_replace('background-color: #7f54b3', 'background-color: #3C7B7C', $content);
+    $content = str_replace('background-color:#7f54b3', 'background-color:#3C7B7C', $content);
+    $content = str_replace('bgcolor="#7f54b3"', 'bgcolor="#3C7B7C"', $content);
+    
+    // Replace text colors
+    $content = str_replace('color: #7f54b3', 'color: #3C7B7C', $content);
+    $content = str_replace('color:#7f54b3', 'color:#3C7B7C', $content);
+    $content = str_replace('color="#7f54b3"', 'color="#3C7B7C"', $content);
+    
+    // Replace text shadows
+    $content = str_replace('text-shadow: 0 1px 0 #9976c2', 'text-shadow: none', $content);
+    
+    // Direct hex code replacement (do this last to catch any remaining instances)
+    $content = str_replace('#7f54b3', '#3C7B7C', $content);
+    
+    return $content;
+}
+
+/**
+ * Filter WooCommerce email content to replace any remaining WooCommerce purple colors with Bocs teal
+ */
+function bocs_filter_woocommerce_mail_content($content) {
+    return bocs_replace_woocommerce_colors($content);
+}
+add_filter('woocommerce_mail_content', 'bocs_filter_woocommerce_mail_content', 99);
+
+/**
+ * Apply Bocs branding to all email templates
+ */
+function bocs_setup_email_templates() {
+    // Make sure WooCommerce is active
+    if (!class_exists('WC_Email')) {
+        return;
+    }
+    
+    // Get all email templates
+    $mailer = WC()->mailer();
+    if (!$mailer) {
+        return;
+    }
+    
+    // Override the default email footer text
+    add_filter('woocommerce_email_footer_text', function($text) {
+        return sprintf('%s — Powered by <a href="https://bocs.io" style="color: #3C7B7C !important; font-weight: normal; text-decoration: underline;">Bocs</a>', get_bloginfo('name', 'display'));
+    }, 99);
+    
+    // Add a filter to modify all email subjects with proper branding
+    add_filter('woocommerce_email_subject', function($subject, $email) {
+        // Add [Bocs] prefix to subject if it doesn't already have it
+        if (strpos($subject, '[Bocs]') === false) {
+            $subject = '[Bocs] ' . $subject;
+        }
+        return $subject;
+    }, 99, 2);
+}
+add_action('init', 'bocs_setup_email_templates', 20);
 
 /**
  * Initialize the plugin.

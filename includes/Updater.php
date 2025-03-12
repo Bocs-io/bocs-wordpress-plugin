@@ -186,27 +186,14 @@ class Updater {
 				$args['headers']['Authorization'] = "bearer {$this->authorize_token}";
 			}
 
-			// Log request details in dev environment
-			if (BOCS_ENVIRONMENT === 'dev') {
-				error_log(sprintf('[BOCS Plugin Updater] Making version check request to: %s', $request_uri));
-			}
-
 			// Make remote GET request to the API
 			$response = wp_remote_get( $request_uri, $args );
 			if ( is_wp_error( $response ) ) {
-				if (BOCS_ENVIRONMENT === 'dev') {
-					error_log(sprintf('[BOCS Plugin Updater] Error in version check request: %s', $response->get_error_message()));
-				}
 				return;
 			}
 
 			// Decode JSON response body
 			$response = json_decode( wp_remote_retrieve_body( $response ), true );
-
-			// Log response in dev environment
-			if (BOCS_ENVIRONMENT === 'dev') {
-				error_log(sprintf('[BOCS Plugin Updater] Version check response: %s', wp_json_encode($response)));
-			}
 
 			// If response is array, get first item
 			if( is_array( $response ) ) {
@@ -216,11 +203,6 @@ class Updater {
 			// Store response if valid and contains version tag
 			if ( !empty($response) && isset($response['tag_name']) ) {
 				$this->github_response = $response;
-				if (BOCS_ENVIRONMENT === 'dev') {
-					error_log(sprintf('[BOCS Plugin Updater] Found version tag: %s', $response['tag_name']));
-				}
-			} else if (BOCS_ENVIRONMENT === 'dev') {
-				error_log('[BOCS Plugin Updater] No valid version tag found in response');
 			}
 		}
 	}

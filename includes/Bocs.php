@@ -95,6 +95,7 @@ class Bocs
             
             // Now load our custom email classes
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-order.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
@@ -287,6 +288,20 @@ class Bocs
      * Initialize email classes after WooCommerce is loaded
      */
     public function init_email_classes() {
+        // Prevent duplicate email registrations
+        static $emails_initialized = false;
+        if ($emails_initialized) {
+            error_log("Bocs: Prevented duplicate email hook registration in Bocs.php");
+            return;
+        }
+        $emails_initialized = true;
+        
+        // Regular Processing Order Email
+        $processing_regular_orders = new WC_Bocs_Email_Processing_Order();
+        $this->loader->add_action('woocommerce_order_status_processing', $processing_regular_orders, 'trigger', 9, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_regular_orders, 'trigger', 9, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_regular_orders, 'trigger', 9, 1);
+        
         // Processing Renewal Order Email
         $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
         $this->loader->add_action('woocommerce_order_status_processing', $processing_orders, 'trigger', 10, 1);

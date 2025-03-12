@@ -184,7 +184,6 @@ class Bocs_Updater {
             }
 
             if (!isset($response_body->tag_name)) {
-                error_log('Bocs Updater: No tag_name found in response');
                 return false;
             }
 

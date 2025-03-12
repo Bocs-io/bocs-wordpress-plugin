@@ -7,6 +7,7 @@ public static function get_overridable_templates() {
     return array(
         // HTML Email Templates 
         // Copy these templates to: yourtheme/bocs-wordpress/emails/
+        'bocs-customer-subscription-renewal-processing.php' => __('Sent when a subscription renewal order is processing', 'bocs-wordpress'),
         'bocs-customer-welcome.php'                  => __('Welcome email sent to new customers', 'bocs-wordpress'),
         'bocs-subscription-switched.php'             => __('Sent when a customer switches their subscription', 'bocs-wordpress'),
         'bocs-customer-upcoming-renewal-reminder.php' => __('Sent before an automatic subscription renewal', 'bocs-wordpress'),
@@ -24,6 +25,7 @@ public static function get_overridable_templates() {
         
         // Plain Text Email Templates
         // Copy these templates to: yourtheme/bocs-wordpress/emails/plain/
+        'plain/bocs-customer-subscription-renewal-processing.php' => __('Plain text version of subscription renewal processing', 'bocs-wordpress'),
         'plain/bocs-customer-welcome.php'                  => __('Plain text version of welcome email', 'bocs-wordpress'),
         'plain/bocs-subscription-switched.php'             => __('Plain text version of subscription switched email', 'bocs-wordpress'),
         'plain/bocs-customer-upcoming-renewal-reminder.php' => __('Plain text version of renewal reminder', 'bocs-wordpress'),
