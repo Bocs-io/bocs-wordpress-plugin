@@ -24,6 +24,10 @@ class Admin
 
     public function __construct()
     {
+        $this->plugin_name = 'woocommerce-bocs';
+        $this->version = '1.0.0';
+        $this->load_dependencies();
+        
         // Add this line to register the query var
         add_filter('query_vars', [$this, 'add_bocs_query_vars']);
         
@@ -52,6 +56,60 @@ class Admin
         
         // Also hook into thank you page just to be sure
         add_action('woocommerce_thankyou', array($this, 'trigger_welcome_email_on_thankyou'), 10, 1);
+    }
+
+    /**
+     * Load dependencies required for admin functionality
+     *
+     * @return void
+     */
+    private function load_dependencies()
+    {
+        /**
+         * The class responsible for defining all actions related to stock management
+         */
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Stock.php';
+        
+        // Set up AJAX handlers
+        add_action('wp_ajax_get_product_stock', array($this, 'get_product_stock_ajax'));
+        add_action('wp_ajax_nopriv_get_product_stock', array($this, 'get_product_stock_ajax'));
+    }
+    
+    /**
+     * AJAX handler to retrieve product stock quantity directly from metadata
+     * 
+     * @return void
+     */
+    public function get_product_stock_ajax() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'ajax-nonce')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+        
+        // Check if product ID is provided
+        if (!isset($_POST['product_id']) || empty($_POST['product_id'])) {
+            wp_send_json_error('Product ID is required');
+            return;
+        }
+        
+        $product_id = intval($_POST['product_id']);
+        
+        // Get the product
+        $product = wc_get_product($product_id);
+        if (!$product) {
+            wp_send_json_error('Product not found');
+            return;
+        }
+        
+        // Get stock quantity from product meta
+        if ($product->managing_stock()) {
+            $stock_quantity = $product->get_stock_quantity();
+            wp_send_json_success($stock_quantity);
+        } else {
+            // If stock is not managed, return null
+            wp_send_json_success(null);
+        }
     }
 
     /**
@@ -380,7 +438,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.03.13.5',
+            '2025.03.13.13',
             true
         );
 

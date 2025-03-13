@@ -105,11 +105,7 @@ class Bocs_Cart {
                     }
                 }
             } catch (Exception $e) {
-                error_log(sprintf(
-                    /* translators: %s: Error message */
-                    __('Critical: Failed to get Bocs options: %s', 'bocs-wordpress'),
-                    $e->getMessage()
-                ));
+                // Silently handle error
             }
         }
 
@@ -249,7 +245,6 @@ class Bocs_Cart {
      */
     public function bocs_cart_totals_before_order_total()
     {
-        error_log('bocs_cart_totals_before_order_total');
         printf(
             '<tr class="custom-text-before-subtotal"><th>%s</th><td>%s</td></tr>',
             esc_html__('Additional Info:', 'bocs-wordpress'),
@@ -285,6 +280,13 @@ class Bocs_Cart {
         if (did_action('woocommerce_before_calculate_totals') >= 2) {
             return;
         }
+        
+        // Check for BOCS frequency and discount information
+        $frequency_id = isset($_COOKIE['__bocs_frequency_id']) ? sanitize_text_field($_COOKIE['__bocs_frequency_id']) : '';
+        $frequency_unit = isset($_COOKIE['__bocs_frequency_time_unit']) ? sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']) : '';
+        $frequency_interval = isset($_COOKIE['__bocs_frequency_interval']) ? intval($_COOKIE['__bocs_frequency_interval']) : 0;
+        $discount_type = isset($_COOKIE['__bocs_discount_type']) ? sanitize_text_field($_COOKIE['__bocs_discount_type']) : '';
+        $discount_amount = isset($_COOKIE['__bocs_discount']) ? floatval($_COOKIE['__bocs_discount']) : 0;
         
         // Loop through cart items
         foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
@@ -356,7 +358,6 @@ class Bocs_Cart {
             $bocs_class = new Bocs_Bocs();
             return $bocs_class->get_bocs($bocs_id);
         } catch (Exception $e) {
-            error_log('Error fetching BOCS subscription details: ' . $e->getMessage());
             return false;
         }
     }
