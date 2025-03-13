@@ -44,9 +44,8 @@ class Admin
             ];
         }
         
-        // Add action for testing welcome email
-        // Removed Test Welcome Email functionality as requested
-        // add_action('admin_post_test_welcome_email_direct', array($this, 'test_welcome_email_direct'));
+        // Add action to track cart item meta passed to order items
+        add_action('woocommerce_checkout_create_order_line_item', array($this, 'add_cart_item_meta_to_order_items'), 10, 4);
         
         // Add action to trigger welcome email after checkout
         add_action('woocommerce_checkout_order_processed', array($this, 'trigger_welcome_email_after_checkout'), 99, 3);
@@ -381,7 +380,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.01.09.4',
+            '2025.03.13.5',
             true
         );
 
@@ -1718,15 +1717,8 @@ class Admin
     }
 
     /**
-     * Transfers cart item meta data to order meta data during checkout.
-     * 
-     * This method is responsible for copying Bocs-specific meta data from cart items
-     * to the order level during checkout processing. It specifically handles two
-     * pieces of meta data:
-     * - __bocs_bocs_id: The unique identifier for a Bocs subscription
-     * - __bocs_collections_id: The identifier for associated Bocs collections
+     * Transfers cart item meta data to the order item during checkout
      *
-     * @since 1.0.0
      * @access public
      *
      * @param WC_Order_Item $item           The order item being processed
@@ -1752,12 +1744,20 @@ class Admin
      */
     public function add_cart_item_meta_to_order_items($item, $cart_item_key, $values, $order) 
     {
+        error_log('BOCS: Processing cart item metadata for order item: ' . $item->get_id());
+        
+        // Log all cart item values for debugging
+        error_log('BOCS: Cart item values: ' . json_encode($values));
+        
         // Initialize variables to store Bocs IDs
         $__bocs_bocs_id = '';
         $__bocs_collections_id = '';
+        $__bocs_custom_price = '';
 
         // Check if cart item has meta data
         if (isset($values['meta_data']) && !empty($values['meta_data'])) {
+            error_log('BOCS: Cart item has meta_data: ' . json_encode($values['meta_data']));
+            
             // Iterate through meta data to find Bocs identifiers
             foreach ($values['meta_data'] as $meta) {
                 // Check and store Bocs ID if not already found
@@ -1769,22 +1769,31 @@ class Admin
                 if ($meta->key == '__bocs_collections_id' && $__bocs_collections_id == '') {
                     $__bocs_collections_id = trim($meta->value);
                 }
-
-                // Break loop if both IDs are found
-                if ($__bocs_bocs_id != '' && $__bocs_collections_id != '') {
-                    break;
+                
+                // Check for custom price metadata
+                if ($meta->key == '_bocs_custom_price' && $__bocs_custom_price == '') {
+                    $__bocs_custom_price = trim($meta->value);
+                    error_log('BOCS: Found custom price metadata: ' . $__bocs_custom_price);
+                    
+                    // Also store the custom price in the order item meta
+                    $item->add_meta_data('_bocs_custom_price', $__bocs_custom_price, true);
+                    error_log('BOCS: Added custom price to order item meta: ' . $__bocs_custom_price);
                 }
             }
+        } else {
+            error_log('BOCS: No meta_data found for cart item');
         }
 
         // Update order meta with Bocs ID if found
         if ($__bocs_bocs_id != '') {
             $order->update_meta_data('__bocs_bocs_id', $__bocs_bocs_id);
+            error_log('BOCS: Added Bocs ID to order: ' . $__bocs_bocs_id);
         }
 
         // Update order meta with Collections ID if found
         if ($__bocs_collections_id != '') {
             $order->update_meta_data('__bocs_collections_id', $__bocs_collections_id);
+            error_log('BOCS: Added Collections ID to order: ' . $__bocs_collections_id);
         }
     }
 

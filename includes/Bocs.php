@@ -214,9 +214,6 @@ class Bocs
         // create bocs subscription and order if the order is in processing
         // $this->loader->add_filter('woocommerce_store_api_add_to_cart_data', $plugin_admin, 'add_custom_to_cart_data', 10, 2);
         // $this->loader->add_action('woocommerce_add_cart_item_data', $plugin_admin, 'add_custom_cart_item_data', 10, 3);
-        // $this->loader->add_action('woocommerce_checkout_create_order_line_item', $plugin_admin, 'add_cart_item_meta_to_order_items', 10, 4);
-
-        // $this->loader->add_action('woocommerce_checkout_create_order', $plugin_admin, 'add_custom_order_meta', 10, 2);
         $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
 
         // this is for the saving of the bocs and collections list
@@ -257,8 +254,15 @@ class Bocs
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
 
+        // Initialize cart class with custom price functionality
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
+        
+        // Add hooks for cart total calculations
+        $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
+        $this->loader->add_action('woocommerce_review_order_after_cart_contents', $bocs_cart, 'bocs_review_order_after_cart_contents');
+        $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
+        $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
 
         $plugin_admin = new Admin();
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
@@ -267,9 +271,6 @@ class Bocs
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
-
-        // $bocs_cart = new Bocs_Cart();
-        // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
     }
 
     public function define_email_hooks()

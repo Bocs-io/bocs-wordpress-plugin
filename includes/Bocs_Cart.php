@@ -14,6 +14,17 @@
 class Bocs_Cart {
 
     /**
+     * Constructor
+     */
+    public function __construct() {
+        // Add hooks for custom price functionality
+        add_action('woocommerce_before_calculate_totals', array($this, 'apply_custom_prices'), 10, 1);
+        
+        // Add hook to handle removing BOCS from cart
+        add_action('template_redirect', array($this, 'handle_remove_bocs_parameter'));
+    }
+
+    /**
      * Get available Bocs options for cart
      */
     public function get_bocs_options() {
@@ -255,5 +266,147 @@ class Bocs_Cart {
     public function cart_contains_bocs_subscription() {
         $bocs_id = $this->get_current_bocs_id();
         return !empty($bocs_id);
+    }
+
+    /**
+     * Apply custom prices to cart items that have BOCS custom price metadata
+     *
+     * This function checks for product-specific price cookies and applies them to cart items
+     * 
+     * @param WC_Cart $cart The cart object
+     * @return void
+     */
+    public function apply_custom_prices($cart) {
+        if (is_admin() && !defined('DOING_AJAX')) {
+            return;
+        }
+        
+        // Don't run calculations twice
+        if (did_action('woocommerce_before_calculate_totals') >= 2) {
+            return;
+        }
+        
+        // Loop through cart items
+        foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
+            $product_id = isset($cart_item['product_id']) ? $cart_item['product_id'] : 0;
+            $product_name = isset($cart_item['data']) ? $cart_item['data']->get_name() : 'Unknown product';
+            
+            if (!$product_id) {
+                continue;
+            }
+            
+            // Check for product-specific cookie
+            $cookie_name = "__bocs_price_{$product_id}";
+            if (isset($_COOKIE[$cookie_name])) {
+                $custom_price = floatval($_COOKIE[$cookie_name]);
+                
+                if ($custom_price > 0) {
+                    $original_price = $cart_item['data']->get_price();
+                    $cart_item['data']->set_price($custom_price);
+                }
+            } else {
+                // Fallback to general cookie for backwards compatibility
+                if (isset($_COOKIE['__bocs_product_price']) && isset($_COOKIE['__bocs_product_id'])) {
+                    $cookie_product_id = intval($_COOKIE['__bocs_product_id']);
+                    $cookie_price = floatval($_COOKIE['__bocs_product_price']);
+                    
+                    if ($cookie_product_id === $product_id && $cookie_price > 0) {
+                        $original_price = $cart_item['data']->get_price();
+                        $cart_item['data']->set_price($cookie_price);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Add subscription options to the cart
+     * 
+     * Display BOCS subscription options in the cart collaterals area
+     * 
+     * @since 0.0.1
+     * @return void 
+     */
+    public function add_subscription_options_to_cart() {
+        // Check if we have a BOCS ID
+        $bocs_id = $this->get_current_bocs_id();
+        
+        if (empty($bocs_id)) {
+            // If no BOCS ID, display available options instead
+            $this->get_bocs_options();
+            return;
+        }
+        
+        // Otherwise, display current subscription details
+        $subscription_info = $this->get_subscription_details($bocs_id);
+        
+        if (!empty($subscription_info)) {
+            include dirname(__FILE__) . '/../views/cart-subscription-details.php';
+        }
+    }
+    
+    /**
+     * Get subscription details for a given BOCS ID
+     * 
+     * @param string $bocs_id The BOCS ID
+     * @return array|false Subscription details or false if not found
+     */
+    private function get_subscription_details($bocs_id) {
+        try {
+            $bocs_class = new Bocs_Bocs();
+            return $bocs_class->get_bocs($bocs_id);
+        } catch (Exception $e) {
+            error_log('Error fetching BOCS subscription details: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Handle removing BOCS from cart via URL parameter
+     * 
+     * @since 0.0.1
+     * @return void
+     */
+    public function handle_remove_bocs_parameter() {
+        // Check if we have the remove_bocs parameter
+        if (isset($_GET['remove_bocs']) && $_GET['remove_bocs'] == '1') {
+            // Clear BOCS cookies
+            $this->clear_bocs_cookies();
+            
+            // Clear BOCS from session
+            if (isset(WC()->session)) {
+                WC()->session->set('bocs', '');
+            }
+            
+            // Redirect back to cart
+            wp_safe_redirect(wc_get_cart_url());
+            exit;
+        }
+    }
+    
+    /**
+     * Clear all BOCS cookies
+     * 
+     * @since 0.0.1
+     * @return void
+     */
+    private function clear_bocs_cookies() {
+        $cookies_to_clear = array(
+            '__bocs_id',
+            '__bocs_collection_id',
+            '__bocs_frequency_id',
+            '__bocs_frequency_time_unit',
+            '__bocs_frequency_interval',
+            '__bocs_discount_type',
+            '__bocs_total',
+            '__bocs_discount',
+            '__bocs_subtotal'
+        );
+        
+        foreach ($cookies_to_clear as $cookie_name) {
+            if (isset($_COOKIE[$cookie_name])) {
+                setcookie($cookie_name, '', time() - 3600, '/');
+            }
+        }
     }
 }
