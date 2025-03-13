@@ -26,7 +26,20 @@
  * @param {string} params.bocsId - BOCS identifier
  * @param {string} params.collectionId - Collection identifier
  */
-async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, selectedProducts: products, total, bocsId, collectionId}) {
+async function bocs_add_to_cart(params) {
+
+	console.log(params);
+
+	const {price, discount, selectedFrequency: frequency, selectedProducts: products, total} = params;
+	let {bocsId, collectionId} = params;
+	
+	if (bocsId == null || bocsId === '') {
+		// Get BOCS ID only from data-bocs-id attribute
+		const $widget = jQuery('div#bocs-widget');
+		params.bocsId = $widget.data('bocs-id') || '';
+		bocsId = params.bocsId;
+	}
+	
 	// Initialize cart button and disable during processing
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
 	buttonCart.prop('disabled', true);
@@ -47,9 +60,9 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 		
 		// Get proper ID based on collection
 		let id = jQuery('div#bocs-widget').data('id');
-	if (collectionId != null && typeof collectionId !== 'undefined' && collectionId !== '') {
-		id = bocsId;
-	}
+		if (collectionId != null && typeof collectionId !== 'undefined' && collectionId !== '') {
+			id = bocsId;
+		}
 	
 		// Clear cart first
 		await clearCart();
@@ -66,6 +79,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 			// Set cookies for session data
 			setCookies({
 				id,
+				bocsId,
 				collectionId,
 				bocsFrequencyId,
 				frequency,
@@ -79,7 +93,7 @@ async function bocs_add_to_cart({price, discount, selectedFrequency: frequency, 
 			
 			// Build cart URL with parameters
 			const redirectUrl = buildRedirectUrl({
-				id: bocsId || id,
+				id: bocsId || id, // Restored fallback to ensure an ID is used
 				collectionId,
 				bocsFrequencyId,
 				total,
@@ -369,7 +383,7 @@ async function applyDiscount(discount, frequency, discountType) {
  */
 function setCookies(params) {
 	const cookieData = {
-		"__bocs_id": params.id,
+		"__bocs_id": params.bocsId,
 		"__bocs_collection_id": params.collectionId,
 		"__bocs_frequency_id": params.bocsFrequencyId,
 		"__bocs_frequency_time_unit": params.frequency.timeUnit,

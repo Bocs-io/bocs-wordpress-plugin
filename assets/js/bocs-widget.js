@@ -152,7 +152,8 @@ jQuery(async function ($) {
 		// Transform API response into format needed for dropdown options
 		widgetsOptions = widgetsList.data.data.map(widget => ({
 			id: `widget-${widget.id}`,
-			name: widget.title || widget.id // Fallback to ID if title is not available
+			name: widget.title || widget.id, // Fallback to ID if title is not available
+			bocsId: widget.bocsId
 		}));
 
 	} catch (error) {
@@ -174,7 +175,8 @@ jQuery(async function ($) {
 		// Map the retrieved collections data to the format required for the options.
 		collectionsOptions = collectionsList.data.data.map(collection => ({
 			id: `collection-${collection.id}`,
-			name: collection.title || collection.id
+			name: collection.title || collection.id,
+			bocsId: collection.bocsId
 		}));
 
 	} catch (error) {
@@ -210,6 +212,10 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		widgetId: { 
 			type: 'string',
 			description: 'Stores the selected widget or collection ID'
+		},
+		bocsId: {
+			type: 'string',
+			description: 'Stores the Bocs ID for the selected widget or collection'
 		}
 	},
 	description: "This block displays products from your store using Bocs widgets or collections",
@@ -231,15 +237,19 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		 * 
 		 * @param {string} id The ID of the selected widget/collection (format: 'widget-123' or 'collection-123')
 		 * @param {string} name The display name of the selected widget/collection
+		 * @param {string} bocsId The Bocs ID for the selected widget or collection
 		 * 
 		 * This function:
 		 * 1. Updates block attributes
 		 * 2. Updates UI elements
 		 * 3. Persists selection via AJAX to WordPress backend
 		 */
-		function updateSelected(id, name) {
+		function updateSelected(id, name, bocsId) {
 			// Update the block attributes with the selected widget ID.
-			props.setAttributes({ widgetId: id });
+			props.setAttributes({ 
+				widgetId: id,
+				bocsId: bocsId 
+			});
 
 			// Hide dropdown menus and descriptions.
 			jQuery('.bocs-dropdown-menu-body, .bocs-widget-description, .bocs-wrapper').hide();
@@ -264,6 +274,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					nonce: bocs_widget_object.nonce,
 					selectedOption: id,
 					selectedOptionName: name,
+					bocsId: bocsId,
 					postId: wp.data.select('core/editor').getCurrentPostId()
 				}
 			});
@@ -285,7 +296,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					label: displayName,
 					value: widget.id,
 					title: displayName,
-					onClick: () => updateSelected(widget.id, displayName)
+					onClick: () => updateSelected(widget.id, displayName, widget.bocsId)
 				};
 			});
 
@@ -300,7 +311,7 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 					title: displayName,
 					onClick: () => {
 						console.log('Collection ID:', collection.id);
-						updateSelected(collection.id, displayName)
+						updateSelected(collection.id, displayName, collection.bocsId)
 					}
 				};
 			});
@@ -390,7 +401,8 @@ wp.blocks.registerBlockType('woocommerce-bocs/bocs-widget', {
 		return el("div", {
 			id: "bocs-widget",
 			"data-id": dataId,
-			"data-url": bocs_widget_object.dataURL
+			"data-url": bocs_widget_object.dataURL,
+			"data-bocs-id": props.attributes.bocsId || ""
 		});
 	}
 });

@@ -124,7 +124,6 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
         
         // Skip if we've already processed this order
         if (in_array($order_id, $processed_orders)) {
-            error_log("Bocs Renewal Email: Skipping duplicate processing for order #{$order_id}");
             return;
         }
         
@@ -139,7 +138,6 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                 
                 // Skip if it's not a renewal order
                 if (empty($is_renewal)) {
-                    error_log("Bocs Renewal Email: Skipping order #{$order_id} - not a renewal order");
                     return;
                 }
                 
@@ -174,16 +172,16 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                 
                 // Only log for debugging if not from Bocs App
                 if ($source_type !== 'referral' || $utm_source !== 'Bocs App') {
-                    error_log("Bocs Renewal Email: Processing order #{$order_id} without Bocs App attribution");
+                    // Removed error_log message
                 }
             }
         }
 
         if ($this->is_enabled() && $this->get_recipient()) {
-            error_log("Bocs Renewal Email: Sending email to {$this->get_recipient()} for order #{$order_id}");
+            // Removed error_log message
             $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
         } else {
-            error_log("Bocs Renewal Email not sent - enabled: " . ($this->is_enabled() ? "yes" : "no") . ", recipient: " . $this->get_recipient());
+            // Removed error_log message
         }
 
         $this->restore_locale();

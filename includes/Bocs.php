@@ -60,6 +60,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Notes.php';
 
         // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {
@@ -266,8 +267,10 @@ class Bocs
 
         $plugin_admin = new Admin();
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
-        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter');
-        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
+        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter', 5);
+        $this->loader->add_action('woocommerce_before_checkout_form', $plugin_admin, 'debug_dump_bocs_data', 1);
+        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
+        $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');

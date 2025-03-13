@@ -21,12 +21,18 @@ class Admin
 
     /** @var string Nonce for widget saving operations */
     private $save_widget_nonce = '';
+    
+    /** @var Bocs_Log_Handler Logger instance */
+    private $logger;
 
     public function __construct()
     {
         $this->plugin_name = 'woocommerce-bocs';
         $this->version = '1.0.0';
         $this->load_dependencies();
+        
+        // Initialize logger
+        $this->logger = new Bocs_Log_Handler();
         
         // Add this line to register the query var
         add_filter('query_vars', [$this, 'add_bocs_query_vars']);
@@ -299,7 +305,7 @@ class Admin
                 'wp-data',        // Data management
                 'jquery'          // jQuery library
             ), 
-            '20250106.0'         // Version number for cache busting
+            '2025.03.13.1'         // Version number for cache busting
         );  // Closing parenthesis on its own line
 
         // Get current post context and any previously selected widget data
@@ -438,7 +444,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.03.13.13',
+            '2025.03.13.20',
             true
         );
 
@@ -1389,14 +1395,33 @@ class Admin
     /**
      * Helper method to get value from session or cookie
      * 
-     * @param string $key
-     * @return string|null
+     * This helper method attempts to retrieve a value from the WooCommerce session first,
+     * then falls back to checking for a cookie value. It handles different naming 
+     * conventions for cookies based on the key name.
+     * 
+     * @param string $key The key to look for in session or cookies
+     * @return string|null The value if found, null otherwise
      */
     private function get_from_session_or_cookie($key) {
+        // First try to get from session
         $value = WC()->session->get($key);
-        if (empty($value) && isset($_COOKIE["__${key}_id"])) {
-            $value = sanitize_text_field($_COOKIE["__${key}_id"]);
+        
+        // If not in session, check for cookies with various formats
+        if (empty($value)) {
+            // Check the standard cookie format with _id suffix
+            if (isset($_COOKIE["__${key}_id"])) {
+                $value = sanitize_text_field($_COOKIE["__${key}_id"]);
+            } 
+            // Check for direct match format
+            elseif (isset($_COOKIE["__${key}"])) {
+                $value = sanitize_text_field($_COOKIE["__${key}"]);
+            }
+            // Check for bocs_ prefix format
+            elseif (isset($_COOKIE["__bocs_${key}"])) {
+                $value = sanitize_text_field($_COOKIE["__bocs_${key}"]);
+            }
         }
+        
         return $value;
     }
 
@@ -1775,47 +1800,50 @@ class Admin
     }
 
     /**
-     * Transfers cart item meta data to the order item during checkout
+     * Adds Bocs meta data from cart items to order meta
+     * 
+     * This method handles transferring Bocs-specific meta data from cart items to order meta
+     * when an order is created. It extracts identifier information from the cart item meta data
+     * and adds it to the order's meta data.
      *
+     * @since 1.0.0
      * @access public
      *
-     * @param WC_Order_Item $item           The order item being processed
-     * @param string        $cart_item_key  The cart item key
-     * @param array         $values         The cart item values including meta data
-     * @param WC_Order      $order          The order object being created
-     * 
+     * @param WC_Order_Item $item        The order item object
+     * @param string        $cart_item_key The cart item key
+     * @param array         $values       The cart item values
+     * @param WC_Order      $order        The WooCommerce order object
+     *
      * @return void
-     *
-     * @throws Exception If order meta update fails (handled by WooCommerce)
-     *
-     * Example meta_data structure:
+     * 
+     * Meta Data Structure Example:
      * $values['meta_data'] = [
-     *     (object)[
+     *     0 => [
      *         'key' => '__bocs_bocs_id',
-     *         'value' => '12345'
-     *     ],
-     *     (object)[
-     *         'key' => '__bocs_collections_id',
-     *         'value' => '67890'
+     *         'value' => '123456789'
      *     ]
      * ];
      */
     public function add_cart_item_meta_to_order_items($item, $cart_item_key, $values, $order) 
     {
-        error_log('BOCS: Processing cart item metadata for order item: ' . $item->get_id());
-        
-        // Log all cart item values for debugging
-        error_log('BOCS: Cart item values: ' . json_encode($values));
-        
         // Initialize variables to store Bocs IDs
         $__bocs_bocs_id = '';
         $__bocs_collections_id = '';
         $__bocs_custom_price = '';
 
+        // Get the parent order if this is a revision
+        $order_id = $order->get_id();
+        $parent_order_id = wp_get_post_parent_id($order_id);
+        if ($parent_order_id) {
+            $parent_order = wc_get_order($parent_order_id);
+            if ($parent_order) {
+                // Use parent order for storing meta
+                $order = $parent_order;
+            }
+        }
+
         // Check if cart item has meta data
         if (isset($values['meta_data']) && !empty($values['meta_data'])) {
-            error_log('BOCS: Cart item has meta_data: ' . json_encode($values['meta_data']));
-            
             // Iterate through meta data to find Bocs identifiers
             foreach ($values['meta_data'] as $meta) {
                 // Check and store Bocs ID if not already found
@@ -1831,28 +1859,55 @@ class Admin
                 // Check for custom price metadata
                 if ($meta->key == '_bocs_custom_price' && $__bocs_custom_price == '') {
                     $__bocs_custom_price = trim($meta->value);
-                    error_log('BOCS: Found custom price metadata: ' . $__bocs_custom_price);
                     
                     // Also store the custom price in the order item meta
                     $item->add_meta_data('_bocs_custom_price', $__bocs_custom_price, true);
-                    error_log('BOCS: Added custom price to order item meta: ' . $__bocs_custom_price);
                 }
             }
-        } else {
-            error_log('BOCS: No meta_data found for cart item');
         }
 
-        // Update order meta with Bocs ID if found
+        // Check if we should update BOCS ID
         if ($__bocs_bocs_id != '') {
-            $order->update_meta_data('__bocs_bocs_id', $__bocs_bocs_id);
-            error_log('BOCS: Added Bocs ID to order: ' . $__bocs_bocs_id);
+            // First check if we already have a BOCS ID in order meta
+            $existing_bocs_id = $order->get_meta('__bocs_bocs_id');
+            
+            // Check for cookie value which might be more recent
+            $cookie_bocs_id = '';
+            if (isset($_COOKIE['__bocs_id'])) {
+                $cookie_bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
+            }
+            
+            // Prioritize cookie value if it exists, otherwise use the meta value
+            $final_bocs_id = !empty($cookie_bocs_id) ? $cookie_bocs_id : $__bocs_bocs_id;
+            
+            // Only update if different from existing value
+            if ($existing_bocs_id !== $final_bocs_id) {
+                $order->update_meta_data('__bocs_bocs_id', $final_bocs_id);
+                $this->log_info('Updated BOCS ID in order meta: ' . $final_bocs_id);
+            }
         }
 
         // Update order meta with Collections ID if found
         if ($__bocs_collections_id != '') {
-            $order->update_meta_data('__bocs_collections_id', $__bocs_collections_id);
-            error_log('BOCS: Added Collections ID to order: ' . $__bocs_collections_id);
+            $existing_collections_id = $order->get_meta('__bocs_collections_id');
+            
+            // Check for cookie value
+            $cookie_collections_id = '';
+            if (isset($_COOKIE['__bocs_collection_id'])) {
+                $cookie_collections_id = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+            }
+            
+            // Prioritize cookie value if it exists
+            $final_collections_id = !empty($cookie_collections_id) ? $cookie_collections_id : $__bocs_collections_id;
+            
+            // Only update if different from existing value
+            if ($existing_collections_id !== $final_collections_id) {
+                $order->update_meta_data('__bocs_collections_id', $final_collections_id);
+            }
         }
+        
+        // Save the order to persist changes
+        $order->save();
     }
 
     /**
@@ -1905,50 +1960,121 @@ class Admin
         return $add_to_cart_data;
     }
 
+    /**
+     * Captures BOCS parameters from URL or cookies and stores them in the WooCommerce session
+     * 
+     * This method is responsible for capturing BOCS-related parameters either from
+     * URL query parameters or from cookies, and then storing them in the WooCommerce
+     * session for later use during checkout. It runs on cart and checkout pages.
+     *
+     * @since 1.0.0
+     * @access public
+     * 
+     * @return void
+     */
     public function capture_bocs_parameter()
     {
         if (is_cart() || is_checkout()) {
-
+            $this->log_info('Starting capture_bocs_parameter process on ' . (is_cart() ? 'cart' : 'checkout') . ' page');
+            
+            // Log all cookies to see what's available
+            if (isset($_COOKIE) && !empty($_COOKIE)) {
+                $bocs_cookies = array_filter(array_keys($_COOKIE), function($key) {
+                    return strpos($key, '__bocs') === 0;
+                });
+                
+                if (!empty($bocs_cookies)) {
+                    $this->log_info('Found BOCS cookies: ' . implode(', ', $bocs_cookies));
+                } else {
+                    $this->log_warning('No BOCS cookies found');
+                }
+            }
+            
+            // Process main BOCS ID
             if (isset($_GET['bocs'])) {
                 $bocs_value = sanitize_text_field($_GET['bocs']);
-                if (! empty($bocs_value))
+                if (!empty($bocs_value)) {
                     WC()->session->set('bocs', $bocs_value);
-            } else {
-                // check the cookie
-                if (isset($_COOKIE['__bocs_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                    if (! empty($bocs_value)) {
-                        WC()->session->set('bocs', $bocs_value);
-                    }
+                    $this->log_info('Set BOCS ID in session from URL parameter: ' . $bocs_value);
+                }
+            } elseif (isset($_COOKIE['__bocs_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
+                if (!empty($bocs_value)) {
+                    WC()->session->set('bocs', $bocs_value);
+                    $this->log_info('Set BOCS ID in session from cookie: ' . $bocs_value);
                 }
             }
 
+            // Process collection ID
             if (isset($_GET['collection'])) {
                 $bocs_value = sanitize_text_field($_GET['collection']);
-                if (! empty($bocs_value))
+                if (!empty($bocs_value)) {
                     WC()->session->set('bocs_collection', $bocs_value);
-            } else {
-                // check the cookie
-                if (isset($_COOKIE['__bocs_collection_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                    if (! empty($bocs_value)) {
-                        WC()->session->set('bocs_collection', $bocs_value);
-                    }
+                    $this->log_info('Set collection ID in session from URL parameter: ' . $bocs_value);
+                }
+            } elseif (isset($_COOKIE['__bocs_collection_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
+                if (!empty($bocs_value)) {
+                    WC()->session->set('bocs_collection', $bocs_value);
+                    $this->log_info('Set collection ID in session from cookie: ' . $bocs_value);
                 }
             }
 
+            // Process frequency ID
             if (isset($_GET['frequency'])) {
                 $bocs_value = sanitize_text_field($_GET['frequency']);
-                if (! empty($bocs_value))
+                if (!empty($bocs_value)) {
                     WC()->session->set('bocs_frequency', $bocs_value);
-            } else {
-                // check the cookie
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                    if (! empty($bocs_value)) {
-                        WC()->session->set('bocs_frequency', $bocs_value);
+                    $this->log_info('Set frequency ID in session from URL parameter: ' . $bocs_value);
+                }
+            } elseif (isset($_COOKIE['__bocs_frequency_id'])) {
+                $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+                if (!empty($bocs_value)) {
+                    WC()->session->set('bocs_frequency', $bocs_value);
+                    $this->log_info('Set frequency ID in session from cookie: ' . $bocs_value);
+                }
+            }
+            
+            // Process all additional BOCS cookies into session
+            $bocs_cookie_keys = [
+                '__bocs_frequency_time_unit' => 'bocs_frequency_time_unit',
+                '__bocs_frequency_interval' => 'bocs_frequency_interval',
+                '__bocs_discount_type' => 'bocs_discount_type',
+                '__bocs_total' => 'bocs_total',
+                '__bocs_discount' => 'bocs_discount',
+                '__bocs_subtotal' => 'bocs_subtotal'
+            ];
+            
+            foreach ($bocs_cookie_keys as $cookie_key => $session_key) {
+                if (isset($_COOKIE[$cookie_key])) {
+                    $value = sanitize_text_field($_COOKIE[$cookie_key]);
+                    if (!empty($value)) {
+                        WC()->session->set($session_key, $value);
+                        $this->log_info("Set {$session_key} in session from cookie: {$value}");
                     }
                 }
+            }
+            
+            // Log session data to confirm values were properly set
+            if (WC()->session) {
+                $session_data = [];
+                $session_keys = [
+                    'bocs',
+                    'bocs_collection',
+                    'bocs_frequency',
+                    'bocs_frequency_time_unit',
+                    'bocs_frequency_interval',
+                    'bocs_discount_type',
+                    'bocs_total',
+                    'bocs_discount',
+                    'bocs_subtotal'
+                ];
+                
+                foreach ($session_keys as $key) {
+                    $session_data[$key] = WC()->session->get($key);
+                }
+                
+                $this->log_info('Current WC session data: ' . var_export($session_data, true));
             }
         }
     }
@@ -1958,662 +2084,95 @@ class Admin
      * 
      * This method is called when a new WooCommerce order is created and handles the transfer
      * of Bocs-specific identifiers from either the WooCommerce session or cookies to the
-     * order's meta data. It processes three key pieces of information:
-     * - Bocs ID
-     * - Collection ID
-     * - Frequency ID
+     * order's meta data.
      *
      * @since 1.0.0
      * @access public
      *
-     * @param int      $order_id     The ID of the newly created order
-     * @param array    $posted_data  The posted data from the checkout form
-     * @param WC_Order $order        The WooCommerce order object
+     * @param mixed     $order_id_or_order The order ID or WC_Order object (varies by hook)
+     * @param array     $posted_data       The posted data from the checkout form (may be null for Store API)
+     * @param WC_Order  $order_obj         The WooCommerce order object (may be null for Store API)
      * 
-     * @return void
-     *
-     * Data Flow:
-     * 1. Attempts to get value from WC Session
-     * 2. Falls back to cookies if session value is empty
-     * 3. Sanitizes and saves value to order meta if found
-     *
-     * Meta Keys Created:
-     * - __bocs_bocs_id: The unique identifier for a Bocs subscription
-     * - __bocs_collections_id: The identifier for associated Bocs collections
-     * - __bocs_frequency_id: The frequency identifier for subscription timing
+     * @return mixed The order ID or order object (matches input)
      */
-    public function custom_order_created_action($order_id, $posted_data, $order) 
+    public function custom_order_created_action($order_id_or_order, $posted_data = null, $order_obj = null) 
     {
+        // Determine if this is a Store API request based on arguments provided
+        $is_store_api = doing_action('woocommerce_store_api_checkout_order_processed');
+        $this->log_info("Detected hook: " . ($is_store_api ? 'woocommerce_store_api_checkout_order_processed' : 'woocommerce_checkout_order_processed'));
+        
+        // Handle different argument patterns between hooks
+        if ($is_store_api && $order_obj === null) {
+            // For Store API, we receive the order object directly as the first parameter
+            $order = $order_id_or_order;
+            $order_id = $order->get_id();
+            $this->log_info("Store API checkout: Received order object directly, ID: {$order_id}");
+        } else {
+            // For standard checkout, we receive order_id, posted_data, order
+            $order_id = is_object($order_id_or_order) ? $order_id_or_order->get_id() : $order_id_or_order;
+            $order = is_object($order_id_or_order) ? $order_id_or_order : $order_obj;
+            $this->log_info("Standard checkout: Using provided order ID: {$order_id}");
+        }
+
+        // Add debug logging to track execution
+        $this->log_info("Starting custom_order_created_action for order ID: {$order_id}");
+        
+        // Do an immediate dump of all available BOCS data
+        $this->debug_dump_bocs_data();
+        
         // Validate and get WooCommerce order object
-        $order = wc_get_order($order_id);
+        if (!is_object($order)) {
+            $order = wc_get_order($order_id);
+        }
+        
         if (!$order) {
-            return;
+            $this->log_error("Invalid order ID: {$order_id}");
+            return $order_id_or_order;
         }
 
-        // Process Bocs ID
-        // First try to get from session, then fall back to cookie
-        $bocs_value = WC()->session->get('bocs');
-        if (empty($bocs_value) && isset($_COOKIE['__bocs_id'])) {
-            $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-        }
-        if ($bocs_value) {
-            $order->update_meta_data('__bocs_bocs_id', $bocs_value);
-        }
-
-        // Process Collection ID
-        // First try to get from session, then fall back to cookie
-        $bocs_value = WC()->session->get('bocs_collection');
-        if (empty($bocs_value) && isset($_COOKIE['__bocs_collection_id'])) {
-            $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-        }
-        if ($bocs_value) {
-            $order->update_meta_data('__bocs_collections_id', $bocs_value);
-        }
-
-        // Process Frequency ID
-        // First try to get from session, then fall back to cookie
-        $bocs_value = WC()->session->get('bocs_frequency');
-        if (empty($bocs_value) && isset($_COOKIE['__bocs_frequency_id'])) {
-            $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-        }
-        if ($bocs_value) {
-            $order->update_meta_data('__bocs_frequency_id', $bocs_value);
-        }
-
-        // Persist all meta data changes to the database
-        $order->save();
+        // Transfer BOCS data from session to order meta
+        $this->log_info("Transferring BOCS data from session to order meta for order ID: {$order_id}");
         
-        // Trigger welcome email for the new order
-        $this->trigger_welcome_email_after_checkout($order_id, $posted_data, $order);
+        // Define mapping of session keys to meta keys
+        $session_to_meta_mapping = [
+            'bocs' => '__bocs_bocs_id',
+            'bocs_collection' => '__bocs_collection_id',
+            'bocs_frequency' => '__bocs_frequency_id',
+            'bocs_frequency_time_unit' => '__bocs_frequency_time_unit',
+            'bocs_frequency_interval' => '__bocs_frequency_interval',
+            'bocs_discount_type' => '__bocs_discount_type',
+            'bocs_total' => '__bocs_total',
+            'bocs_discount' => '__bocs_discount',
+            'bocs_subtotal' => '__bocs_subtotal'
+        ];
         
-        return $order_id;
-    }
-
-    /**
-     * Fetches BOCS data from the API for a given ID.
-     *
-     * This method constructs a URL using the provided ID and sends a GET request
-     * to the BOCS API to retrieve widget data. The request is made using the
-     * Bocs_Helper class, which handles the cURL request.
-     *
-     * @param string $id The ID of the BOCS widget to fetch data for.
-     * @return array The data returned from the BOCS API.
-     */
-    public function get_bocs_data_from_api($id)
-    {
-        $url = BOCS_LIST_WIDGETS_URL . $id;
-        $bocs_helper = new Bocs_Helper();
-        $widgets_data = $bocs_helper->curl_request($url, 'GET', [], $this->headers);
-        return $widgets_data;
-    }
-
-    public function get_order_data_as_json($order_id)
-    {
-        // Get the order object
-        $order = wc_get_order($order_id);
-
-        if (! $order) {
-            return json_encode(array(
-                'error' => 'Order not found'
-            ));
-        }
-
-        // Prepare the order data
-        $order_data = array(
-            'id' => $order->get_id(),
-            'parent_id' => $order->get_parent_id(),
-            'status' => $order->get_status(),
-            'currency' => $order->get_currency(),
-            'version' => $order->get_version(),
-            'prices_include_tax' => $order->get_prices_include_tax(),
-            'date_created' => $order->get_date_created()->date('c'),
-            'date_modified' => $order->get_date_modified()->date('c'),
-            'discount_total' => $order->get_discount_total(),
-            'discount_tax' => $order->get_discount_tax(),
-            'shipping_total' => $order->get_shipping_total(),
-            'shipping_tax' => $order->get_shipping_tax(),
-            'cart_tax' => $order->get_cart_tax(),
-            'total' => number_format((float)$order->get_total(), 2, '.', ''),
-            'total_tax' => $order->get_total_tax(),
-            'customer_id' => $order->get_customer_id(),
-            'order_key' => $order->get_order_key(),
-            'billing' => $order->get_address('billing'),
-            'shipping' => $order->get_address('shipping'),
-            'payment_method' => $order->get_payment_method(),
-            'payment_method_title' => $order->get_payment_method_title(),
-            'transaction_id' => $order->get_transaction_id(),
-            'customer_ip_address' => $order->get_customer_ip_address(),
-            'customer_user_agent' => $order->get_customer_user_agent(),
-            'created_via' => $order->get_created_via(),
-            'customer_note' => $order->get_customer_note(),
-            'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('c') : null,
-            'date_paid' => $order->get_date_paid() ? $order->get_date_paid()->date('c') : null,
-            'cart_hash' => $order->get_cart_hash(),
-            'meta_data' => $order->get_meta_data(),
-            'line_items' => array(),
-            'tax_lines' => array(),
-            'shipping_lines' => array(),
-            'fee_lines' => array(),
-            'coupon_lines' => array(),
-            'refunds' => array()
-        );
-
-        // Get line items
-        foreach ($order->get_items() as $item_id => $item) {
-            $product = $item->get_product();
-            $order_data['line_items'][] = array(
-                'id' => $item_id,
-                'name' => $item->get_name(),
-                'product_id' => $item->get_product_id(),
-                'variation_id' => $item->get_variation_id(),
-                'quantity' => $item->get_quantity(),
-                'tax_class' => $item->get_tax_class(),
-                'subtotal' => $item->get_subtotal(),
-                'subtotal_tax' => $item->get_subtotal_tax(),
-                'total' => (float)number_format((float)$item->get_total(), 2, '.', ''),
-                'total_tax' => $item->get_total_tax(),
-                'taxes' => $item->get_taxes(),
-                'meta_data' => $item->get_meta_data(),
-                'sku' => $product ? $product->get_sku() : '',
-                'price' => $product ? $product->get_price() : ''
-            );
-        }
-
-        // Get tax lines
-        foreach ($order->get_tax_totals() as $tax) {
-            $order_data['tax_lines'][] = array(
-                'id' => $tax->id,
-                'rate_code' => $tax->rate_id,
-                'rate_id' => $tax->rate_id,
-                'label' => $tax->label,
-                'compound' => isset($tax->compound) ? $tax->compound : 0,
-                'tax_total' => isset($tax->tax_total) ? $tax->tax_total : 0,
-                'shipping_tax_total' => isset($tax->shipping_tax_total) ? $tax->shipping_tax_total : 0
-            );
-        }
-
-        // Get shipping lines
-        foreach ($order->get_shipping_methods() as $shipping_item_id => $shipping_item) {
-            $order_data['shipping_lines'][] = array(
-                'id' => $shipping_item_id,
-                'method_title' => $shipping_item->get_name(),
-                'method_id' => $shipping_item->get_method_id(),
-                'total' => (float)number_format((float)$shipping_item->get_total(), 2, '.', ''),
-                'total_tax' => $shipping_item->get_total_tax(),
-                'taxes' => $shipping_item->get_taxes()
-            );
-        }
-
-        // Get fee lines
-        foreach ($order->get_fees() as $fee_item_id => $fee_item) {
-            $order_data['fee_lines'][] = array(
-                'id' => $fee_item_id,
-                'name' => $fee_item->get_name(),
-                'tax_class' => $fee_item->get_tax_class(),
-                'tax_status' => $fee_item->get_tax_status(),
-                'total' => (float)number_format((float)$fee_item->get_total(), 2, '.', ''),
-                'total_tax' => $fee_item->get_total_tax(),
-                'taxes' => $fee_item->get_taxes()
-            );
-        }
-
-        // Get coupon lines
-        foreach ($order->get_items('coupon') as $coupon_item_id => $coupon_item) {
-            $order_data['coupon_lines'][] = array(
-                'id' => $coupon_item_id,
-                'code' => $coupon_item->get_code(),
-                'discount' => $coupon_item->get_discount(),
-                'discount_tax' => $coupon_item->get_discount_tax()
-            );
-        }
-
-        // Get refunds
-        foreach ($order->get_refunds() as $refund) {
-            $order_data['refunds'][] = array(
-                'id' => $refund->get_id(),
-                'reason' => $refund->get_reason(),
-                'total' => (float)number_format((float)$refund->get_amount(), 2, '.', '')
-            );
-        }
-
-        // Encode the data to JSON and return
-        return json_encode($order_data, JSON_PRETTY_PRINT);
-    }
-
-    /**
-     * Checks and synchronizes user IDs between WordPress and Bocs systems.
-     * 
-     * This method is triggered when a user logs in and performs the following:
-     * 1. Validates required Bocs API credentials
-     * 2. Checks if the user already has a Bocs ID in WordPress
-     * 3. If no Bocs ID exists, queries the Bocs API to find matching user
-     * 4. Updates WordPress user meta with Bocs ID if found
-     *
-     * API Response Structure:
-     * The method expects one of two possible response structures from Bocs API:
-     * - object->data->data[]: Paginated response format
-     * - object->data[]: Direct array response format
-     *
-     * Error Handling:
-     * - Validates API credentials before making request
-     * - Handles cURL initialization and execution errors
-     * - Validates HTTP response codes
-     * - Handles JSON parsing errors
-     * - Logs all errors and optionally displays admin notices
-     *
-     * @param string   $user_login WordPress username of the logging in user
-     * @param WP_User  $user       WordPress user object containing user data
-     * 
-     * @throws Exception On API communication or data processing errors
-     * 
-     * @return void
-     *
-     * @since 1.0.0
-     * @access public
-     *
-     * @uses get_option()           To retrieve plugin settings
-     * @uses get_user_meta()        To check existing Bocs ID
-     * @uses update_user_meta()     To store Bocs ID
-     * @uses curl_init()            To initialize API request
-     * @uses curl_setopt_array()    To configure API request
-     * @uses curl_exec()            To execute API request
-     * @uses error_log()            To log processing information and errors
-     *
-     * @example
-     * // The method is typically hooked to WordPress login action
-     * add_action('wp_login', array($this, 'bocs_user_id_check'), 10, 2);
-     *
-     * Meta Keys Used:
-     * - bocs_user_id: Stores the Bocs system user ID
-     */
-    public function bocs_user_id_check($user_login, $user) 
-    {
-        if (!$user instanceof WP_User) {
-            return;
-        }
-
-        try {
-            // Rate limiting to prevent API abuse
-            $rate_limit_key = 'bocs_api_check_' . $user->ID;
-            if (get_transient($rate_limit_key)) {
-                return;
+        // Check if WC session is available
+        if (isset(WC()->session)) {
+            foreach ($session_to_meta_mapping as $session_key => $meta_key) {
+                $value = WC()->session->get($session_key);
+                if (!empty($value)) {
+                    // Only update if the meta doesn't already exist or is empty
+                    $existing_value = $order->get_meta($meta_key);
+                    if (empty($existing_value)) {
+                        $order->update_meta_data($meta_key, $value);
+                        $this->log_info("Transferred {$session_key} to {$meta_key}: {$value}");
+                    } else {
+                        $this->log_info("Meta {$meta_key} already exists with value: {$existing_value}, not overwriting");
+                    }
+                }
             }
-            set_transient($rate_limit_key, true, HOUR_IN_SECONDS);
-
-            // Validate and sanitize inputs
-            $user_id = absint($user->ID);
-            $user_email = sanitize_email($user->user_email);
             
-            if (!is_email($user_email)) {
-                throw new Exception('Invalid email format');
-            }
-
-            // Get cached Bocs ID first
-            $bocs_user_id = get_user_meta($user_id, 'bocs_user_id', true);
-            if (!empty($bocs_user_id)) {
-                return;
-            }
-
-            // Get and validate API credentials
-            $credentials = $this->get_api_credentials();
-            if (!$credentials) {
-                return;
-            }
-
-            // Prepare API request
-            $api_client = $this->get_api_client();
-            $response = $this->make_api_request($api_client, $user_email, $credentials);
+            // Save the order to persist the meta changes
+            $order->save();
             
-            // Process response
-            $this->process_api_response($response, $user_id);
-
-        } catch (Exception $e) {
-            error_log('Critical: Bocs user check error: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Gets API credentials from WordPress options
-     *
-     * @return array|false Array of credentials or false if invalid
-     */
-    private function get_api_credentials() 
-    {
-        $options = get_option('bocs_plugin_options', []);
-        $headers = $options['bocs_headers'] ?? [];
-
-        $required_fields = ['organization', 'store', 'authorization'];
-        foreach ($required_fields as $field) {
-            if (empty($headers[$field])) {
-                $this->log_error("Missing required API credential: $field");
-                return false;
-            }
+            // Clean up session data to prevent it from affecting future orders
+            $this->clean_bocs_data();
+        } else {
+            $this->log_warning("WC session not available, could not transfer BOCS data");
         }
 
-        return $headers;
-    }
-
-    /**
-     * Creates and configures API client
-     *
-     * @return CurlHandle|false
-     */
-    private function get_api_client() 
-    {
-        $curl = curl_init();
-        if ($curl === false) {
-            throw new Exception('Failed to initialize cURL');
-        }
-
-        // Set default cURL options
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30, // Reduced from unlimited
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET'
-        ]);
-
-        return $curl;
-    }
-
-    /**
-     * Makes API request to Bocs
-     *
-     * @param CurlHandle $curl
-     * @param string $email
-     * @param array $credentials
-     * @return array Response data
-     */
-    private function make_api_request($curl, $email, $credentials) 
-    {
-        // URL encode email for safety
-        $encoded_email = urlencode($email);
-        $api_url = BOCS_API_URL . "contacts?query=email:\"$encoded_email\"";
-
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $api_url,
-            CURLOPT_HTTPHEADER => [
-                'Organization: ' . $credentials['organization'],
-                'Content-Type: application/json',
-                'Store: ' . $credentials['store'],
-                'Authorization: ' . $credentials['authorization']
-            ]
-        ]);
-
-        $response = curl_exec($curl);
-        $error = curl_error($curl);
-        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-        curl_close($curl);
-
-        if ($response === false) {
-            error_log('Critical: Bocs API request failed: ' . $error);
-            throw new Exception("cURL request failed: $error");
-        }
-
-        if ($http_code !== 200) {
-            error_log('Critical: Bocs API request failed with status code: ' . $http_code);
-            throw new Exception("API request failed with status code: $http_code");
-        }
-
-        return json_decode($response, false);
-    }
-
-    /**
-     * Processes API response and updates user meta
-     *
-     * @param object $response
-     * @param int $user_id
-     * @return void
-     */
-    private function process_api_response($response, $user_id) 
-    {
-        if (!$response) {
-            error_log('Critical: Invalid Bocs API response format');
-            throw new Exception('Invalid API response format');
-        }
-
-        $bocs_users = $this->extract_users_from_response($response);
-        if (empty($bocs_users)) {
-            return;
-        }
-
-        foreach ($bocs_users as $bocs_user) {
-            if (!empty($bocs_user->id)) {
-                update_user_meta($user_id, 'bocs_user_id', $bocs_user->id, '');
-                break;
-            }
-        }
-    }
-
-    /**
-     * Extracts user data from API response
-     *
-     * @param object $response
-     * @return array
-     */
-    private function extract_users_from_response($response) 
-    {
-        if (isset($response->data->data) && is_array($response->data->data)) {
-            return $response->data->data;
-        }
-        
-        if (isset($response->data) && is_array($response->data)) {
-            return $response->data;
-        }
-        
-        return [];
-    }
-
-    /**
-     * Handles errors consistently
-     *
-     * @param Exception $e
-     * @return void
-     */
-    private function handle_error(Exception $e) 
-    {
-        $error_message = sprintf(
-            '[Bocs][ERROR] %s in %s:%d',
-            $e->getMessage(),
-            basename($e->getFile()),
-            $e->getLine()
-        );
-        
-        error_log($error_message);
-        
-        if (current_user_can('manage_options')) {
-            add_action('admin_notices', function() use ($e) {
-                ?>
-                <div class="notice notice-error is-dismissible">
-                    <p><?php echo esc_html('Error checking Bocs user ID: ' . $e->getMessage()); ?></p>
-                </div>
-                <?php
-            });
-        }
-    }
-
-    /**
-     * Logging helpers with consistent formatting
-     */
-    private function log_debug($message) {
-        error_log("[Bocs][DEBUG] $message");
-    }
-
-    private function log_info($message) {
-        error_log("[Bocs][INFO] $message");
-    }
-
-    private function log_warning($message) {
-        error_log("[Bocs][WARNING] $message");
-    }
-
-    private function log_error($message) {
-        error_log("[Bocs][ERROR] $message");
-    }
-
-    public function show_related_orders()
-    {
-        try {
-            // Check if required GET parameters exist
-            if (!isset($_GET['page']) || !isset($_GET['action']) || !isset($_GET['id'])) {
-                return;
-            }
-
-            $page = sanitize_text_field($_GET['page']);
-            $action = sanitize_text_field($_GET['action']);
-            $id = absint($_GET['id']);
-
-            // Validate parameters
-            if (empty($page) || empty($action) || empty($id)) {
-                return;
-            }
-
-            // Check if we're on the correct page and action
-            if ($page === 'wc-orders' && $action === 'edit') {
-                // Verify WooCommerce is active and function exists
-                if (!function_exists('wc_get_order')) {
-                    return;
-                }
-
-                // Get order details
-                $order = wc_get_order($id);
-                
-                // Verify order exists and is valid
-                if ($order && !is_wp_error($order)) {
-                    add_meta_box(
-                        'bocs_order_meta_box',
-                        'Bocs Related Orders',
-                        array($this, 'order_meta_box_content'),
-                        NULL,
-                        'normal',
-                        'low'
-                    );
-                }
-            }
-        } catch (Exception $e) {
-            // Log the error but don't display it to users
-            error_log('Bocs show_related_orders error: ' . $e->getMessage());
-        }
-    }
-
-    public function order_meta_box_content($post)
-    {
-        try {
-            $order_id = $post->ID;
-            $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
-            
-            if (empty($subscription_id)) {
-                echo '<p>' . esc_html__('No Bocs subscription found for this order.', 'bocs-wordpress') . '</p>';
-                return;
-            }
-
-            $parent_subscription = $this->get_bocs_subscription($order_id);
-            $related_orders = $this->get_related_orders($order_id);
-
-            if (empty($related_orders) && $parent_subscription === false) {
-                echo '<p>' . sprintf(
-                    esc_html__('Bocs subscription %s not found or has been deleted.', 'bocs-wordpress'),
-                    esc_html($subscription_id)
-                ) . '</p>';
-                return;
-            }
-
-            echo '<table class="widefat fixed">';
-            echo '<thead>';
-            echo '<tr>';
-            echo '<th>' . esc_html__('Order Number', 'bocs-wordpress') . '</th>';
-            echo '<th>' . esc_html__('Relationship', 'bocs-wordpress') . '</th>';
-            echo '<th>' . esc_html__('Date', 'bocs-wordpress') . '</th>';
-            echo '<th>' . esc_html__('Status', 'bocs-wordpress') . '</th>';
-            echo '<th>' . esc_html__('Total', 'bocs-wordpress') . '</th>';
-            echo '</tr>';
-            echo '</thead>';
-            echo '<tbody>';
-
-            if ($parent_subscription) {
-                $this->render_subscription_row($parent_subscription);
-            }
-
-            foreach ($related_orders as $related_order) {
-                $this->render_order_row($related_order);
-            }
-
-            echo '</tbody>';
-            echo '</table>';
-
-        } catch (Exception $e) {
-            error_log('Bocs: Error in order_meta_box_content: ' . $e->getMessage());
-            echo '<p>' . esc_html__('An error occurred while retrieving order information.', 'bocs-wordpress') . '</p>';
-        }
-    }
-
-    /**
-     *
-     * @param integer $order_id
-     * @return boolean|boolean|string
-     */
-    public function get_bocs_subscription($order_id)
-    {
-        $order = wc_get_order($order_id);
-
-        if (!$order) {
-            return false;
-        }
-
-        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id', true);
-
-        if (empty($bocs_subscription_id)) {
-            return false;
-        }
-
-        // get the details of the bocs subscription
-        $helper = new Bocs_Helper();
-        $url = BOCS_API_URL . 'subscriptions/' . $bocs_subscription_id;
-        
-        // Initialize retry counter
-        $max_retries = 3;
-        $retry_count = 0;
-        $retry_delay = 1; // Initial delay in seconds
-        
-        while ($retry_count < $max_retries) {
-            try {
-                $subscription = $helper->curl_request($url, 'GET', NULL, $this->headers);
-
-                // Check if the response is a WP_Error
-                if (is_wp_error($subscription)) {
-                    throw new Exception($subscription->get_error_message());
-                }
-
-                // Check if response is not an array or missing required data
-                if (!is_array($subscription) || !isset($subscription['data'])) {
-                    throw new Exception('Invalid response format from API');
-                }
-
-                // Check for non-200 response code if it exists
-                if (isset($subscription['response']) && $subscription['response'] !== 200) {
-                    throw new Exception('API returned non-200 response code: ' . $subscription['response']);
-                }
-
-                return $subscription['data'];
-
-            } catch (Exception $e) {
-                $retry_count++;
-                error_log('Critical: API Error: ' . $e->getMessage());
-
-                // If we haven't reached max retries, wait before trying again
-                if ($retry_count < $max_retries) {
-                    sleep($retry_delay);
-                    $retry_delay *= 2; // Exponential backoff
-                    continue;
-                }
-            }
-        }
-
-        return false;
+        // Return the order to complete the function
+        return $order_id_or_order;
     }
 
     public function get_related_orders($order_id)
@@ -3104,4 +2663,460 @@ class Admin
             // Silently continue
         }
     }
+
+    /**
+     * Cleans up all BOCS-related cookies and session data
+     * 
+     * This method destroys all BOCS-related cookies and session data after they have been
+     * successfully stored in the order meta. This prevents any carryover of data that could
+     * affect subsequent transactions.
+     *
+     * @since 1.0.0
+     * @access private
+     * 
+     * @return void
+     */
+    private function clean_bocs_data() 
+    {
+        // Log before cleanup for debugging
+        $this->log_info('Starting BOCS data cleanup...');
+        
+        if (isset($_COOKIE) && !empty($_COOKIE)) {
+            $bocs_cookies = array_filter(array_keys($_COOKIE), function($key) {
+                return strpos($key, '__bocs') === 0;
+            });
+            
+            if (!empty($bocs_cookies)) {
+                $this->log_info('Cookies about to be cleared: ' . implode(', ', $bocs_cookies));
+            }
+        }
+        
+        // Define all BOCS cookie keys that need to be cleared
+        $bocs_cookie_keys = [
+            '__bocs_id',
+            '__bocs_collection_id',
+            '__bocs_frequency_id',
+            '__bocs_frequency_time_unit',
+            '__bocs_frequency_interval',
+            '__bocs_discount_type',
+            '__bocs_total',
+            '__bocs_discount',
+            '__bocs_subtotal'
+        ];
+        
+        // Get the WordPress cookie path and domain
+        $cookie_path = COOKIEPATH;
+        $cookie_domain = COOKIE_DOMAIN;
+        
+        // Clear each cookie by setting it to expire in the past
+        foreach ($bocs_cookie_keys as $cookie_key) {
+            if (isset($_COOKIE[$cookie_key])) {
+                $value = $_COOKIE[$cookie_key]; // Save value for logging
+                setcookie($cookie_key, '', time() - 3600, $cookie_path, $cookie_domain);
+                unset($_COOKIE[$cookie_key]);
+                $this->log_info("Cleared cookie: {$cookie_key} with value: {$value}");
+            }
+        }
+        
+        // Clear session data if WooCommerce is active
+        if (function_exists('WC') && WC()->session) {
+            // Define all session keys to clear
+            $session_keys = [
+                'bocs',
+                'bocs_collection',
+                'bocs_frequency',
+                'bocs_frequency_time_unit',
+                'bocs_frequency_interval',
+                'bocs_discount_type',
+                'bocs_total',
+                'bocs_discount',
+                'bocs_subtotal'
+            ];
+            
+            // Log session data before clearing
+            $session_data = [];
+            foreach ($session_keys as $key) {
+                $session_data[$key] = WC()->session->get($key);
+            }
+            $this->log_info('Session data before clearing: ' . var_export($session_data, true));
+            
+            // Clear each session key
+            foreach ($session_keys as $key) {
+                $value = WC()->session->get($key); // Save value for logging
+                WC()->session->__unset($key);
+                $this->log_info("Cleared session key: {$key} with value: " . var_export($value, true));
+            }
+        }
+        
+        // Log the cleanup for debugging purposes
+        $this->log_info('BOCS cookies and session data cleared after order creation');
+    }
+
+    /**
+     * Debug method to dump cookie and session data
+     * 
+     * This will be attached to early WooCommerce checkout hooks to verify
+     * what data is available during the checkout process.
+     * 
+     * @return void
+     */
+    public function debug_dump_bocs_data() {
+        // Only run on checkout pages
+        if (!is_checkout()) {
+            return;
+        }
+        
+        $this->log_info('========== DEBUG: BOCS DATA DUMP ==========');
+        
+        // Dump all cookies
+        $this->log_info('All cookies: ' . var_export($_COOKIE, true));
+        
+        // Extract just BOCS cookies for easier reading
+        $bocs_cookies = array_filter($_COOKIE, function($key) {
+            return strpos($key, '__bocs') === 0;
+        }, ARRAY_FILTER_USE_KEY);
+        
+        $this->log_info('BOCS cookies: ' . var_export($bocs_cookies, true));
+        
+        // Dump session if available
+        if (function_exists('WC') && WC()->session) {
+            $session_keys = [
+                'bocs',
+                'bocs_collection',
+                'bocs_frequency',
+                'bocs_frequency_time_unit',
+                'bocs_frequency_interval',
+                'bocs_discount_type',
+                'bocs_total',
+                'bocs_discount',
+                'bocs_subtotal'
+            ];
+            
+            $session_data = [];
+            foreach ($session_keys as $key) {
+                $session_data[$key] = WC()->session->get($key);
+            }
+            
+            $this->log_info('WC Session data: ' . var_export($session_data, true));
+        } else {
+            $this->log_warning('WC Session not available for debugging');
+        }
+        
+        $this->log_info('========== END DEBUG DUMP ==========');
+    }
+
+    /**
+     * Get subscription details from the BOCS API
+     * 
+     * @param int $order_id The order ID
+     * @return array|false Subscription data or false on failure
+     */
+    public function get_bocs_subscription($order_id)
+    {
+        $order = wc_get_order($order_id);
+        
+        if (!$order) {
+            return false;
+        }
+
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id', true);
+
+        if (empty($bocs_subscription_id)) {
+            return false;
+        }
+
+        // get the details of the bocs subscription
+        $helper = new Bocs_Helper();
+        $url = BOCS_API_URL . 'subscriptions/' . $bocs_subscription_id;
+        
+        // Initialize retry counter
+        $max_retries = 3;
+        $retry_count = 0;
+        $retry_delay = 1; // Initial delay in seconds
+        
+        while ($retry_count < $max_retries) {
+            try {
+                $subscription = $helper->curl_request($url, 'GET', NULL, $this->headers);
+
+                // Check if the response is a WP_Error
+                if (is_wp_error($subscription)) {
+                    throw new Exception($subscription->get_error_message());
+                }
+
+                // Check if response is not an array or missing required data
+                if (!is_array($subscription) || !isset($subscription['data'])) {
+                    throw new Exception('Invalid response format from API');
+                }
+
+                // Check for non-200 response code if it exists
+                if (isset($subscription['response']) && $subscription['response'] !== 200) {
+                    throw new Exception('API returned non-200 response code: ' . $subscription['response']);
+                }
+
+                return $subscription;
+
+            } catch (Exception $e) {
+                $retry_count++;
+                error_log('Critical: API Error: ' . $e->getMessage());
+
+                // If we haven't reached max retries, wait before trying again
+                if ($retry_count < $max_retries) {
+                    sleep($retry_delay);
+                    $retry_delay *= 2; // Exponential backoff
+                    continue;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get BOCS data from the API
+     * 
+     * @param string $bocs_id The BOCS ID
+     * @return array|false The BOCS data or false on failure
+     */
+    public function get_bocs_data_from_api($bocs_id) {
+        if (empty($bocs_id)) {
+            error_log("[Bocs][WARNING] Cannot fetch BOCS data: Empty BOCS ID");
+            return false;
+        }
+        
+        // Get API credentials
+        $options = get_option('bocs_plugin_options', array());
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+        
+        $headers = array(
+            'organization' => $options['bocs_headers']['organization'] ?? '',
+            'store' => $options['bocs_headers']['store'] ?? '',
+            'authorization' => $options['bocs_headers']['authorization'] ?? '',
+            'Content-Type' => 'application/json'
+        );
+        
+        // Validate headers
+        foreach (['organization', 'store', 'authorization'] as $key) {
+            if (empty($headers[$key])) {
+                error_log("[Bocs][ERROR] Missing required API header: {$key}");
+                return false;
+            }
+        }
+        
+        // Construct API URL
+        $url = BOCS_API_URL . 'bocs/' . $bocs_id;
+        error_log("[Bocs][INFO] Fetching BOCS data from: {$url}");
+        
+        // Initialize Bocs_Helper
+        $helper = new Bocs_Helper();
+        
+        // Make request with retry logic
+        $max_retries = 3;
+        $retry_count = 0;
+        $retry_delay = 1; // Initial delay in seconds
+        
+        while ($retry_count < $max_retries) {
+            try {
+                $response = $helper->curl_request($url, 'GET', null, $headers);
+                
+                // Check for errors
+                if (is_wp_error($response)) {
+                    throw new Exception($response->get_error_message());
+                }
+                
+                // Validate response format
+                if (!is_array($response) || !isset($response['data'])) {
+                    throw new Exception('Invalid API response format');
+                }
+                
+                // Check response code
+                if (isset($response['response']) && $response['response'] !== 200) {
+                    throw new Exception('API returned non-200 response code: ' . $response['response']);
+                }
+                
+                error_log("[Bocs][INFO] Successfully fetched BOCS data for ID: {$bocs_id}");
+                return $response;
+                
+            } catch (Exception $e) {
+                $retry_count++;
+                error_log("[Bocs][ERROR] Error fetching BOCS data (attempt {$retry_count}): " . $e->getMessage());
+                
+                // If we haven't reached max retries, wait before trying again
+                if ($retry_count < $max_retries) {
+                    sleep($retry_delay);
+                    $retry_delay *= 2; // Exponential backoff
+                    continue;
+                }
+            }
+        }
+        
+        error_log("[Bocs][ERROR] Failed to fetch BOCS data after {$max_retries} attempts");
+        return false;
+    }
+
+    /**
+     * Log an informational message to the BOCS logs
+     *
+     * @param string $message The message to log
+     * @param array  $context Optional. Additional contextual data
+     * @return void
+     */
+    private function log_info($message, $context = [])
+    {
+        if ($this->logger) {
+            $this->logger->insert_log('info', $message, $context);
+        }
+    }
+    
+    /**
+     * Log a debug message to the BOCS logs
+     *
+     * @param string $message The message to log
+     * @param array  $context Optional. Additional contextual data
+     * @return void
+     */
+    private function log_debug($message, $context = [])
+    {
+        if ($this->logger) {
+            $this->logger->insert_log('debug', $message, $context);
+        }
+    }
+    
+    /**
+     * Log an error message to the BOCS logs
+     *
+     * @param string $message The message to log
+     * @param array  $context Optional. Additional contextual data
+     * @return void
+     */
+    private function log_error($message, $context = [])
+    {
+        if ($this->logger) {
+            $this->logger->insert_log('error', $message, $context);
+        }
+    }
+
+    /**
+     * Add a meta box to show related orders on the order edit screen
+     * 
+     * @since 1.0.0
+     * @param string $post_type The post type or screen ID
+     * @param object|null $post The post object (optional)
+     */
+    public function show_related_orders($post_type, $post = null) {
+        // Log information about the hook call for debugging
+        $this->log_debug('show_related_orders called with post_type: ' . $post_type . ', post: ' . (is_object($post) ? get_class($post) : 'null'));
+        
+        // Early bail if not on an order screen
+        if ($post_type !== 'woocommerce_page_wc-orders' && $post_type !== 'shop_order') {
+            return;
+        }
+        
+        // Special handling for the WooCommerce Admin/HPOS where post is null
+        if (null === $post) {
+            // When on the orders page, the current order ID should be in $_GET['id']
+            $order_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+            
+            if ($order_id <= 0) {
+                $this->log_debug('No order ID found in $_GET parameters');
+                return; // No order ID to work with
+            }
+            
+            // Try to get the order object
+            $post = wc_get_order($order_id);
+            
+            if (!$post) {
+                $this->log_debug('Order not found with ID: ' . $order_id);
+                return; // Order not found
+            }
+            
+            $this->log_debug('Retrieved order from ID parameter: ' . $order_id);
+        }
+        
+        // Get order ID - handle both post object and WC_Order object
+        $order_id = is_a($post, 'WP_Post') ? $post->ID : $post->get_id();
+        
+        // Check if this order has related orders
+        if ($this->has_related_orders($order_id)) {
+            $this->log_debug('Adding meta box for order #' . $order_id . ' with related orders');
+            
+            add_meta_box(
+                'bocs_related_orders',
+                __('BOCS Related Orders', 'bocs-wordpress'),
+                array($this, 'render_related_orders_meta_box'),
+                $post_type,
+                'side',
+                'default',
+                array('order_id' => $order_id)
+            );
+        } else {
+            $this->log_debug('No related orders found for order #' . $order_id);
+        }
+    }
+    
+    /**
+     * Render the related orders meta box content
+     * 
+     * @since 1.0.0
+     * @param WP_Post|WC_Order $post The post or order object
+     * @param array $metabox Metabox arguments including the order_id in args
+     */
+    public function render_related_orders_meta_box($post, $metabox) {
+        $order_id = $metabox['args']['order_id'] ?? 0;
+        if (!$order_id) {
+            echo '<p>' . __('No order ID provided.', 'bocs-wordpress') . '</p>';
+            return;
+        }
+        
+        $related_orders = $this->get_related_orders($order_id);
+        
+        if (empty($related_orders)) {
+            echo '<p>' . __('No related orders found.', 'bocs-wordpress') . '</p>';
+            return;
+        }
+        
+        echo '<ul class="bocs-related-orders-list">';
+        
+        foreach ($related_orders as $related_order) {
+            $related_order_obj = wc_get_order($related_order['id']);
+            
+            if (!$related_order_obj) {
+                continue;
+            }
+            
+            $edit_url = admin_url('admin.php?page=wc-orders&action=edit&id=' . $related_order['id']);
+            $order_number = $related_order_obj->get_order_number();
+            $relationship = $related_order['relationship'] ?? 'Unknown';
+            $date = $related_order_obj->get_date_created() ? $related_order_obj->get_date_created()->date_i18n(get_option('date_format') . ' ' . get_option('time_format')) : '';
+            $status = wc_get_order_status_name($related_order_obj->get_status());
+            
+            echo '<li>';
+            echo '<a href="' . esc_url($edit_url) . '">#' . esc_html($order_number) . '</a> - ';
+            echo '<span class="bocs-order-relationship">' . esc_html($relationship) . '</span><br>';
+            echo '<small>' . esc_html($date) . ' - ' . esc_html($status) . '</small>';
+            echo '</li>';
+        }
+        
+        echo '</ul>';
+        
+        // Add some basic styling
+        echo '<style>
+            .bocs-related-orders-list {
+                margin: 0;
+                padding: 0;
+            }
+            .bocs-related-orders-list li {
+                border-bottom: 1px solid #eee;
+                padding: 8px 0;
+                margin: 0;
+            }
+            .bocs-related-orders-list li:last-child {
+                border-bottom: none;
+            }
+            .bocs-order-relationship {
+                text-transform: capitalize;
+                color: #777;
+            }
+        </style>';
+    }
 }
+

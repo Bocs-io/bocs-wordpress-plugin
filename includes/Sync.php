@@ -944,6 +944,10 @@ class Sync
 	 * @since 1.0.0
 	 */
 	private function logMessage($level, $message, $context = []) {
+		// Skip DEBUG level messages
+		if ($level === 'DEBUG') {
+			return;
+		}
 		$contextStr = !empty($context) ? ' ' . print_r($context, true) : '';
 		error_log("[Bocs Sync][{$level}] {$message}{$contextStr}");
 	}
@@ -1008,6 +1012,6 @@ class Sync
 			'param_count' => count($params['data'])
 		]);
 		
-		return $params;
+	return $params;
 	}
 }
