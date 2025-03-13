@@ -15,7 +15,7 @@
  * Plugin Name:       Bocs (alpha)
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.120
+ * Version:           0.0.121
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
  * Current plugin version.
  * Start at version 0.0.109 and use SemVer - https://semver.org
  */
-define('BOCS_VERSION', '0.0.120');
+define('BOCS_VERSION', '0.0.121');
 
 /**
  * Plugin name and slug definitions.
@@ -70,9 +70,7 @@ try {
     define('NEXT_PUBLIC_API_EXTERNAL_URL', $api_base);
     define('BOCS_LIST_WIDGETS_URL', BOCS_API_URL . 'list-widgets/');
 } catch (Exception $e) {
-    // Log the error but don't crash the site
-    error_log('BOCS API initialization error: ' . $e->getMessage());
-    
+    // Silent fail to avoid crashing the site
     // Set fallback API URLs to prevent fatal errors
     if (!defined('BOCS_ENVIRONMENT')) {
         define('BOCS_ENVIRONMENT', 'prod');

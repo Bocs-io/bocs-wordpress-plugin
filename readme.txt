@@ -1,3 +1,8 @@
+v0.0.121 03/13/2025
+* Checkout pricing mismatch
+* Adding bocs/subscription details to order notes
+
+
 v0.0.120 03/12/2025
 * email template branding
 * sending of renewal order

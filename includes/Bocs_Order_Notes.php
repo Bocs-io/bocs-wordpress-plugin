@@ -31,9 +31,6 @@ class Bocs_Order_Notes {
             'authorization' => $options['bocs_headers']['authorization'] ?? ''
         );
         
-        // Log initialization for debugging
-        error_log('Bocs_Order_Notes initialized - Adding BOCS API data to order notes');
-        
         // Use a proper priority system to avoid duplicate processing:
         // - Hook into order creation with priority 40 (after most core processes)
         // - Hook into status change with lower priority 20 (will only run if not already processed)
@@ -64,7 +61,6 @@ class Bocs_Order_Notes {
         // Add a transient to prevent duplicate processing in case of race conditions
         $transient_key = 'bocs_processing_order_' . $order_id;
         if (get_transient($transient_key)) {
-            error_log('BOCS Order Notes: Order #' . $order_id . ' is already being processed by another thread');
             return;
         }
 
@@ -92,7 +88,6 @@ class Bocs_Order_Notes {
 
         // Check if we've already added the note or if it's being processed
         if (get_transient('bocs_processing_order_' . $order_id)) {
-            error_log('BOCS Order Notes: Order #' . $order_id . ' is already being processed by another thread');
             return;
         }
 
@@ -123,7 +118,6 @@ class Bocs_Order_Notes {
         
         // Try to get the lock
         if (get_transient($lock_key)) {
-            error_log('BOCS Order Notes: Another process has locked order #' . $order->get_id());
             return;
         }
         
@@ -137,23 +131,8 @@ class Bocs_Order_Notes {
                 return strpos($key, '__bocs') === 0;
             });
             
-            if (!empty($bocs_meta)) {
-                error_log('BOCS Order Notes: Found BOCS meta keys in order #' . $order->get_id() . ': ' . implode(', ', $bocs_meta));
-                
-                // Log the values for each BOCS meta key
-                foreach ($bocs_meta as $meta_key) {
-                    $meta_value = $order->get_meta($meta_key);
-                    error_log("BOCS Order Notes: Order #{$order->get_id()} - {$meta_key} = " . var_export($meta_value, true));
-                }
-            } else {
-                error_log('BOCS Order Notes: No BOCS meta keys found in order #' . $order->get_id());
-            }
-            
             // Check for Debug cookie data
             $debug_cookies = $order->get_meta('__bocs_debug_cookies');
-            if (!empty($debug_cookies)) {
-                error_log('BOCS Order Notes: Debug cookies data found in order #' . $order->get_id() . ': ' . $debug_cookies);
-            }
             
             // Get BOCS ID from order meta
             $bocs_id = $order->get_meta('__bocs_bocs_id');
@@ -161,7 +140,6 @@ class Bocs_Order_Notes {
             // If no BOCS ID, check if it's in the URL parameters (for Store API requests)
             if (empty($bocs_id) && isset($_GET['bocs']) && !empty($_GET['bocs'])) {
                 $bocs_id = sanitize_text_field($_GET['bocs']);
-                error_log('BOCS Order Notes: Using BOCS ID from URL parameter for order #' . $order->get_id() . ': ' . $bocs_id);
                 
                 // Save it to the order meta
                 $order->update_meta_data('__bocs_bocs_id', $bocs_id);
@@ -170,13 +148,11 @@ class Bocs_Order_Notes {
             
             // If still no BOCS ID, nothing to do
             if (empty($bocs_id)) {
-                error_log('BOCS Order Notes: No BOCS ID found in order #' . $order->get_id());
                 return;
             }
             
             // Validate BOCS ID format (should be UUID format)
             if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $bocs_id)) {
-                error_log('BOCS Order Notes: Invalid BOCS ID format: ' . $bocs_id . ' in order #' . $order->get_id());
                 return;
             }
             
@@ -185,7 +161,6 @@ class Bocs_Order_Notes {
             $order = wc_get_order($order->get_id()); // Refresh order object
             $note_added = $order->get_meta('_bocs_details_note_added');
             if ($note_added === 'yes') {
-                error_log('BOCS Order Notes: BOCS details already added to order #' . $order->get_id());
                 return;
             }
             
@@ -196,12 +171,9 @@ class Bocs_Order_Notes {
                     // Note already exists, mark it as added and return
                     $order->update_meta_data('_bocs_details_note_added', 'yes');
                     $order->save();
-                    error_log('BOCS Order Notes: Found existing BOCS details note in order #' . $order->get_id());
                     return;
                 }
             }
-            
-            error_log('BOCS Order Notes: Processing order #' . $order->get_id() . ' with BOCS ID: ' . $bocs_id);
             
             try {
                 // Fetch BOCS data from API
@@ -215,14 +187,9 @@ class Bocs_Order_Notes {
                     // Mark that we've added the note
                     $order->update_meta_data('_bocs_details_note_added', 'yes');
                     $order->save();
-                    
-                    error_log('BOCS Order Notes: Successfully added BOCS details to order #' . $order->get_id());
-                } else {
-                    error_log('BOCS Order Notes: No data returned from API for BOCS ID: ' . $bocs_id . ' in order #' . $order->get_id());
                 }
             } catch (Exception $e) {
-                // Log error but don't stop processing
-                error_log('BOCS Order Notes: Error fetching BOCS data for order #' . $order->get_id() . ': ' . $e->getMessage());
+                // Silent fail
             }
         } finally {
             // Always release the lock
@@ -241,16 +208,13 @@ class Bocs_Order_Notes {
         if (empty($this->credentials['organization']) || 
             empty($this->credentials['store']) || 
             empty($this->credentials['authorization'])) {
-            error_log('BOCS Order Notes: API credentials are not configured');
             throw new Exception('BOCS API credentials are not configured');
         }
         
         // Initialize cURL
         $curl = curl_init();
         
-        // Log the API request
         $api_url = BOCS_API_URL . 'bocs/' . $bocs_id;
-        error_log('BOCS Order Notes: Fetching data from ' . $api_url);
         
         // Set cURL options
         curl_setopt_array($curl, array(
@@ -278,7 +242,6 @@ class Bocs_Order_Notes {
         if ($response === false) {
             $error = curl_error($curl);
             curl_close($curl);
-            error_log('BOCS Order Notes: cURL error: ' . $error);
             throw new Exception('cURL error: ' . $error);
         }
         
@@ -286,7 +249,6 @@ class Bocs_Order_Notes {
         
         // Check HTTP status
         if ($http_code !== 200) {
-            error_log('BOCS Order Notes: API returned error code: ' . $http_code . ', Response: ' . substr($response, 0, 255));
             throw new Exception('API returned error code: ' . $http_code);
         }
         
@@ -294,18 +256,15 @@ class Bocs_Order_Notes {
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             $error_msg = 'JSON parsing error: ' . json_last_error_msg();
-            error_log('BOCS Order Notes: ' . $error_msg . ', Response: ' . substr($response, 0, 255));
             throw new Exception($error_msg);
         }
         
         // Verify the expected data structure
         if (!isset($data['data'])) {
             $error_msg = 'Unexpected API response structure - missing data key';
-            error_log('BOCS Order Notes: ' . $error_msg . ', Response: ' . substr(json_encode($data), 0, 255));
             throw new Exception($error_msg);
         }
         
-        error_log('BOCS Order Notes: Successfully fetched data for BOCS ID: ' . $bocs_id);
         return $data;
     }
     

@@ -3003,9 +3003,6 @@ class Admin
      * @param object|null $post The post object (optional)
      */
     public function show_related_orders($post_type, $post = null) {
-        // Log information about the hook call for debugging
-        $this->log_debug('show_related_orders called with post_type: ' . $post_type . ', post: ' . (is_object($post) ? get_class($post) : 'null'));
-        
         // Early bail if not on an order screen
         if ($post_type !== 'woocommerce_page_wc-orders' && $post_type !== 'shop_order') {
             return;
@@ -3017,7 +3014,6 @@ class Admin
             $order_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
             
             if ($order_id <= 0) {
-                $this->log_debug('No order ID found in $_GET parameters');
                 return; // No order ID to work with
             }
             
@@ -3025,11 +3021,8 @@ class Admin
             $post = wc_get_order($order_id);
             
             if (!$post) {
-                $this->log_debug('Order not found with ID: ' . $order_id);
                 return; // Order not found
             }
-            
-            $this->log_debug('Retrieved order from ID parameter: ' . $order_id);
         }
         
         // Get order ID - handle both post object and WC_Order object
@@ -3037,8 +3030,6 @@ class Admin
         
         // Check if this order has related orders
         if ($this->has_related_orders($order_id)) {
-            $this->log_debug('Adding meta box for order #' . $order_id . ' with related orders');
-            
             add_meta_box(
                 'bocs_related_orders',
                 __('BOCS Related Orders', 'bocs-wordpress'),
@@ -3048,8 +3039,6 @@ class Admin
                 'default',
                 array('order_id' => $order_id)
             );
-        } else {
-            $this->log_debug('No related orders found for order #' . $order_id);
         }
     }
     
