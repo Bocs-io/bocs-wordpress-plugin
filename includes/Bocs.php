@@ -61,6 +61,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Notes.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Thankyou.php';
 
         // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {

@@ -22,6 +22,12 @@ class Bocs_Cart {
         
         // Add hook to handle removing BOCS from cart
         add_action('template_redirect', array($this, 'handle_remove_bocs_parameter'));
+        
+        // Add CSS for subscription information
+        add_action('wp_head', array($this, 'add_subscription_styles'));
+        
+        // Add BOCS branding to checkout page
+        add_action('woocommerce_before_checkout_form', array($this, 'add_bocs_checkout_branding'), 10);
     }
 
     /**
@@ -230,11 +236,52 @@ class Bocs_Cart {
      */
     public function bocs_review_order_before_order_total()
     {
-        printf(
-            '<tr class="custom-text-before-subtotal"><th>%s</th><td>%s</td></tr>',
-            esc_html__('Additional Info:', 'bocs-wordpress'),
-            esc_html__('Your custom message here.', 'bocs-wordpress')
+        // Check if we have a BOCS subscription in the cart
+        $bocs_id = $this->get_current_bocs_id();
+        if (empty($bocs_id)) {
+            return;
+        }
+        
+        // Get subscription details
+        $subscription_details = $this->get_subscription_details($bocs_id);
+        if (empty($subscription_details) || !isset($subscription_details['priceAdjustment'])) {
+            return;
+        }
+        
+        // Get frequency data
+        $frequency_data = $this->get_formatted_frequency_data($subscription_details);
+        if (empty($frequency_data)) {
+            return;
+        }
+        
+        // Get subscription name
+        $subscription_name = isset($subscription_details['name']) ? esc_html($subscription_details['name']) : esc_html__('Subscription', 'bocs-wordpress');
+        
+        // Display subscription name
+        echo '<tr class="bocs-subscription-info bocs-subscription-name-row">';
+        echo '<th>' . esc_html__('Subscription:', 'bocs-wordpress') . '</th>';
+        echo '<td>' . $subscription_name . '</td>';
+        echo '</tr>';
+        
+        // Display subscription frequency information
+        echo '<tr class="bocs-subscription-info">';
+        echo '<th>' . esc_html__('Frequency:', 'bocs-wordpress') . '</th>';
+        echo '<td>';
+        echo '<span class="bocs-subscription-details">';
+        echo sprintf(
+            esc_html__('Every %s %s', 'bocs-wordpress'),
+            esc_html($frequency_data['frequency']),
+            esc_html($frequency_data['time_unit'])
         );
+        
+        // Show discount if available
+        if (!empty($frequency_data['discount_text'])) {
+            echo ' ' . esc_html($frequency_data['discount_text']);
+        }
+        
+        echo '</span>';
+        echo '</td>';
+        echo '</tr>';
     }
 
     /**
@@ -245,11 +292,8 @@ class Bocs_Cart {
      */
     public function bocs_cart_totals_before_order_total()
     {
-        printf(
-            '<tr class="custom-text-before-subtotal"><th>%s</th><td>%s</td></tr>',
-            esc_html__('Additional Info:', 'bocs-wordpress'),
-            esc_html__('Your custom message here.', 'bocs-wordpress')
-        );
+        // Use the same function for cart display
+        $this->bocs_review_order_before_order_total();
     }
 
     /**
@@ -348,16 +392,31 @@ class Bocs_Cart {
     }
     
     /**
-     * Get subscription details for a given BOCS ID
+     * Get subscription details with caching for performance
      * 
      * @param string $bocs_id The BOCS ID
      * @return array|false Subscription details or false if not found
      */
     private function get_subscription_details($bocs_id) {
+        static $cached_details = array();
+        
+        // Return from cache if available
+        if (isset($cached_details[$bocs_id])) {
+            return $cached_details[$bocs_id];
+        }
+        
         try {
+            // Get subscription details from Bocs API
             $bocs_class = new Bocs_Bocs();
-            return $bocs_class->get_bocs($bocs_id);
+            $details = $bocs_class->get_bocs($bocs_id);
+            
+            // Cache the result
+            $cached_details[$bocs_id] = $details;
+            
+            return $details;
         } catch (Exception $e) {
+            // Log the error and return false
+            error_log('BOCS: Error retrieving subscription details: ' . $e->getMessage());
             return false;
         }
     }
@@ -409,5 +468,200 @@ class Bocs_Cart {
                 setcookie($cookie_name, '', time() - 3600, '/');
             }
         }
+    }
+
+    /**
+     * Format the frequency data for display
+     * 
+     * @param array $subscription_details Subscription details from API
+     * @return array|null Formatted frequency data or null if not available
+     */
+    private function get_formatted_frequency_data($subscription_details) {
+        // Check if we have the necessary data
+        if (empty($subscription_details['priceAdjustment']) || 
+            empty($subscription_details['priceAdjustment']['adjustments']) || 
+            !is_array($subscription_details['priceAdjustment']['adjustments'])) {
+            return null;
+        }
+        
+        // Get selected frequency ID from session or cookie
+        $selected_frequency_id = $this->get_selected_frequency_id();
+        
+        // Find the selected frequency adjustment
+        $selected_adjustment = null;
+        foreach ($subscription_details['priceAdjustment']['adjustments'] as $adjustment) {
+            if ($selected_frequency_id && $adjustment['id'] === $selected_frequency_id) {
+                $selected_adjustment = $adjustment;
+                break;
+            }
+        }
+        
+        // If no selected frequency found, use the first one
+        if (!$selected_adjustment && !empty($subscription_details['priceAdjustment']['adjustments'])) {
+            $selected_adjustment = $subscription_details['priceAdjustment']['adjustments'][0];
+        }
+        
+        if (!$selected_adjustment) {
+            return null;
+        }
+        
+        // Format the data
+        $frequency = $selected_adjustment['frequency'] ?? '?';
+        $time_unit = isset($selected_adjustment['timeUnit']) ? strtolower($selected_adjustment['timeUnit']) : 'period';
+        
+        // Make time unit singular if frequency is 1
+        if ($frequency == 1 && substr($time_unit, -1) === 's') {
+            $time_unit = substr($time_unit, 0, -1);
+        }
+        
+        $discount_text = '';
+        // Add discount information
+        if (isset($selected_adjustment['discount']) && $selected_adjustment['discount'] > 0) {
+            $discount = $selected_adjustment['discount'];
+            $discount_type = isset($selected_adjustment['discountType']) ? strtolower($selected_adjustment['discountType']) : 'dollar';
+            
+            if ($discount_type === 'percent') {
+                $discount_text = '(' . $discount . '% off)';
+            } else {
+                $discount_text = '($' . $discount . ' off)';
+            }
+        }
+        
+        return array(
+            'frequency' => $frequency,
+            'time_unit' => $time_unit,
+            'discount_text' => $discount_text,
+            'frequency_id' => $selected_adjustment['id'] ?? '',
+        );
+    }
+    
+    /**
+     * Get selected frequency ID from session or cookie
+     * 
+     * @return string Selected frequency ID or empty string if not found
+     */
+    private function get_selected_frequency_id() {
+        $frequency_id = '';
+        
+        if (isset(WC()->session)) {
+            $frequency_id = WC()->session->get('bocs_frequency_id');
+            
+            if (empty($frequency_id) && isset($_COOKIE['__bocs_frequency_id'])) {
+                $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+            }
+        }
+        
+        return $frequency_id;
+    }
+
+    /**
+     * Add CSS styles for subscription information
+     */
+    public function add_subscription_styles() {
+        // Only add styles if we're on checkout/cart pages and there's a BOCS subscription
+        if ((is_checkout() || is_cart()) && $this->cart_contains_bocs_subscription()) {
+            echo '<style>
+            .bocs-subscription-icon {
+                margin-right: 8px;
+                font-size: 16px;
+            }
+            
+            /* Additional inline styles for specific elements */
+            .woocommerce-checkout-review-order-table .order-total {
+                font-weight: 700 !important;
+            }
+            </style>';
+        }
+    }
+
+    /**
+     * Add BOCS branding and notification to checkout page
+     */
+    public function add_bocs_checkout_branding() {
+        // Only add branding if cart contains BOCS subscription
+        if (!$this->cart_contains_bocs_subscription()) {
+            return;
+        }
+        
+        // Get current BOCS ID
+        $bocs_id = $this->get_current_bocs_id();
+        if (empty($bocs_id)) {
+            return;
+        }
+        
+        // Get subscription details
+        $subscription_details = $this->get_subscription_details($bocs_id);
+        if (empty($subscription_details) || !isset($subscription_details['priceAdjustment'])) {
+            return;
+        }
+        
+        // Get formatted frequency data
+        $frequency_data = $this->get_formatted_frequency_data($subscription_details);
+        if (empty($frequency_data)) {
+            return;
+        }
+        
+        // Get subscription name
+        $subscription_name = isset($subscription_details['name']) ? esc_html($subscription_details['name']) : esc_html__('Subscription', 'bocs-wordpress');
+        
+        // Add prominent subscription details banner at top of checkout
+        echo '<div class="bocs-checkout-subscription-banner">';
+        echo '<div class="bocs-checkout-subscription-icon">↻</div>';
+        echo '<div class="bocs-checkout-subscription-content">';
+        echo '<h3>' . esc_html__('Subscription Details', 'bocs-wordpress') . '</h3>';
+        echo '<div class="bocs-checkout-subscription-name">' . $subscription_name . '</div>';
+        echo '<div class="bocs-checkout-subscription-frequency">' . sprintf(
+            esc_html__('Frequency: Every %s %s', 'bocs-wordpress'),
+            esc_html($frequency_data['frequency']),
+            esc_html($frequency_data['time_unit'])
+        );
+        
+        // Show discount if available
+        if (!empty($frequency_data['discount_text'])) {
+            echo ' <span class="bocs-checkout-subscription-discount">' . esc_html($frequency_data['discount_text']) . '</span>';
+        }
+        
+        echo '</div>';
+        echo '</div>';
+        echo '</div>';
+        
+        // Add standard subscription badge at top of checkout below the banner
+        echo '<div class="bocs-checkout-subscription-notice">';
+        echo '<span class="bocs-subscription-icon">↻</span>';
+        echo '<span>' . esc_html__('You are setting up a subscription', 'bocs-wordpress') . '</span>';
+        echo '</div>';
+        
+        // Add JavaScript to add body class for styling
+        ?>
+        <script type="text/javascript">
+        (function($) {
+            $(document).ready(function() {
+                $('body').addClass('has-bocs-subscription');
+                
+                // Add subscription indicator to payment section
+                $('.woocommerce-checkout-payment').before(
+                    '<div class="bocs-payment-subscription-notice">' +
+                    '<p><?php echo esc_html__('Your payment method will be used for this and future subscription payments', 'bocs-wordpress'); ?></p>' +
+                    '</div>'
+                );
+                
+                // Add subscription details to order review section too
+                $('#order_review_heading').after(
+                    '<div class="bocs-order-review-subscription-notice">' +
+                    '<p><span class="bocs-subscription-icon">↻</span> <?php 
+                        echo sprintf(
+                            esc_html__('%s - Every %s %s %s', 'bocs-wordpress'),
+                            $subscription_name,
+                            esc_html($frequency_data['frequency']),
+                            esc_html($frequency_data['time_unit']),
+                            !empty($frequency_data['discount_text']) ? esc_html($frequency_data['discount_text']) : ''
+                        ); 
+                    ?></p>' +
+                    '</div>'
+                );
+            });
+        })(jQuery);
+        </script>
+        <?php
     }
 }

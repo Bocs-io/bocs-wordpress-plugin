@@ -1,0 +1,252 @@
+/**
+ * BOCS Subscription Styles
+ *
+ * Styles for BOCS subscription information on checkout and thank-you pages
+ * Only applied when a BOCS subscription is detected
+ */
+
+/* Body class for BOCS-specific styling */
+.has-bocs-subscription .woocommerce-checkout-review-order-table,
+.has-bocs-subscription .woocommerce-order {
+    position: relative;
+}
+
+/* Prominent Subscription Details Banner */
+.bocs-checkout-subscription-banner {
+    display: flex !important;
+    background-color: #f0e9f7 !important;
+    border: 1px solid #d5c2e7 !important;
+    border-left: 4px solid #7f54b3 !important;
+    border-radius: 4px !important;
+    padding: 20px !important;
+    margin-bottom: 25px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+}
+
+.bocs-checkout-subscription-icon {
+    font-size: 28px !important;
+    color: #7f54b3 !important;
+    margin-right: 15px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.bocs-checkout-subscription-content {
+    flex: 1 !important;
+}
+
+.bocs-checkout-subscription-content h3 {
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+    color: #7f54b3 !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+.bocs-checkout-subscription-name {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    margin-bottom: 5px !important;
+    color: #333 !important;
+}
+
+.bocs-checkout-subscription-frequency {
+    font-size: 14px !important;
+    color: #515151 !important;
+}
+
+.bocs-checkout-subscription-discount {
+    display: inline-block !important;
+    background-color: #7f54b3 !important;
+    color: white !important;
+    padding: 2px 8px !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+    margin-left: 5px !important;
+}
+
+/* Order Review Section Subscription Notice */
+.bocs-order-review-subscription-notice {
+    background-color: #f8f8f8 !important;
+    border-left: 3px solid #7f54b3 !important;
+    padding: 10px 15px !important;
+    margin: 10px 0 20px 0 !important;
+}
+
+.bocs-order-review-subscription-notice p {
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    font-size: 14px !important;
+    color: #515151 !important;
+}
+
+.bocs-order-review-subscription-notice .bocs-subscription-icon {
+    color: #7f54b3 !important;
+    font-size: 16px !important;
+    margin-right: 8px !important;
+}
+
+/* Subscription notices on checkout page */
+.bocs-checkout-subscription-notice {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+    padding: 10px 15px !important;
+    background-color: #f0e9f7 !important; /* Light purple */
+    border: 1px solid #d5c2e7 !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    color: #7f54b3 !important;
+}
+
+.bocs-payment-subscription-notice {
+    margin: 15px 0 !important;
+    padding: 10px 15px !important;
+    background-color: #f8f8f8 !important;
+    border-left: 3px solid #7f54b3 !important;
+    font-size: 14px !important;
+}
+
+.bocs-payment-subscription-notice p {
+    margin: 0 !important;
+    color: #515151 !important;
+}
+
+/* Checkout Page Subscription Info */
+.has-bocs-subscription tr.bocs-subscription-info th,
+.has-bocs-subscription tr.bocs-subscription-info td {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    border-top: 1px dashed #e5e5e5 !important;
+    font-weight: 600 !important;
+    background-color: #f9f7fc !important; /* Very light purple background */
+}
+
+/* First subscription row gets a top border */
+.has-bocs-subscription tr.bocs-subscription-name-row th,
+.has-bocs-subscription tr.bocs-subscription-name-row td {
+    border-top: 2px solid #7f54b3 !important;
+    padding-top: 15px !important;
+}
+
+.has-bocs-subscription tr.bocs-subscription-info th {
+    color: #7f54b3 !important; /* WooCommerce purple */
+    width: 40% !important;
+}
+
+.has-bocs-subscription .bocs-subscription-details {
+    display: inline-block !important;
+    background-color: #f8f8f8 !important;
+    padding: 5px 10px !important;
+    border-radius: 3px !important;
+    border-left: 3px solid #7f54b3 !important; /* WooCommerce purple */
+}
+
+/* Thank You Page Subscription Box */
+.bocs-subscription-wrapper {
+    margin: 30px 0 !important;
+}
+
+.bocs-subscription-box {
+    padding: 20px !important;
+    border: 1px solid #ddd !important;
+    border-radius: 4px !important;
+    background-color: #f8f8f8 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+.bocs-subscription-header {
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 20px !important;
+    border-bottom: 1px solid #e5e5e5 !important;
+    padding-bottom: 10px !important;
+}
+
+.bocs-subscription-icon {
+    display: inline-block !important;
+    margin-right: 10px !important;
+    font-size: 20px !important;
+    color: #7f54b3 !important; /* WooCommerce purple */
+}
+
+.bocs-subscription-box h2 {
+    margin: 0 !important;
+    color: #7f54b3 !important; /* WooCommerce purple */
+    font-size: 18px !important;
+}
+
+.bocs-subscription-details-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 20px !important;
+}
+
+.bocs-subscription-details-table th,
+.bocs-subscription-details-table td {
+    padding: 12px 10px !important;
+    border-bottom: 1px solid #e5e5e5 !important;
+    text-align: left !important;
+}
+
+.bocs-subscription-details-table th {
+    width: 40% !important;
+    font-weight: 600 !important;
+    color: #515151 !important;
+}
+
+.bocs-subscription-actions {
+    margin-top: 20px !important;
+    text-align: right !important;
+}
+
+.bocs-subscription-actions .button {
+    background-color: #7f54b3 !important; /* WooCommerce purple */
+    color: white !important;
+    border: none !important;
+    padding: 8px 15px !important;
+    border-radius: 3px !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    transition: background-color 0.2s ease !important;
+}
+
+.bocs-subscription-actions .button:hover {
+    background-color: #674399 !important; /* Darker WooCommerce purple */
+}
+
+/* Subscription Badge for Order Summary */
+.bocs-subscription-badge {
+    display: inline-block !important;
+    margin-bottom: 15px !important;
+    padding: 5px 12px !important;
+    background-color: #7f54b3 !important; /* WooCommerce purple */
+    color: white !important;
+    border-radius: 20px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+.bocs-subscription-badge span {
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.bocs-subscription-badge span:before {
+    content: '↻' !important;
+    margin-right: 5px !important;
+    font-weight: bold !important;
+}
+
+/* Responsive styles */
+@media screen and (max-width: 768px) {
+    .bocs-subscription-details-table th {
+        width: 35% !important;
+    }
+    
+    .bocs-subscription-actions {
+        text-align: center !important;
+    }
+} 
