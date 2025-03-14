@@ -1,45 +1,25 @@
 <?php
 
 /**
- * Bocs
- * COPYRIGHT Bocs.io PTY LTD 2019
- * URL: https://bocs.io
- * Email: hello@bocs.io
- *
  * The core plugin class.
  *
- * This is used to define internationalization, admin-specific hooks, and
- * public-facing site hooks.
- *
- * Also maintains the unique identifier of this plugin as well as the current
- * version of the plugin.
- *
+ * @since      1.0.0
+ * @package    Bocs
+ * @subpackage Bocs/includes
  */
 class Bocs
 {
-
-    /**
-     * The loader that's responsible for maintaining and registering all hooks that power
-     * the plugin.
-     */
+    /** @var Loader */
     protected $loader;
 
-    /**
-     * The unique identifier of this plugin.
-     */
+    /** @var string */
     protected $plugin_name;
 
-    /**
-     * The current version of the plugin.
-     */
+    /** @var string */
     protected $version;
 
     /**
-     * Define the core functionality of the plugin.
-     *
-     * Set the plugin name and the plugin version that can be used throughout the plugin.
-     * Load the dependencies, define the locale, and set the hooks for the admin area and
-     * the public-facing side of the site.
+     * Initialize the plugin.
      */
     public function __construct()
     {
@@ -47,175 +27,149 @@ class Bocs
         $this->plugin_name = BOCS_NAME;
 
         $this->load_dependencies();
-        // $this->set_locale();
         $this->define_updater_hooks();
         $this->define_admin_hooks();
         $this->define_public_hooks();
         $this->define_email_hooks();
         $this->define_checkout_page_hooks();
-
         $this->define_account_profile_hooks();
         $this->define_sync_hooks();
         $this->define_bocs_email_api();
+        $this->define_product_hooks();
+        $this->define_order_hooks();
     }
 
     /**
-     * Load the required dependencies for this plugin.
-     *
-     * Include the following files that make up the plugin:
-     *
-     * - Bocs_Service_Loader. Orchestrates the hooks of the plugin.
-     * - Bocs_Service_i18n. Defines internationalization functionality.
-     * - Bocs_Service_Admin. Defines all hooks for the admin area.
-     * - Bocs_Service_Public. Defines all hooks for the public side of the site.
-     *
-     * Create an instance of the loader which will be used to register the hooks
-     * with WordPress.
+     * Load dependencies and initialize loader.
      */
     private function load_dependencies()
     {
-
-        /**
-         * The class responsible for orchestrating the actions and filters of the
-         * core plugin.
-         */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Loader.php';
-
-        /**
-         * The class responsible for defining internationalization functionality
-         * of the plugin.
-         */
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Internationalization.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/constants.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the admin area.
-         */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Admin.php';
-        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Account.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_List_Table.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Updater.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Sync.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Curl.php';
-
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_API_Handler.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Error_Logs_List_Table.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Log_Handler.php';
-
-        /**
-         * The class responsible for defining all actions that occur in the public-facing
-         * side of the site.
-         */
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Frontend.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Auth.php';
-
-        // Bocs's Shortcode
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Shortcode.php';
-
-        // Api class - for the custom rest api
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Api.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Contact.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Tag.php';
-        // require_once plugin_dir_path(dirname(__FILE__)).'includes/Widget.php';
-
-        // require_once plugin_dir_path(dirname(__FILE__)).'libraries/action-scheduler/action-scheduler.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Cart.php';
-
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
-
-        // email rest api
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Notes.php';
 
-        // require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
-
-        /*
-         * if (!class_exists('WC_Email')) {
-         * require_once WC_ABSPATH . 'includes/class-wc-emails.php';
-         * }
-         */
-
-        // emails
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
+        // Check if WooCommerce is active and email classes exist
+        if (function_exists('WC')) {
+            // Load core WooCommerce email classes
+            if (!class_exists('WC_Email', false)) {
+                include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
+            }
+            
+            // Ensure WooCommerce parent email classes are loaded
+            $wc_email_classes = array(
+                'WC_Email' => 'emails/class-wc-email.php', // Base class first
+                'WC_Email_Customer_Completed_Order' => 'emails/class-wc-email-customer-completed-order.php',
+                'WC_Email_Customer_Processing_Order' => 'emails/class-wc-email-customer-processing-order.php',
+                'WC_Email_Customer_On_Hold_Order' => 'emails/class-wc-email-customer-on-hold-order.php',
+                'WC_Email_Customer_Invoice' => 'emails/class-wc-email-customer-invoice.php',
+                'WC_Email_Failed_Order' => 'emails/class-wc-email-failed-order.php',
+                'WC_Email_Customer_Note' => 'emails/class-wc-email-customer-note.php',
+                'WC_Email_Customer_Reset_Password' => 'emails/class-wc-email-customer-reset-password.php',
+                'WC_Email_Customer_New_Account' => 'emails/class-wc-email-customer-new-account.php'
+            );
+            
+            // Try to include all email classes
+            foreach ($wc_email_classes as $class => $path) {
+                if (!class_exists($class, false)) {
+                    $full_path = WC_ABSPATH . 'includes/' . $path;
+                    if (file_exists($full_path)) {
+                        include_once $full_path;
+                    } else {
+                        error_log("Bocs: Unable to find WooCommerce email class file: {$path}");
+                    }
+                }
+            }
+            
+            // Now load our custom email classes
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-welcome.php';
+            // New email classes
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-renewal-payment.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
+        }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Product.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_Method.php';
 
         $this->loader = new Loader();
     }
 
     /**
-     * Define the locale for this plugin for internationalization.
-     *
-     * Uses the Bocs_Service_i18n class in order to set the domain and to register the hook
-     * with WordPress.
-     */
-    private function set_locale()
-    {
-        $plugin_i18n = new Internationalization();
-        $this->loader->add_action('plugins_loaded', $plugin_i18n, 'load_plugin_textdomain');
-    }
-
-    /**
-     * This will handle the hooks related to Bocs' App syncs
+     * Define sync hooks for Bocs App synchronization.
      */
     private function define_sync_hooks()
     {
         $syncing = new Sync();
-
+        
+        // Critical user sync hooks
         $this->loader->add_action('profile_update', $syncing, 'profile_update', 10, 3);
-        // $this->loader->add_filter('insert_user_meta', $syncing, 'insert_user_meta', 10, 4);
-
         $this->loader->add_action('woocommerce_save_account_details', $syncing, 'save_account_details');
-
-        // add new user hooks
         $this->loader->add_action('user_register', $syncing, 'bocs_user_register');
     }
 
     /**
-     * handles hooks related to the My Account / My Profile
-     *
-     * @return void
+     * Define hooks for My Account/Profile functionality.
      */
     private function define_account_profile_hooks()
     {
         $bocs_account = new Bocs_Account();
 
-        // bocs subscriptions under My Account
         $this->loader->add_filter('woocommerce_account_menu_items', $bocs_account, 'bocs_account_menu_item');
         $this->loader->add_action('init', $bocs_account, 'register_bocs_account_endpoint');
         $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
-
-        // bocs subscription under My Account page
         $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
-
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
+
+        $bocs_payment_method = new Bocs_Payment_Method();
+        $this->loader->add_filter('woocommerce_payment_methods_list_item', $bocs_payment_method, 'add_edit_payment_method_button', 10, 2);
+        
+        // Add new AJAX action for Stripe setup
+        $this->loader->add_action('wp_ajax_bocs_get_stripe_setup', $bocs_payment_method, 'get_stripe_setup');
+        $this->loader->add_action('wp_ajax_bocs_update_payment_method', $bocs_payment_method, 'handle_payment_method_update');
+
+        // Add action to handle setup completion
+        $this->loader->add_action('init', $bocs_payment_method, 'handle_setup_completion');
+        // Add action to display notices
+        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_payment_method, 'display_payment_update_notices');
+        // Add AJAX action for updating subscription payment method
+        $this->loader->add_action('wp_ajax_bocs_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
+        // Add scripts and styles
+        $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'enqueue_scripts');
     }
 
+    /**
+     * Define hooks for plugin updates.
+     */
     private function define_updater_hooks()
     {
         $updater = new Updater(plugin_dir_path(dirname(__FILE__)) . 'bocs.php');
-
+        
         $this->loader->add_action('admin_init', $updater, 'set_plugin_properties');
-
         $this->loader->add_filter('pre_set_site_transient_update_plugins', $updater, 'modify_transient');
         $this->loader->add_filter('plugins_api', $updater, 'plugin_popup', 10, 3);
         $this->loader->add_filter('upgrader_post_install', $updater, 'after_install', 10, 3);
-        /*
-         * $this->loader->add_filter('upgrader_pre_download', $this, function (){
-         * global $updater;
-         * $this->loader->add_filter('http_request_args', $updater, 'download_package', 15, 2);
-         * return false;
-         * });
-         */
     }
 
     /**
@@ -261,9 +215,6 @@ class Bocs
         // create bocs subscription and order if the order is in processing
         // $this->loader->add_filter('woocommerce_store_api_add_to_cart_data', $plugin_admin, 'add_custom_to_cart_data', 10, 2);
         // $this->loader->add_action('woocommerce_add_cart_item_data', $plugin_admin, 'add_custom_cart_item_data', 10, 3);
-        // $this->loader->add_action('woocommerce_checkout_create_order_line_item', $plugin_admin, 'add_cart_item_meta_to_order_items', 10, 4);
-
-        // $this->loader->add_action('woocommerce_checkout_create_order', $plugin_admin, 'add_custom_order_meta', 10, 2);
         $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
 
         // this is for the saving of the bocs and collections list
@@ -304,50 +255,82 @@ class Bocs
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
 
+        // Initialize cart class with custom price functionality
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
+        
+        // Add hooks for cart total calculations
+        $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
+        $this->loader->add_action('woocommerce_review_order_after_cart_contents', $bocs_cart, 'bocs_review_order_after_cart_contents');
+        $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
+        $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
 
         $plugin_admin = new Admin();
         $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
-        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter');
-        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 10, 3);
+        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter', 5);
+        $this->loader->add_action('woocommerce_before_checkout_form', $plugin_admin, 'debug_dump_bocs_data', 1);
+        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
+        $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
         $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
-
-        // $bocs_cart = new Bocs_Cart();
-        // $this->loader->add_action('woocommerce_cart_totals_before_shipping', $bocs_cart, 'bocs_cart_totals_before_shipping');
     }
 
     public function define_email_hooks()
     {
+        // Initialize email classes
+        $bocs_email = new Bocs_Email();
+        
+        // Add basic initialization
+        $this->loader->add_action('init', $bocs_email, 'init', 10);
+        
+        // Initialize email classes after WooCommerce is loaded
+        $this->loader->add_action('woocommerce_init', $bocs_email, 'init_email_classes', 10);
+    }
+
+    /**
+     * Initialize email classes after WooCommerce is loaded
+     */
+    public function init_email_classes() {
+        // Prevent duplicate email registrations
+        static $emails_initialized = false;
+        if ($emails_initialized) {
+            error_log("Bocs: Prevented duplicate email hook registration in Bocs.php");
+            return;
+        }
+        $emails_initialized = true;
+        
+        // Regular Processing Order Email
+        $processing_regular_orders = new WC_Bocs_Email_Processing_Order();
+        $this->loader->add_action('woocommerce_order_status_processing', $processing_regular_orders, 'trigger', 9, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_regular_orders, 'trigger', 9, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_regular_orders, 'trigger', 9, 1);
+        
+        // Processing Renewal Order Email
         $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
-        // $bocs_email = new Bocs_Email();
-
-        // $this->loader->add_filter('woocommerce_email_classes', $bocs_email, 'add_bocs_processing_renewal_email_class', 10, 1);
-
-        // $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_processing', $processing_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_on-hold_to_processing', $processing_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_processing', $processing_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
 
+        // Completed Renewal Order Email
         $completed_orders = new WC_Bocs_Email_Completed_Renewal_Order();
-        // $this->loader->add_action('woocommerce_order_status_pending_to_completed', $completed_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_completed', $completed_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_completed', $completed_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_completed', $completed_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_processing_to_completed', $completed_orders, 'trigger', 10, 1);
 
+        // On-hold Renewal Order Email
         $onhold_orders = new WC_Bocs_Email_On_Hold_Renewal_Order();
-        // $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_cancelled_to_on-hold', $onhold_orders, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_on-hold', $onhold_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
 
+        // Customer Renewal Invoice Email
         $renewal_invoice = new WC_Bocs_Email_Customer_Renewal_Invoice();
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_pending_to_failed', $renewal_invoice, 'trigger', 10, 1);
-        // $this->loader->add_action('woocommerce_order_status_on-hold_to_failed', $renewal_invoice, 'trigger', 10, 1);
+        $this->loader->add_action('woocommerce_order_status_failed', $renewal_invoice, 'trigger', 10, 1);
+
+        // Subscription Switched Email
+        $subscription_switched = new WC_Bocs_Email_Subscription_Switched();
+        $this->loader->add_action('bocs_subscription_switched', $subscription_switched, 'trigger', 10, 2);
     }
 
     public function define_checkout_page_hooks()
@@ -361,6 +344,30 @@ class Bocs
     {
         $email_api = new Bocs_Email_API();
         $this->loader->add_action('rest_api_init', $email_api, 'register_routes');
+    }
+
+    /**
+     * Define hooks for WooCommerce product functionality
+     */
+    private function define_product_hooks()
+    {
+        $product = new Bocs_Product();
+        
+        // Register AJAX actions for product price and details
+        $this->loader->add_action('wp_ajax_get_product_price', $product, 'get_product_price_callback');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_price', $product, 'get_product_price_callback');
+        
+        $this->loader->add_action('wp_ajax_get_product_details', $product, 'get_product_details_ajax');
+        $this->loader->add_action('wp_ajax_nopriv_get_product_details', $product, 'get_product_details_ajax');
+    }
+
+    /**
+     * Define order-related hooks
+     */
+    private function define_order_hooks()
+    {
+        $order_hooks = new Bocs_Order_Hooks();
+        // The hooks are registered in the class constructor
     }
 
     /**

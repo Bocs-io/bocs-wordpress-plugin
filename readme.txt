@@ -1,3 +1,114 @@
+v0.0.122 03/14/2025
+* creating of subscription fixed
+* checkout order with bocs notes updates
+
+v0.0.121 03/13/2025
+* Checkout pricing mismatch
+* Adding bocs/subscription details to order notes
+
+v0.0.120 03/12/2025
+* email template branding
+* sending of renewal order
+* sending of emails if the renewal order was updated to processing
+
+v0.0.119 03/11/2025
+* Welcome Email implemented
+* Subscription Renewal Invoice implemented
+* Email template override paths have been updated to use the `yourtheme/bocs-wordpress/emails/` directory instead of `yourtheme/woocommerce/emails/`
+* All email template filenames now have a `bocs-` prefix to avoid conflicts with other plugins
+* Added template override documentation in README.md
+
+v0.0.118 03/10/2025
+* added email templates
+
+v0.0.117 03/07/2025
+* Improve plugin duplicate detection with additional checks
+* Improve duplicate plugin detection and notifications
+* Fix on the error when installing any other plugins
+* Fixes on the checkout when filling up any form as a guest
+
+v0.0.116 03/04/2025
+* Fix on the list of user's subscriptions
+* Fix on the update plugin, dev mode should get the latest, either a release or pre-release version
+
+v0.0.115 02/19/2025
+* Added the payment methods modal
+* Added Stripe Elements
+* Added the Stripe PHP library
+* Able to edit the payment method on the subscriptions page
+* Added payment methods to the WooCommerce payment methods list
+* Added payment methods to the WooCommerce Payment Tokens
+
+v0.0.114 02/18/2025
+* Added the activate subscription button
+* Added modal for the activate subscription
+* Added modal for the cancel subscription
+* Fix the issue on the redirect after the activation or cancellation of the subscription
+
+v0.0.113 02/16/2025
+* Added the check for duplicate plugin during pre-uploading of the plugin
+* Fix update account information
+* Update the settings link and label
+
+v0.0.112 02/11/2025
+* Added the divider on the subscriptions page
+* Added more info on the accordion header
+* Moved the menu item under the orders
+
+v0.0.111 02/11/2025
+* Errors on the loading line itemms were corrected
+* Background errors were corrected during the updating the address
+
+v0.0.110 02/10/2025
+* Added the address editor on the subscriptions page
+* Settings minor corrections on the admin side
+
+v0.0.109 02/06/2025
+* Use github for the updater instead of the old method S3
+* Added the updater for the plugin for pre-release and release for the github repository
+* Added the text domain for the plugin
+* Correction on the old text domain to use 'bocs-wordpress'
+* Fix the current user's list of subscriptions on My Account page
+
+v0.0.108 02/04/2025
+* Added the save payment checkbox on the checkout page 
+* Fixes on the frequency on the subscriptions page
+* Fixes on the next payment date on the subscriptions page
+* Fixes on the early renewal on the subscriptions page
+
+v0.0.107 01/31/2025
+* Added the billing and shipping address on the order
+* Fixed the issue on the order creation in relation to bocsId and collectionId
+
+v0.0.106 01/29/2025
+* Cancel subscription button on the subscriptions page
+
+v0.0.105 01/28/2025
+* Pause/Skip Next Payment Date
+
+v0.0.104 01/27/2025
+* Added the edit frequency on the subscriptions page
+
+v0.0.103 01/24/2025
+* Added accordion on the subscriptions page
+
+v0.0.102 01/22/2025
+* Revert the Updater to the old working version
+
+v0.0.101 01/22/2025
+* Hide and check the create account checkbox on the checkout page
+* Hide and check the save card checkbox on the checkout page
+
+v0.0.100 01/17/2025
+* Force check Save payment information to my account for future purchases when bocs product is added to the cart
+* Added the updater for the plugin for pre-release and release for the github repository
+
+v0.0.99 01/16/2025
+* Added Customer WooCommerce REST API for trigger payment
+
+v0.0.98 01/15/2025
+* Added require registration for bocs subscription if not logged in
+
 v0.0.97 01/09/2025
 * Update version for the widget in whatever environment
 * Fixed on the discount
