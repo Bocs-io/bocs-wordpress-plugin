@@ -3522,5 +3522,38 @@ class Admin
             }
         </style>';
     }
+
+    /**
+     * Check and sync user ID with BOCS on login
+     * 
+     * @param string $user_login Username
+     * @param WP_User $user User object
+     */
+    public function bocs_user_id_check($user_login, $user) {
+        if (!$user || !$user->ID) {
+            $this->log_warning('Cannot check BOCS user ID: Invalid user', [
+                'user_login' => $user_login
+            ]);
+            return;
+        }
+        
+        $user_id = $user->ID;
+        $bocs_id = get_user_meta($user_id, 'bocs_user_id', true);
+        
+        if (empty($bocs_id)) {
+            $this->log_debug('No BOCS ID found for user during login check', [
+                'user_id' => $user_id,
+                'user_login' => $user_login
+            ]);
+            return;
+        }
+        
+        // If we have a BOCS ID, we could sync additional data here if needed
+        $this->log_debug('User logged in with BOCS ID', [
+            'user_id' => $user_id,
+            'bocs_id' => $bocs_id,
+            'user_login' => $user_login
+        ]);
+    }
 }
 

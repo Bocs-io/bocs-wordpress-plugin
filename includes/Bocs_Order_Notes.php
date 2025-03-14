@@ -280,6 +280,7 @@ class Bocs_Order_Notes {
         // Start building the note
         $note = '<strong>BOCS Subscription Details:</strong><br>';
         $note .= '------------------------------<br>';
+        $note .= '<strong>First Purchase (Parent Order)</strong> ' . esc_html($bocs_id) . '<br>';
         
         // Basic BOCS information
         $note .= '<strong>BOCS ID:</strong> ' . esc_html($bocs_id) . '<br>';
