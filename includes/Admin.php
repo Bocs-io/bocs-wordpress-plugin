@@ -1203,8 +1203,6 @@ class Admin
 
         // Initialize variables
         $subscription_line_items = [];
-        $bocs_product_interval = 'month';
-        $bocs_product_interval_count = 1;
 
         // Get Bocs data from order meta or session/cookies
         $bocsid = $this->get_bocs_value($order, '__bocs_bocs_id', 'bocs', '__bocs_id');
@@ -1244,6 +1242,12 @@ class Admin
             );
         }
 
+        // Check if we have any line items
+        if (empty($subscription_line_items)) {
+            $this->log_error("No valid line items found for order ID: {$order_id}");
+            return false;
+        }
+
         // Get API credentials
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
@@ -1280,6 +1284,20 @@ class Admin
             'discount' => $this->get_sanitized_cookie('__bocs_discount', 0.0, 'floatval'),
             'discountType' => $this->get_sanitized_cookie('__bocs_discount_type', '')
         ];
+
+        // Validate frequency data
+        if (empty($current_frequency['id']) || empty($current_frequency['timeUnit'])) {
+            $this->log_warning("Missing frequency data for order ID: {$order_id}. Using defaults.");
+            
+            // Set default values if missing
+            if (empty($current_frequency['timeUnit'])) {
+                $current_frequency['timeUnit'] = 'month';
+            }
+            
+            if ($current_frequency['frequency'] <= 0) {
+                $current_frequency['frequency'] = 1;
+            }
+        }
 
         // Prepare the subscription data
         $post_data_array = [
@@ -1329,9 +1347,47 @@ class Admin
         $result = $this->create_bocs_subscription($post_data_array, $options);
         
         // Clean up cookies regardless of result
-        $this->clear_bocs_cookies();
+        $this->clear_bocs_cookies($order_id);
         
         return $result;
+    }
+
+    /**
+     * Format the subscription start date in ISO 8601 format
+     * 
+     * @param WC_Order $order The order object
+     * @return string The formatted date
+     */
+    private function format_subscription_start_date($order) 
+    {
+        $start_date = $order->get_date_paid();
+        
+        // If date_paid is null, fall back to date_created
+        if (empty($start_date)) {
+            $start_date = $order->get_date_created();
+            
+            // If still empty, use current time
+            if (empty($start_date)) {
+                $start_date = current_time('mysql');
+            }
+        }
+        
+        // Get WordPress timezone
+        $timezone_string = get_option('timezone_string');
+        if (empty($timezone_string)) {
+            $offset = get_option('gmt_offset');
+            $timezone_string = timezone_name_from_abbr('', $offset * 3600, false);
+        }
+        
+        // Create a DateTimeZone object with the WordPress timezone
+        $timezone = new DateTimeZone($timezone_string);
+        
+        // Create a DateTime object from the order date
+        $date_time = new DateTime($start_date, $timezone);
+        
+        // Convert to UTC and format with milliseconds
+        $date_time->setTimezone(new DateTimeZone('UTC'));
+        return $date_time->format('Y-m-d\TH:i:s') . '.000Z';
     }
 
     /**
@@ -1348,21 +1404,74 @@ class Admin
         // First try to get from order meta
         $value = $order->get_meta($meta_key);
         
+        if (!empty($value)) {
+            $this->log_debug("Found {$meta_key} from order meta: {$value}", [
+                'order_id' => $order->get_id()
+            ]);
+        }
+        
+        // Also check alternative meta key format (some might use __bocs_id instead of __bocs_bocs_id)
+        if (empty($value) && $meta_key === '__bocs_bocs_id') {
+            $value = $order->get_meta('__bocs_id');
+            
+            // If found in alternative key, update the standard key for consistency
+            if (!empty($value)) {
+                $order->update_meta_data($meta_key, $value);
+                $order->save();
+                $this->log_debug("Found {$meta_key} from alternative meta key '__bocs_id': {$value}", [
+                    'order_id' => $order->get_id()
+                ]);
+            }
+        }
+        
         // If not found, try from session
         if (empty($value) && isset(WC()->session)) {
             $bocs_value = WC()->session->get($session_key);
             
+            if (!empty($bocs_value)) {
+                $this->log_debug("Found {$meta_key} from session key '{$session_key}': {$bocs_value}", [
+                    'order_id' => $order->get_id()
+                ]);
+            }
+            
             // If not in session, try from cookies
-            if (empty($bocs_value) && isset($_COOKIE[$cookie_key])) {
-                $bocs_value = sanitize_text_field($_COOKIE[$cookie_key]);
+            if (empty($bocs_value)) {
+                $cookie_source = '';
+                
+                // First check the primary cookie key
+                if (isset($_COOKIE[$cookie_key])) {
+                    $bocs_value = sanitize_text_field($_COOKIE[$cookie_key]);
+                    $cookie_source = "primary cookie '{$cookie_key}'";
+                } 
+                // Try alternative cookie key format if primary not found
+                elseif ($cookie_key === '__bocs_id' && isset($_COOKIE['__bocs_bocs_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_bocs_id']);
+                    $cookie_source = "alternative cookie '__bocs_bocs_id'";
+                }
+                elseif ($cookie_key === '__bocs_collection_id' && isset($_COOKIE['__bocs_collections_id'])) {
+                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collections_id']);
+                    $cookie_source = "alternative cookie '__bocs_collections_id'";
+                }
+                
+                if (!empty($bocs_value) && !empty($cookie_source)) {
+                    $this->log_debug("Found {$meta_key} from {$cookie_source}: {$bocs_value}", [
+                        'order_id' => $order->get_id()
+                    ]);
+                }
             }
             
             // If we found a value, update the order meta
             if (!empty($bocs_value)) {
                 $value = $bocs_value;
                 $order->update_meta_data($meta_key, $bocs_value);
-                $order->save();
+                $order->save(); // Make sure to save the order to persist the meta data
             }
+        }
+        
+        if (empty($value)) {
+            $this->log_debug("No value found for {$meta_key} in order, session, or cookies", [
+                'order_id' => $order->get_id()
+            ]);
         }
         
         return $value;
@@ -1386,34 +1495,6 @@ class Admin
             return $value;
         }
         return $default;
-    }
-    
-    /**
-     * Format the subscription start date in ISO 8601 format
-     * 
-     * @param WC_Order $order The order object
-     * @return string The formatted date
-     */
-    private function format_subscription_start_date($order) 
-    {
-        $start_date = $order->get_date_paid();
-        
-        // Get WordPress timezone
-        $timezone_string = get_option('timezone_string');
-        if (empty($timezone_string)) {
-            $offset = get_option('gmt_offset');
-            $timezone_string = timezone_name_from_abbr('', $offset * 3600, false);
-        }
-        
-        // Create a DateTimeZone object with the WordPress timezone
-        $timezone = new DateTimeZone($timezone_string);
-        
-        // Create a DateTime object from the order date
-        $date_time = new DateTime($start_date, $timezone);
-        
-        // Convert to UTC and format with milliseconds
-        $date_time->setTimezone(new DateTimeZone('UTC'));
-        return $date_time->format('Y-m-d\TH:i:s') . '.000Z';
     }
     
     /**
@@ -1547,10 +1628,13 @@ class Admin
     
     /**
      * Clear all Bocs-related cookies
+     * 
+     * @param int|null $order_id Optional order ID for logging context
      */
-    private function clear_bocs_cookies() 
+    private function clear_bocs_cookies($order_id = null) 
     {
         $cookies_to_destroy = [
+            // Standard cookie names
             '__bocs_id',
             '__bocs_collection_id',
             '__bocs_frequency_id',
@@ -1559,14 +1643,35 @@ class Admin
             '__bocs_discount_type',
             '__bocs_total',
             '__bocs_discount',
-            '__bocs_subtotal'
+            '__bocs_subtotal',
+            
+            // Alternative cookie names
+            '__bocs_bocs_id',
+            '__bocs_collections_id'
         ];
         
+        $context = [];
+        if (!empty($order_id)) {
+            $context['order_id'] = $order_id;
+        }
+        
+        $this->log_debug("Clearing all BOCS cookies" . (!empty($order_id) ? " for order #{$order_id}" : ""), $context);
+        
+        $cleared_count = 0;
         foreach ($cookies_to_destroy as $cookie_name) {
             if (isset($_COOKIE[$cookie_name])) {
+                $cookie_value = $_COOKIE[$cookie_name];
                 unset($_COOKIE[$cookie_name]);
                 setcookie($cookie_name, '', time() - 3600, '/');
+                $this->log_debug("Cleared cookie: {$cookie_name} with value: {$cookie_value}", $context);
+                $cleared_count++;
             }
+        }
+        
+        if ($cleared_count === 0) {
+            $this->log_debug("No BOCS cookies found to clear", $context);
+        } else {
+            $this->log_debug("Cleared {$cleared_count} BOCS cookies", $context);
         }
     }
     
@@ -1576,55 +1681,137 @@ class Admin
      * @param int $order_id The WooCommerce order ID
      * @return string JSON representation of the order
      */
-    private function get_order_data_as_json($order_id) 
+    private function get_order_data_as_json($order_id)
     {
+        // Get the order object
         $order = wc_get_order($order_id);
-        if (!$order) {
-            return '{}';
+
+        if (! $order) {
+            return json_encode(array(
+                'error' => 'Order not found'
+            ));
         }
-        
-        $order_data = [
-            'id' => $order_id,
-            'number' => $order->get_order_number(),
+
+        // Prepare the order data
+        $order_data = array(
+            'id' => $order->get_id(),
+            'parent_id' => $order->get_parent_id(),
             'status' => $order->get_status(),
             'currency' => $order->get_currency(),
-            'total' => $order->get_total(),
-            'subtotal' => $order->get_subtotal(),
-            'tax' => $order->get_total_tax(),
-            'shipping' => $order->get_shipping_total(),
-            'discount' => $order->get_discount_total(),
+            'version' => $order->get_version(),
+            'prices_include_tax' => $order->get_prices_include_tax(),
+            'date_created' => $order->get_date_created()->date('c'),
+            'date_modified' => $order->get_date_modified()->date('c'),
+            'discount_total' => $order->get_discount_total(),
+            'discount_tax' => $order->get_discount_tax(),
+            'shipping_total' => $order->get_shipping_total(),
+            'shipping_tax' => $order->get_shipping_tax(),
+            'cart_tax' => $order->get_cart_tax(),
+            'total' => number_format((float)$order->get_total(), 2, '.', ''),
+            'total_tax' => $order->get_total_tax(),
+            'customer_id' => $order->get_customer_id(),
+            'order_key' => $order->get_order_key(),
+            'billing' => $order->get_address('billing'),
+            'shipping' => $order->get_address('shipping'),
             'payment_method' => $order->get_payment_method(),
             'payment_method_title' => $order->get_payment_method_title(),
-            'date_created' => $order->get_date_created() ? $order->get_date_created()->format('c') : '',
-            'date_modified' => $order->get_date_modified() ? $order->get_date_modified()->format('c') : '',
-            'customer_id' => $order->get_customer_id(),
-            'billing' => [
-                'first_name' => $order->get_billing_first_name(),
-                'last_name' => $order->get_billing_last_name(),
-                'company' => $order->get_billing_company(),
-                'address_1' => $order->get_billing_address_1(),
-                'address_2' => $order->get_billing_address_2(),
-                'city' => $order->get_billing_city(),
-                'state' => $order->get_billing_state(),
-                'postcode' => $order->get_billing_postcode(),
-                'country' => $order->get_billing_country(),
-                'email' => $order->get_billing_email(),
-                'phone' => $order->get_billing_phone()
-            ],
-            'shipping' => [
-                'first_name' => $order->get_shipping_first_name(),
-                'last_name' => $order->get_shipping_last_name(),
-                'company' => $order->get_shipping_company(),
-                'address_1' => $order->get_shipping_address_1(),
-                'address_2' => $order->get_shipping_address_2(),
-                'city' => $order->get_shipping_city(),
-                'state' => $order->get_shipping_state(),
-                'postcode' => $order->get_shipping_postcode(),
-                'country' => $order->get_shipping_country()
-            ]
-        ];
-        
-        return json_encode($order_data);
+            'transaction_id' => $order->get_transaction_id(),
+            'customer_ip_address' => $order->get_customer_ip_address(),
+            'customer_user_agent' => $order->get_customer_user_agent(),
+            'created_via' => $order->get_created_via(),
+            'customer_note' => $order->get_customer_note(),
+            'date_completed' => $order->get_date_completed() ? $order->get_date_completed()->date('c') : null,
+            'date_paid' => $order->get_date_paid() ? $order->get_date_paid()->date('c') : null,
+            'cart_hash' => $order->get_cart_hash(),
+            'meta_data' => $order->get_meta_data(),
+            'line_items' => array(),
+            'tax_lines' => array(),
+            'shipping_lines' => array(),
+            'fee_lines' => array(),
+            'coupon_lines' => array(),
+            'refunds' => array()
+        );
+
+        // Get line items
+        foreach ($order->get_items() as $item_id => $item) {
+            $product = $item->get_product();
+            $order_data['line_items'][] = array(
+                'id' => $item_id,
+                'name' => $item->get_name(),
+                'product_id' => $item->get_product_id(),
+                'variation_id' => $item->get_variation_id(),
+                'quantity' => $item->get_quantity(),
+                'tax_class' => $item->get_tax_class(),
+                'subtotal' => $item->get_subtotal(),
+                'subtotal_tax' => $item->get_subtotal_tax(),
+                'total' => (float)number_format((float)$item->get_total(), 2, '.', ''),
+                'total_tax' => $item->get_total_tax(),
+                'taxes' => $item->get_taxes(),
+                'meta_data' => $item->get_meta_data(),
+                'sku' => $product ? $product->get_sku() : '',
+                'price' => $product ? $product->get_price() : ''
+            );
+        }
+
+        // Get tax lines
+        foreach ($order->get_tax_totals() as $tax) {
+            $order_data['tax_lines'][] = array(
+                'id' => $tax->id,
+                'rate_code' => $tax->rate_id,
+                'rate_id' => $tax->rate_id,
+                'label' => $tax->label,
+                'compound' => isset($tax->compound) ? $tax->compound : 0,
+                'tax_total' => isset($tax->tax_total) ? $tax->tax_total : 0,
+                'shipping_tax_total' => isset($tax->shipping_tax_total) ? $tax->shipping_tax_total : 0
+            );
+        }
+
+        // Get shipping lines
+        foreach ($order->get_shipping_methods() as $shipping_item_id => $shipping_item) {
+            $order_data['shipping_lines'][] = array(
+                'id' => $shipping_item_id,
+                'method_title' => $shipping_item->get_name(),
+                'method_id' => $shipping_item->get_method_id(),
+                'total' => (float)number_format((float)$shipping_item->get_total(), 2, '.', ''),
+                'total_tax' => $shipping_item->get_total_tax(),
+                'taxes' => $shipping_item->get_taxes()
+            );
+        }
+
+        // Get fee lines
+        foreach ($order->get_fees() as $fee_item_id => $fee_item) {
+            $order_data['fee_lines'][] = array(
+                'id' => $fee_item_id,
+                'name' => $fee_item->get_name(),
+                'tax_class' => $fee_item->get_tax_class(),
+                'tax_status' => $fee_item->get_tax_status(),
+                'total' => (float)number_format((float)$fee_item->get_total(), 2, '.', ''),
+                'total_tax' => $fee_item->get_total_tax(),
+                'taxes' => $fee_item->get_taxes()
+            );
+        }
+
+        // Get coupon lines
+        foreach ($order->get_items('coupon') as $coupon_item_id => $coupon_item) {
+            $order_data['coupon_lines'][] = array(
+                'id' => $coupon_item_id,
+                'code' => $coupon_item->get_code(),
+                'discount' => $coupon_item->get_discount(),
+                'discount_tax' => $coupon_item->get_discount_tax()
+            );
+        }
+
+        // Get refunds
+        foreach ($order->get_refunds() as $refund) {
+            $order_data['refunds'][] = array(
+                'id' => $refund->get_id(),
+                'reason' => $refund->get_reason(),
+                'total' => (float)number_format((float)$refund->get_amount(), 2, '.', '')
+            );
+        }
+
+        // Encode the data to JSON and return
+        return json_encode($order_data, JSON_PRETTY_PRINT);
     }
 
     public function search_product_ajax_callback(){
@@ -3157,6 +3344,7 @@ class Admin
 
     /**
      * Log an informational message to the BOCS logs
+     * Only logs when BOCS_ENVIRONMENT is not 'prod'
      *
      * @param string $message The message to log
      * @param array  $context Optional. Additional contextual data
@@ -3164,13 +3352,17 @@ class Admin
      */
     private function log_info($message, $context = [])
     {
-        if ($this->logger) {
-            $this->logger->insert_log('info', $message, $context);
+        // Only log info messages when not in production
+        if (!defined('BOCS_ENVIRONMENT') || BOCS_ENVIRONMENT !== 'prod') {
+            if ($this->logger) {
+                $this->logger->insert_log('info', $message, $context);
+            }
         }
     }
     
     /**
      * Log a debug message to the BOCS logs
+     * Only logs when BOCS_ENVIRONMENT is not 'prod'
      *
      * @param string $message The message to log
      * @param array  $context Optional. Additional contextual data
@@ -3178,13 +3370,17 @@ class Admin
      */
     private function log_debug($message, $context = [])
     {
-        if ($this->logger) {
-            $this->logger->insert_log('debug', $message, $context);
+        // Only log debug messages when not in production
+        if (!defined('BOCS_ENVIRONMENT') || BOCS_ENVIRONMENT !== 'prod') {
+            if ($this->logger) {
+                $this->logger->insert_log('debug', $message, $context);
+            }
         }
     }
     
     /**
      * Log an error message to the BOCS logs
+     * Always logs regardless of environment
      *
      * @param string $message The message to log
      * @param array  $context Optional. Additional contextual data
@@ -3192,8 +3388,25 @@ class Admin
      */
     private function log_error($message, $context = [])
     {
+        // Always log errors in all environments
         if ($this->logger) {
             $this->logger->insert_log('error', $message, $context);
+        }
+    }
+
+    /**
+     * Log a warning message to the BOCS logs
+     * Always logs regardless of environment
+     *
+     * @param string $message The message to log
+     * @param array  $context Optional. Additional contextual data
+     * @return void
+     */
+    private function log_warning($message, $context = [])
+    {
+        // Always log warnings in all environments
+        if ($this->logger) {
+            $this->logger->insert_log('warning', $message, $context);
         }
     }
 
