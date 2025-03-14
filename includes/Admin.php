@@ -1190,239 +1190,441 @@ class Admin
      */
     public function bocs_order_status_processing($order_id = 0)
     {
-        if (empty($order_id))
+        if (empty($order_id)) {
             return false;
+        }
 
-        // get the order details
+        // Get the order details
         $order = wc_get_order($order_id);
+        if (!$order) {
+            $this->log_error("Invalid order ID: {$order_id}");
+            return false;
+        }
+
+        // Initialize variables
+        $subscription_line_items = [];
         $bocs_product_interval = 'month';
         $bocs_product_interval_count = 1;
-        $subscription_line_items = [];
-        $is_bocs = false;
 
-        // get bocs data
-        $bocsid = $order->get_meta('__bocs_bocs_id');
-        $collectionid = $order->get_meta('__bocs_collections_id');
-        $frequency_id = $order->get_meta('__bocs_frequency_id');
+        // Get Bocs data from order meta or session/cookies
+        $bocsid = $this->get_bocs_value($order, '__bocs_bocs_id', 'bocs', '__bocs_id');
+        $collectionid = $this->get_bocs_value($order, '__bocs_collections_id', 'bocs_collection', '__bocs_collection_id');
+        $frequency_id = $this->get_bocs_value($order, '__bocs_frequency_id', 'bocs_frequency', '__bocs_frequency_id');
 
-        if (empty($bocsid) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $bocsid = $bocs_value;
-                $order->update_meta_data('__bocs_bocs_id', $bocs_value);
-            }
+        // Only proceed if this is a Bocs order
+        $is_bocs = !empty($bocsid);
+        if (!$is_bocs) {
+            return false;
         }
 
-        $is_bocs = ! empty($bocsid);
-
-        if (empty($collectionid) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs_collection');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_collection_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_collection_id']);
-                }
+        // Process order items
+        foreach ($order->get_items() as $item) {
+            $item_data = $item->get_data();
+            $quantity = $item->get_quantity();
+            $product = $item->get_product();
+            
+            if (!$product) {
+                continue;
             }
-
-            if (! empty($bocs_value)) {
-                $collectionid = $bocs_value;
-                $order->update_meta_data('__bocs_collection_id', $bocs_value);
+            
+            // Get Bocs product ID
+            $product_id = get_post_meta($item_data['product_id'], 'bocs_product_id', true);
+            if (empty($product_id)) {
+                $product_id = get_post_meta($item_data['product_id'], 'bocs_id', true);
             }
-        }
-
-        if (empty($frequency_id) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs_frequency');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $frequency_id = $bocs_value;
-                $order->update_meta_data('__bocs_frequency_id', $bocs_value);
-            }
-        }
-
-        $current_frequency = null;
-        $bocs_body = $this->get_bocs_data_from_api($bocsid);
-
-        if (is_checkout()) {
-            // checks the stripe checkbox and make it checked as default
-            /*wp_enqueue_script(
-                'bocs-stripe-checkout-js',
-                plugin_dir_url(__FILE__) . '../assets/js/custom-stripe-checkout.js',
-                array('jquery'),
-                '20240611.8',
-                true
-            );*/
-
-            wp_enqueue_script(
-                'bocs-checkout-js', 
-                plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
-                array('jquery'),
-                '20241105.1',
-                true
+            
+            // Create line item
+            $subscription_line_items[] = array(
+                'sku' => $product->get_sku(),
+                'price' => round($product->get_regular_price(), 2),
+                'quantity' => $quantity,
+                'productId' => $product_id,
+                'total' => (float)number_format((float)$item->get_total(), 2, '.', ''),
+                'externalSourceId' => (string)$product->get_id()
             );
-
-            // Prepare bocs data with error checking
-            $bocs_data = null;
-            if (is_array($bocs_body) && isset($bocs_body['data'])) {
-                $bocs_data = $bocs_body['data'];
-            }
-
-            wp_localize_script('bocs-checkout-js', 'bocsCheckoutObject', array(
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('ajax-nonce'),
-                'storeId' => $options['bocs_headers']['store'] ?? '',
-                'orgId' => $options['bocs_headers']['organization'] ?? '',
-                'authId' => $options['bocs_headers']['authorization'] ?? '',
-                'frequency' => $current_frequency,
-                'bocs' => $bocs_data
-            ));
         }
 
-        if (is_cart()) {
+        // Get API credentials
+        $options = get_option('bocs_plugin_options');
+        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-            // this is for the Cart if there is no Bocs subscription or collections on it
-            // and it is using the WooCommerce' Blocks Template
-            $product_ids = array();
-
-            // get the current bocs subscription id
-            $bocs_id = ! empty($bocs_id) ? $bocs_id : '';
-
-            if (empty($bocs_id) && isset(WC()->session)) {
-                $bocs_id = WC()->session->get('bocs');
-
-                if (empty($bocs_id)) {
-                    if (isset($_COOKIE['__bocs_id'])) {
-                        $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
-                    }
-                }
-            }
-
-            $bocs_options = array();
-
-            if (empty($bocs_id)) {
-
-                // Check if WooCommerce is active and the cart is not empty
-                if (WC()->cart && ! WC()->cart->is_empty()) {
-                    // Loop through the cart items
-                    foreach (WC()->cart->get_cart() as $cart_item) {
-                        // Get the product ID and add it to the array
-                        $product_ids[] = $cart_item['product_id'];
-                    }
-                }
-
-                // get the list of available bocs
-                $bocs_class = new Bocs_Bocs();
-
-                $bocs_list = $bocs_class->get_all_bocs();
-                if (! empty($bocs_list) && ! empty($product_ids)) {
-
-                    foreach ($bocs_list as $bocs_item) {
-                        $bocs_wp_ids = array();
-                        // loop on its products
-                        if (! empty($bocs_item['products'])) {
-                            foreach ($bocs_item['products'] as $bocs_product) {
-                                $wp_id = $bocs_product['externalSourceId'];
-                                $bocs_wp_ids[] = $wp_id;
-                                $wc_product = wc_get_product($wp_id);
-                                $bocs_conversion_total += $wc_product->get_regular_price();
-                            }
-                        }
-                        if (empty(array_diff($product_ids, $bocs_wp_ids))) {
-                            // this bocs is can be an option
-                            $bocs_options[] = $bocs_item;
-                        }
-                    }
-
-                    if (empty($bocs_options)) {
-                        foreach ($bocs_list as $bocs_item) {
-                            $bocs_item['products'] = [];
-                            foreach ($product_ids as $product_id) {
-                                $wc_product = wc_get_product($product_id);
-                                $bocs_item['products'][] = array(
-                                    "description" => $wc_product->get_description(),
-                                    "externalSource" => "WP",
-                                    "externalSourceId" => (string)$product_id,
-                                    "id" => "", // get the bocs id
-                                    "name" => $wc_product->get_name(), // get the woocoomerce product name
-                                    "price" => $wc_product->get_regular_price(),
-                                    "quantity" => 1,
-                                    "regularPrice" => $wc_product->get_regular_price(),
-                                    "salePrice" => $wc_product->get_price(),
-                                    "sku" => $wc_product->get_sku(),
-                                    "stockQuantity" => 0
-                                );
-                            }
-                            $bocs_options[] = $bocs_item;
-                        }
-                    }
-                }
-            }
-
-            wp_enqueue_script(
-                'bocs-cart-js',
-                plugin_dir_url(__FILE__) . '../assets/js/bocs-cart.js',
-                array('jquery'),
-                '20250106.2',
-                true
-            );
-
-            wp_localize_script('bocs-cart-js', 'bocsCartObject', array(
-                'ajax_url' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('ajax-nonce'),
-                'storeId' => $options['bocs_headers']['store'] ?? '',
-                'orgId' => $options['bocs_headers']['organization'] ?? '',
-                'authId' => $options['bocs_headers']['authorization'] ?? '',
-                'frequency' => $current_frequency,
-                'bocs' => $bocs_body['data'],
-                'bocsConversion' => $bocs_options,
-                'bocsConversionTotal' => $bocs_conversion_total
-            ));
+        // Check if API credentials are set
+        if (empty($options['bocs_headers']['organization']) || 
+            empty($options['bocs_headers']['store']) || 
+            empty($options['bocs_headers']['authorization'])) {
+            $this->log_error("Missing Bocs API credentials");
+            return false;
         }
+
+        // Get customer information
+        $customer_id = $order->get_customer_id();
+        $bocs_customer_id = '';
+
+        if (!empty($customer_id)) {
+            $bocs_customer_id = get_user_meta($customer_id, 'bocs_user_id', true);
+
+            // If no Bocs customer ID found, try to fetch it from API
+            if (empty($bocs_customer_id)) {
+                $bocs_customer_id = $this->get_bocs_customer_id($customer_id, $order, $options);
+            }
+        }
+
+        // Prepare the start date
+        $start_date = $this->format_subscription_start_date($order);
+
+        // Set the frequency data from cookies
+        $current_frequency = [
+            'id' => $this->get_sanitized_cookie('__bocs_frequency_id', ''),
+            'timeUnit' => $this->get_sanitized_cookie('__bocs_frequency_time_unit', ''),
+            'frequency' => $this->get_sanitized_cookie('__bocs_frequency_interval', 0, 'intval'),
+            'discount' => $this->get_sanitized_cookie('__bocs_discount', 0.0, 'floatval'),
+            'discountType' => $this->get_sanitized_cookie('__bocs_discount_type', '')
+        ];
+
+        // Prepare the subscription data
+        $post_data_array = [
+            'bocs' => ['id' => $bocsid],
+            'billing' => [
+                'firstName' => $order->get_billing_first_name(),
+                'lastName' => $order->get_billing_last_name(),
+                'company' => $order->get_billing_company(),
+                'address1' => $order->get_billing_address_1(),
+                'city' => $order->get_billing_city(),
+                'state' => $order->get_billing_state(),
+                'country' => $order->get_billing_country(),
+                'postcode' => $order->get_billing_postcode(),
+                'phone' => $order->get_billing_phone(),
+                'email' => $order->get_billing_email()
+            ],
+            'shipping' => [
+                'firstName' => $order->get_shipping_first_name(),
+                'lastName' => $order->get_shipping_last_name(),
+                'company' => $order->get_shipping_company(),
+                'address1' => $order->get_shipping_address_1(),
+                'city' => $order->get_shipping_city(),
+                'state' => $order->get_shipping_state(),
+                'country' => $order->get_shipping_country(),
+                'postcode' => $order->get_shipping_postcode(),
+                'phone' => '',
+                'email' => ''
+            ],
+            'customer' => [
+                'id' => $bocs_customer_id,
+                'externalSourceId' => (string)$customer_id
+            ],
+            'lineItems' => $subscription_line_items,
+            'frequency' => $current_frequency,
+            'startDateGmt' => $start_date,
+            'order' => json_decode($this->get_order_data_as_json($order_id), true),
+            'total' => number_format((float)$order->get_total(), 2, '.', ''),
+            'discountTotal' => round($order->get_discount_total() + $order->get_discount_tax(), 2)
+        ];
+
+        // Add collection ID if present
+        if (!empty($collectionid)) {
+            $post_data_array['collection'] = ['id' => $collectionid];
+        }
+
+        // Create the subscription via API
+        $result = $this->create_bocs_subscription($post_data_array, $options);
+        
+        // Clean up cookies regardless of result
+        $this->clear_bocs_cookies();
+        
+        return $result;
     }
 
     /**
-     * Helper method to get value from session or cookie
+     * Get a value from order meta, session, or cookies
      * 
-     * This helper method attempts to retrieve a value from the WooCommerce session first,
-     * then falls back to checking for a cookie value. It handles different naming 
-     * conventions for cookies based on the key name.
-     * 
-     * @param string $key The key to look for in session or cookies
-     * @return string|null The value if found, null otherwise
+     * @param WC_Order $order The order object
+     * @param string $meta_key The meta key to check
+     * @param string $session_key The session key to check
+     * @param string $cookie_key The cookie key to check
+     * @return string The value found or empty string
      */
-    private function get_from_session_or_cookie($key) {
-        // First try to get from session
-        $value = WC()->session->get($key);
+    private function get_bocs_value($order, $meta_key, $session_key, $cookie_key) 
+    {
+        // First try to get from order meta
+        $value = $order->get_meta($meta_key);
         
-        // If not in session, check for cookies with various formats
-        if (empty($value)) {
-            // Check the standard cookie format with _id suffix
-            if (isset($_COOKIE["__${key}_id"])) {
-                $value = sanitize_text_field($_COOKIE["__${key}_id"]);
-            } 
-            // Check for direct match format
-            elseif (isset($_COOKIE["__${key}"])) {
-                $value = sanitize_text_field($_COOKIE["__${key}"]);
+        // If not found, try from session
+        if (empty($value) && isset(WC()->session)) {
+            $bocs_value = WC()->session->get($session_key);
+            
+            // If not in session, try from cookies
+            if (empty($bocs_value) && isset($_COOKIE[$cookie_key])) {
+                $bocs_value = sanitize_text_field($_COOKIE[$cookie_key]);
             }
-            // Check for bocs_ prefix format
-            elseif (isset($_COOKIE["__bocs_${key}"])) {
-                $value = sanitize_text_field($_COOKIE["__bocs_${key}"]);
+            
+            // If we found a value, update the order meta
+            if (!empty($bocs_value)) {
+                $value = $bocs_value;
+                $order->update_meta_data($meta_key, $bocs_value);
+                $order->save();
             }
         }
         
         return $value;
+    }
+    
+    /**
+     * Get a sanitized cookie value with optional type casting
+     * 
+     * @param string $cookie_name The name of the cookie
+     * @param mixed $default The default value if cookie is not set
+     * @param string $cast_function Optional function to cast the value (intval, floatval)
+     * @return mixed The cookie value or default
+     */
+    private function get_sanitized_cookie($cookie_name, $default = '', $cast_function = null) 
+    {
+        if (isset($_COOKIE[$cookie_name])) {
+            $value = sanitize_text_field($_COOKIE[$cookie_name]);
+            if ($cast_function && function_exists($cast_function)) {
+                return $cast_function($value);
+            }
+            return $value;
+        }
+        return $default;
+    }
+    
+    /**
+     * Format the subscription start date in ISO 8601 format
+     * 
+     * @param WC_Order $order The order object
+     * @return string The formatted date
+     */
+    private function format_subscription_start_date($order) 
+    {
+        $start_date = $order->get_date_paid();
+        
+        // Get WordPress timezone
+        $timezone_string = get_option('timezone_string');
+        if (empty($timezone_string)) {
+            $offset = get_option('gmt_offset');
+            $timezone_string = timezone_name_from_abbr('', $offset * 3600, false);
+        }
+        
+        // Create a DateTimeZone object with the WordPress timezone
+        $timezone = new DateTimeZone($timezone_string);
+        
+        // Create a DateTime object from the order date
+        $date_time = new DateTime($start_date, $timezone);
+        
+        // Convert to UTC and format with milliseconds
+        $date_time->setTimezone(new DateTimeZone('UTC'));
+        return $date_time->format('Y-m-d\TH:i:s') . '.000Z';
+    }
+    
+    /**
+     * Get Bocs customer ID for a user
+     * 
+     * @param int $customer_id WooCommerce customer ID
+     * @param WC_Order $order The order object
+     * @param array $options Plugin options with API credentials
+     * @return string Bocs customer ID or empty string on failure
+     */
+    private function get_bocs_customer_id($customer_id, $order, $options) 
+    {
+        // Get user email from current user or order
+        $user_email = false;
+        $current_user = wp_get_current_user();
+        
+        if ($current_user->exists()) {
+            $user_email = esc_html($current_user->user_email);
+        }
+        
+        if ($user_email === false) {
+            $user_email = $order->get_billing_email();
+        }
+        
+        if ($user_email === false) {
+            $this->log_error('No email address found for customer');
+            return '';
+        }
+        
+        try {
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => BOCS_API_URL . 'contacts?query=email:"' . $user_email . '"',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'GET',
+                CURLOPT_HTTPHEADER => array(
+                    'Organization: ' . $options['bocs_headers']['organization'],
+                    'Content-Type: application/json',
+                    'Store: ' . $options['bocs_headers']['store'],
+                    'Authorization: ' . $options['bocs_headers']['authorization']
+                )
+            ));
+            
+            $response = curl_exec($curl);
+            $object = json_decode($response);
+            curl_close($curl);
+            
+            if (isset($object->data)) {
+                $data = isset($object->data->data) ? $object->data->data : $object->data;
+                if (count($data) > 0) {
+                    foreach ($data as $bocs_user) {
+                        update_user_meta($customer_id, 'bocs_user_id', $bocs_user->id);
+                        return $bocs_user->id;
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            $this->log_error('Error fetching Bocs customer: ' . $e->getMessage());
+        }
+        
+        return '';
+    }
+    
+    /**
+     * Create a subscription in the Bocs API
+     * 
+     * @param array $subscription_data The subscription data to send
+     * @param array $options Plugin options with API credentials
+     * @return bool True on success, false on failure
+     */
+    private function create_bocs_subscription($subscription_data, $options) 
+    {
+        try {
+            // Encode the data array to JSON
+            $post_data = json_encode($subscription_data);
+            
+            // Validate JSON encoding
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->log_error('JSON encoding error: ' . json_last_error_msg());
+                return false;
+            }
+            
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => BOCS_API_URL . 'subscriptions',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => '',
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => 'POST',
+                CURLOPT_POSTFIELDS => $post_data,
+                CURLOPT_HTTPHEADER => array(
+                    'Organization: ' . $options['bocs_headers']['organization'],
+                    'Content-Type: application/json',
+                    'Store: ' . $options['bocs_headers']['store'],
+                    'Authorization: ' . $options['bocs_headers']['authorization']
+                )
+            ));
+            
+            $response = curl_exec($curl);
+            $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            
+            if (curl_errno($curl)) {
+                $error = curl_error($curl);
+                $this->log_error("Failed to create subscription: {$error}");
+                curl_close($curl);
+                return false;
+            }
+            
+            curl_close($curl);
+            
+            if ($http_code >= 200 && $http_code < 300) {
+                $this->log_info("Subscription created successfully. Response code: {$http_code}");
+                return true;
+            } else {
+                $this->log_error("Subscription creation failed. Response code: {$http_code}");
+                return false;
+            }
+        } catch (Exception $e) {
+            $this->log_error("Exception creating subscription: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Clear all Bocs-related cookies
+     */
+    private function clear_bocs_cookies() 
+    {
+        $cookies_to_destroy = [
+            '__bocs_id',
+            '__bocs_collection_id',
+            '__bocs_frequency_id',
+            '__bocs_frequency_time_unit',
+            '__bocs_frequency_interval',
+            '__bocs_discount_type',
+            '__bocs_total',
+            '__bocs_discount',
+            '__bocs_subtotal'
+        ];
+        
+        foreach ($cookies_to_destroy as $cookie_name) {
+            if (isset($_COOKIE[$cookie_name])) {
+                unset($_COOKIE[$cookie_name]);
+                setcookie($cookie_name, '', time() - 3600, '/');
+            }
+        }
+    }
+    
+    /**
+     * Get order data as a JSON string for the Bocs API
+     * 
+     * @param int $order_id The WooCommerce order ID
+     * @return string JSON representation of the order
+     */
+    private function get_order_data_as_json($order_id) 
+    {
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return '{}';
+        }
+        
+        $order_data = [
+            'id' => $order_id,
+            'number' => $order->get_order_number(),
+            'status' => $order->get_status(),
+            'currency' => $order->get_currency(),
+            'total' => $order->get_total(),
+            'subtotal' => $order->get_subtotal(),
+            'tax' => $order->get_total_tax(),
+            'shipping' => $order->get_shipping_total(),
+            'discount' => $order->get_discount_total(),
+            'payment_method' => $order->get_payment_method(),
+            'payment_method_title' => $order->get_payment_method_title(),
+            'date_created' => $order->get_date_created() ? $order->get_date_created()->format('c') : '',
+            'date_modified' => $order->get_date_modified() ? $order->get_date_modified()->format('c') : '',
+            'customer_id' => $order->get_customer_id(),
+            'billing' => [
+                'first_name' => $order->get_billing_first_name(),
+                'last_name' => $order->get_billing_last_name(),
+                'company' => $order->get_billing_company(),
+                'address_1' => $order->get_billing_address_1(),
+                'address_2' => $order->get_billing_address_2(),
+                'city' => $order->get_billing_city(),
+                'state' => $order->get_billing_state(),
+                'postcode' => $order->get_billing_postcode(),
+                'country' => $order->get_billing_country(),
+                'email' => $order->get_billing_email(),
+                'phone' => $order->get_billing_phone()
+            ],
+            'shipping' => [
+                'first_name' => $order->get_shipping_first_name(),
+                'last_name' => $order->get_shipping_last_name(),
+                'company' => $order->get_shipping_company(),
+                'address_1' => $order->get_shipping_address_1(),
+                'address_2' => $order->get_shipping_address_2(),
+                'city' => $order->get_shipping_city(),
+                'state' => $order->get_shipping_state(),
+                'postcode' => $order->get_shipping_postcode(),
+                'country' => $order->get_shipping_country()
+            ]
+        ];
+        
+        return json_encode($order_data);
     }
 
     public function search_product_ajax_callback(){
