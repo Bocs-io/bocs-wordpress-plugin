@@ -1,3 +1,6 @@
+v0.0.123 03/172025 
+* error on login fix
+
 v0.0.122 03/14/2025
 * creating of subscription fixed
 * checkout order with bocs notes updates
