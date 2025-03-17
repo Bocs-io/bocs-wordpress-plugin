@@ -37,6 +37,7 @@ class Bocs
         $this->define_bocs_email_api();
         $this->define_product_hooks();
         $this->define_order_hooks();
+        $this->define_ajax_hooks();
     }
 
     /**
@@ -61,6 +62,9 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email_API.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Hooks.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Order_Notes.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-ajax.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-api.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
 
         // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {
@@ -258,6 +262,10 @@ class Bocs
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
 
+        // Initialize payment API endpoints
+        $payment_api = new Bocs_Payment_API();
+        $this->loader->add_action('rest_api_init', $payment_api, 'register_routes');
+
         // Initialize cart class with custom price functionality
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_cart_collaterals', $bocs_cart, 'add_subscription_options_to_cart');
@@ -370,6 +378,14 @@ class Bocs
     {
         $order_hooks = new Bocs_Order_Hooks();
         // The hooks are registered in the class constructor
+    }
+
+    /**
+     * Define AJAX-related hooks
+     */
+    private function define_ajax_hooks()
+    {
+        new BOCS_AJAX();
     }
 
     /**
