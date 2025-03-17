@@ -185,6 +185,9 @@ class Bocs
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'admin_enqueue_scripts');
 
         $this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
+        
+        // Add wp_login action hook for user ID check
+        $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         // @todo - add bocs product type
         // $this->loader->add_action('init', $plugin_admin, 'register_bocs_product_type');
@@ -271,7 +274,6 @@ class Bocs
         $this->loader->add_action('woocommerce_before_checkout_form', $plugin_admin, 'debug_dump_bocs_data', 1);
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
         $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
-        $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
 
         $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
     }
