@@ -15,7 +15,7 @@
  * Plugin Name:       Bocs (alpha)
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.123
+ * Version:           0.0.124
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -35,7 +35,15 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
  * Current plugin version.
  * Start at version 0.0.109 and use SemVer - https://semver.org
  */
-define('BOCS_VERSION', '0.0.123');
+define('BOCS_VERSION', '0.0.124');
+
+/**
+ * Flush rewrite rules on plugin load for development
+ * This should be removed in production
+ */
+add_action('init', function() {
+    flush_rewrite_rules();
+}, 20);
 
 /**
  * Plugin name and slug definitions.

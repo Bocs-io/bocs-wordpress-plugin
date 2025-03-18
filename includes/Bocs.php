@@ -145,6 +145,8 @@ class Bocs
         $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
         $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
+        $this->loader->add_action('init', $bocs_account, 'register_bocs_update_box_endpoint');
+        $this->loader->add_action('woocommerce_account_bocs-update-box_endpoint', $bocs_account, 'bocs_update_box_endpoint_content');
 
         $bocs_payment_method = new Bocs_Payment_Method();
         $this->loader->add_filter('woocommerce_payment_methods_list_item', $bocs_payment_method, 'add_edit_payment_method_button', 10, 2);
@@ -411,58 +413,17 @@ class Bocs
      */
     public static function activate() 
     {
-        // Look for the Bocs service account using its designated email
-        // This account is created during initial Bocs setup and stores temporary credentials
-        $serviceAccount = get_user_by('email', 'api@bocs.io');
-        if (!$serviceAccount) {
-            return; // Exit if service account doesn't exist - nothing to migrate
-        }
+        // Load dependencies for activation
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
 
-        // Define the mapping between user meta fields and their corresponding plugin setting keys
-        // This mapping ensures consistent credential migration and storage
-        $credentialMappings = [
-            'bocs_store' => 'store',             // Store identifier
-            'bocs_organization' => 'organization', // Organization identifier
-            'bocs_authorization' => 'authorization', // Auth token
-            'bocs_wookey' => 'woocommerce_key',     // WooCommerce API key
-            'bocs_woosecret' => 'woocommerce_secret' // WooCommerce API secret
-        ];
-
-        // Retrieve existing plugin settings or initialize if none exist
-        // The bocs_plugin_options stores all plugin-related settings
-        $pluginSettings = get_option('bocs_plugin_options', []);
+        // Create BOCS endpoint for My Account
+        $account = new Bocs_Account();
+        $account->register_bocs_account_endpoint();
+        $account->register_bocs_view_subscription_endpoint();
+        $account->register_bocs_update_box_endpoint();
         
-        // Initialize or ensure headers configuration exists
-        // Headers are used for API communication with Bocs services
-        $pluginSettings['bocs_headers'] = $pluginSettings['bocs_headers'] ?? [];
-        
-        // Track whether any credentials were actually migrated
-        // This prevents unnecessary database updates
-        $hasCredentialChanges = false;
-
-        // Iterate through each credential mapping and process migrations
-        foreach ($credentialMappings as $metaKeyName => $settingKeyName) {
-            // Retrieve the credential value from user meta
-            $credentialValue = get_user_meta($serviceAccount->ID, $metaKeyName, true);
-            
-            // Only process credentials that have actual values
-            // This prevents storing empty or invalid credentials
-            if (!empty(trim($credentialValue))) {
-                // Store the credential in plugin settings under appropriate key
-                $pluginSettings['bocs_headers'][$settingKeyName] = trim($credentialValue);
-                $hasCredentialChanges = true;
-                
-                // Clean up by removing the credential from user meta
-                // This prevents duplicate processing in future activations
-                delete_user_meta($serviceAccount->ID, $metaKeyName);
-            }
-        }
-
-        // Only update plugin settings if actual changes were made
-        // This prevents unnecessary database writes
-        if ($hasCredentialChanges) {
-            update_option('bocs_plugin_options', $pluginSettings);
-        }
+        // Flush rewrite rules
+        flush_rewrite_rules();
     }
 
     /**

@@ -385,9 +385,10 @@ function setCookies(params) {
 	const cookieData = {
 		"__bocs_id": params.bocsId,
 		"__bocs_collection_id": params.collectionId,
-		"__bocs_frequency_id": params.bocsFrequencyId,
+		"__bocs_frequency_id": params.frequency.id,
 		"__bocs_frequency_time_unit": params.frequency.timeUnit,
 		"__bocs_frequency_interval": params.frequency.frequency,
+		"__bocs_frequency_discount": params.frequency.discount,
 		"__bocs_discount_type": params.frequency.discountType,
 		"__bocs_total": params.total,
 		"__bocs_discount": params.discount,

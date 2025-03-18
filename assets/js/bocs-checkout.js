@@ -37,9 +37,24 @@ jQuery(window).on('load', function() {
 				total += bocsCheckoutObject.bocs['products'][ i ]['quantity'] * bocsCheckoutObject.bocs['products'][ i ]['regularPrice'];
 			}
 		}
+		if(bocsCheckoutObject.frequency){
+			// Format the recurring frequency text
+			recurringFreq = formatFrequency( bocsCheckoutObject.frequency['frequency'], bocsCheckoutObject.frequency['timeUnit'] );
+		} else {
+			// Get frequency ID from cookie if available
+			frequencyId = '';
+			if (isset($_COOKIE['__bocs_frequency_id'])) {
+				frequencyId = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+			}
+			if(frequencyId){
+			for ( var i = 0, l = bocsCheckoutObject.bocs['priceAdjustment']['adjustments'].length; i < l; i++ ) {
+				if(bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['id'] == frequencyId){
+					recurringFreq = formatFrequency( bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['frequency'], bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['timeUnit'] );
+					break;
+				}
+			}
+		}
 		
-		// Format the recurring frequency text
-		var recurringFreq = formatFrequency( bocsCheckoutObject.frequency['frequency'], bocsCheckoutObject.frequency['timeUnit'] );
 		
 		// Create HTML element for recurring total display
 		var htmlElement = '<div data-block-name="woocommerce/checkout-order-summary-totals-block" class="wp-block-woocommerce-checkout-order-summary-totals-block">' +

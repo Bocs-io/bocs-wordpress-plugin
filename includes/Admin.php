@@ -444,7 +444,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.03.13.20',
+            '2025.03.18.2',  // Updated version number to March 17
             true
         );
 
@@ -497,23 +497,28 @@ class Admin
 
         $frequency_id = ! empty($frequency_id) ? $frequency_id : '';
 
-        if (empty($frequency_id) && isset(WC()->session)) {
-            $bocs_value = WC()->session->get('bocs_frequency');
-
-            if (empty($bocs_value)) {
-                if (isset($_COOKIE['__bocs_frequency_id'])) {
-                    $bocs_value = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-                }
-            }
-
-            if (! empty($bocs_value)) {
-                $frequency_id = $bocs_value;
+        if (empty($frequency_id) && isset($_COOKIE['__bocs_frequency_id'])) {
+            $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
+            if (empty($frequency_id) && isset(WC()->session)) {
+                $frequency_id = WC()->session->get('bocs_frequency');
             }
         }
 
         $current_frequency = null;
         $bocs_body = $this->get_bocs_data_from_api($bocs_id);
 
+        // Loop through adjustments to find the current frequency
+        if (!empty($bocs_body) && isset($bocs_body['priceAdjustment']) && isset($bocs_body['priceAdjustment']['adjustments'])) {
+            foreach ($bocs_body['priceAdjustment']['adjustments'] as $adjustment) {
+                if (isset($adjustment['id']) && $adjustment['id'] === $frequency_id) {
+                    $current_frequency = $adjustment;
+                    break;
+                }
+            }
+        }
+
+        // error_log(print_r($current_frequency, true));
+        
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
             /*wp_enqueue_script(
@@ -528,7 +533,7 @@ class Admin
                 'bocs-checkout-js', 
                 plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
                 array('jquery'),
-                '20241105.1',
+                '20250318.1',
                 true
             );
 
@@ -1208,6 +1213,10 @@ class Admin
         $bocsid = $this->get_bocs_value($order, '__bocs_bocs_id', 'bocs', '__bocs_id');
         $collectionid = $this->get_bocs_value($order, '__bocs_collections_id', 'bocs_collection', '__bocs_collection_id');
         $frequency_id = $this->get_bocs_value($order, '__bocs_frequency_id', 'bocs_frequency', '__bocs_frequency_id');
+        $frequency_discount = $this->get_bocs_value($order, '__bocs_frequency_discount', 'bocs_frequency_discount', '__bocs_frequency_discount');
+        $frequency_time_unit = $this->get_bocs_value($order, '__bocs_frequency_time_unit', 'bocs_frequency_time_unit', '__bocs_frequency_time_unit');
+        $frequency_interval = $this->get_bocs_value($order, '__bocs_frequency_interval', 'bocs_frequency_interval', '__bocs_frequency_interval');
+        $discount_type = $this->get_bocs_value($order, '__bocs_discount_type', 'bocs_discount_type', '__bocs_discount_type');
 
         // Only proceed if this is a Bocs order
         $is_bocs = !empty($bocsid);
@@ -1276,13 +1285,13 @@ class Admin
         // Prepare the start date
         $start_date = $this->format_subscription_start_date($order);
 
-        // Set the frequency data from cookies
+        // Set the frequency data from order meta or cookies
         $current_frequency = [
-            'id' => $this->get_sanitized_cookie('__bocs_frequency_id', ''),
-            'timeUnit' => $this->get_sanitized_cookie('__bocs_frequency_time_unit', ''),
-            'frequency' => $this->get_sanitized_cookie('__bocs_frequency_interval', 0, 'intval'),
-            'discount' => $this->get_sanitized_cookie('__bocs_discount', 0.0, 'floatval'),
-            'discountType' => $this->get_sanitized_cookie('__bocs_discount_type', '')
+            'id' => $frequency_id ?: $this->get_sanitized_cookie('__bocs_frequency_id', ''),
+            'timeUnit' => $frequency_time_unit ?: $this->get_sanitized_cookie('__bocs_frequency_time_unit', ''),
+            'frequency' => intval($frequency_interval ?: $this->get_sanitized_cookie('__bocs_frequency_interval', 0)),
+            'discount' => floatval($frequency_discount ?: $this->get_sanitized_cookie('__bocs_frequency_discount', 0.0)),
+            'discountType' => $discount_type ?: $this->get_sanitized_cookie('__bocs_discount_type', '')
         ];
 
         // Validate frequency data
@@ -2428,6 +2437,7 @@ class Admin
             $bocs_cookie_keys = [
                 '__bocs_frequency_time_unit' => 'bocs_frequency_time_unit',
                 '__bocs_frequency_interval' => 'bocs_frequency_interval',
+                '__bocs_frequency_discount' => 'bocs_frequency_discount',
                 '__bocs_discount_type' => 'bocs_discount_type',
                 '__bocs_total' => 'bocs_total',
                 '__bocs_discount' => 'bocs_discount',
@@ -2453,6 +2463,7 @@ class Admin
                     'bocs_frequency',
                     'bocs_frequency_time_unit',
                     'bocs_frequency_interval',
+                    'bocs_frequency_discount',
                     'bocs_discount_type',
                     'bocs_total',
                     'bocs_discount',
@@ -2529,6 +2540,7 @@ class Admin
             'bocs_frequency' => '__bocs_frequency_id',
             'bocs_frequency_time_unit' => '__bocs_frequency_time_unit',
             'bocs_frequency_interval' => '__bocs_frequency_interval',
+            'bocs_frequency_discount' => '__bocs_frequency_discount',
             'bocs_discount_type' => '__bocs_discount_type',
             'bocs_total' => '__bocs_total',
             'bocs_discount' => '__bocs_discount',
@@ -3087,6 +3099,7 @@ class Admin
             '__bocs_frequency_id',
             '__bocs_frequency_time_unit',
             '__bocs_frequency_interval',
+            '__bocs_frequency_discount',
             '__bocs_discount_type',
             '__bocs_total',
             '__bocs_discount',
@@ -3116,6 +3129,7 @@ class Admin
                 'bocs_frequency',
                 'bocs_frequency_time_unit',
                 'bocs_frequency_interval',
+                'bocs_frequency_discount',
                 'bocs_discount_type',
                 'bocs_total',
                 'bocs_discount',
@@ -3175,6 +3189,7 @@ class Admin
                 'bocs_frequency',
                 'bocs_frequency_time_unit',
                 'bocs_frequency_interval',
+                'bocs_frequency_discount',
                 'bocs_discount_type',
                 'bocs_total',
                 'bocs_discount',
@@ -3480,16 +3495,14 @@ class Admin
         
         echo '<ul class="bocs-related-orders-list">';
         
-        foreach ($related_orders as $related_order) {
-            $related_order_obj = wc_get_order($related_order['id']);
-            
+        foreach ($related_orders as $related_order_obj) {
             if (!$related_order_obj) {
                 continue;
             }
             
-            $edit_url = admin_url('admin.php?page=wc-orders&action=edit&id=' . $related_order['id']);
+            $edit_url = admin_url('admin.php?page=wc-orders&action=edit&id=' . $related_order_obj->get_id());
             $order_number = $related_order_obj->get_order_number();
-            $relationship = $related_order['relationship'] ?? 'Unknown';
+            $relationship = $this->get_order_relationship($order_id, $related_order_obj->get_id());
             $date = $related_order_obj->get_date_created() ? $related_order_obj->get_date_created()->date_i18n(get_option('date_format') . ' ' . get_option('time_format')) : '';
             $status = wc_get_order_status_name($related_order_obj->get_status());
             

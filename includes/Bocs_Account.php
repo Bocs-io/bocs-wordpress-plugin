@@ -96,39 +96,99 @@ class Bocs_Account
 
         // Only proceed if we have a logged-in user
         if (! empty($user_id)) {
+            //error_log('Bocs Account Debug - User ID: ' . $user_id);
+
             $bocs_customer_id = get_user_meta($user_id, 'bocs_user_id', true);
-            $url = BOCS_API_URL . 'subscriptions';
+            //error_log('Bocs Account Debug - Bocs Customer ID: ' . $bocs_customer_id);
+
             $current_user = wp_get_current_user();
+            $url = BOCS_API_URL . 'subscriptions';
 
-            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                // Removed debug error_log
-            }
-
-            // If user has a Bocs customer ID, use it as primary identifier
-            if (! empty($bocs_customer_id)) {
-                $url = BOCS_API_URL . 'subscriptions?query=customer.id:' . urlencode($bocs_customer_id);
-            } else {
-                // Otherwise, search by WordPress user ID and email
-                $query_parts = [];
-                $query_parts[] = 'customer.externalSourceId:' . urlencode($user_id);
-                if ($current_user->exists()) {
-                    $query_parts[] = 'billing.email:' . urlencode($current_user->user_email);
+            // Step 1: Try customer.id first
+            if (!empty($bocs_customer_id)) {
+                $query = 'customer.id:' . urlencode($bocs_customer_id);
+                $url .= '?query=' . urlencode($query);
+                //error_log('Bocs Account Debug - Trying customer.id URL: ' . $url);
+                
+                $helper = new Bocs_Helper();
+                $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                
+                if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
+                    //error_log('Bocs Account Debug - Found subscriptions by customer.id');
+                } else {
+                    // Step 2: Try billing.email if customer.id didn't work
+                    if ($current_user->exists()) {
+                        $query = 'billing.email:' . urlencode($current_user->user_email);
+                        $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
+                        //error_log('Bocs Account Debug - Trying billing.email URL: ' . $url);
+                        
+                        $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                        
+                        if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
+                            //error_log('Bocs Account Debug - Found subscriptions by billing.email');
+                        } else {
+                            // Step 3: Try order IDs if email didn't work
+                            $order_ids = wc_get_orders(array(
+                                'customer_id' => $user_id,
+                                'limit' => -1,
+                                'return' => 'ids'
+                            ));
+                            
+                            if (!empty($order_ids)) {
+                                $order_id_queries = array_map(function($order_id) {
+                                    return 'externalSourceParentOrderId:' . urlencode($order_id);
+                                }, $order_ids);
+                                $query = implode(' OR ', $order_id_queries);
+                                $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
+                                //error_log('Bocs Account Debug - Trying order IDs URL: ' . $url);
+                                
+                                $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                            }
+                        }
+                    }
                 }
-                $url = BOCS_API_URL . 'subscriptions?query=' . implode(' OR ', $query_parts);
+            } else {
+                // If no customer.id, start with billing.email
+                if ($current_user->exists()) {
+                    $query = 'billing.email:' . urlencode($current_user->user_email);
+                    $url .= '?query=' . urlencode($query);
+                    //error_log('Bocs Account Debug - Trying billing.email URL: ' . $url);
+                    
+                    $helper = new Bocs_Helper();
+                    $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                    
+                    if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
+                        error_log('Bocs Account Debug - Found subscriptions by billing.email');
+                    } else {
+                        // Try order IDs if email didn't work
+                        $order_ids = wc_get_orders(array(
+                            'customer_id' => $user_id,
+                            'limit' => -1,
+                            'return' => 'ids'
+                        ));
+                        
+                        if (!empty($order_ids)) {
+                            $order_id_queries = array_map(function($order_id) {
+                                return 'externalSourceParentOrderId:' . urlencode($order_id);
+                            }, $order_ids);
+                            $query = implode(' OR ', $order_id_queries);
+                            $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
+                            //error_log('Bocs Account Debug - Trying order IDs URL: ' . $url);
+                            
+                            $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                        }
+                    }
+                }
             }
 
-            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                // Removed debug error_log
-            }
-        }
+            // Add fields parameter to get only needed data
+            //$url .= '&fields=' . urlencode('id,subscriptionStatus,nextPaymentDateGmt,startDateGmt,total,currency,billingPeriod,frequency,externalSourceParentOrderId,orderKey,paymentMethodTitle,lineItems');
+            //error_log('Bocs Account Debug - Final URL: ' . $url);
 
-        // Fetch and display subscriptions if we have a valid URL
-        if (isset($url)) {
-            $helper = new Bocs_Helper();
-            $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
-
-            if (defined('BOCS_ENVIRONMENT') && BOCS_ENVIRONMENT === 'dev') {
-                // Removed debug error_log
+            if (isset($subscriptions['data']['data'])) {
+                //error_log('Bocs Account Debug - Number of subscriptions found: ' . count($subscriptions['data']['data']));
+            } else {
+                //error_log('Bocs Account Debug - No subscriptions data found in response');
             }
 
             $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_subscriptions_account.php';
@@ -147,6 +207,14 @@ class Bocs_Account
     public function register_bocs_view_subscription_endpoint()
     {
         add_rewrite_endpoint('bocs-view-subscription', EP_PAGES);
+    }
+
+    /**
+     * Register the Bocs update box endpoint
+     */
+    public function register_bocs_update_box_endpoint()
+    {
+        add_rewrite_endpoint('bocs-update-box', EP_PAGES);
     }
 
     /**
@@ -201,6 +269,31 @@ class Bocs_Account
             }
         } else {
             echo '<p>' . esc_html__('No subscription ID provided.', 'bocs-wordpress') . '</p>';
+        }
+    }
+
+    /**
+     * Display content for the update box page
+     */
+    public function bocs_update_box_endpoint_content()
+    {
+        global $wp;
+
+        $bocs_subscription_id = isset($wp->query_vars['bocs-update-box']) 
+            ? sanitize_text_field($wp->query_vars['bocs-update-box']) 
+            : '';
+
+        if (empty($bocs_subscription_id)) {
+            echo '<div class="woocommerce-error">' . esc_html__('Invalid subscription ID.', 'bocs-wordpress') . '</div>';
+            return;
+        }
+
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_update_box.php';
+
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            echo esc_html__('Update box template not found.', 'bocs-wordpress');
         }
     }
 

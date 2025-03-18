@@ -1,4 +1,8 @@
-v0.0.123 03/172025 
+v0.0.124 03/18/2025 
+* Fixes on the trigger payment
+* Fixes on the null frequency on checkout
+
+v0.0.123 03/17/2025 
 * error on login fix
 
 v0.0.122 03/14/2025

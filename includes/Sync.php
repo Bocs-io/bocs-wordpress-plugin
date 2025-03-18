@@ -28,40 +28,114 @@ class Sync
 	private function _createUser($user)
 	{
 		$curl = new Curl();
-		$result = false;
+
+		// Validate required user data
+		if (!isset($user['email']) || !isset($user['first_name']) || !isset($user['last_name']) || !isset($user['id']) || !isset($user['username'])) {
+			throw new Exception("Missing required user data for Bocs user creation");
+		}
 
 		$params = array();
-		$params[] = '"email": "' . $user['email'] . '"';
-		$params[] = '"firstName": "' . $user['first_name'] . '"';
-		$params[] = '"lastName": "' . $user['last_name'] . '"';
-		$params[] = '"fullName": "' . $user['first_name'] . ' ' . $user['last_name'] .  '"';
+		$params[] = '"email": "' . esc_attr($user['email']) . '"';
+		$params[] = '"firstName": "' . esc_attr($user['first_name']) . '"';
+		$params[] = '"lastName": "' . esc_attr($user['last_name']) . '"';
+		$params[] = '"fullName": "' . esc_attr($user['first_name'] . ' ' . $user['last_name']) . '"';
 
 		if (!empty($user['role'])) {
-			$params[] = '"role": "' . $user['role'] . '"';
+			$params[] = '"role": "' . esc_attr($user['role']) . '"';
 		}
 
-		$params[] = '"externalSource": "Wordpress"';
-		$params[] = '"externalSourceId": "' . $user['id'] . '"';
-		$params[] = '"username": "' . $user['username'] . '"';
+		$params[] = '"externalSource": "WP"';
+		$params[] = '"externalSourceId": "' . intval($user['id']) . '"';
+		$params[] = '"username": "' . esc_attr($user['username']) . '"';
+
+		// Get billing information
+		$billing = array(
+			'firstName' => get_user_meta($user['id'], 'billing_first_name', true) ?: $user['first_name'],
+			'lastName' => get_user_meta($user['id'], 'billing_last_name', true) ?: $user['last_name'],
+			'company' => get_user_meta($user['id'], 'billing_company', true) ?: '',
+			'address1' => get_user_meta($user['id'], 'billing_address_1', true) ?: '',
+			'address2' => get_user_meta($user['id'], 'billing_address_2', true) ?: '',
+			'city' => get_user_meta($user['id'], 'billing_city', true) ?: '',
+			'state' => get_user_meta($user['id'], 'billing_state', true) ?: '',
+			'country' => get_user_meta($user['id'], 'billing_country', true) ?: '',
+			'postcode' => get_user_meta($user['id'], 'billing_postcode', true) ?: '',
+			'phone' => get_user_meta($user['id'], 'billing_phone', true) ?: '',
+			'email' => get_user_meta($user['id'], 'billing_email', true) ?: $user['email'],
+			'default' => true
+		);
+
+		// Get shipping information
+		$shipping = array(
+			'firstName' => get_user_meta($user['id'], 'shipping_first_name', true) ?: $user['first_name'],
+			'lastName' => get_user_meta($user['id'], 'shipping_last_name', true) ?: $user['last_name'],
+			'company' => get_user_meta($user['id'], 'shipping_company', true) ?: '',
+			'address1' => get_user_meta($user['id'], 'shipping_address_1', true) ?: '',
+			'address2' => get_user_meta($user['id'], 'shipping_address_2', true) ?: '',
+			'city' => get_user_meta($user['id'], 'shipping_city', true) ?: '',
+			'state' => get_user_meta($user['id'], 'shipping_state', true) ?: '',
+			'country' => get_user_meta($user['id'], 'shipping_country', true) ?: '',
+			'postcode' => get_user_meta($user['id'], 'shipping_postcode', true) ?: '',
+			'phone' => get_user_meta($user['id'], 'shipping_phone', true) ?: '',
+			'default' => true
+		);
+
+		// Add billing and shipping to params
+		$params[] = '"billing": ' . json_encode($billing);
+		$params[] = '"shipping": ' . json_encode($shipping);
 
 		$data = '{' . implode(',', $params) . '}';
-
 		$url = 'contacts';
+		
+		$this->logMessage('DEBUG', "Sending create user request to Bocs API", [
+			'url' => $url,
+			'data' => $data
+		]);
+
 		$result = $curl->post($url, $data, 'contacts', $user['id']);
 
-		if ($result->data && 
-			((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-			 (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
-			
-			$bocs_contact_id = isset($result->data->data) ? 
-							 (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-							 (is_array($result->data) ? $result->data[0]->id : $result->data->id);
-			
-			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-			return $bocs_contact_id;
+		if (!$result) {
+			$this->logMessage('ERROR', "Failed to get response from Bocs API", [
+				'user_id' => $user['id']
+			]);
+			throw new Exception("Failed to get response from Bocs API for user ID: " . intval($user['id']));
 		}
 
-		throw new Exception("Failed to create Bocs user for ID: " . intval($user->ID));
+		// Handle string response (usually an error UUID)
+		if (is_string($result)) {
+			$this->logMessage('ERROR', "Received error response from Bocs API", [
+				'user_id' => $user['id'],
+				'response' => $result
+			]);
+			throw new Exception("Failed to create Bocs user. API Error: " . $result);
+		}
+
+		// Handle successful response
+		if (isset($result->data)) {
+			$bocs_contact_id = null;
+			
+			if (isset($result->data->data)) {
+				$data = $result->data->data;
+				$bocs_contact_id = is_array($data) ? $data[0]->id : $data->id;
+			} else {
+				$data = $result->data;
+				$bocs_contact_id = is_array($data) ? $data[0]->id : $data->id;
+			}
+
+			if ($bocs_contact_id) {
+				add_user_meta($user['id'], 'bocs_contact_id', $bocs_contact_id);
+				$this->logMessage('INFO', "Successfully created Bocs user", [
+					'user_id' => $user['id'],
+					'bocs_id' => $bocs_contact_id
+				]);
+				return $result;
+			}
+		}
+
+		$this->logMessage('ERROR', "Invalid response format from Bocs API", [
+			'user_id' => $user['id'],
+			'response' => $result
+		]);
+		throw new Exception("Failed to create Bocs user for ID: " . intval($user['id']));
 	}
 
 	/**
@@ -447,6 +521,10 @@ class Sync
 							$params['role'] = $user_data['role'];
 						}
 
+						$this->logMessage('DEBUG', "Attempting user creation as final fallback", [
+							'params' => $params
+						]);
+
 						$createdUser = $this->_createUser($params);
 
 						if ($createdUser->data && 
@@ -616,7 +694,7 @@ class Sync
 			'"firstName": "' . $first_name . '"',
 			'"lastName": "' . $last_name . '"',
 			'"fullName": "' . $first_name . ' ' . $last_name . '"',
-			'"externalSource": "Wordpress"',
+			'"externalSource": "WP"',
 			'"externalSourceId": "' . $user_id . '"'
 		];
 
@@ -830,34 +908,48 @@ class Sync
 		]);
 		
 		// Construct API query with proper email escaping
-		$url = 'contacts?query=email:"' . $user->user_email . '"';
-		$response = $curl->get($url, 'contacts', $user->ID);
+		$url = 'contacts?query=email:"' . esc_attr($user->user_email) . '"';
+		$result = $curl->get($url, 'contacts', $user->ID);
 		
 		// Validate API response
-		if (!$response) {
+		if (!$result) {
 			$this->logMessage('ERROR', "Bocs API request failed", [
 				'email' => $user->user_email,
 				'url' => $url
 			]);
 			throw new Exception("API request failed for email: {$user->user_email}");
 		}
+
+		// Handle string response (usually an error UUID)
+		if (is_string($result)) {
+			$this->logMessage('ERROR', "Received error response from Bocs API", [
+				'user_id' => $user->ID,
+				'response' => $result
+			]);
+			throw new Exception("Failed to search Bocs user. API Error: " . $result);
+		}
 		
 		// Check if user exists in response
-		if ($result->data && 
-			((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-			(isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
+		if (isset($result->data)) {
+			$bocs_contact_id = null;
 			
-			$bocs_contact_id = isset($result->data->data) ? 
-							(is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-							(is_array($result->data) ? $result->data[0]->id : $result->data->id);
+			if (isset($result->data->data)) {
+				$data = $result->data->data;
+				$bocs_contact_id = is_array($data) && !empty($data) ? $data[0]->id : (isset($data->id) ? $data->id : null);
+			} else {
+				$data = $result->data;
+				$bocs_contact_id = is_array($data) && !empty($data) ? $data[0]->id : (isset($data->id) ? $data->id : null);
+			}
 			
-			$this->logMessage('INFO', "Found existing Bocs user", [
-				'bocs_contact_id' => $bocs_contact_id,
-				'user_id' => $user->ID
-			]);
-			
-			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-			return $bocs_contact_id;
+			if ($bocs_contact_id) {
+				$this->logMessage('INFO', "Found existing Bocs user", [
+					'bocs_contact_id' => $bocs_contact_id,
+					'user_id' => $user->ID
+				]);
+				
+				add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+				return $bocs_contact_id;
+			}
 		}
 		
 		$this->logMessage('DEBUG', "No existing Bocs user found", [
@@ -901,28 +993,49 @@ class Sync
 
 		$result = $this->_createUser($params);
 
+		// Check for API errors first
+		if (isset($result->error) && $result->error) {
+			$error_message = sprintf(
+				"Failed to create Bocs user (Error: %s, Code: %s)",
+				$result->message ?? 'Unknown error',
+				$result->code ?? 'unknown'
+			);
+			
+			$this->logMessage('ERROR', $error_message, [
+				'user_id' => $user->ID,
+				'response' => $result,
+				'params' => $params
+			]);
+			
+			throw new Exception($error_message);
+		}
+
+		// Check for valid response data
 		if ($result->data && 
-            ((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-             (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
-            
-            $bocs_contact_id = isset($result->data->data) ? 
-                             (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-                             (is_array($result->data) ? $result->data[0]->id : $result->data->id);
-            
-            $this->logMessage('INFO', "Successfully created Bocs user", [
-                'user_id' => $user->ID,
-                'bocs_id' => $bocs_contact_id
-            ]);
+			((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
+			 (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
+			
+			$bocs_contact_id = isset($result->data->data) ? 
+							 (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
+							 (is_array($result->data) ? $result->data[0]->id : $result->data->id);
+			
+			$this->logMessage('INFO', "Successfully created Bocs user", [
+				'user_id' => $user->ID,
+				'bocs_id' => $bocs_contact_id
+			]);
 
-            add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-            return $bocs_contact_id;
-        }
+			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+			return $bocs_contact_id;
+		}
 
-        $this->logMessage('ERROR', "Failed to create Bocs user", [
-            'user_id' => $user->ID,
-            'response' => $result
-        ]);
-        throw new Exception("Failed to create Bocs user for ID: " . intval($user->ID));
+		// If we get here, we have an unexpected response format
+		$error_message = "Failed to create Bocs user: Unexpected response format";
+		$this->logMessage('ERROR', $error_message, [
+			'user_id' => $user->ID,
+			'response' => $result,
+			'params' => $params
+		]);
+		throw new Exception($error_message);
 	}
 
 	/**
