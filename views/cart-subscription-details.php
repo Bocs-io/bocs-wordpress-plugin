@@ -35,47 +35,44 @@ if (empty($subscription_info)) {
             $frequency_id = isset($_COOKIE['__bocs_frequency_id']) ? sanitize_text_field($_COOKIE['__bocs_frequency_id']) : '';
             $frequency_details = '';
             
-            if (!empty($frequency_id) && !empty($subscription_info['frequencies'])) {
-                foreach ($subscription_info['frequencies'] as $frequency) {
-                    if (isset($frequency['id']) && $frequency['id'] === $frequency_id) {
-                        // Format the frequency display
-                        $interval = isset($frequency['frequency']) ? intval($frequency['frequency']) : 0;
-                        $time_unit = isset($frequency['timeUnit']) ? sanitize_text_field($frequency['timeUnit']) : '';
+            foreach ($subscription_info['frequencies'] as $frequency) {
+                if ($frequency['id'] === $frequency_id) {
+                    $interval = isset($frequency['frequency']) ? intval($frequency['frequency']) : 1;
+                    $time_unit = isset($frequency['timeUnit']) ? strtolower($frequency['timeUnit']) : 'month';
+                    
+                    // Normalize time unit display
+                    switch ($time_unit) {
+                        case 'day':
+                        case 'days':
+                            $time_unit = $interval === 1 ? esc_html__('day', 'bocs-wordpress') : esc_html__('days', 'bocs-wordpress');
+                            break;
+                        case 'week':
+                        case 'weeks':
+                            $time_unit = $interval === 1 ? esc_html__('week', 'bocs-wordpress') : esc_html__('weeks', 'bocs-wordpress');
+                            break;
+                        case 'month':
+                        case 'months':
+                            $time_unit = $interval === 1 ? esc_html__('month', 'bocs-wordpress') : esc_html__('months', 'bocs-wordpress');
+                            break;
+                        case 'year':
+                        case 'years':
+                            $time_unit = $interval === 1 ? esc_html__('year', 'bocs-wordpress') : esc_html__('years', 'bocs-wordpress');
+                            break;
+                        default:
+                            $time_unit = sprintf(esc_html__('Every %d %s', 'bocs-wordpress'), $interval, $time_unit);
+                    }
+                    
+                    $frequency_details = $time_unit;
+                    
+                    // Add discount info if available
+                    if (isset($frequency['discount']) && floatval($frequency['discount']) > 0) {
+                        $discount_type = isset($frequency['discountType']) ? $frequency['discountType'] : 'fixed_cart';
                         
-                        if ($interval > 0 && !empty($time_unit)) {
-                            // Format time unit for display (e.g., "day" to "Daily", "month" to "Monthly")
-                            $display_unit = '';
-                            switch (strtolower($time_unit)) {
-                                case 'day':
-                                    $display_unit = $interval === 1 ? esc_html__('Daily', 'bocs-wordpress') : sprintf(esc_html__('Every %d days', 'bocs-wordpress'), $interval);
-                                    break;
-                                case 'week':
-                                    $display_unit = $interval === 1 ? esc_html__('Weekly', 'bocs-wordpress') : sprintf(esc_html__('Every %d weeks', 'bocs-wordpress'), $interval);
-                                    break;
-                                case 'month':
-                                    $display_unit = $interval === 1 ? esc_html__('Monthly', 'bocs-wordpress') : sprintf(esc_html__('Every %d months', 'bocs-wordpress'), $interval);
-                                    break;
-                                case 'year':
-                                    $display_unit = $interval === 1 ? esc_html__('Yearly', 'bocs-wordpress') : sprintf(esc_html__('Every %d years', 'bocs-wordpress'), $interval);
-                                    break;
-                                default:
-                                    $display_unit = sprintf(esc_html__('Every %d %s', 'bocs-wordpress'), $interval, $time_unit);
-                            }
-                            
-                            $frequency_details = $display_unit;
-                            
-                            // Add discount info if available
-                            if (isset($frequency['discount']) && floatval($frequency['discount']) > 0) {
-                                $discount_type = isset($frequency['discountType']) ? $frequency['discountType'] : 'fixed_cart';
-                                
-                                if (strpos(strtolower($discount_type), 'percent') !== false) {
-                                    $frequency_details .= sprintf(esc_html__(' (%.2f%% discount)', 'bocs-wordpress'), floatval($frequency['discount']));
-                                } else {
-                                    $frequency_details .= sprintf(esc_html__(' ($%.2f discount)', 'bocs-wordpress'), floatval($frequency['discount']));
-                                }
-                            }
+                        if (strpos(strtolower($discount_type), 'percent') !== false) {
+                            $frequency_details .= sprintf(esc_html__(' (%.2f%% discount)', 'bocs-wordpress'), floatval($frequency['discount']));
+                        } else {
+                            $frequency_details .= sprintf(esc_html__(' ($%.2f discount)', 'bocs-wordpress'), floatval($frequency['discount']));
                         }
-                        break;
                     }
                 }
             }

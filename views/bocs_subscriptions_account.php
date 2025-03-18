@@ -241,9 +241,15 @@ $frequency_text = ''; // or whatever default value is appropriate
                         </div>
 
                         <div class="subscription-actions">
-                            <button class="woocommerce-button button update-box" id="update_<?php echo esc_attr($subscription['id']); ?>">
-                                <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
-                            </button>
+                            <?php if ($subscription['subscriptionStatus'] === 'active' || $subscription['subscriptionStatus'] === 'paused' || $subscription['subscriptionStatus'] === 'unpaid' || $subscription['subscriptionStatus'] === 'pending-cancel') : ?>
+                                <button 
+                                    type="button" 
+                                    class="woocommerce-button button update-box"
+                                    onclick="window.location.href='<?php echo esc_url(wc_get_account_endpoint_url('bocs-update-box') . $subscription['id'] . '/'); ?>'; return false;"
+                                    >
+                                    <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
+                                </button>
+                            <?php endif; ?>
                             <button class="woocommerce-button button alt view-details" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
                                 <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
@@ -288,134 +294,66 @@ $frequency_text = ''; // or whatever default value is appropriate
         </div>
         <div class="box-items"></div>
 
-        <div class="subscription-totals"></div>
-
-        <div class="subscription-details-sections">
-            <div class="details-section">
-                <div class="section-header">
-                    <h3><?php esc_html_e('Frequency', 'bocs-wordpress'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
+        <!-- Add product selection interface -->
+        <div id="product-selection-interface" style="display: none; margin-top: 20px; background: white; padding: 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="interface-header">
+                <h3><?php esc_html_e('Update Your Box Contents', 'bocs-wordpress'); ?></h3>
+                <a href="#" class="back-to-subscriptions" onclick="return false;"><?php esc_html_e('Back to subscriptions', 'bocs-wordpress'); ?></a>
                 </div>
-                <p class="current-frequency">
-                    <?php 
-                    if ($discount_percent > 0) {
-                        echo esc_html($frequency_text . ' (' . $discount_percent . '% off)');
-                    } else {
-                        echo esc_html($frequency_text);
-                    }
-                    ?>
-                </p>
-
-                <div class="frequency-editor" style="display: none;">
-                    <div class="frequency-header">
-                        <h3><?php esc_html_e('Frequency', 'bocs-wordpress'); ?></h3>
-                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
+            
+            <div class="subscription-info" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="info-item">
+                        <span class="label" style="font-weight: bold;"><?php esc_html_e('Next Payment:', 'bocs-wordpress'); ?></span>
+                        <span class="value next-payment-date"></span>
                     </div>
-                    
-                    <div class="frequency-options">
-                        <div class="frequency-options-loading" style="display: none;">
-                            <div class="loading-spinner"></div>
-                            <p>Loading frequency options...</p>
+                    <div class="info-item">
+                        <span class="label" style="font-weight: bold;"><?php esc_html_e('Frequency:', 'bocs-wordpress'); ?></span>
+                        <span class="value frequency-text"></span>
                         </div>
-                        <div class="frequency-options-content"></div>
-                    </div>
-
-                    <button class="save-frequency">
-                        <?php esc_html_e('Save', 'bocs-wordpress'); ?>
-                    </button>
                 </div>
             </div>
 
-            <div class="details-section">
-                <div class="section-header">
-                    <h3><?php esc_html_e('Instructions', 'bocs-wordpress'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
+            <div class="products-section">
+                <div class="products-loading" style="text-align: center; padding: 20px;">
+                    <div class="loading-spinner"></div>
+                    <p><?php esc_html_e('Loading products...', 'bocs-wordpress'); ?></p>
                 </div>
-                <p></p>
+                <div class="products-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;"></div>
             </div>
 
-            <div class="details-section">
-                <div class="section-header">
-                    <h3><?php esc_html_e('Pause or Skip', 'bocs-wordpress'); ?></h3>
-                    <button class="edit-link"><?php esc_html_e('Edit', 'bocs-wordpress'); ?></button>
+            <div class="box-summary" style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
+                <h4><?php esc_html_e('Box Summary', 'bocs-wordpress'); ?></h4>
+                <div class="summary-items"></div>
+                <div class="summary-totals">
+                    <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+                        <span><?php esc_html_e('Subtotal:', 'bocs-wordpress'); ?></span>
+                        <span class="subtotal-amount"></span>
                 </div>
-                <div class="notice-box">
-                    <?php esc_html_e('You can pause or skip your subscription easily, select the next date you would like your payment debited, plus your desired delivery date.', 'bocs-wordpress'); ?>
+                    <div class="total-row" style="display: flex; justify-content: space-between; padding: 5px 0;">
+                        <span><?php esc_html_e('Discount:', 'bocs-wordpress'); ?></span>
+                        <span class="discount-amount"></span>
                 </div>
-                <div class="date-info">
-                    <p class="date-label"><?php esc_html_e('Next Payment Date', 'bocs-wordpress'); ?></p>
-                    <p class="date-value"></p>
+                    <div class="total-row total" style="display: flex; justify-content: space-between; padding: 5px 0; font-weight: bold;">
+                        <span><?php esc_html_e('Total:', 'bocs-wordpress'); ?></span>
+                        <span class="total-amount"></span>
                 </div>
-
-                <!-- Add new schedule editor -->
-                <div class="schedule-editor" style="display: none;">
-                    <div class="schedule-header">
-                        <h3><?php esc_html_e('Adjust Schedule', 'bocs-wordpress'); ?></h3>
-                        <button class="cancel-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-                    </div>
-                    
-                    <div class="schedule-options">
-                        <div class="schedule-option">
-                            <div class="pause-duration">
-                                <div class="pause-options-loading" style="display: none;">
-                                    <div class="loading-spinner"></div>
-                                    <p>Loading pause options...</p>
-                                </div>
-                                <div class="pause-options-content"></div>
-                                <label class="frequency-option">
-                                    <input type="radio" name="pause_duration" value="custom_date">
-                                    <span class="radio-label">Skip to Date</span>
-                                </label>
-                                <input type="date" name="new_date"
-                                       min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
-                                       value="">
                             </div>
                         </div>
 
-                        <!-- Add next payment date preview -->
-                        <div class="next-payment-preview" style="display: none;">
-                            <div class="preview-header">
-                                <?php esc_html_e('Preview of Changes', 'bocs-wordpress'); ?>
-                            </div>
-                            <div class="preview-content">
-                                <span class="preview-label"><?php esc_html_e('Next Payment Date:', 'bocs-wordpress'); ?></span>
-                                <span class="preview-date"></span>
-                            </div>
-                        </div>
-
-                        <button class="save-schedule woocommerce-button button alt">
-                            <?php esc_html_e('Save Changes', 'bocs-wordpress'); ?>
+            <div class="actions" style="margin-top: 20px; text-align: right;">
+                <button type="button" class="button button-secondary cancel-product-selection"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
+                <button type="button" class="button button-primary save-box-changes">
+                    <span class="button-text"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></span>
+                    <span class="loading-spinner" style="display: none;"></span>
                         </button>
-                    </div>
                 </div>
             </div>
 
-            <div class="details-section">
-                <div class="section-header">
-                    <h3><?php esc_html_e('Promos', 'bocs-wordpress'); ?></h3>
+        <div class="subscription-totals"></div>
                 </div>
-                <?php if (!empty($subscription['promos'])): ?>
-                    <div class="promo-tag">
-                        <?php echo esc_html($subscription['promos'][0] ?? 'FREE PRODUCT FOR LIFE'); ?>
-                    </div>
-                <?php endif; ?>
             </div>
 
-            <div class="subscription-actions">
-                <button class="back-to-subscription-button">
-                    <span class="dashicons dashicons-arrow-left-alt"></span>
-                    <?php esc_html_e('Back to Subscription', 'bocs-wordpress'); ?>
-                </button>
-                <button class="cancel-button">
-                    <span class="dashicons dashicons-trash"></span>
-                    <?php esc_html_e('Cancel Subscription', 'bocs-wordpress'); ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- CSS Styles -->
 <style>
 /**
  * Base Layout Styles
@@ -1493,6 +1431,339 @@ address {
 .bocs-modal .button-primary.danger {
     background-color: #dc3232;
 }
+
+/* Update Box Modal Styles */
+.update-box-modal {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1em;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1.5em;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    color: #666;
+    cursor: pointer;
+    padding: 0.5em;
+    line-height: 1;
+}
+
+.modal-body {
+    padding: 0 1em;
+}
+
+.subscription-info {
+    background: #f8f9fa;
+    padding: 1em;
+    border-radius: 4px;
+    margin-bottom: 1.5em;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1em;
+    margin-top: 0.5em;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item .label {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 0.3em;
+}
+
+.info-item .value {
+    font-weight: 600;
+    color: #333;
+}
+
+.products-section {
+    margin-bottom: 1.5em;
+}
+
+.products-grid {
+    margin-top: 1em;
+}
+
+.products-loading {
+    text-align: center;
+    padding: 2em;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.products-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1em;
+}
+
+.product-card {
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 1em;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.product-card.selected {
+    border-color: var(--wc-primary, #7f54b3);
+    background: #f8f5ff;
+}
+
+.product-image {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-description {
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.4;
+    max-height: 4.2em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.product-card h5 {
+    margin: 0;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.product-card .price {
+    color: var(--wc-primary, #7f54b3);
+    font-weight: 600;
+    margin: 0.5em 0;
+}
+
+.product-card .quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.quantity-controls button {
+    background: #f0f0f0;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quantity-controls button:hover {
+    background: #e0e0e0;
+}
+
+.quantity-controls input {
+    width: 40px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 0.2em;
+}
+
+.box-summary {
+    background: #f8f9fa;
+    padding: 1em;
+    border-radius: 4px;
+    margin-top: 1.5em;
+}
+
+.summary-items {
+    margin-bottom: 1em;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5em 0;
+    border-bottom: 1px solid #eee;
+}
+
+.summary-item:last-child {
+    border-bottom: none;
+}
+
+.summary-totals {
+    border-top: 2px solid #eee;
+    padding-top: 1em;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1em;
+    padding-top: 1.5em;
+    border-top: 1px solid #eee;
+    margin-top: 1.5em;
+}
+
+.save-box-changes {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.save-box-changes .loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@media screen and (max-width: 768px) {
+    .update-box-modal {
+        width: 95%;
+        margin: 1em;
+    }
+
+    .products-list {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .modal-footer button {
+        width: 100%;
+    }
+}
+
+.product-card {
+    border: 1px solid #ddd;
+    padding: 15px;
+    border-radius: 4px;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.product-card.selected {
+    border-color: #7f54b3;
+    box-shadow: 0 0 0 1px #7f54b3;
+}
+
+.product-card img {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.product-card h5 {
+    margin: 0 0 10px 0;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.quantity-controls button {
+    background: #f0f0f0;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.quantity-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quantity-controls input {
+    width: 50px;
+    text-align: center;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #7f54b3;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.interface-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.interface-header h3 {
+    margin: 0;
+}
+
+.back-to-subscriptions {
+    color: #7f54b3;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.back-to-subscriptions:before {
+    content: '←';
+    font-size: 1.2em;
+}
+
+.back-to-subscriptions:hover {
+    text-decoration: underline;
+}
 </style>
 
 <!-- JavaScript Implementation -->
@@ -1502,18 +1773,22 @@ address {
  * Handles all interactive functionality for subscription management
  */
 jQuery(document).ready(function($) {
+    console.log('BOCS Subscription Management initialized');
+    
     // Track currently active subscription for state management
     let activeSubscriptionId = null;
 
-    /**
-     * Initialize jQuery UI Accordion
-     * Creates collapsible sections for subscription details
-     */
+    // Initialize jQuery UI Accordion
     $('#bocs-subscriptions-accordion').accordion({
         collapsible: true,
         active: false,
-        heightStyle: "content",
-        header: "> div > h3"
+        heightStyle: "content"
+    });
+    console.log('Accordion initialized');
+
+    // Add click event logging for all buttons
+    $('.update-box, .view-details, .edit-payment-method').on('click', function() {
+        console.log('Button clicked:', $(this).text().trim(), 'with subscription ID:', $(this).data('subscription-id'));
     });
 
     /**
@@ -3174,6 +3449,20 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Update Box Handler
+    $(document).on('click', '.update-box', function(e) {
+        e.preventDefault();
+        const subscriptionId = $(this).data('subscription-id');
+        if (subscriptionId) {
+            window.location.href = `<?php echo esc_url(wc_get_endpoint_url('bocs-update-box', '')); ?>${subscriptionId}`;
+        }
+    });
+
+    // Remove all product selection related handlers
+    $(document).off('click', '.back-to-subscriptions, .cancel-product-selection');
+    
+    // Rest of your existing code...
 });
 </script>
 
@@ -3208,6 +3497,68 @@ jQuery(document).ready(function($) {
         <div class="bocs-modal-actions">
             <button class="button button-secondary modal-cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
             <button class="button button-primary modal-confirm"><?php esc_html_e('Yes, Activate Subscription', 'bocs-wordpress'); ?></button>
+        </div>
+    </div>
+</div>
+
+<!-- Add this modal HTML alongside the other modals -->
+<div id="update-box-modal" class="bocs-modal" style="display: none;">
+    <div class="bocs-modal-content update-box-modal">
+        <div class="modal-header">
+            <h3><?php esc_html_e('Update Your Box', 'bocs-wordpress'); ?></h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="subscription-info">
+                <h4><?php esc_html_e('Subscription Details', 'bocs-wordpress'); ?></h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label"><?php esc_html_e('Next Payment:', 'bocs-wordpress'); ?></span>
+                        <span class="value next-payment-date"></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label"><?php esc_html_e('Frequency:', 'bocs-wordpress'); ?></span>
+                        <span class="value frequency-text"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="products-section">
+                <h4><?php esc_html_e('Available Products', 'bocs-wordpress'); ?></h4>
+                <div class="products-grid">
+                    <div class="products-loading">
+                        <div class="loading-spinner"></div>
+                        <p><?php esc_html_e('Loading products...', 'bocs-wordpress'); ?></p>
+                    </div>
+                    <div class="products-list"></div>
+                </div>
+            </div>
+
+            <div class="box-summary">
+                <h4><?php esc_html_e('Box Summary', 'bocs-wordpress'); ?></h4>
+                <div class="summary-items"></div>
+                <div class="summary-totals">
+                    <div class="total-row">
+                        <span><?php esc_html_e('Subtotal:', 'bocs-wordpress'); ?></span>
+                        <span class="subtotal-amount"></span>
+                    </div>
+                    <div class="total-row">
+                        <span><?php esc_html_e('Discount:', 'bocs-wordpress'); ?></span>
+                        <span class="discount-amount"></span>
+                    </div>
+                    <div class="total-row total">
+                        <span><?php esc_html_e('Total:', 'bocs-wordpress'); ?></span>
+                        <span class="total-amount"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="button button-secondary modal-cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
+            <button class="button button-primary save-box-changes">
+                <span class="button-text"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></span>
+                <span class="loading-spinner" style="display: none;"></span>
+            </button>
         </div>
     </div>
 </div>
