@@ -242,13 +242,12 @@ $frequency_text = ''; // or whatever default value is appropriate
 
                         <div class="subscription-actions">
                             <?php if ($subscription['subscriptionStatus'] === 'active' || $subscription['subscriptionStatus'] === 'paused' || $subscription['subscriptionStatus'] === 'unpaid' || $subscription['subscriptionStatus'] === 'pending-cancel') : ?>
-                                <button 
-                                    type="button" 
-                                    class="woocommerce-button button update-box"
-                                    onclick="window.location.href='<?php echo esc_url(wc_get_account_endpoint_url('bocs-update-box') . $subscription['id'] . '/'); ?>'; return false;"
-                                    >
+                                <a 
+                                    href="#" 
+                                    data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
+                                    class="woocommerce-button button update-box update-box-link">
                                     <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
-                                </button>
+                                </a>
                             <?php endif; ?>
                             <button class="woocommerce-button button alt view-details" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
@@ -1789,6 +1788,27 @@ jQuery(document).ready(function($) {
     // Add click event logging for all buttons
     $('.update-box, .view-details, .edit-payment-method').on('click', function() {
         console.log('Button clicked:', $(this).text().trim(), 'with subscription ID:', $(this).data('subscription-id'));
+    });
+
+    // Add click handler for the Update Box button
+    $('.update-box-link').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent the event from bubbling up to parent elements
+        
+        // Get the subscription ID from the clicked button
+        let subscriptionId = $(this).data('subscription-id');
+        
+        // If we're in an accordion panel, make sure we have the right subscription ID
+        if (activeSubscriptionId) {
+            subscriptionId = activeSubscriptionId;
+        }
+        
+        console.log('Redirecting to update box with subscription ID:', subscriptionId);
+        
+        if (subscriptionId) {
+            // Immediate redirect without affecting the UI
+            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-update-box')); ?>' + subscriptionId + '/';
+        }
     });
 
     /**

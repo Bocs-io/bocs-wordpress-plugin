@@ -137,10 +137,6 @@ if (!empty($billing_period)) {
 ?>
 
 <div class="bocs-account-update-box-container">
-    <div class="bocs-brand">
-        <div class="bocs-logo">bocs.io</div>
-    </div>
-
     <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="bocs-back-link">
         <?php esc_html_e('Back to My Subscriptions', 'bocs-wordpress'); ?>
     </a>
