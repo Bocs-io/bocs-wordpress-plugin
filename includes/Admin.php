@@ -2583,31 +2583,130 @@ class Admin
         if (! $order)
             return [];
 
+        // Requirement 1: Must have a "__bocs_subscription_id" meta that is not null/empty
         $bocs_subscription_id = $order->get_meta('__bocs_subscription_id', true);
 
         if (empty($bocs_subscription_id))
             return [];
 
-        error_log('get_related_orders ' . $bocs_subscription_id);
-
-        // Query for orders with the same meta value
+        $related_orders = [];
+        
+        // Check if order is a parent
+        $is_parent = $this->is_parent_order($order_id);
+        
+        if ($is_parent) {
+            // Requirement 2: If parent order, get all child orders
+            $args = array(
+                'limit' => -1,
+                'orderby' => 'date',
+                'order' => 'DESC',
+                'parent' => $order_id,
+                'return' => 'objects'
+            );
+            
+            $query = new WC_Order_Query($args);
+            $child_orders = $query->get_orders();
+            
+            // Filter to ensure all have the same __bocs_subscription_id
+            foreach ($child_orders as $child_order) {
+                $child_bocs_id = $child_order->get_meta('__bocs_subscription_id', true);
+                if (!empty($child_bocs_id) && $child_bocs_id === $bocs_subscription_id) {
+                    $related_orders[] = $child_order;
+                }
+            }
+        } else {
+            // Requirement 3: If not parent, get siblings
+            $parent_id = $order->get_parent_id();
+            
+            // If it has a parent, get all siblings
+            if ($parent_id) {
+                $args = array(
+                    'limit' => -1,
+                    'orderby' => 'date',
+                    'order' => 'DESC',
+                    'parent' => $parent_id,
+                    'return' => 'objects'
+                );
+                
+                $query = new WC_Order_Query($args);
+                $sibling_orders = $query->get_orders();
+                
+                // Filter to ensure all have the same __bocs_subscription_id
+                foreach ($sibling_orders as $sibling_order) {
+                    $sibling_id = $sibling_order->get_id();
+                    if ($sibling_id != $order_id) { // Exclude the current order
+                        $sibling_bocs_id = $sibling_order->get_meta('__bocs_subscription_id', true);
+                        if (!empty($sibling_bocs_id) && $sibling_bocs_id === $bocs_subscription_id) {
+                            $related_orders[] = $sibling_order;
+                        }
+                    }
+                }
+                
+                // Also include the parent if it has the same __bocs_subscription_id
+                $parent_order = wc_get_order($parent_id);
+                if ($parent_order) {
+                    $parent_bocs_id = $parent_order->get_meta('__bocs_subscription_id', true);
+                    if (!empty($parent_bocs_id) && $parent_bocs_id === $bocs_subscription_id) {
+                        $related_orders[] = $parent_order;
+                    }
+                }
+            }
+        }
+        
+        // Also find orders with the same __bocs_subscription_id
         $args = array(
             'limit' => -1,
-            'orderby' => 'id',
+            'orderby' => 'date',
             'order' => 'DESC',
             'meta_key' => '__bocs_subscription_id',
             'meta_value' => $bocs_subscription_id,
             'meta_compare' => '=',
-            'return' => 'objects' // Return order objects
+            'return' => 'objects'
         );
-
+        
         $query = new WC_Order_Query($args);
-        $orders = $query->get_orders();
+        $subscription_orders = $query->get_orders();
+        
+        // Merge with any parent-child related orders found above
+        foreach ($subscription_orders as $sub_order) {
+            $sub_id = $sub_order->get_id();
+            if ($sub_id != $order_id) {
+                // Check if this order is already in our results
+                $found = false;
+                foreach ($related_orders as $related_order) {
+                    if ($related_order->get_id() == $sub_id) {
+                        $found = true;
+                        break;
+                    }
+                }
+                
+                if (!$found) {
+                    $related_orders[] = $sub_order;
+                }
+            }
+        }
 
-        // Exclude the current order from the results
-        return array_filter($orders, function ($order) use ($order_id) {
-            return $order->get_id() != $order_id;
-        });
+        return $related_orders;
+    }
+    
+    /**
+     * Helper function to check if an order is a parent order
+     * 
+     * @param int $order_id The order ID to check
+     * @return bool True if the order is a parent order
+     */
+    private function is_parent_order($order_id)
+    {
+        $args = array(
+            'limit' => 1,
+            'parent' => $order_id,
+            'return' => 'ids'
+        );
+        
+        $query = new WC_Order_Query($args);
+        $child_orders = $query->get_orders();
+        
+        return !empty($child_orders);
     }
 
     public function has_related_orders($order_id)
@@ -2664,6 +2763,22 @@ class Admin
                 throw new Exception('Unable to load one or both orders');
             }
 
+            // Check for direct parent-child relationship
+            $related_parent_id = $related_order->get_parent_id();
+            $primary_parent_id = $primary_order->get_parent_id();
+
+            // Direct parent-child relationship
+            if ($related_parent_id === $order_id) {
+                return esc_html__('Child Order', 'bocs-wordpress');
+            } elseif ($primary_parent_id === $related_order_id) {
+                return esc_html__('Parent Order', 'bocs-wordpress');
+            }
+
+            // If both have the same parent, they're siblings
+            if ($primary_parent_id && $primary_parent_id === $related_parent_id) {
+                return esc_html__('Sibling Order', 'bocs-wordpress');
+            }
+
             // Get subscription IDs for both orders
             $primary_subscription_id = $primary_order->get_meta('__bocs_subscription_id', true);
             $related_subscription_id = $related_order->get_meta('__bocs_subscription_id', true);
@@ -2677,8 +2792,8 @@ class Admin
                 if ($primary_date && $related_date) {
                     if ($related_date > $primary_date) {
                         return esc_html__('Renewal Order', 'bocs-wordpress');
-                    } else {
-                        return esc_html__('Parent Order', 'bocs-wordpress');
+                    } elseif ($related_date < $primary_date) {
+                        return esc_html__('Original Order', 'bocs-wordpress');
                     }
                 }
             }
