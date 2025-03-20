@@ -113,6 +113,168 @@ if (isset($subscription['frequency']) && isset($subscription['frequency']['disco
     }
 }
 
+// Get WooCommerce tax rate
+$tax_rate = 0.1; // Default fallback to 10% GST
+$shipping_total = 0;
+$shipping_tax = 0;
+        
+// Check if WooCommerce is active
+if (function_exists('WC')) {
+    // Get tax rates from WooCommerce
+    $tax_classes = WC_Tax::get_tax_classes();
+    $tax_rates = array();
+    
+    // If no tax classes, use standard rate
+    if (empty($tax_classes)) {
+        $tax_rates = WC_Tax::get_rates();
+    } else {
+        // Add standard class
+        $tax_rates = WC_Tax::get_rates();
+    }
+    
+    // If we have tax rates, calculate the effective rate
+    if (!empty($tax_rates)) {
+        // Sum up all the rates (handles multiple taxes applied)
+        $total_rate = 0;
+        foreach ($tax_rates as $rate) {
+            $total_rate += floatval($rate['rate']);
+        }
+        
+        // Convert percentage to decimal (e.g., 10% becomes 0.1)
+        $tax_rate = $total_rate / 100;
+    }
+    
+    // Get shipping information
+    $shipping_methods = WC()->shipping()->get_shipping_methods();
+    
+    // If WooCommerce cart is available, try to get shipping from there
+    if (function_exists('WC') && isset(WC()->cart) && WC()->cart) {
+        // Get shipping from cart if available
+        $chosen_shipping_methods = WC()->session->get('chosen_shipping_methods');
+        $shipping_packages = WC()->shipping()->get_packages();
+        
+        if (!empty($shipping_packages) && !empty($chosen_shipping_methods)) {
+            foreach ($shipping_packages as $i => $package) {
+                if (isset($chosen_shipping_methods[$i]) && isset($package['rates'][$chosen_shipping_methods[$i]])) {
+                    $method = $package['rates'][$chosen_shipping_methods[$i]];
+                    $shipping_total += $method->cost;
+                    $shipping_tax += $method->get_shipping_tax();
+                }
+            }
+        }
+    } else {
+        // Default to a standard shipping method if cart isn't available
+        foreach ($shipping_methods as $method) {
+            if ($method->enabled === 'yes' && $method->id === 'flat_rate') {
+                // Use flat rate if available and enabled
+                $cost = $method->get_option('cost');
+                if (!empty($cost)) {
+                    $shipping_total = floatval($cost);
+                    $shipping_tax = $shipping_total * $tax_rate;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// Example of how to generate line items in the same format as the original
+if (!function_exists('generate_line_items')) {
+    /**
+     * Generate line items in the proper format for BOCS API
+     *
+     * @param array $products Array of products from BOCS collection
+     * @param bool $include_shipping Whether to include shipping costs
+     * @return array Formatted line items
+     */
+    function generate_line_items($products, $include_shipping = true) {
+        global $tax_rate, $shipping_total, $shipping_tax;
+        $line_items = array();
+        
+        if (empty($products) || !is_array($products)) {
+            return $line_items;
+        }
+        
+        foreach ($products as $product) {
+            if (!isset($product['id']) || !isset($product['price'])) {
+                continue;
+            }
+            
+            $price = floatval($product['price']);
+            $subtotal = $price;
+            $quantity = isset($product['quantity']) ? intval($product['quantity']) : 1;
+            
+            // Calculate tax using WooCommerce tax rate
+            $subtotalTax = round($subtotal * $tax_rate, 2);
+            $totalTax = round($price * $tax_rate, 2);
+            
+            // Simply use the externalSourceId from the product data
+            $external_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
+            
+            // Get the SKU - if empty, try to get it from WooCommerce using externalSourceId
+            $sku = isset($product['sku']) ? $product['sku'] : '';
+            
+            // If SKU is empty and we have an externalSourceId, try to get it from WooCommerce
+            if (empty($sku) && !empty($external_id) && function_exists('wc_get_product')) {
+                // Use externalSourceId as WooCommerce product ID
+                $wc_product = wc_get_product($external_id);
+                if ($wc_product) {
+                    $sku = $wc_product->get_sku();
+                }
+            }
+            
+            $line_item = array(
+                'taxClass' => '',
+                'quantity' => $quantity,
+                'productId' => $product['id'],
+                'taxes' => array(),
+                'totalTax' => $totalTax,
+                'subtotalTax' => $subtotalTax,
+                'metaData' => array(),
+                'total' => $price,
+                'parentName' => '',
+                'variationId' => '',
+                'subtotal' => $subtotal,
+                'price' => $price,
+                'name' => isset($product['name']) ? $product['name'] : '',
+                'externalSourceId' => $external_id,
+                'id' => '',
+                'sku' => $sku
+            );
+            
+            $line_items[] = $line_item;
+        }
+        
+        // Add shipping as a separate line item if available
+        if ($include_shipping && $shipping_total > 0) {
+            $line_items[] = array(
+                'taxClass' => '',
+                'quantity' => 1,
+                'productId' => 'shipping',
+                'taxes' => array(),
+                'totalTax' => round($shipping_tax, 2),
+                'subtotalTax' => round($shipping_tax, 2),
+                'metaData' => array(),
+                'total' => $shipping_total,
+                'parentName' => '',
+                'variationId' => '',
+                'subtotal' => $shipping_total,
+                'price' => $shipping_total,
+                'name' => 'Shipping',
+                'externalSourceId' => 'shipping',
+                'id' => '',
+                'sku' => 'shipping'
+            );
+        }
+        
+        return $line_items;
+    }
+}
+
+// Example usage:
+// Get line items from available products
+// $formatted_line_items = generate_line_items($available_products);
+
 // Get current box contents (line items)
 $line_items = isset($subscription['lineItems']) ? $subscription['lineItems'] : array();
 
@@ -177,6 +339,7 @@ if (!empty($billing_period)) {
                         $product_price = isset($product['price']) ? floatval($product['price']) : 0;
                         $product_image = isset($product['images'][0]['url']) ? $product['images'][0]['url'] : '';
                         $product_description = isset($product['description']) ? $product['description'] : '';
+                        $external_source_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
                         
                         // Check if product is in current box
                         $current_quantity = isset($product['quantity']) ? intval($product['quantity']) : 0;
@@ -188,7 +351,10 @@ if (!empty($billing_period)) {
                             }
                         }
                     ?>
-                    <div class="bocs-product-card" data-product-id="<?php echo esc_attr($product_id); ?>" data-product-price="<?php echo esc_attr($product_price); ?>">
+                    <div class="bocs-product-card" 
+                         data-product-id="<?php echo esc_attr($product_id); ?>" 
+                         data-product-price="<?php echo esc_attr($product_price); ?>"
+                         data-external-id="<?php echo esc_attr(isset($product['externalSourceId']) ? $product['externalSourceId'] : ''); ?>">
                         <div class="bocs-product-image">
                             <?php if (!empty($product_image)) : ?>
                                 <img src="<?php echo esc_url($product_image); ?>" alt="<?php echo esc_attr($product_name); ?>">
@@ -744,6 +910,120 @@ if (!empty($billing_period)) {
 </style>
 
 <script>
+/**
+ * Generate line items in the proper format for BOCS API
+ *
+ * @param {Array} products - Array of products from BOCS collection
+ * @param {Number} taxRate - Tax rate to apply (default: from WooCommerce settings)
+ * @param {Boolean} includeShipping - Whether to include shipping (default: true)
+ * @return {Array} Formatted line items
+ */
+function generateLineItems(products, taxRate = <?php echo $tax_rate; ?>, includeShipping = true) {
+    if (!Array.isArray(products) || products.length === 0) {
+        return [];
+    }
+    
+    // Get WooCommerce product data for SKU lookup
+    const wcProducts = <?php 
+        $wc_products = [];
+        if (function_exists('wc_get_products')) {
+            $args = [
+                'limit' => -1,
+                'status' => 'publish',
+                'return' => 'ids',
+            ];
+            $products_ids = wc_get_products($args);
+            foreach ($products_ids as $id) {
+                $product = wc_get_product($id);
+                if ($product) {
+                    $wc_products[$id] = [
+                        'id' => $id,
+                        'sku' => $product->get_sku()
+                    ];
+                }
+            }
+        }
+        echo json_encode($wc_products);
+    ?>;
+    
+    const lineItems = products.map(function(product) {
+        if (!product.id || typeof product.price === 'undefined') {
+            return null;
+        }
+        
+        // Get proper price and quantity
+        const price = parseFloat(product.price);
+        const quantity = parseInt(product.quantity) || 1;
+        const subtotal = price;
+        
+        // Calculate tax
+        const subtotalTax = parseFloat((subtotal * taxRate).toFixed(2));
+        const totalTax = parseFloat((price * taxRate).toFixed(2));
+        
+        // Simply use the externalSourceId from the product data
+        const externalSourceId = product.externalSourceId || '';
+        
+        // Get SKU - if empty and we have externalSourceId, try to find it from WooCommerce
+        let sku = product.sku || '';
+        
+        // If SKU is empty and we have a valid externalSourceId, look up in WooCommerce
+        if (!sku && externalSourceId && wcProducts[externalSourceId]) {
+            sku = wcProducts[externalSourceId].sku || '';
+        }
+        
+        return {
+            taxClass: '',
+            quantity: quantity,
+            productId: product.id,
+            taxes: [],
+            totalTax: totalTax,
+            subtotalTax: subtotalTax,
+            metaData: [],
+            total: price,
+            parentName: '',
+            variationId: '',
+            subtotal: subtotal,
+            price: price,
+            name: product.name || '',
+            externalSourceId: externalSourceId,
+            id: '',
+            sku: sku
+        };
+    }).filter(Boolean); // Remove any null items
+    
+    // Add shipping as a separate line item if needed
+    if (includeShipping) {
+        const shippingTotal = <?php echo floatval($shipping_total); ?>;
+        if (shippingTotal > 0) {
+            const shippingTax = <?php echo floatval($shipping_tax); ?>;
+            
+            lineItems.push({
+                taxClass: '',
+                quantity: 1,
+                productId: 'shipping',
+                taxes: [],
+                totalTax: parseFloat(shippingTax.toFixed(2)),
+                subtotalTax: parseFloat(shippingTax.toFixed(2)),
+                metaData: [],
+                total: shippingTotal,
+                parentName: '',
+                variationId: '',
+                subtotal: shippingTotal,
+                price: shippingTotal,
+                name: 'Shipping',
+                externalSourceId: 'shipping',
+                id: '',
+                sku: 'shipping'
+            });
+        }
+    }
+    
+    return lineItems;
+}
+
+// Example usage:
+// const formattedLineItems = generateLineItems(boxProducts);
+
 jQuery(document).ready(function($) {
     var subscriptionId = '<?php echo esc_js($subscription_id); ?>';
     var currency = '<?php echo esc_js(isset($subscription['currency']) ? $subscription['currency'] : 'USD'); ?>';
@@ -753,6 +1033,7 @@ jQuery(document).ready(function($) {
     var discountType = '<?php echo esc_js($discount_type); ?>';
     var discountAmount = <?php echo esc_js($discount_amount); ?>;
     var discountUnit = '<?php echo esc_js($discount_unit); ?>';
+    var taxRate = <?php echo $tax_rate; ?>; // Use WooCommerce tax rate
     
     // Initialize box products from bocs products
     <?php if (!empty($available_products)) : ?>
@@ -762,6 +1043,7 @@ jQuery(document).ready(function($) {
                 $product_name = isset($product['name']) ? $product['name'] : '';
                 $product_price = isset($product['price']) ? floatval($product['price']) : 0;
                 $product_quantity = isset($product['quantity']) ? intval($product['quantity']) : 0;
+                $external_source_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
                 
                 // Skip if product ID is empty
                 if (empty($product_id)) continue;
@@ -770,7 +1052,8 @@ jQuery(document).ready(function($) {
                 id: '<?php echo esc_js($product_id); ?>',
                 name: '<?php echo esc_js($product_name); ?>',
                 price: <?php echo esc_js($product_price); ?>,
-                quantity: <?php echo esc_js($product_quantity); ?>
+                quantity: <?php echo esc_js($product_quantity); ?>,
+                externalSourceId: '<?php echo esc_js($external_source_id); ?>'
             });
         <?php endforeach; ?>
     <?php endif; ?>
@@ -866,12 +1149,14 @@ jQuery(document).ready(function($) {
             var productId = productCard.data('product-id');
             var productPrice = parseFloat(productCard.data('product-price')) || 0;
             var productName = productCard.find('.bocs-product-name').text();
+            var externalId = productCard.data('external-id') || '';
             var quantity = parseInt(input.val()) || 0;
             
             // Update or add product in boxProducts array
             var found = false;
             for (var i = 0; i < boxProducts.length; i++) {
                 if (boxProducts[i].id === productId) {
+                    // Preserve other properties and only update quantity
                     boxProducts[i].quantity = quantity;
                     found = true;
                     break;
@@ -879,11 +1164,13 @@ jQuery(document).ready(function($) {
             }
             
             if (!found && quantity > 0) {
+                // If it's a new product (shouldn't normally happen), add it
                 boxProducts.push({
                     id: productId,
                     name: productName,
                     price: productPrice,
-                    quantity: quantity
+                    quantity: quantity,
+                    externalSourceId: externalId
                 });
             }
         });
@@ -895,12 +1182,14 @@ jQuery(document).ready(function($) {
         var productId = productCard.data('product-id');
         var productPrice = parseFloat(productCard.data('product-price')) || 0;
         var productName = productCard.find('.bocs-product-name').text();
+        var externalId = productCard.data('external-id') || '';
         var quantity = parseInt($(this).val()) || 0;
         
         // Update or add product in boxProducts array
         var found = false;
         for (var i = 0; i < boxProducts.length; i++) {
             if (boxProducts[i].id === productId) {
+                // Preserve other properties and only update quantity
                 boxProducts[i].quantity = quantity;
                 found = true;
                 break;
@@ -908,11 +1197,13 @@ jQuery(document).ready(function($) {
         }
         
         if (!found && quantity > 0) {
+            // If it's a new product (shouldn't normally happen), add it
             boxProducts.push({
                 id: productId,
                 name: productName,
                 price: productPrice,
-                quantity: quantity
+                quantity: quantity,
+                externalSourceId: externalId
             });
         }
         
@@ -928,6 +1219,10 @@ jQuery(document).ready(function($) {
         var subtotal = 0;
         var totalQuantity = 0;
         var saveButton = $('#save-box-changes');
+        
+        // Get shipping information
+        var shippingTotal = <?php echo floatval($shipping_total); ?>;
+        var shippingTax = <?php echo floatval($shipping_tax); ?>;
         
         summaryItemsContainer.empty();
         
@@ -960,8 +1255,7 @@ jQuery(document).ready(function($) {
             
             // Calculate discount if applicable
             var discountValue = 0;
-            var taxValue = 0;
-            var shippingValue = 0;
+            var discountTaxValue = 0;
             var finalPrice = subtotal;
             
             // Update the subtotal row (first row in tfoot)
@@ -993,8 +1287,8 @@ jQuery(document).ready(function($) {
                 $(discountRow).insertBefore(summaryTotalsContainer.find('tr.bocs-summary-grand-total'));
             }
             
-            // Calculate tax (assuming 10% GST)
-            taxValue = finalPrice * 0.1;
+            // Calculate tax using WooCommerce tax rate
+            var taxValue = finalPrice * taxRate;
             
             // Add tax row
             var taxRow = '<tr class="bocs-summary-tax">' +
@@ -1004,9 +1298,10 @@ jQuery(document).ready(function($) {
             
             $(taxRow).insertBefore(summaryTotalsContainer.find('tr.bocs-summary-grand-total'));
             
-            // Include shipping if available from subscription
-            <?php if (isset($subscription['shippingTotal']) && floatval($subscription['shippingTotal']) > 0) : ?>
-                shippingValue = <?php echo floatval($subscription['shippingTotal']); ?>;
+            // Add shipping row if shipping cost is available
+            var shippingValue = 0;
+            if (shippingTotal > 0) {
+                shippingValue = shippingTotal;
                 
                 var shippingRow = '<tr class="bocs-summary-shipping">' +
                     '<th colspan="2"><?php esc_html_e('Shipping:', 'bocs-wordpress'); ?></th>' +
@@ -1014,10 +1309,10 @@ jQuery(document).ready(function($) {
                     '</tr>';
                 
                 $(shippingRow).insertBefore(summaryTotalsContainer.find('tr.bocs-summary-grand-total'));
-            <?php endif; ?>
+            }
             
             // Update final total (including tax and shipping)
-            var total = finalPrice + taxValue + shippingValue;
+            var total = finalPrice + taxValue + shippingValue + shippingTax;
             summaryTotalsContainer.find('tr.bocs-summary-grand-total td').html(formatPrice(total, currency));
             
             // Update floating summary if it exists
@@ -1162,23 +1457,18 @@ jQuery(document).ready(function($) {
         var originalText = button.html();
         
         // Filter out products with quantity 0
-        var lineItems = boxProducts.filter(function(product) {
+        var selectedProducts = boxProducts.filter(function(product) {
             return product.quantity > 0;
-        }).map(function(product) {
-            return {
-                productId: product.id,
-                quantity: product.quantity
-            };
         });
         
-        if (lineItems.length === 0) {
+        if (selectedProducts.length === 0) {
             showNotification('error', '<?php esc_attr_e('Please add at least one product to your box.', 'bocs-wordpress'); ?>');
             return;
         }
         
         // Validate total quantity
         var totalQuantity = 0;
-        lineItems.forEach(function(item) {
+        selectedProducts.forEach(function(item) {
             totalQuantity += item.quantity;
         });
         
@@ -1195,18 +1485,20 @@ jQuery(document).ready(function($) {
         // Show loading state with subtle animation
         button.html('<span class="bocs-loading-spinner"></span> <?php esc_attr_e('Saving...', 'bocs-wordpress'); ?>').prop('disabled', true);
         
-        // Prepare data for API
-        var data = {
-            lineItems: lineItems
-        };
+        // Store shipping information
+        var shippingTotal = <?php echo floatval($shipping_total); ?>;
+        var shippingTax = <?php echo floatval($shipping_tax); ?>;
         
-        // Calculate totals for API
+        // Generate complete line items using our function (including shipping if available)
+        var lineItems = generateLineItems(selectedProducts, taxRate, true);
+        
+        // Calculate subtotal for additional calculations (exclude shipping)
         var subtotal = 0;
-        var totalTax = 0;
         lineItems.forEach(function(item) {
-            // Calculate item total and tax
-            var itemTotal = (boxProducts.find(p => p.id === item.productId).price * item.quantity).toFixed(2);
-            subtotal += parseFloat(itemTotal);
+            // Skip shipping when calculating product subtotal
+            if (item.productId !== 'shipping') {
+                subtotal += item.subtotal * item.quantity;
+            }
         });
         
         // Round subtotal to 2 decimal places
@@ -1214,6 +1506,7 @@ jQuery(document).ready(function($) {
         
         // Calculate discount
         var discountValue = 0;
+        var discountTaxValue = 0;
         var finalPrice = subtotal;
         
         if (discountAmount > 0 && discountType !== 'NONE') {
@@ -1226,41 +1519,52 @@ jQuery(document).ready(function($) {
                 if (finalPrice < 0) finalPrice = 0;
             }
             
+            // Calculate discount tax
+            discountTaxValue = parseFloat((discountValue * taxRate).toFixed(2));
+        }
+        
+        // Calculate total tax using WooCommerce tax rate
+        var totalTax = parseFloat((finalPrice * taxRate).toFixed(2));
+        
+        // Add shipping to final price calculation
+        var finalTotal = finalPrice + totalTax;
+        if (shippingTotal > 0) {
+            finalTotal += shippingTotal + shippingTax;
+        }
+        
+        // Round the final total
+        finalTotal = parseFloat(finalTotal.toFixed(2));
+        
+        // Prepare data according to the required format
+        var data = {
+            lineItems: lineItems,
+            total: finalTotal,
+            totalTax: parseFloat((totalTax + shippingTax).toFixed(2)),
+            cartTax: parseFloat(totalTax.toFixed(2)),
+            shippingTax: parseFloat(shippingTax.toFixed(2))
+        };
+        
+        // Add shipping total if shipping is included
+        if (shippingTotal > 0) {
+            data.shippingTotal = parseFloat(shippingTotal.toFixed(2));
+        }
+        
+        // Add discount data if applicable
+        if (discountAmount > 0 && discountType !== 'NONE') {
+            // Add discount values
+            data.discountTotal = discountValue;
+            data.discountTax = discountTaxValue;
+            
             // Create coupon line item
             var couponCode = 'bocs-' + (discountUnit === 'percent' ? discountAmount + '-percent-off' : discountAmount + '-dollar-off') + '-' + Date.now();
-            
             data.couponLines = [{
-                discount: parseFloat(discountValue.toFixed(2)),
+                discount: discountValue,
                 code: couponCode,
-                discountTax: parseFloat((discountValue * 0.1).toFixed(2)) // Assuming 10% tax rate for calculation
+                discountTax: discountTaxValue
             }];
-            
-            data.discountTotal = parseFloat(discountValue.toFixed(2));
-            data.discountTax = parseFloat((discountValue * 0.1).toFixed(2)); // Assuming 10% tax rate for calculation
         }
         
-        // Calculate tax (assuming 10% GST)
-        totalTax = parseFloat((finalPrice * 0.1).toFixed(2));
-        
-        // Add total fields
-        data.total = parseFloat((finalPrice + totalTax).toFixed(2));
-        data.totalTax = parseFloat(totalTax.toFixed(2));
-        data.cartTax = parseFloat(totalTax.toFixed(2));
-        data.shippingTax = 0; // Default to 0 if no shipping
-        
-        // Ensure all monetary fields are numbers, not strings
-        if (data.discountTotal) {
-            data.discountTotal = parseFloat(data.discountTotal);
-        }
-        if (data.discountTax) {
-            data.discountTax = parseFloat(data.discountTax);
-        }
-        if (data.couponLines && data.couponLines.length > 0) {
-            data.couponLines.forEach(function(coupon) {
-                coupon.discount = parseFloat(coupon.discount);
-                coupon.discountTax = parseFloat(coupon.discountTax);
-            });
-        }
+        console.log('Request Data:', data);
         
         // Make API request directly to Bocs API
         $.ajax({
@@ -1329,13 +1633,22 @@ jQuery(document).ready(function($) {
             lineItems: lineItems
         };
         
+        // Add shipping total if shipping is included in the line items
+        var shippingItem = lineItems.find(item => item.productId === 'shipping');
+        if (shippingItem) {
+            simplifiedData.shippingTotal = parseFloat(shippingItem.total.toFixed(2));
+            simplifiedData.shippingTax = parseFloat(shippingItem.totalTax.toFixed(2));
+        }
+        
         // Ensure monetary fields are sent as numbers if we include them
         if (discountAmount > 0 && discountType !== 'NONE') {
             // Calculate basic discount values
             var subtotal = 0;
             lineItems.forEach(function(item) {
-                var itemTotal = (boxProducts.find(p => p.id === item.productId).price * item.quantity);
-                subtotal += itemTotal;
+                // Skip shipping when calculating product subtotal for discount
+                if (item.productId !== 'shipping') {
+                    subtotal += parseFloat(item.subtotal) * parseInt(item.quantity);
+                }
             });
             
             var discountValue = 0;
@@ -1345,8 +1658,20 @@ jQuery(document).ready(function($) {
                 discountValue = discountAmount;
             }
             
-            // Only include minimal fields needed
+            // Calculate discount tax
+            var discountTaxValue = discountValue * taxRate;
+            
+            // Include discount data in simplified format
             simplifiedData.discountTotal = parseFloat(discountValue.toFixed(2));
+            simplifiedData.discountTax = parseFloat(discountTaxValue.toFixed(2));
+            
+            // Add coupon line
+            var couponCode = 'bocs-' + (discountUnit === 'percent' ? discountAmount + '-percent-off' : discountAmount + '-dollar-off') + '-' + Date.now();
+            simplifiedData.couponLines = [{
+                discount: parseFloat(discountValue.toFixed(2)),
+                code: couponCode,
+                discountTax: parseFloat(discountTaxValue.toFixed(2))
+            }];
         }
         
         console.log('Retrying with simplified data:', simplifiedData);

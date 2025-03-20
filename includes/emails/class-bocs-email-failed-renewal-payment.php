@@ -87,7 +87,7 @@ class WC_Bocs_Email_Failed_Renewal_Payment extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Renewal Payment Failed', 'bocs-wordpress');
+        return __('[Bocs] Renewal Payment Failed', 'bocs-wordpress');
     }
 
     /**

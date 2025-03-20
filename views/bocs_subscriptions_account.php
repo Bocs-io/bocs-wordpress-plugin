@@ -249,10 +249,9 @@ $frequency_text = ''; // or whatever default value is appropriate
                                     <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
                                 </a>
                             <?php endif; ?>
-                            <button class="woocommerce-button button alt view-details" 
-                                data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
+                            <a href="<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>" class="woocommerce-button button alt view-details">
                                 <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
-                            </button>
+                            </a>
                             <button class="woocommerce-button button edit-payment-method" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
                                 <?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?>
@@ -1777,6 +1776,14 @@ jQuery(document).ready(function($) {
     // Track currently active subscription for state management
     let activeSubscriptionId = null;
 
+    // Add click handler for Edit Details link
+    $(document).on('click', 'a.view-details', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Manually navigate to the href
+        window.location.href = $(this).attr('href');
+    });
+    
     // Initialize jQuery UI Accordion
     $('#bocs-subscriptions-accordion').accordion({
         collapsible: true,
@@ -2758,7 +2765,7 @@ jQuery(document).ready(function($) {
      * Connects DOM elements to their respective event handlers
      */
     $(document)
-        .on('click', '.subscription-actions .view-details, button.view-details', eventHandlers.viewDetails)
+        .on('click', 'button.view-details', eventHandlers.viewDetails)
         .on('click', '.edit-link', eventHandlers.editFrequency)
         .on('click', '.cancel-edit', eventHandlers.cancelEdit)
         .on('click', '.save-frequency', eventHandlers.saveFrequency)

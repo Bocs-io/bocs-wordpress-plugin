@@ -105,7 +105,7 @@ class WC_Bocs_Email_Completed_Renewal_Order extends WC_Email_Customer_Completed_
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Your renewal order is complete', 'bocs-wordpress');
+        return __('[Bocs] Your renewal order is complete', 'bocs-wordpress');
     }
 
     /**

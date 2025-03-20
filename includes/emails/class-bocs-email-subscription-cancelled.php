@@ -68,7 +68,7 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Subscription Cancelled', 'bocs-wordpress');
+        return __('[Bocs] Subscription Cancelled', 'bocs-wordpress');
     }
 
     /**

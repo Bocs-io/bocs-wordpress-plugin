@@ -307,6 +307,9 @@ function activate_bocs_plugin() {
         // Initialize Bocs account and endpoints
         $bocs_account = new Bocs_Account();
         $bocs_account->register_bocs_account_endpoint();
+        $bocs_account->register_bocs_view_subscription_endpoint();
+        $bocs_account->register_bocs_update_box_endpoint();
+        $bocs_account->register_bocs_edit_details_endpoint();
         
         // Call Bocs class activation method
         $bocs = new Bocs();

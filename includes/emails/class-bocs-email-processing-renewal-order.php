@@ -23,21 +23,7 @@ if (!class_exists('WC_Email', false)) {
     include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
 }
 
-// Load parent class for processing orders if not already loaded
-if (!class_exists('WC_Email_Customer_Processing_Order', false)) {
-    if (file_exists(WC_ABSPATH . 'includes/emails/class-wc-email-customer-processing-order.php')) {
-        include_once WC_ABSPATH . 'includes/emails/class-wc-email-customer-processing-order.php';
-    } else {
-        // If the parent class cannot be found, log an error and return
-        if (function_exists('wc_get_logger')) {
-            $logger = wc_get_logger();
-            $logger->error('Cannot load WC_Email_Customer_Processing_Order class. BOCS email classes cannot be initialized.');
-        }
-        return;
-    }
-}
-
-if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order') && class_exists('WC_Email_Customer_Processing_Order')):
+if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order')):
 
 /**
  * Class WC_Bocs_Email_Processing_Renewal_Order
@@ -48,7 +34,7 @@ if (!class_exists('WC_Bocs_Email_Processing_Renewal_Order') && class_exists('WC_
  * @author      Bocs
  * @category    Emails
  */
-class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processing_Order {
+class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email {
 
     /**
      * Bocs ID associated with this order.
@@ -56,6 +42,13 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      * @var string
      */
     public $bocs_id;
+
+    /**
+     * The order object.
+     *
+     * @var WC_Order
+     */
+    public $object;
 
     /**
      * Constructor
@@ -76,6 +69,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
         $this->placeholders   = array(
             '{order_date}'   => '',
             '{order_number}' => '',
+            '{site_title}'   => $this->get_blogname(),
         );
 
         // Call parent constructor
@@ -88,7 +82,6 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      * Defines the default subject line for the processing renewal order email.
      *
      * @since 1.0.0
-     * @since 3.1.0 in WooCommerce core
      * @return string Default email subject
      */
     public function get_default_subject() {
@@ -101,11 +94,10 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
      * Defines the default heading for the processing renewal order email.
      *
      * @since 1.0.0
-     * @since 3.1.0 in WooCommerce core
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Processing Renewal Order', 'bocs-wordpress');
+        return __('[Bocs] Processing Renewal Order', 'bocs-wordpress');
     }
 
     /**
@@ -141,18 +133,10 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                     return;
                 }
                 
-                // Check parent subscription or order for Bocs attribution
-                $parent_id = $is_renewal;
-                if (empty($parent_id)) {
-                    $parent_id = $order_id;
-                }
-                
-                // Check if the order has the required meta data
-                $source_type = get_post_meta($parent_id, '_wc_order_attribution_source_type', true);
-                $utm_source = get_post_meta($parent_id, '_wc_order_attribution_utm_source', true);
-                
-                // Set recipient regardless of source to ensure renewal orders get emails
+                // Set recipient
                 $this->recipient = $this->object->get_billing_email();
+                
+                // Setup placeholders
                 $this->placeholders['{order_date}'] = wc_format_datetime($this->object->get_date_created());
                 $this->placeholders['{order_number}'] = $this->object->get_order_number();
                 
@@ -169,19 +153,11 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                 } elseif (!empty($bocs_subscription_id)) {
                     $this->bocs_id = $bocs_subscription_id;
                 }
-                
-                // Only log for debugging if not from Bocs App
-                if ($source_type !== 'referral' || $utm_source !== 'Bocs App') {
-                    // Removed error_log message
-                }
             }
         }
 
         if ($this->is_enabled() && $this->get_recipient()) {
-            // Removed error_log message
             $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-        } else {
-            // Removed error_log message
         }
 
         $this->restore_locale();
@@ -266,7 +242,7 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Processing Renewal Order</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>[Bocs] Processing Renewal Order</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
             ),
@@ -303,16 +279,15 @@ class WC_Bocs_Email_Processing_Renewal_Order extends WC_Email_Customer_Processin
         /**
          * Bocs Subscription Renewal Order Email Functionality:
          * 
-         * 1. WooCommerce default order emails are disabled for renewal orders through filters
-         *    in Bocs_Email::disable_wc_emails() which hooks into 'woocommerce_email_enabled_{email_id}'
+         * 1. This email is specifically for subscription renewal orders
+         *    and does NOT override WooCommerce default order emails
          * 
          * 2. Duplicate emails are prevented through:
          *    - Static tracking in the trigger() method to prevent multiple calls
-         *    - Static flags in init_email_classes() methods to prevent duplicate hook registration
          *    - Early return in the trigger() method for non-renewal orders
          * 
-         * 3. The email template is used exclusively for subscription renewal orders
-         *    and includes inline styles matching the Bocs.io branding
+         * 3. This email template is for subscription renewal orders only
+         *    and extends WC_Email directly for cleaner separation from standard emails
          */
     }
 }

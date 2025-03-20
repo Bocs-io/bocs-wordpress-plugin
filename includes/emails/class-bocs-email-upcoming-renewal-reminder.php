@@ -69,7 +69,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Upcoming Subscription Renewal', 'bocs-wordpress');
+        return __('[Bocs] Upcoming Subscription Renewal', 'bocs-wordpress');
     }
 
     /**

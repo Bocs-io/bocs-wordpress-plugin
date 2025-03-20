@@ -241,4 +241,163 @@ class BOCS_AJAX {
 
         return true;
     }
+}
+
+/**
+ * Generate line items in the proper format for BOCS API
+ *
+ * @param array $products Array of products from BOCS collection
+ * @param bool $include_shipping Whether to include shipping costs from WooCommerce
+ * @return array Formatted line items with shipping information
+ */
+function generate_line_items($products, $include_shipping = true) {
+    $line_items = array();
+    
+    if (empty($products) || !is_array($products)) {
+        return $line_items;
+    }
+    
+    // Get WooCommerce tax rate
+    $tax_rate = 0.1; // Default fallback to 10% GST
+    $shipping_total = 0;
+    $shipping_tax = 0;
+    
+    // Check if WooCommerce is active
+    if (function_exists('WC')) {
+        // Get tax rates from WooCommerce
+        $tax_classes = WC_Tax::get_tax_classes();
+        $tax_rates = array();
+        
+        // If no tax classes, use standard rate
+        if (empty($tax_classes)) {
+            $tax_rates = WC_Tax::get_rates();
+        } else {
+            // Add standard class
+            $tax_rates = WC_Tax::get_rates();
+            
+            // If we need tax rates from a specific class, we can get them here
+            // For example, if we need to match specific product tax classes
+        }
+        
+        // If we have tax rates, calculate the effective rate
+        if (!empty($tax_rates)) {
+            // Sum up all the rates (handles multiple taxes applied)
+            $total_rate = 0;
+            foreach ($tax_rates as $rate) {
+                $total_rate += floatval($rate['rate']);
+            }
+            
+            // Convert percentage to decimal (e.g., 10% becomes 0.1)
+            $tax_rate = $total_rate / 100;
+        }
+        
+        // Get shipping information if needed
+        if ($include_shipping) {
+            $shipping_methods = WC()->shipping()->get_shipping_methods();
+            
+            // If WooCommerce cart is available, try to get shipping from there
+            if (function_exists('WC') && isset(WC()->cart) && WC()->cart) {
+                // Get shipping from cart if available
+                $chosen_shipping_methods = WC()->session->get('chosen_shipping_methods');
+                $shipping_packages = WC()->shipping()->get_packages();
+                
+                if (!empty($shipping_packages) && !empty($chosen_shipping_methods)) {
+                    foreach ($shipping_packages as $i => $package) {
+                        if (isset($chosen_shipping_methods[$i]) && isset($package['rates'][$chosen_shipping_methods[$i]])) {
+                            $method = $package['rates'][$chosen_shipping_methods[$i]];
+                            $shipping_total += $method->cost;
+                            $shipping_tax += $method->get_shipping_tax();
+                        }
+                    }
+                }
+            } else {
+                // Default to a standard shipping method if cart isn't available
+                foreach ($shipping_methods as $method) {
+                    if ($method->enabled === 'yes' && $method->id === 'flat_rate') {
+                        // Use flat rate if available and enabled
+                        $cost = $method->get_option('cost');
+                        if (!empty($cost)) {
+                            $shipping_total = floatval($cost);
+                            $shipping_tax = $shipping_total * $tax_rate;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    foreach ($products as $product) {
+        if (!isset($product['id']) || !isset($product['price'])) {
+            continue;
+        }
+        
+        $price = floatval($product['price']);
+        $subtotal = $price;
+        $quantity = isset($product['quantity']) ? intval($product['quantity']) : 1;
+        
+        // Calculate tax using the fetched rate
+        $subtotalTax = round($subtotal * $tax_rate, 2);
+        $totalTax = round($price * $tax_rate, 2);
+        
+        // Simply use the externalSourceId from the product data
+        $external_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
+        
+        // Get the SKU - if empty, try to get it from WooCommerce using externalSourceId
+        $sku = isset($product['sku']) ? $product['sku'] : '';
+        
+        // If SKU is empty and we have an externalSourceId, try to get it from WooCommerce
+        if (empty($sku) && !empty($external_id) && function_exists('wc_get_product')) {
+            // Use externalSourceId as WooCommerce product ID
+            $wc_product = wc_get_product($external_id);
+            if ($wc_product) {
+                $sku = $wc_product->get_sku();
+            }
+        }
+        
+        $line_item = array(
+            'taxClass' => '',
+            'quantity' => $quantity,
+            'productId' => $product['id'],
+            'taxes' => array(),
+            'totalTax' => $totalTax,
+            'subtotalTax' => $subtotalTax,
+            'metaData' => array(),
+            'total' => $price,
+            'parentName' => '',
+            'variationId' => '',
+            'subtotal' => $subtotal,
+            'price' => $price,
+            'name' => isset($product['name']) ? $product['name'] : '',
+            'externalSourceId' => $external_id,
+            'id' => '',
+            'sku' => $sku
+        );
+        
+        $line_items[] = $line_item;
+    }
+    
+    // Add shipping as a separate line item if available
+    if ($include_shipping && $shipping_total > 0) {
+        $line_items[] = array(
+            'taxClass' => '',
+            'quantity' => 1,
+            'productId' => 'shipping',
+            'taxes' => array(),
+            'totalTax' => round($shipping_tax, 2),
+            'subtotalTax' => round($shipping_tax, 2),
+            'metaData' => array(),
+            'total' => $shipping_total,
+            'parentName' => '',
+            'variationId' => '',
+            'subtotal' => $shipping_total,
+            'price' => $shipping_total,
+            'name' => 'Shipping',
+            'externalSourceId' => 'shipping',
+            'id' => '',
+            'sku' => 'shipping'
+        );
+    }
+    
+    return $line_items;
 } 

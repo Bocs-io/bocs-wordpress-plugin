@@ -98,7 +98,7 @@ class WC_Bocs_Email_Customer_Renewal_Invoice extends WC_Email_Customer_Invoice {
      * @return string Default email heading
      */
     public function get_default_heading($paid = false) {
-        return __('Subscription Renewal Invoice', 'bocs-wordpress');
+        return __('[Bocs] Subscription Renewal Invoice', 'bocs-wordpress');
     }
 
     /**

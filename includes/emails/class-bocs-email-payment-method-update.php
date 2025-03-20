@@ -77,7 +77,7 @@ class WC_Bocs_Email_Payment_Method_Update extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Payment Method Update Required', 'bocs-wordpress');
+        return __('[Bocs] Payment Method Update Required', 'bocs-wordpress');
     }
 
     /**

@@ -141,24 +141,20 @@ class Bocs_Email
 
         // Map our email IDs to WooCommerce default email IDs
         $email_mapping = array(
-            // Processing Renewal Order
+            // Processing Renewal Order - only disable renewal specific emails
             'bocs_processing_renewal_order' => array(
-                'customer_processing_order',
                 'customer_processing_renewal_order'
             ),
-            // Completed Renewal Order
+            // Completed Renewal Order - only disable renewal specific emails
             'bocs_completed_renewal_order' => array(
-                'customer_completed_order',
                 'customer_completed_renewal_order'
             ),
-            // On Hold Renewal Order
+            // On Hold Renewal Order - only disable renewal specific emails
             'bocs_on_hold_renewal_order' => array(
-                'customer_on_hold_order',
                 'customer_on_hold_renewal_order'
             ),
             // Customer Renewal Invoice
             'bocs_customer_renewal_invoice' => array(
-                'customer_invoice',
                 'customer_renewal_invoice'
             ),
             // Subscription Switched
@@ -167,12 +163,10 @@ class Bocs_Email
             ),
             // Welcome Email
             'bocs_welcome' => array(
-                'customer_new_account',
-                'customer_processing_order'
+                'customer_new_account'
             ),
             // Failed Renewal Payment
             'bocs_failed_renewal_payment' => array(
-                'failed_order',
                 'failed_subscription_renewal'
             ),
             // Upcoming Renewal Reminder
@@ -182,28 +176,22 @@ class Bocs_Email
             ),
             // Subscription Cancelled
             'bocs_subscription_cancelled' => array(
-                'cancelled_subscription',
-                'cancelled_order'
+                'cancelled_subscription'
             ),
             // Payment Retry
             'bocs_payment_retry' => array(
-                'failed_order',
-                'failed_subscription_renewal',
                 'customer_payment_retry'
             ),
             // Payment Method Update
             'bocs_payment_method_update' => array(
-                'customer_payment_retry',
-                'failed_subscription_renewal'
+                'customer_payment_retry'
             ),
             // Subscription Paused
             'bocs_subscription_paused' => array(
-                'customer_on_hold_order',
                 'subscription_put_on_hold'
             ),
             // Subscription Reactivated
             'bocs_subscription_reactivated' => array(
-                'customer_processing_order',
                 'subscription_activated'
             ),
             // Manual Renewal Reminder
@@ -239,35 +227,18 @@ class Bocs_Email
                         $is_renewal = get_post_meta($order_id, '_subscription_renewal', true);
                     }
                     
-                    // Always disable WooCommerce default emails for subscription renewal orders
-                    // to prevent duplicate emails
+                    // Only disable WooCommerce emails for subscription renewal orders
+                    // and preserve regular order emails
                     if ($is_renewal) {
-                        error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for renewal order #{$order_id} - using Bocs email instead");
+                        // This is a renewal order - disable the standard WooCommerce email
                         return false;
+                    } else if (strpos($wc_email_id, 'renewal') !== false) {
+                        // This is a renewal-specific email but for a regular order
+                        // We can safely disable it
+                        return $enabled;
                     }
                     
-                    // Check parent order if this is a subscription and has a parent
-                    if (is_callable(array($order, 'get_parent_id')) && $order->get_parent_id()) {
-                        $parent_order_id = $order->get_parent_id();
-                        $source_type = get_post_meta($parent_order_id, '_wc_order_attribution_source_type', true);
-                        $utm_source = get_post_meta($parent_order_id, '_wc_order_attribution_utm_source', true);
-                        
-                        if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-                            error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for order with Bocs App parent #{$parent_order_id}");
-                            return false;
-                        }
-                    }
-
-                    // Check the order itself
-                    $source_type = get_post_meta($order_id, '_wc_order_attribution_source_type', true);
-                    $utm_source = get_post_meta($order_id, '_wc_order_attribution_utm_source', true);
-
-                    // If this is a Bocs order, disable the corresponding WooCommerce email
-                    if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-                        error_log("Bocs: Disabled WooCommerce {$wc_email_id} email for Bocs App order #{$order_id}");
-                        return false;
-                    }
-
+                    // For all other cases, keep the original enabled status
                     return $enabled;
                 }, 10, 2);
             }
@@ -317,9 +288,23 @@ class Bocs_Email
         // Processing Renewal Order Email
         if (class_exists('WC_Bocs_Email_Processing_Renewal_Order')) {
             $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
-            add_action('woocommerce_order_status_processing', array($processing_orders, 'trigger'), 10, 1);
-            add_action('woocommerce_order_status_pending_to_processing', array($processing_orders, 'trigger'), 10, 1);
-            add_action('woocommerce_order_status_failed_to_processing', array($processing_orders, 'trigger'), 10, 1);
+            
+            // Hook to handle processing of renewal orders only
+            add_action('woocommerce_order_status_pending_to_processing', function($order_id) use ($processing_orders) {
+                // Check if this is a renewal order
+                $is_renewal = get_post_meta($order_id, '_subscription_renewal', true);
+                if (!empty($is_renewal)) {
+                    $processing_orders->trigger($order_id);
+                }
+            }, 10);
+            
+            add_action('woocommerce_order_status_failed_to_processing', function($order_id) use ($processing_orders) {
+                // Check if this is a renewal order
+                $is_renewal = get_post_meta($order_id, '_subscription_renewal', true);
+                if (!empty($is_renewal)) {
+                    $processing_orders->trigger($order_id);
+                }
+            }, 10);
         }
 
         // Completed Renewal Order Email

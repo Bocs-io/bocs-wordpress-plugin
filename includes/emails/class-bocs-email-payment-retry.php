@@ -70,7 +70,7 @@ class WC_Bocs_Email_Payment_Retry extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Payment Retry Scheduled', 'bocs-wordpress');
+        return __('[Bocs] Payment Retry Scheduled', 'bocs-wordpress');
     }
 
     /**

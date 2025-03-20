@@ -218,6 +218,14 @@ class Bocs_Account
     }
 
     /**
+     * Register the Bocs subscription edit details endpoint
+     */
+    public function register_bocs_edit_details_endpoint()
+    {
+        add_rewrite_endpoint('bocs-edit-details', EP_PAGES);
+    }
+
+    /**
      * Display content for the subscription view page
      */
     public function bocs_view_subscription_endpoint_content()
@@ -294,6 +302,31 @@ class Bocs_Account
             include $template_path;
         } else {
             echo esc_html__('Update box template not found.', 'bocs-wordpress');
+        }
+    }
+
+    /**
+     * Display content for the edit details page
+     */
+    public function bocs_edit_details_endpoint_content()
+    {
+        global $wp;
+
+        $bocs_subscription_id = isset($wp->query_vars['bocs-edit-details']) 
+            ? sanitize_text_field($wp->query_vars['bocs-edit-details']) 
+            : '';
+
+        if (empty($bocs_subscription_id)) {
+            echo '<div class="woocommerce-error">' . esc_html__('Invalid subscription ID.', 'bocs-wordpress') . '</div>';
+            return;
+        }
+
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_edit_details.php';
+
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            echo esc_html__('Edit details template not found.', 'bocs-wordpress');
         }
     }
 

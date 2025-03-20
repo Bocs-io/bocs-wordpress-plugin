@@ -147,6 +147,8 @@ class Bocs
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
         $this->loader->add_action('init', $bocs_account, 'register_bocs_update_box_endpoint');
         $this->loader->add_action('woocommerce_account_bocs-update-box_endpoint', $bocs_account, 'bocs_update_box_endpoint_content');
+        $this->loader->add_action('init', $bocs_account, 'register_bocs_edit_details_endpoint');
+        $this->loader->add_action('woocommerce_account_bocs-edit-details_endpoint', $bocs_account, 'bocs_edit_details_endpoint_content');
 
         $bocs_payment_method = new Bocs_Payment_Method();
         $this->loader->add_filter('woocommerce_payment_methods_list_item', $bocs_payment_method, 'add_edit_payment_method_button', 10, 2);
@@ -421,6 +423,7 @@ class Bocs
         $account->register_bocs_account_endpoint();
         $account->register_bocs_view_subscription_endpoint();
         $account->register_bocs_update_box_endpoint();
+        $account->register_bocs_edit_details_endpoint();
         
         // Flush rewrite rules
         flush_rewrite_rules();

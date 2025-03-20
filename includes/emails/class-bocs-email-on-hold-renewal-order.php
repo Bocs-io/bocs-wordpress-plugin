@@ -105,7 +105,7 @@ class WC_Bocs_Email_On_Hold_Renewal_Order extends WC_Email_Customer_On_Hold_Orde
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Renewal Order On-hold', 'bocs-wordpress');
+        return __('[Bocs] Renewal Order On-hold', 'bocs-wordpress');
     }
 
     /**

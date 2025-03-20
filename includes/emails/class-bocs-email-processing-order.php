@@ -105,7 +105,7 @@ class WC_Bocs_Email_Processing_Order extends WC_Email_Customer_Processing_Order 
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Subscription Renewal Processing', 'bocs-wordpress');
+        return __('[Bocs] Subscription Renewal Processing', 'bocs-wordpress');
     }
 
     /**
