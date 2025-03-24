@@ -2769,14 +2769,16 @@ class Admin
 
             // Direct parent-child relationship
             if ($related_parent_id === $order_id) {
-                return esc_html__('Child Order', 'bocs-wordpress');
+                // return esc_html__('Child Order', 'bocs-wordpress');
+                return esc_html__('Renewal Order', 'bocs-wordpress');
             } elseif ($primary_parent_id === $related_order_id) {
                 return esc_html__('Parent Order', 'bocs-wordpress');
             }
 
             // If both have the same parent, they're siblings
             if ($primary_parent_id && $primary_parent_id === $related_parent_id) {
-                return esc_html__('Sibling Order', 'bocs-wordpress');
+                //return esc_html__('Sibling Order', 'bocs-wordpress');
+                return esc_html__('Renewal Order', 'bocs-wordpress');
             }
 
             // Get subscription IDs for both orders
