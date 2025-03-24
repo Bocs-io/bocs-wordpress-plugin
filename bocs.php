@@ -15,7 +15,7 @@
  * Plugin Name:       Bocs (alpha)
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.124
+ * Version:           0.0.125
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
  * Current plugin version.
  * Start at version 0.0.109 and use SemVer - https://semver.org
  */
-define('BOCS_VERSION', '0.0.124');
+define('BOCS_VERSION', '0.0.125');
 
 /**
  * Flush rewrite rules on plugin load for development
@@ -127,6 +127,14 @@ if (! function_exists('wp_create_nonce')) {
  */
 require plugin_dir_path(__FILE__) . 'includes/Bocs.php';
 require plugin_dir_path(__FILE__) . 'includes/Bocs_Account.php';
+
+// Make sure the api directory exists
+if (!file_exists(plugin_dir_path(__FILE__) . 'includes/api')) {
+    mkdir(plugin_dir_path(__FILE__) . 'includes/api', 0755, true);
+}
+
+// Load API endpoints
+require plugin_dir_path(__FILE__) . 'includes/api/class-bocs-stripe-keys-api.php';
 
 /**
  * Load plugin text domain for translations.

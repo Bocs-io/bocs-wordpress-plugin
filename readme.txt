@@ -1,3 +1,8 @@
+v0.0.125
+* Product Update 
+* Frequency Update
+* Get Stripe keys
+
 v0.0.124 03/18/2025 
 * Fixes on the trigger payment
 * Fixes on the null frequency on checkout
