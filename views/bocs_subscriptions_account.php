@@ -249,7 +249,9 @@ $frequency_text = ''; // or whatever default value is appropriate
                                     <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
                                 </a>
                             <?php endif; ?>
-                            <a href="<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>" class="woocommerce-button button alt view-details">
+                            <a href="<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>" 
+                                class="woocommerce-button button alt view-details"
+                                onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>';">
                                 <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
                             </a>
                             <button class="woocommerce-button button edit-payment-method" 
