@@ -47,10 +47,11 @@ jQuery(window).on('load', function() {
 				frequencyId = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
 			}
 			if(frequencyId){
-			for ( var i = 0, l = bocsCheckoutObject.bocs['priceAdjustment']['adjustments'].length; i < l; i++ ) {
-				if(bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['id'] == frequencyId){
-					recurringFreq = formatFrequency( bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['frequency'], bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['timeUnit'] );
-					break;
+				for ( var i = 0, l = bocsCheckoutObject.bocs['priceAdjustment']['adjustments'].length; i < l; i++ ) {
+					if(bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['id'] == frequencyId){
+						recurringFreq = formatFrequency( bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['frequency'], bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['timeUnit'] );
+						break;
+					}
 				}
 			}
 		}

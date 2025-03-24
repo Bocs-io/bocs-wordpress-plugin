@@ -1,5 +1,6 @@
 v0.0.125 03/24/2025
 * Rename child/sibling order to renewal order
+* Syntax error at bocs checkout js
 
 v0.0.125 03/24/2025 
 * Product Update 

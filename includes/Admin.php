@@ -533,7 +533,7 @@ class Admin
                 'bocs-checkout-js', 
                 plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
                 array('jquery'),
-                '20250318.1',
+                '20250324.1',
                 true
             );
 
