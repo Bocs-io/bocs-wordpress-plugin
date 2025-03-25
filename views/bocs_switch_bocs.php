@@ -68,11 +68,16 @@ if (is_wp_error($available_bocs)) {
     $error_message = isset($error_message) ? $error_message : $available_bocs->get_error_message();
     error_log('[Bocs] Switch Bocs - Bocs list API Error: ' . $error_message);
 } else {
-    if (!isset($available_bocs['data']) || empty($available_bocs['data'])) {
+    // Handle nested data structure - bocs items are in data.data
+    if (!isset($available_bocs['data']) || 
+        !isset($available_bocs['data']['data']) || 
+        empty($available_bocs['data']['data'])) {
         $has_errors = true;
         error_log('[Bocs] Switch Bocs - Bocs list data empty or invalid');
     } else {
-        error_log('[Bocs] Switch Bocs - Found ' . count($available_bocs['data']) . ' available bocs');
+        // Store the actual bocs items for easier access
+        $bocs_items = $available_bocs['data']['data'];
+        error_log('[Bocs] Switch Bocs - Found ' . count($bocs_items) . ' available bocs');
     }
 }
 
@@ -118,8 +123,8 @@ wp_enqueue_script('jquery-ui-dialog');
     </div>
     
     <div class="bocs-options-grid">
-        <?php if (isset($available_bocs['data']) && is_array($available_bocs['data'])) : ?>
-            <?php foreach ($available_bocs['data'] as $bocs) : ?>
+        <?php if (isset($bocs_items) && is_array($bocs_items)) : ?>
+            <?php foreach ($bocs_items as $bocs) : ?>
                 <?php 
                 // Skip current Bocs
                 if ($current_bocs_id == $bocs['id']) {
@@ -130,10 +135,29 @@ wp_enqueue_script('jquery-ui-dialog');
                 $bocs_id = isset($bocs['id']) ? sanitize_text_field($bocs['id']) : '';
                 $bocs_name = isset($bocs['name']) ? sanitize_text_field($bocs['name']) : '';
                 $bocs_description = isset($bocs['description']) ? sanitize_text_field($bocs['description']) : '';
-                $bocs_price = isset($bocs['price']) ? floatval($bocs['price']) : 0;
-                $bocs_image = isset($bocs['imageUrl']) ? esc_url($bocs['imageUrl']) : '';
                 
-                // Use placeholder image if none provided
+                // Calculate total price based on products
+                $bocs_price = 0;
+                if (isset($bocs['products']) && is_array($bocs['products'])) {
+                    foreach ($bocs['products'] as $product) {
+                        $product_price = isset($product['price']) ? floatval($product['price']) : 0;
+                        $product_quantity = isset($product['quantity']) ? intval($product['quantity']) : 1;
+                        $bocs_price += ($product_price * $product_quantity);
+                    }
+                }
+                
+                // Get image URL from Bocs
+                $bocs_image = '';
+                if (isset($bocs['images']) && !empty($bocs['images']) && isset($bocs['images'][0]['url'])) {
+                    $bocs_image = esc_url($bocs['images'][0]['url']);
+                } elseif (isset($bocs['products']) && !empty($bocs['products']) && 
+                         isset($bocs['products'][0]['images']) && !empty($bocs['products'][0]['images']) &&
+                         isset($bocs['products'][0]['images'][0]['url'])) {
+                    // Fallback to first product image if bocs image not available
+                    $bocs_image = esc_url($bocs['products'][0]['images'][0]['url']);
+                }
+                
+                // Use placeholder image if still none found
                 if (empty($bocs_image)) {
                     $bocs_image = wc_placeholder_img_src();
                 }

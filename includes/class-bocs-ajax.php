@@ -272,6 +272,9 @@ class BOCS_AJAX {
         $subscription_id = sanitize_text_field($_POST['subscription_id']);
         $bocs_id = sanitize_text_field($_POST['bocs_id']);
         
+        // Log the request
+        error_log('[Bocs] Switching subscription ' . $subscription_id . ' to bocs ' . $bocs_id);
+        
         // Prepare API request
         $helper = new Bocs_Helper();
         $options = get_option('bocs_plugin_options');
@@ -289,17 +292,22 @@ class BOCS_AJAX {
         // API endpoint for updating subscription
         $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
         
-        // Data to update
+        // Data to update - match the API's expected format exactly
         $data = [
             'bocsId' => $bocs_id
         ];
+        
+        // Log the API call
+        error_log('[Bocs] Making PATCH request to ' . $url . ' with data: ' . json_encode($data));
         
         // Make API request
         $response = $helper->curl_request($url, 'PATCH', $data, $headers);
         
         // Check if response is a WP_Error
         if (is_wp_error($response)) {
-            wp_send_json_error($response->get_error_message());
+            $error_msg = $response->get_error_message();
+            error_log('[Bocs] Switch failed - WP Error: ' . $error_msg);
+            wp_send_json_error($error_msg);
             return;
         }
         
@@ -308,9 +316,11 @@ class BOCS_AJAX {
             // Trigger an action that can be hooked by email notifications
             do_action('bocs_subscription_switched', $subscription_id, $bocs_id);
             
+            error_log('[Bocs] Switch successful: subscription ' . $subscription_id . ' switched to bocs ' . $bocs_id);
             wp_send_json_success('Subscription updated successfully');
         } else {
             $error_message = isset($response['message']) ? $response['message'] : 'Failed to update subscription';
+            error_log('[Bocs] Switch failed - API Error: ' . $error_message . ' - Response: ' . json_encode($response));
             wp_send_json_error($error_message);
         }
     }
