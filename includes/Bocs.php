@@ -138,17 +138,31 @@ class Bocs
      */
     private function define_account_profile_hooks()
     {
-        $bocs_account = new Bocs_Account();
+        // Load dependencies
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Account.php';
 
-        $this->loader->add_filter('woocommerce_account_menu_items', $bocs_account, 'bocs_account_menu_item');
-        $this->loader->add_action('init', $bocs_account, 'register_bocs_account_endpoint');
-        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_account, 'bocs_endpoint_content');
-        $this->loader->add_action('init', $bocs_account, 'register_bocs_view_subscription_endpoint');
-        $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $bocs_account, 'bocs_view_subscription_endpoint_content');
-        $this->loader->add_action('init', $bocs_account, 'register_bocs_update_box_endpoint');
-        $this->loader->add_action('woocommerce_account_bocs-update-box_endpoint', $bocs_account, 'bocs_update_box_endpoint_content');
-        $this->loader->add_action('init', $bocs_account, 'register_bocs_edit_details_endpoint');
-        $this->loader->add_action('woocommerce_account_bocs-edit-details_endpoint', $bocs_account, 'bocs_edit_details_endpoint_content');
+        // Initialize the Account class
+        $account_handler = new Bocs_Account();
+
+        // Register account management hooks
+        $this->loader->add_filter('woocommerce_account_menu_items', $account_handler, 'bocs_account_menu_item', 10, 1);
+        $this->loader->add_action('init', $account_handler, 'register_bocs_account_endpoint');
+        $this->loader->add_action('init', $account_handler, 'register_bocs_view_subscription_endpoint');
+        $this->loader->add_action('init', $account_handler, 'register_bocs_update_box_endpoint');
+        $this->loader->add_action('init', $account_handler, 'register_bocs_edit_details_endpoint');
+        $this->loader->add_action('init', $account_handler, 'register_bocs_switch_bocs_endpoint');
+
+        // Define endpoint content callbacks
+        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $account_handler, 'bocs_endpoint_content');
+        $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $account_handler, 'bocs_view_subscription_endpoint_content');
+        $this->loader->add_action('woocommerce_account_bocs-update-box_endpoint', $account_handler, 'bocs_update_box_endpoint_content');
+        $this->loader->add_action('woocommerce_account_bocs-edit-details_endpoint', $account_handler, 'bocs_edit_details_endpoint_content');
+        $this->loader->add_action('woocommerce_account_bocs-switch-bocs_endpoint', $account_handler, 'bocs_switch_bocs_endpoint_content');
+
+        // Register checkout account hooks
+        $this->loader->add_filter('option_woocommerce_enable_signup_and_login_from_checkout', $account_handler, 'maybe_enable_registration', 10, 1);
+        $this->loader->add_filter('woocommerce_checkout_registration_required', $account_handler, 'require_registration_during_checkout', 10, 1);
+        $this->loader->add_filter('woocommerce_checkout_posted_data', $account_handler, 'force_registration_during_checkout', 10, 1);
 
         $bocs_payment_method = new Bocs_Payment_Method();
         $this->loader->add_filter('woocommerce_payment_methods_list_item', $bocs_payment_method, 'add_edit_payment_method_button', 10, 2);
@@ -389,6 +403,10 @@ class Bocs
      */
     private function define_ajax_hooks()
     {
+        // Load AJAX handler
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-ajax.php';
+
+        // Initialize AJAX handler
         new BOCS_AJAX();
     }
 
@@ -424,6 +442,7 @@ class Bocs
         $account->register_bocs_view_subscription_endpoint();
         $account->register_bocs_update_box_endpoint();
         $account->register_bocs_edit_details_endpoint();
+        $account->register_bocs_switch_bocs_endpoint();
         
         // Flush rewrite rules
         flush_rewrite_rules();

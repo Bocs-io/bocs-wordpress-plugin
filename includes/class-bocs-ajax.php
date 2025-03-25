@@ -53,6 +53,10 @@ class BOCS_AJAX {
         // Register AJAX actions
         add_action('wp_ajax_bocs_update_box', array($this, 'handle_update_box'));
         add_action('wp_ajax_nopriv_bocs_update_box', array($this, 'handle_unauthorized_request'));
+
+        // Add AJAX handlers
+        add_action('wp_ajax_switch_bocs_subscription', array($this, 'switch_bocs_subscription'));
+        add_action('wp_ajax_nopriv_switch_bocs_subscription', array($this, 'must_login_first'));
     }
 
     /**
@@ -240,6 +244,73 @@ class BOCS_AJAX {
         }
 
         return true;
+    }
+
+    /**
+     * AJAX handler for switching a subscription's Bocs type
+     * 
+     * Processes the request to change a subscription from one Bocs type to another.
+     * Validates the request, sends the update to the Bocs API, and returns a success/error response.
+     * 
+     * @since 1.0.0
+     * @access public
+     * @return void Sends JSON response
+     */
+    public function switch_bocs_subscription() {
+        // Check nonce for security
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'switch-bocs-nonce')) {
+            wp_send_json_error('Security check failed');
+            return;
+        }
+        
+        // Check for required fields
+        if (!isset($_POST['subscription_id']) || !isset($_POST['bocs_id'])) {
+            wp_send_json_error('Missing required fields');
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        $bocs_id = sanitize_text_field($_POST['bocs_id']);
+        
+        // Prepare API request
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // API endpoint for updating subscription
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        
+        // Data to update
+        $data = [
+            'bocsId' => $bocs_id
+        ];
+        
+        // Make API request
+        $response = $helper->curl_request($url, 'PATCH', $data, $headers);
+        
+        // Process response
+        if (isset($response['code']) && $response['code'] === 200) {
+            wp_send_json_success('Subscription updated successfully');
+        } else {
+            $error_message = isset($response['message']) ? $response['message'] : 'Failed to update subscription';
+            wp_send_json_error($error_message);
+        }
+    }
+
+    /**
+     * Handle unauthorized AJAX requests
+     */
+    public function must_login_first() {
+        wp_send_json_error(array('message' => __('You must be logged in to perform this action.', 'bocs-wordpress')));
     }
 }
 

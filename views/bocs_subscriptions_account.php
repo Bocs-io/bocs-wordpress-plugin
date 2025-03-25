@@ -1947,6 +1947,27 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // Add click handler for the Switch Bocs button
+    $('.switch-bocs').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent the event from bubbling up to parent elements
+        
+        // Get the subscription ID from the clicked button
+        let subscriptionId = $(this).data('subscription-id');
+        
+        // If we're in an accordion panel, make sure we have the right subscription ID
+        if (activeSubscriptionId) {
+            subscriptionId = activeSubscriptionId;
+        }
+        
+        console.log('Redirecting to switch bocs with subscription ID:', subscriptionId);
+        
+        if (subscriptionId) {
+            // Immediate redirect without affecting the UI
+            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-switch-bocs')); ?>' + subscriptionId + '/';
+        }
+    });
+
     /**
      * Event Handler Object
      * Contains all event handling functions for subscription interactions

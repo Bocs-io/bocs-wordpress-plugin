@@ -113,6 +113,11 @@ class Bocs_Account
                 $helper = new Bocs_Helper();
                 $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                 
+                if (is_wp_error($subscriptions)) {
+                    error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
+                    return;
+                }
+                
                 if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
                     //error_log('Bocs Account Debug - Found subscriptions by customer.id');
                 } else {
@@ -123,6 +128,11 @@ class Bocs_Account
                         //error_log('Bocs Account Debug - Trying billing.email URL: ' . $url);
                         
                         $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                        
+                        if (is_wp_error($subscriptions)) {
+                            error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
+                            return;
+                        }
                         
                         if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
                             //error_log('Bocs Account Debug - Found subscriptions by billing.email');
@@ -156,6 +166,11 @@ class Bocs_Account
                     
                     $helper = new Bocs_Helper();
                     $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+                    
+                    if (is_wp_error($subscriptions)) {
+                        error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
+                        return;
+                    }
                     
                     if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
                         error_log('Bocs Account Debug - Found subscriptions by billing.email');
@@ -223,6 +238,14 @@ class Bocs_Account
     public function register_bocs_edit_details_endpoint()
     {
         add_rewrite_endpoint('bocs-edit-details', EP_PAGES);
+    }
+
+    /**
+     * Register the Bocs switch bocs endpoint
+     */
+    public function register_bocs_switch_bocs_endpoint()
+    {
+        add_rewrite_endpoint('bocs-switch-bocs', EP_PAGES);
     }
 
     /**
@@ -327,6 +350,31 @@ class Bocs_Account
             include $template_path;
         } else {
             echo esc_html__('Edit details template not found.', 'bocs-wordpress');
+        }
+    }
+
+    /**
+     * Display content for the switch bocs page
+     */
+    public function bocs_switch_bocs_endpoint_content()
+    {
+        global $wp;
+
+        $bocs_subscription_id = isset($wp->query_vars['bocs-switch-bocs']) 
+            ? sanitize_text_field($wp->query_vars['bocs-switch-bocs']) 
+            : '';
+
+        if (empty($bocs_subscription_id)) {
+            echo '<div class="woocommerce-error">' . esc_html__('Invalid subscription ID.', 'bocs-wordpress') . '</div>';
+            return;
+        }
+
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_switch_bocs.php';
+
+        if (file_exists($template_path)) {
+            include $template_path;
+        } else {
+            echo esc_html__('Switch bocs template not found.', 'bocs-wordpress');
         }
     }
 
