@@ -587,6 +587,14 @@ add_action('plugins_loaded', function() {
     if (function_exists('WC')) {
         // Hook with a delay to ensure WooCommerce is fully initialized
         add_action('woocommerce_init', 'run_plugin', 20);
+        
+        // Add hook to run auto_add_bocs_keys on every page load
+        add_action('woocommerce_init', function() {
+            if (class_exists('Bocs')) {
+                $bocs = new Bocs();
+                $bocs->auto_add_bocs_keys();
+            }
+        }, 10);
     } else {
         // If WooCommerce doesn't exist, check on plugins_loaded in case it's activated later
         add_action('plugins_loaded', 'run_plugin', 20);

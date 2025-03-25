@@ -452,13 +452,44 @@ class Bocs
      */
     public function auto_add_bocs_keys() 
     {
-        // Check for the Bocs API service account
+        // 1. Check for the Bocs API service account
         $serviceAccount = get_user_by('email', 'api@bocs.io');
         if (!$serviceAccount) {
+            return; // Exit silently if service account doesn't exist
+        }
+
+        // 2. Define required meta keys
+        $requiredMetaKeys = [
+            'bocs_store',             // Store ID
+            'bocs_organization',       // Organization
+            'bocs_authorization',      // Authorization
+            'bocs_wookey',            // WooCommerce API Key
+            'bocs_woosecret'          // WooCommerce API Secret
+        ];
+
+        // 3. Check if ALL required meta keys exist and have non-empty values
+        $allMetaExists = true;
+        $metaValues = [];
+        
+        foreach ($requiredMetaKeys as $metaKey) {
+            $value = get_user_meta($serviceAccount->ID, $metaKey, true);
+            if (empty(trim($value))) {
+                $allMetaExists = false;
+                break;
+            }
+            $metaValues[$metaKey] = trim($value);
+        }
+
+        // Exit if any required meta is missing
+        if (!$allMetaExists) {
             return;
         }
 
-        // Map user meta keys to their corresponding plugin settings keys
+        // 4. Get existing plugin settings
+        $pluginSettings = get_option('bocs_plugin_options', []);
+        $pluginSettings['bocs_headers'] = $pluginSettings['bocs_headers'] ?? [];
+
+        // 5. Map and transfer credentials
         $credentialMappings = [
             'bocs_store' => 'store',             
             'bocs_organization' => 'organization', 
@@ -467,33 +498,16 @@ class Bocs
             'bocs_woosecret' => 'woocommerce_secret' 
         ];
 
-        // Get existing plugin settings
-        $pluginSettings = get_option('bocs_plugin_options', []);
-        
-        // Initialize headers configuration
-        $pluginSettings['bocs_headers'] = $pluginSettings['bocs_headers'] ?? [];
-        
-        $hasUpdates = false;
-
-        // Transfer credentials from user meta to plugin settings
+        // 6. Transfer credentials from user meta to plugin settings
         foreach ($credentialMappings as $metaKey => $settingKey) {
-            $credentialValue = get_user_meta($serviceAccount->ID, $metaKey, true);
+            $pluginSettings['bocs_headers'][$settingKey] = $metaValues[$metaKey];
             
-            if (!empty(trim($credentialValue))) {
-                // Store credential in plugin settings
-                $pluginSettings['bocs_headers'][$settingKey] = trim($credentialValue);
-                
-                // Clean up user meta
-                delete_user_meta($serviceAccount->ID, $metaKey);
-                
-                $hasUpdates = true;
-            }
+            // 7. Delete the user meta after successful transfer
+            delete_user_meta($serviceAccount->ID, $metaKey);
         }
 
-        // Save updates if any credentials were transferred
-        if ($hasUpdates) {
-            update_option('bocs_plugin_options', $pluginSettings);
-        }
+        // 8. Save the updated plugin settings
+        update_option('bocs_plugin_options', $pluginSettings);
     }
 
     /**
