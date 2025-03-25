@@ -98,7 +98,21 @@ wp_enqueue_script('jquery-ui-dialog');
     <div class="bocs-switch-intro">
         <p>
             <?php esc_html_e('You are currently subscribed to:', 'bocs-wordpress'); ?>
-            <strong><?php echo esc_html($subscription['data']['bocs']['name'] ?? ''); ?></strong>
+            <strong>
+                <?php 
+                // Get the current bocs name by matching IDs
+                $current_bocs_name = '';
+                if (!empty($current_bocs_id) && isset($bocs_items) && is_array($bocs_items)) {
+                    foreach ($bocs_items as $bocs) {
+                        if (isset($bocs['id']) && $bocs['id'] === $current_bocs_id) {
+                            $current_bocs_name = $bocs['name'];
+                            break;
+                        }
+                    }
+                }
+                echo esc_html($current_bocs_name);
+                ?>
+            </strong>
         </p>
         <?php if (isset($subscription['data']['frequency'])) : ?>
         <p>
@@ -230,7 +244,7 @@ wp_enqueue_script('jquery-ui-dialog');
     <div id="switch-confirmation-dialog" style="display:none;" title="<?php esc_attr_e('Confirm Bocs Switch', 'bocs-wordpress'); ?>">
         <p>
             <?php esc_html_e('Are you sure you want to switch from', 'bocs-wordpress'); ?>
-            <strong><?php echo esc_html($subscription['data']['bocs']['name'] ?? ''); ?></strong>
+            <strong><?php echo esc_html($current_bocs_name); ?></strong>
             <?php esc_html_e('to', 'bocs-wordpress'); ?>
             <strong id="target-bocs-name"></strong>?
         </p>
