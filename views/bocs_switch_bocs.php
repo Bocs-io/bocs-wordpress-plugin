@@ -277,55 +277,97 @@ wp_enqueue_script('jquery-ui-dialog');
 </div>
 
 <style>
+:root {
+    --bocs-primary: #3c7b7c;
+    --bocs-primary-light: #e9f7f7;
+    --bocs-primary-dark: #2a5a5b;
+    --bocs-secondary: #d26e4b;
+    --bocs-secondary-light: #f8ece7;
+    --bocs-gray-light: #f7f7f7;
+    --bocs-gray-medium: #e0e0e0;
+    --bocs-gray-dark: #666;
+    --bocs-border-radius: 8px;
+    --bocs-box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    --bocs-transition: all 0.3s ease;
+}
+
 .bocs-switch-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 30px 20px;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    color: #333;
+}
+
+.bocs-switch-container h2 {
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: var(--bocs-primary-dark);
+    font-size: 1.8em;
 }
 
 .bocs-switch-intro {
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #f7f7f7;
-    border-radius: 5px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: var(--bocs-primary-light);
+    border-radius: var(--bocs-border-radius);
+    box-shadow: var(--bocs-box-shadow);
 }
 
 .bocs-switch-intro p {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    line-height: 1.6;
+    font-size: 1.05em;
+}
+
+.bocs-switch-intro strong {
+    color: var(--bocs-primary-dark);
+    font-weight: 600;
 }
 
 .bocs-options-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
 }
 
 .bocs-option {
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    border: 1px solid var(--bocs-gray-medium);
+    border-radius: var(--bocs-border-radius);
     overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: var(--bocs-transition);
     background: #fff;
     height: 100%;
     display: flex;
     flex-direction: column;
+    box-shadow: var(--bocs-box-shadow);
 }
 
 .bocs-option:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+    border-color: var(--bocs-primary);
+}
+
+.bocs-option-image {
+    position: relative;
+    overflow: hidden;
 }
 
 .bocs-option-image img {
     width: 100%;
-    height: auto;
+    height: 200px;
     object-fit: cover;
-    max-height: 200px;
+    transition: var(--bocs-transition);
+}
+
+.bocs-option:hover .bocs-option-image img {
+    transform: scale(1.05);
 }
 
 .bocs-option-content {
-    padding: 15px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
@@ -333,36 +375,41 @@ wp_enqueue_script('jquery-ui-dialog');
 
 .bocs-option-content h3 {
     margin-top: 0;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--bocs-primary-dark);
+    font-size: 1.3em;
 }
 
 .bocs-option-description {
-    color: #666;
+    color: var(--bocs-gray-dark);
     margin-bottom: 15px;
+    line-height: 1.5;
 }
 
 .bocs-option-details {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     flex-grow: 1;
 }
 
 .bocs-option-price {
-    font-weight: bold;
-    font-size: 1.2em;
-    margin-bottom: 10px;
-    color: #333;
+    font-weight: 600;
+    font-size: 1.4em;
+    margin-bottom: 12px;
+    color: var(--bocs-primary-dark);
 }
 
 .bocs-option-products {
-    background: #f9f9f9;
-    padding: 10px;
-    border-radius: 4px;
-    margin-top: 10px;
+    background: var(--bocs-gray-light);
+    padding: 15px;
+    border-radius: var(--bocs-border-radius);
+    margin-top: 15px;
 }
 
 .bocs-products-title {
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
+    color: var(--bocs-primary);
 }
 
 .bocs-option-products ul {
@@ -371,35 +418,62 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-option-products li {
-    margin-bottom: 3px;
-    font-size: 0.9em;
+    margin-bottom: 5px;
+    font-size: 0.95em;
+    color: var(--bocs-gray-dark);
+}
+
+.select-bocs-button {
+    background: var(--bocs-primary) !important;
+    color: white !important;
+    padding: 12px 20px !important;
+    border: none !important;
+    border-radius: var(--bocs-border-radius) !important;
+    font-weight: 600 !important;
+    font-size: 1em !important;
+    cursor: pointer !important;
+    transition: var(--bocs-transition) !important;
+    text-align: center !important;
+    display: inline-block !important;
+    width: 100% !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+}
+
+.select-bocs-button:hover {
+    background: var(--bocs-primary-dark) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
 }
 
 /* Frequency Selection Styles */
 .frequency-options {
-    margin: 15px 0;
+    margin: 20px 0;
 }
 
 .frequency-option {
-    padding: 12px 15px;
-    margin-bottom: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border: 2px solid var(--bocs-gray-medium);
+    border-radius: var(--bocs-border-radius);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--bocs-transition);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: white;
 }
 
 .frequency-option:hover {
-    background-color: #f5f5f5;
-    border-color: #999;
+    background-color: var(--bocs-primary-light);
+    border-color: var(--bocs-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
 }
 
 .frequency-option.selected {
-    background-color: #f0f7f7;
-    border-color: #3c7b7c;
+    background-color: var(--bocs-primary-light);
+    border-color: var(--bocs-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .frequency-details {
@@ -409,17 +483,115 @@ wp_enqueue_script('jquery-ui-dialog');
 
 .frequency-name {
     font-weight: 600;
+    color: var(--bocs-primary-dark);
+    font-size: 1.1em;
 }
 
 .frequency-discount {
-    font-size: 0.9em;
-    color: #d26e4b;
+    font-size: 0.95em;
+    color: var(--bocs-secondary);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.frequency-select .dashicons {
+    color: var(--bocs-primary);
+    font-size: 24px;
 }
 
 .bocs-switch-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 20px;
+    margin-top: 30px;
+}
+
+.bocs-switch-actions .button {
+    padding: 12px 24px !important;
+    border-radius: var(--bocs-border-radius) !important;
+    font-weight: 500 !important;
+    transition: var(--bocs-transition) !important;
+}
+
+.bocs-switch-actions .cancel {
+    background: transparent !important;
+    border: 1px solid var(--bocs-gray-medium) !important;
+    color: var(--bocs-gray-dark) !important;
+}
+
+.bocs-switch-actions .cancel:hover {
+    background: var(--bocs-gray-light) !important;
+    border-color: var(--bocs-gray-dark) !important;
+}
+
+.ui-dialog {
+    border-radius: var(--bocs-border-radius) !important;
+    padding: 0 !important;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2) !important;
+    border: none !important;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+    background: var(--bocs-primary) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: var(--bocs-border-radius) var(--bocs-border-radius) 0 0 !important;
+    padding: 15px 20px !important;
+    font-weight: 500 !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close {
+    background: transparent !important;
+    border: none !important;
+    color: white !important;
+}
+
+.ui-dialog .ui-dialog-content {
+    padding: 20px !important;
+}
+
+.ui-dialog .ui-dialog-content p {
+    font-size: 1.05em !important;
+    line-height: 1.6 !important;
+    margin-bottom: 15px !important;
+}
+
+.ui-dialog .ui-dialog-content strong {
+    color: var(--bocs-primary-dark) !important;
+    font-weight: 600 !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+    border-top: 1px solid var(--bocs-gray-medium) !important;
+    margin-top: 0 !important;
+    padding: 15px !important;
+}
+
+.ui-dialog .ui-dialog-buttonpane button {
+    border-radius: var(--bocs-border-radius) !important;
+    padding: 10px 20px !important;
+    transition: var(--bocs-transition) !important;
+    font-weight: 500 !important;
+}
+
+.ui-dialog .ui-button:first-child {
+    background: var(--bocs-primary) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.ui-dialog .ui-button:first-child:hover {
+    background: var(--bocs-primary-dark) !important;
+}
+
+.ui-dialog .ui-button:last-child {
+    background: transparent !important;
+    border: 1px solid var(--bocs-gray-medium) !important;
+    color: var(--bocs-gray-dark) !important;
+}
+
+.ui-dialog .ui-button:last-child:hover {
+    background: var(--bocs-gray-light) !important;
+    border-color: var(--bocs-gray-dark) !important;
 }
 
 #switch-confirmation-dialog {
@@ -428,38 +600,66 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-loading {
-    background: #f7f7f7;
-    padding: 10px 15px;
-    border-radius: 4px;
-    margin-bottom: 15px;
+    background: var(--bocs-primary-light);
+    padding: 15px;
+    border-radius: var(--bocs-border-radius);
+    margin-bottom: 20px;
     text-align: center;
     font-weight: 600;
+    color: var(--bocs-primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bocs-loading:before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--bocs-primary-light);
+    border-top: 2px solid var(--bocs-primary);
+    border-radius: 50%;
+    margin-right: 10px;
+    animation: bocs-spinner 1s linear infinite;
+}
+
+@keyframes bocs-spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Product Selection Styles */
 .bocs-product-selection-info {
-    background: #f7f7f7;
-    padding: 10px 15px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    font-size: 0.9em;
+    background: var(--bocs-primary-light);
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: var(--bocs-border-radius);
+    font-size: 0.95em;
 }
 
 .bocs-product-selection {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid #eee;
-    padding: 10px;
+    border: 1px solid var(--bocs-gray-medium);
+    border-radius: var(--bocs-border-radius);
+    padding: 15px;
 }
 
 .bocs-product-item {
-    padding: 12px;
-    margin-bottom: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border: 1px solid var(--bocs-gray-medium);
+    border-radius: var(--bocs-border-radius);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    transition: var(--bocs-transition);
+}
+
+.bocs-product-item:hover {
+    border-color: var(--bocs-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
 }
 
 .bocs-product-details {
@@ -469,16 +669,17 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-product-image {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     margin-right: 15px;
+    border-radius: var(--bocs-border-radius);
+    overflow: hidden;
 }
 
 .bocs-product-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 4px;
 }
 
 .bocs-product-info {
@@ -487,12 +688,13 @@ wp_enqueue_script('jquery-ui-dialog');
 
 .bocs-product-name {
     font-weight: 600;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
+    color: var(--bocs-primary-dark);
 }
 
 .bocs-product-price {
-    color: #555;
-    font-size: 0.9em;
+    color: var(--bocs-gray-dark);
+    font-size: 0.95em;
 }
 
 .bocs-product-quantity {
@@ -501,54 +703,73 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .quantity-btn {
-    border: 1px solid #ddd;
-    background: #f5f5f5;
-    width: 25px;
-    height: 25px;
-    font-size: 16px;
+    border: 1px solid var(--bocs-gray-medium);
+    background: white;
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     user-select: none;
+    border-radius: 4px;
+    transition: var(--bocs-transition);
+}
+
+.quantity-btn:hover {
+    background: var(--bocs-primary-light);
+    border-color: var(--bocs-primary);
 }
 
 .quantity-input {
-    width: 40px;
+    width: 45px;
     text-align: center;
-    margin: 0 5px;
-    border: 1px solid #ddd;
-    padding: 3px;
+    margin: 0 8px;
+    border: 1px solid var(--bocs-gray-medium);
+    border-radius: 4px;
+    padding: 5px;
+    font-weight: 500;
 }
 
-.product-total-quantity {
-    font-weight: bold;
-    margin-top: 15px;
-    text-align: right;
-    padding: 10px;
-    background: #f0f7f7;
-    border-radius: 4px;
+#total-selected-quantity {
+    color: var(--bocs-primary);
+    font-weight: 600;
 }
 
 .bocs-type-badge {
     display: inline-block;
-    padding: 4px 8px;
+    padding: 6px 10px;
     font-size: 0.8em;
-    border-radius: 3px;
-    margin-bottom: 10px;
+    border-radius: 20px;
+    margin-bottom: 15px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .fixed-type {
-    background-color: #e9f7f7;
-    color: #2a7d7e;
-    border: 1px solid #c5e8e8;
+    background-color: var(--bocs-primary-light);
+    color: var(--bocs-primary);
+    border: 1px solid var(--bocs-primary);
 }
 
 .custom-type {
-    background-color: #f7f1e9;
-    color: #7d602a;
-    border: 1px solid #e8d9c5;
+    background-color: var(--bocs-secondary-light);
+    color: var(--bocs-secondary);
+    border: 1px solid var(--bocs-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .bocs-options-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .ui-dialog {
+        width: 90% !important;
+        max-width: 90% !important;
+    }
 }
 </style>
 
@@ -739,7 +960,12 @@ jQuery(document).ready(function($) {
             $('.frequency-option .dashicons').hide();
             
             $(this).addClass('selected');
-            $(this).find('.dashicons').show();
+            $(this).find('.dashicons')
+                .css('transform', 'scale(0)')
+                .show()
+                .animate({opacity: 1}, 200)
+                .css('transform', 'scale(1.2)')
+                .animate({transform: 'scale(1)'}, 200);
             
             selectedFrequencyId = $(this).data('frequency-id');
         });
@@ -785,14 +1011,23 @@ jQuery(document).ready(function($) {
             data: requestData,
             success: function(response) {
                 if (response.success) {
-                    // Success message
-                    $(".bocs-loading").remove();
-                    $(".bocs-switch-container").prepend(
-                        '<div class="woocommerce-message">' + 
-                        'Your subscription has been successfully switched to ' + selectedBocsName + '. ' +
-                        'You will be redirected to your subscriptions in a few seconds.' + 
-                        '</div>'
-                    );
+                    // Success message with animation
+                    const successMessage = 'Your subscription has been successfully switched to ' + selectedBocsName + '. ' +
+                        'You will be redirected to your subscriptions in a few seconds.';
+                    
+                    const successEl = showSuccessMessage(successMessage);
+                    
+                    // Add subtle pulse animation to success message
+                    successEl.css('animation', 'pulse 2s infinite');
+                    $('head').append(`
+                        <style>
+                            @keyframes pulse {
+                                0% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                                50% { box-shadow: 0 4px 20px rgba(76, 175, 80, 0.2); }
+                                100% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                            }
+                        </style>
+                    `);
                     
                     // Redirect after delay
                     setTimeout(function() {
@@ -801,21 +1036,33 @@ jQuery(document).ready(function($) {
                 } else {
                     // Error message
                     $(".bocs-loading").remove();
-                    $(".bocs-switch-container").prepend(
-                        '<div class="woocommerce-error">' + 
-                        (response.data || 'There was an error processing your request. Please try again.') + 
-                        '</div>'
-                    );
+                    const errorMsg = response.data || 'There was an error processing your request. Please try again.';
+                    
+                    $(".bocs-switch-container").prepend(`
+                        <div class="woocommerce-error" style="display:flex; align-items:center; border-radius:var(--bocs-border-radius); box-shadow:var(--bocs-box-shadow); padding:16px; margin-bottom:25px;">
+                            <div style="background:#e53935; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" style="color:white;">
+                                    <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                                </svg>
+                            </div>
+                            <div style="color:#c62828; font-weight:500;">${errorMsg}</div>
+                        </div>
+                    `);
                 }
             },
             error: function() {
                 // Network error
                 $(".bocs-loading").remove();
-                $(".bocs-switch-container").prepend(
-                    '<div class="woocommerce-error">' + 
-                    'There was a network error. Please try again later.' + 
-                    '</div>'
-                );
+                $(".bocs-switch-container").prepend(`
+                    <div class="woocommerce-error" style="display:flex; align-items:center; border-radius:var(--bocs-border-radius); box-shadow:var(--bocs-box-shadow); padding:16px; margin-bottom:25px;">
+                        <div style="background:#e53935; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="color:white;">
+                                <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                            </svg>
+                        </div>
+                        <div style="color:#c62828; font-weight:500;">There was a network error. Please try again later.</div>
+                    </div>
+                `);
             }
         });
     }
@@ -988,6 +1235,147 @@ jQuery(document).ready(function($) {
         }
         
         return true;
+    }
+
+    // Add Bocs.io branding
+    $('body').prepend('<div class="bocs-brand-header"><div class="bocs-logo">bocs<span>.io</span></div></div>');
+
+    // Add CSS for brand header
+    $('head').append(`
+        <style>
+            .bocs-brand-header {
+                background: var(--bocs-primary);
+                color: white;
+                padding: 15px 30px;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            }
+            
+            .bocs-logo {
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+            }
+            
+            .bocs-logo span {
+                font-weight: 400;
+                opacity: 0.8;
+            }
+            
+            @media (max-width: 768px) {
+                .bocs-brand-header {
+                    padding: 12px 20px;
+                }
+                
+                .bocs-logo {
+                    font-size: 20px;
+                }
+            }
+        </style>
+    `);
+
+    // Enhanced frequency option selection with animation
+    $(document).on('click', '.frequency-option', function() {
+        $('.frequency-option').removeClass('selected');
+        $('.frequency-option .dashicons').hide();
+        
+        $(this).addClass('selected');
+        $(this).find('.dashicons')
+            .css('transform', 'scale(0)')
+            .show()
+            .animate({opacity: 1}, 200)
+            .css('transform', 'scale(1.2)')
+            .animate({transform: 'scale(1)'}, 200);
+        
+        selectedFrequencyId = $(this).data('frequency-id');
+    });
+
+    // Add hover effect to product cards
+    $('.bocs-product-item').hover(
+        function() {
+            $(this).css('transform', 'translateY(-2px)');
+        }, 
+        function() {
+            $(this).css('transform', 'translateY(0)');
+        }
+    );
+
+    // Enhance quantity buttons with visual feedback
+    $('.quantity-btn').on('mousedown', function() {
+        $(this).css('transform', 'scale(0.95)');
+    }).on('mouseup mouseleave', function() {
+        $(this).css('transform', 'scale(1)');
+    });
+
+    // Add success animation
+    function showSuccessMessage(message) {
+        // Remove any existing messages
+        $(".woocommerce-message, .woocommerce-error, .bocs-loading").remove();
+        
+        // Create success element with animation
+        const successEl = $(`
+            <div class="woocommerce-message bocs-success-message">
+                <div class="bocs-success-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="none" stroke="currentColor" stroke-width="2" d="M1,12 L8,19 L23,5"></path>
+                    </svg>
+                </div>
+                <div class="bocs-success-text">${message}</div>
+            </div>
+        `);
+        
+        // Add styles
+        $('head').append(`
+            <style>
+                .bocs-success-message {
+                    display: flex !important;
+                    align-items: center !important;
+                    background: #edfbf3 !important;
+                    border-left: 4px solid #4caf50 !important;
+                    padding: 16px !important;
+                    border-radius: var(--bocs-border-radius) !important;
+                    margin-bottom: 25px !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+                }
+                
+                .bocs-success-icon {
+                    background: #4caf50;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 15px;
+                    color: white;
+                }
+                
+                .bocs-success-icon svg {
+                    stroke-dasharray: 30;
+                    stroke-dashoffset: 30;
+                    animation: success-check 0.8s ease forwards;
+                }
+                
+                @keyframes success-check {
+                    to {
+                        stroke-dashoffset: 0;
+                    }
+                }
+                
+                .bocs-success-text {
+                    font-weight: 500;
+                    color: #2e7d32;
+                }
+            </style>
+        `);
+        
+        // Insert message and animate
+        $(".bocs-switch-container").prepend(successEl);
+        successEl.hide().fadeIn(300);
+        
+        return successEl;
     }
 });
 </script> 
