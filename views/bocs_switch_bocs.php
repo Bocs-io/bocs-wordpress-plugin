@@ -20,23 +20,35 @@ $subscription_id = isset($wp->query_vars['bocs-switch-bocs']) ? sanitize_text_fi
 $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
 $subscription = $helper->curl_request($url, 'GET', [], $GLOBALS['bocs_headers'] ?? []);
 
+// Check if subscription is WP_Error
+if (is_wp_error($subscription)) {
+    $has_errors = true;
+    $error_message = $subscription->get_error_message();
+} else {
+    // Check for API errors
+    $has_errors = false;
+    if (!isset($subscription['data']) || empty($subscription['data'])) {
+        $has_errors = true;
+    }
+}
+
 // Fetch available Bocs options
 $url = BOCS_API_URL . 'bocs?status=active';
 $available_bocs = $helper->curl_request($url, 'GET', [], $GLOBALS['bocs_headers'] ?? []);
 
-// Check for API errors
-$has_errors = false;
-if (!isset($subscription['data']) || empty($subscription['data'])) {
+// Check if available_bocs is WP_Error
+if (is_wp_error($available_bocs)) {
     $has_errors = true;
-}
-
-if (!isset($available_bocs['data']) || empty($available_bocs['data'])) {
-    $has_errors = true;
+    $error_message = isset($error_message) ? $error_message : $available_bocs->get_error_message();
+} else {
+    if (!isset($available_bocs['data']) || empty($available_bocs['data'])) {
+        $has_errors = true;
+    }
 }
 
 // Get current Bocs ID
 $current_bocs_id = '';
-if (isset($subscription['data']['bocs']) && isset($subscription['data']['bocs']['id'])) {
+if (!$has_errors && isset($subscription['data']['bocs']) && isset($subscription['data']['bocs']['id'])) {
     $current_bocs_id = $subscription['data']['bocs']['id'];
 }
 
@@ -50,7 +62,13 @@ wp_enqueue_script('jquery-ui-dialog');
     
     <?php if ($has_errors) : ?>
         <div class="woocommerce-error">
-            <?php esc_html_e('There was an error loading your subscription or available Bocs options. Please try again later.', 'bocs-wordpress'); ?>
+            <?php 
+            if (isset($error_message) && !empty($error_message)) {
+                echo esc_html($error_message);
+            } else {
+                esc_html_e('There was an error loading your subscription or available Bocs options. Please try again later.', 'bocs-wordpress');
+            }
+            ?>
         </div>
         <p>
             <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="button">

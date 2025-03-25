@@ -297,8 +297,17 @@ class BOCS_AJAX {
         // Make API request
         $response = $helper->curl_request($url, 'PATCH', $data, $headers);
         
+        // Check if response is a WP_Error
+        if (is_wp_error($response)) {
+            wp_send_json_error($response->get_error_message());
+            return;
+        }
+        
         // Process response
         if (isset($response['code']) && $response['code'] === 200) {
+            // Trigger an action that can be hooked by email notifications
+            do_action('bocs_subscription_switched', $subscription_id, $bocs_id);
+            
             wp_send_json_success('Subscription updated successfully');
         } else {
             $error_message = isset($response['message']) ? $response['message'] : 'Failed to update subscription';
