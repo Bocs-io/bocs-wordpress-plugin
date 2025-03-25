@@ -100,6 +100,33 @@ wp_enqueue_script('jquery-ui-dialog');
             <?php esc_html_e('You are currently subscribed to:', 'bocs-wordpress'); ?>
             <strong><?php echo esc_html($subscription['data']['bocs']['name'] ?? ''); ?></strong>
         </p>
+        <?php if (isset($subscription['data']['frequency'])) : ?>
+        <p>
+            <?php esc_html_e('Current frequency:', 'bocs-wordpress'); ?>
+            <strong>
+                <?php 
+                $frequency = $subscription['data']['frequency'];
+                echo esc_html($frequency['frequency'] . ' ' . $frequency['timeUnit']);
+                ?>
+            </strong>
+            <?php if ($frequency['discount'] > 0) : ?>
+                (<?php echo esc_html($frequency['discountType'] === 'DOLLAR' ? '$' . $frequency['discount'] : $frequency['discount'] . '%'); ?> <?php esc_html_e('discount', 'bocs-wordpress'); ?>)
+            <?php endif; ?>
+        </p>
+        <?php endif; ?>
+        <p>
+            <?php esc_html_e('Next payment date:', 'bocs-wordpress'); ?>
+            <strong>
+                <?php 
+                if (isset($subscription['data']['nextPaymentDateGmt'])) {
+                    $next_date = new DateTime($subscription['data']['nextPaymentDateGmt']);
+                    echo esc_html($next_date->format('F j, Y'));
+                } else {
+                    esc_html_e('Not scheduled', 'bocs-wordpress');
+                }
+                ?>
+            </strong>
+        </p>
         <p>
             <?php esc_html_e('Select a new Bocs below to switch your subscription:', 'bocs-wordpress'); ?>
         </p>
@@ -153,7 +180,35 @@ wp_enqueue_script('jquery-ui-dialog');
                     <div class="bocs-option-content">
                         <h3><?php echo esc_html($bocs_name); ?></h3>
                         <p class="bocs-option-description"><?php echo esc_html($bocs_description); ?></p>
-                        <p class="bocs-option-price"><?php echo $helper->format_price($bocs_price, $subscription['data']['currency'] ?? ''); ?></p>
+                        <div class="bocs-option-details">
+                            <p class="bocs-option-price"><?php echo $helper->format_price($bocs_price, $subscription['data']['currency'] ?? ''); ?></p>
+                            
+                            <?php if (isset($bocs['products']) && is_array($bocs['products']) && !empty($bocs['products'])): ?>
+                            <div class="bocs-option-products">
+                                <p class="bocs-products-title"><?php esc_html_e('Box Contents:', 'bocs-wordpress'); ?></p>
+                                <ul>
+                                    <?php 
+                                    $max_products = 3; // Show only first 3 products
+                                    $product_count = count($bocs['products']);
+                                    $shown_products = min($max_products, $product_count);
+                                    
+                                    for ($i = 0; $i < $shown_products; $i++) {
+                                        $product = $bocs['products'][$i];
+                                        echo '<li>' . esc_html($product['name']) . '</li>';
+                                    }
+                                    
+                                    // Show count of remaining products if there are more
+                                    if ($product_count > $max_products) {
+                                        echo '<li>' . sprintf(
+                                            esc_html__('+ %d more items', 'bocs-wordpress'),
+                                            $product_count - $max_products
+                                        ) . '</li>';
+                                    }
+                                    ?>
+                                </ul>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                         <button class="button select-bocs-button" data-bocs-id="<?php echo esc_attr($bocs_id); ?>" data-bocs-name="<?php echo esc_attr($bocs_name); ?>">
                             <?php esc_html_e('Select this Bocs', 'bocs-wordpress'); ?>
                         </button>
@@ -201,6 +256,10 @@ wp_enqueue_script('jquery-ui-dialog');
     border-radius: 5px;
 }
 
+.bocs-switch-intro p {
+    margin-bottom: 10px;
+}
+
 .bocs-options-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -214,6 +273,9 @@ wp_enqueue_script('jquery-ui-dialog');
     overflow: hidden;
     transition: transform 0.2s, box-shadow 0.2s;
     background: #fff;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .bocs-option:hover {
@@ -230,6 +292,9 @@ wp_enqueue_script('jquery-ui-dialog');
 
 .bocs-option-content {
     padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
 }
 
 .bocs-option-content h3 {
@@ -242,11 +307,38 @@ wp_enqueue_script('jquery-ui-dialog');
     margin-bottom: 15px;
 }
 
+.bocs-option-details {
+    margin-bottom: 15px;
+    flex-grow: 1;
+}
+
 .bocs-option-price {
     font-weight: bold;
     font-size: 1.2em;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     color: #333;
+}
+
+.bocs-option-products {
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.bocs-products-title {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.bocs-option-products ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.bocs-option-products li {
+    margin-bottom: 3px;
+    font-size: 0.9em;
 }
 
 .bocs-switch-actions {
@@ -258,6 +350,15 @@ wp_enqueue_script('jquery-ui-dialog');
 #switch-confirmation-dialog {
     text-align: center;
     line-height: 1.6;
+}
+
+.bocs-loading {
+    background: #f7f7f7;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
 }
 </style>
 
