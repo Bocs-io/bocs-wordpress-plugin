@@ -13,6 +13,127 @@
 wp_enqueue_script('jquery-ui-accordion');
 wp_enqueue_style('wp-jquery-ui-dialog');
 
+// Add custom JavaScript for accordion initialization
+add_action('wp_footer', function() {
+    ?>
+    <script type="text/javascript">
+        (function($) {
+            // Function to initialize accordion
+            function initializeAccordion() {
+                // First hide all content
+                $('.accordion-content').hide();
+                
+                // Remove any existing accordion
+                if ($("#bocs-subscriptions-accordion").hasClass('ui-accordion')) {
+                    $("#bocs-subscriptions-accordion").accordion('destroy');
+                }
+                
+                // Initialize accordion
+                $("#bocs-subscriptions-accordion").accordion({
+                    collapsible: true,
+                    active: false,
+                    heightStyle: "content",
+                    header: "> div > h3.accordion-header",
+                    animate: 200,
+                    beforeActivate: function(event, ui) {
+                        // Toggle arrow direction
+                        if (ui.newHeader.length > 0) {
+                            ui.oldHeader.find('.accordion-arrow').html('&#9660;');
+                            ui.newHeader.find('.accordion-arrow').html('&#9650;');
+                        } else {
+                            ui.oldHeader.find('.accordion-arrow').html('&#9660;');
+                        }
+                    }
+                });
+                
+                // Add arrow indicators if they don't exist
+                $('.accordion-header').each(function() {
+                    if ($(this).find('.accordion-arrow').length === 0) {
+                        $(this).append('<span class="accordion-arrow">&#9660;</span>');
+                    }
+                });
+            }
+
+            // Initialize on document ready
+            $(document).ready(function() {
+                initializeAccordion();
+            });
+
+            // Initialize again after a short delay to ensure all content is loaded
+            $(window).on('load', function() {
+                setTimeout(initializeAccordion, 100);
+            });
+        })(jQuery);
+    </script>
+    <style>
+        .wc-subscription {
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            cursor: pointer;
+            padding: 15px;
+            background: #f8f8f8;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+        .accordion-header:hover {
+            background: #f0f0f0;
+        }
+        .accordion-arrow {
+            position: absolute;
+            right: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+        .accordion-content {
+            padding: 20px;
+            display: none;
+            background: #fff;
+        }
+        .divider {
+            color: #ddd;
+            margin: 0 10px;
+        }
+        .ui-accordion .ui-accordion-content {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .subscription-status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            margin-left: auto;
+            margin-right: 30px;
+        }
+        .status-active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-cancelled {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .status-paused {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        .subscription-title {
+            font-weight: 500;
+        }
+        .subscription-amount {
+            font-weight: 500;
+            color: #2e7d32;
+        }
+    </style>
+    <?php
+});
+
 // Retrieve BOCS plugin settings
 $options = get_option('bocs_plugin_options');
 
@@ -247,6 +368,12 @@ $frequency_text = ''; // or whatever default value is appropriate
                                     data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
                                     class="woocommerce-button button update-box update-box-link">
                                     <?php esc_html_e('Update My Box', 'bocs-wordpress'); ?>
+                                </a>
+                                <a 
+                                    href="#" 
+                                    data-subscription-id="<?php echo esc_attr($subscription['id']); ?>"
+                                    class="woocommerce-button button switch-bocs">
+                                    <?php esc_html_e('Switch Bocs', 'bocs-wordpress'); ?>
                                 </a>
                             <?php endif; ?>
                             <a href="<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>" 
