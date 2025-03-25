@@ -978,93 +978,213 @@ jQuery(document).ready(function($) {
         }
         
         // Show loading state
-        $(".bocs-switch-container").prepend('<div class="bocs-loading">Processing your request...</div>');
+        $(".bocs-switch-container").prepend('<div class="bocs-loading"><?php esc_html_e("Processing your request...", "bocs-wordpress"); ?></div>');
+        
+        // Get current subscription data
+        const currentSubscription = <?php echo json_encode($subscription['data'] ?? []); ?>;
+        
+        // Get selected frequency details
+        const selectedFrequencyObj = bocsData[selectedBocsId].priceAdjustment.adjustments.find(
+            adj => adj.id === selectedFrequencyId
+        );
+        
+        if (!selectedFrequencyObj) {
+            showErrorMessage('<?php esc_html_e("Selected frequency not found", "bocs-wordpress"); ?>');
+            return;
+        }
         
         // Prepare data for API request
         const requestData = {
-            action: 'switch_bocs_subscription',
-            subscription_id: '<?php echo esc_js($subscription_id); ?>',
-            bocs_id: selectedBocsId,
-            frequency_id: selectedFrequencyId,
-            security: '<?php echo wp_create_nonce('switch-bocs-nonce'); ?>'
+            bocs: {
+                id: selectedBocsId
+            },
+            frequency: {
+                id: selectedFrequencyId,
+                frequency: selectedFrequencyObj.frequency,
+                timeUnit: selectedFrequencyObj.timeUnit,
+                discount: selectedFrequencyObj.discount || 0,
+                discountType: selectedFrequencyObj.discountType || 'PERCENT'
+            }
         };
         
-        // Add selected products if this is a custom bocs
-        if (bocsData[selectedBocsId] && bocsData[selectedBocsId].type === 'custom') {
-            // Filter out products with quantity > 0
-            const selectedLineItems = selectedProducts
-                .filter(product => product.quantity > 0)
-                .map(product => ({
-                    productId: product.id,
-                    quantity: product.quantity
-                }));
+        // Include existing data that should be preserved
+        if (currentSubscription) {
+            // Copy these fields from the current subscription if they exist
+            ['taxLines', 'nextPaymentDateGmt', 'couponLines', 'discountTotal', 
+             'shippingTotal', 'shipping', 'billingInterval', 'discountTax'].forEach(field => {
+                if (currentSubscription[field] !== undefined) {
+                    requestData[field] = currentSubscription[field];
+                }
+            });
+            
+            // Copy metadata but update BOCS-specific values
+            if (currentSubscription.metaData) {
+                const updatedMetaData = [...currentSubscription.metaData];
                 
-            if (selectedLineItems.length > 0) {
-                requestData.line_items = JSON.stringify(selectedLineItems);
+                // Fields to update in metadata
+                const metaUpdates = {
+                    '__bocs_bocs_id': selectedBocsId,
+                    '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
+                    '__bocs_frequency_id': selectedFrequencyId,
+                    '__bocs_frequency_interval': selectedFrequencyObj.frequency,
+                    '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
+                    '__bocs_id': currentSubscription.id || '',
+                    '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
+                };
+                
+                // Calculate new prices if needed
+                if (bocsData[selectedBocsId]) {
+                    const bocs = bocsData[selectedBocsId];
+                    let subtotal = 0;
+                    
+                    // For custom box with selected products
+                    if (bocs.type === 'custom' && selectedProducts && selectedProducts.length > 0) {
+                        subtotal = selectedProducts.reduce((total, product) => {
+                            return total + (product.price * product.quantity);
+                        }, 0);
+                    } 
+                    // For fixed box
+                    else if (bocs.products && bocs.products.length > 0) {
+                        subtotal = bocs.products.reduce((total, product) => {
+                            const price = parseFloat(product.price) || 0;
+                            const quantity = parseInt(product.quantity) || 1;
+                            return total + (price * quantity);
+                        }, 0);
+                    }
+                    
+                    // Calculate discount
+                    let discountAmount = 0;
+                    if (selectedFrequencyObj.discount > 0) {
+                        if (selectedFrequencyObj.discountType === 'DOLLAR') {
+                            discountAmount = selectedFrequencyObj.discount;
+                        } else {
+                            discountAmount = (subtotal * selectedFrequencyObj.discount) / 100;
+                        }
+                    }
+                    
+                    const total = subtotal - discountAmount;
+                    
+                    // Update pricing metadata
+                    metaUpdates['__bocs_subtotal'] = subtotal.toFixed(2);
+                    metaUpdates['__bocs_total'] = total.toFixed(2);
+                }
+                
+                // Update metadata in the array
+                Object.entries(metaUpdates).forEach(([key, value]) => {
+                    const existingIndex = updatedMetaData.findIndex(item => item.key === key);
+                    if (existingIndex >= 0) {
+                        updatedMetaData[existingIndex].value = value;
+                    } else {
+                        updatedMetaData.push({ key, value });
+                    }
+                });
+                
+                requestData.metaData = updatedMetaData;
             }
         }
         
-        // Make API request to switch Bocs
+        // Add line items for custom box
+        if (bocsData[selectedBocsId] && bocsData[selectedBocsId].type === 'custom') {
+            requestData.lineItems = selectedProducts
+                .filter(product => product.quantity > 0)
+                .map(product => ({
+                    productId: product.id,
+                    name: product.name,
+                    quantity: product.quantity,
+                    price: product.price,
+                    total: (product.price * product.quantity).toFixed(2),
+                    metaData: []
+                }));
+        } else if (bocsData[selectedBocsId] && bocsData[selectedBocsId].products) {
+            // Fixed box - use products from the box definition
+            requestData.lineItems = bocsData[selectedBocsId].products.map(product => ({
+                productId: product.id,
+                name: product.name,
+                quantity: product.quantity || 1,
+                price: parseFloat(product.price) || 0,
+                total: ((parseFloat(product.price) || 0) * (product.quantity || 1)).toFixed(2),
+                metaData: []
+            }));
+        }
+        
+        // Make direct API request
         $.ajax({
-            url: '<?php echo admin_url('admin-ajax.php'); ?>',
-            type: 'POST',
-            data: requestData,
-            success: function(response) {
-                if (response.success) {
-                    // Success message with animation
-                    const successMessage = 'Your subscription has been successfully switched to ' + selectedBocsName + '. ' +
-                        'You will be redirected to your subscriptions in a few seconds.';
-                    
-                    const successEl = showSuccessMessage(successMessage);
-                    
-                    // Add subtle pulse animation to success message
-                    successEl.css('animation', 'pulse 2s infinite');
-                    $('head').append(`
-                        <style>
-                            @keyframes pulse {
-                                0% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-                                50% { box-shadow: 0 4px 20px rgba(76, 175, 80, 0.2); }
-                                100% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-                            }
-                        </style>
-                    `);
-                    
-                    // Redirect after delay
-                    setTimeout(function() {
-                        window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
-                    }, 3000);
-                } else {
-                    // Error message
-                    $(".bocs-loading").remove();
-                    const errorMsg = response.data || 'There was an error processing your request. Please try again.';
-                    
-                    $(".bocs-switch-container").prepend(`
-                        <div class="woocommerce-error" style="display:flex; align-items:center; border-radius:var(--bocs-border-radius); box-shadow:var(--bocs-box-shadow); padding:16px; margin-bottom:25px;">
-                            <div style="background:#e53935; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" style="color:white;">
-                                    <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
-                                </svg>
-                            </div>
-                            <div style="color:#c62828; font-weight:500;">${errorMsg}</div>
-                        </div>
-                    `);
-                }
+            url: '<?php echo esc_js(BOCS_API_URL); ?>subscriptions/<?php echo esc_js($subscription_id); ?>',
+            type: 'PUT',
+            data: JSON.stringify(requestData),
+            contentType: 'application/json',
+            headers: {
+                <?php foreach ($headers as $key => $value): ?>
+                '<?php echo esc_js($key); ?>': '<?php echo esc_js($value); ?>',
+                <?php endforeach; ?>
             },
-            error: function() {
-                // Network error
-                $(".bocs-loading").remove();
-                $(".bocs-switch-container").prepend(`
-                    <div class="woocommerce-error" style="display:flex; align-items:center; border-radius:var(--bocs-border-radius); box-shadow:var(--bocs-box-shadow); padding:16px; margin-bottom:25px;">
-                        <div style="background:#e53935; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px;">
-                            <svg viewBox="0 0 24 24" width="16" height="16" style="color:white;">
-                                <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
-                            </svg>
-                        </div>
-                        <div style="color:#c62828; font-weight:500;">There was a network error. Please try again later.</div>
-                    </div>
+            success: function(response) {
+                // Success handling
+                const successMessage = '<?php esc_html_e("Your subscription has been successfully switched to", "bocs-wordpress"); ?> ' + 
+                    selectedBocsName + '. ' +
+                    '<?php esc_html_e("You will be redirected to your subscriptions in a few seconds.", "bocs-wordpress"); ?>';
+                
+                const successEl = showSuccessMessage(successMessage);
+                
+                // Add subtle pulse animation to success message
+                successEl.css('animation', 'pulse 2s infinite');
+                $('head').append(`
+                    <style>
+                        @keyframes pulse {
+                            0% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                            50% { box-shadow: 0 4px 20px rgba(76, 175, 80, 0.2); }
+                            100% { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                        }
+                    </style>
                 `);
+                
+                // Redirect after delay
+                setTimeout(function() {
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                }, 3000);
+            },
+            error: function(xhr) {
+                // Error handling
+                $(".bocs-loading").remove();
+                let errorMsg = '<?php esc_html_e("There was an error processing your request. Please try again.", "bocs-wordpress"); ?>';
+                
+                // Try to get more specific error message from response
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    try {
+                        const errorData = JSON.parse(xhr.responseText);
+                        if (errorData.message) {
+                            errorMsg = errorData.message;
+                        }
+                    } catch (e) {
+                        // Parsing error, use default message
+                    }
+                }
+                
+                showErrorMessage(errorMsg);
             }
         });
+    }
+    
+    // Helper function to show error messages
+    function showErrorMessage(message) {
+        $(".bocs-loading").remove();
+        $(".woocommerce-error").remove();
+        
+        const errorEl = $(`
+            <div class="woocommerce-error" style="display:flex; align-items:center; border-radius:var(--bocs-border-radius); box-shadow:var(--bocs-box-shadow); padding:16px; margin-bottom:25px;">
+                <div style="background:#e53935; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-right:15px;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="color:white;">
+                        <path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
+                    </svg>
+                </div>
+                <div style="color:#c62828; font-weight:500;">${message}</div>
+            </div>
+        `);
+        
+        $(".bocs-switch-container").prepend(errorEl);
+        return errorEl;
     }
     
     // Function to open product selection dialog
