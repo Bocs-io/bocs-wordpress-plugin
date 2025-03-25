@@ -1,3 +1,6 @@
+v0.0.127 03/25/2025
+* improve auto_add_bocs_keys implementation and add page load hook
+
 v0.0.126 03/24/2025
 * Rename child/sibling order to renewal order
 * Syntax error at bocs checkout js
