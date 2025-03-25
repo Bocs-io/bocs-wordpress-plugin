@@ -264,13 +264,14 @@ class BOCS_AJAX {
         }
         
         // Check for required fields
-        if (!isset($_POST['subscription_id']) || !isset($_POST['bocs_id'])) {
+        if (!isset($_POST['subscription_id']) || !isset($_POST['bocs_id']) || !isset($_POST['frequency_id'])) {
             wp_send_json_error('Missing required fields');
             return;
         }
         
         $subscription_id = sanitize_text_field($_POST['subscription_id']);
         $bocs_id = sanitize_text_field($_POST['bocs_id']);
+        $frequency_id = sanitize_text_field($_POST['frequency_id']);
         
         // Prepare API request
         $helper = new Bocs_Helper();
@@ -291,7 +292,8 @@ class BOCS_AJAX {
         
         // Data to update - match the API's expected format exactly
         $data = [
-            'bocsId' => $bocs_id
+            'bocsId' => $bocs_id,
+            'frequencyId' => $frequency_id
         ];
         
         // Make API request
@@ -306,7 +308,7 @@ class BOCS_AJAX {
         // Process response
         if (isset($response['code']) && $response['code'] === 200) {
             // Trigger an action that can be hooked by email notifications
-            do_action('bocs_subscription_switched', $subscription_id, $bocs_id);
+            do_action('bocs_subscription_switched', $subscription_id, $bocs_id, $frequency_id);
             
             wp_send_json_success('Subscription updated successfully');
         } else {

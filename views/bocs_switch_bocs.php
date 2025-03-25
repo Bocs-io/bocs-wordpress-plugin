@@ -224,7 +224,7 @@ wp_enqueue_script('jquery-ui-dialog');
                             <?php endif; ?>
                         </div>
                         <button class="button select-bocs-button" data-bocs-id="<?php echo esc_attr($bocs_id); ?>" data-bocs-name="<?php echo esc_attr($bocs_name); ?>">
-                            <?php esc_html_e('Select this Bocs', 'bocs-wordpress'); ?>
+                            <?php esc_html_e('Choose Frequency', 'bocs-wordpress'); ?>
                         </button>
                     </div>
                 </div>
@@ -240,6 +240,17 @@ wp_enqueue_script('jquery-ui-dialog');
         </a>
     </div>
     
+    <!-- Frequency Selection Dialog -->
+    <div id="frequency-selection-dialog" style="display:none;" title="<?php esc_attr_e('Select Frequency', 'bocs-wordpress'); ?>">
+        <p>
+            <?php esc_html_e('Select frequency for', 'bocs-wordpress'); ?>
+            <strong id="frequency-bocs-name"></strong>:
+        </p>
+        <div class="frequency-options">
+            <!-- Frequency options will be dynamically loaded here -->
+        </div>
+    </div>
+    
     <!-- Confirmation Dialog -->
     <div id="switch-confirmation-dialog" style="display:none;" title="<?php esc_attr_e('Confirm Bocs Switch', 'bocs-wordpress'); ?>">
         <p>
@@ -247,6 +258,10 @@ wp_enqueue_script('jquery-ui-dialog');
             <strong><?php echo esc_html($current_bocs_name); ?></strong>
             <?php esc_html_e('to', 'bocs-wordpress'); ?>
             <strong id="target-bocs-name"></strong>?
+        </p>
+        <p>
+            <?php esc_html_e('with frequency', 'bocs-wordpress'); ?>:
+            <strong id="target-frequency"></strong>
         </p>
         <p>
             <?php esc_html_e('Your next box will be updated with the new Bocs selection.', 'bocs-wordpress'); ?>
@@ -355,6 +370,47 @@ wp_enqueue_script('jquery-ui-dialog');
     font-size: 0.9em;
 }
 
+/* Frequency Selection Styles */
+.frequency-options {
+    margin: 15px 0;
+}
+
+.frequency-option {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.frequency-option:hover {
+    background-color: #f5f5f5;
+    border-color: #999;
+}
+
+.frequency-option.selected {
+    background-color: #f0f7f7;
+    border-color: #3c7b7c;
+}
+
+.frequency-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.frequency-name {
+    font-weight: 600;
+}
+
+.frequency-discount {
+    font-size: 0.9em;
+    color: #d26e4b;
+}
+
 .bocs-switch-actions {
     display: flex;
     justify-content: flex-end;
@@ -378,7 +434,36 @@ wp_enqueue_script('jquery-ui-dialog');
 
 <script type="text/javascript">
 jQuery(document).ready(function($) {
-    // Initialize dialog
+    // Initialize dialogs
+    $("#frequency-selection-dialog").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 500,
+        buttons: {
+            "Continue": function() {
+                const selectedFrequency = $('.frequency-option.selected').data('frequency-id');
+                const selectedFrequencyText = $('.frequency-option.selected .frequency-name').text();
+                
+                if (!selectedFrequency) {
+                    alert('<?php esc_html_e('Please select a frequency option', 'bocs-wordpress'); ?>');
+                    return;
+                }
+                
+                // Close frequency dialog
+                $(this).dialog("close");
+                
+                // Update confirmation dialog with selected frequency
+                $("#target-frequency").text(selectedFrequencyText);
+                
+                // Open confirmation dialog
+                $("#switch-confirmation-dialog").dialog("open");
+            },
+            "Cancel": function() {
+                $(this).dialog("close");
+            }
+        }
+    });
+    
     $("#switch-confirmation-dialog").dialog({
         autoOpen: false,
         modal: true,
@@ -394,9 +479,20 @@ jQuery(document).ready(function($) {
         }
     });
     
-    // Selected Bocs data
+    // Selected data
     let selectedBocsId = '';
     let selectedBocsName = '';
+    let selectedFrequencyId = '';
+    let bocsData = {}; // Store bocs data for frequency lookup
+    
+    // Initialize bocs data from PHP
+    <?php if (isset($bocs_items) && is_array($bocs_items)) : ?>
+        <?php foreach ($bocs_items as $bocs) : ?>
+            <?php if (isset($bocs['id'])) : ?>
+                bocsData['<?php echo esc_js($bocs['id']); ?>'] = <?php echo json_encode($bocs); ?>;
+            <?php endif; ?>
+        <?php endforeach; ?>
+    <?php endif; ?>
     
     // Handle select button click
     $(".select-bocs-button").on("click", function(e) {
@@ -407,27 +503,78 @@ jQuery(document).ready(function($) {
         selectedBocsId = $(this).data("bocs-id");
         selectedBocsName = $(this).data("bocs-name");
         
-        // Update dialog
-        $("#target-bocs-name").text(selectedBocsName);
+        // Update frequency dialog
+        $("#frequency-bocs-name").text(selectedBocsName);
         
-        // Open confirmation dialog
-        $("#switch-confirmation-dialog").dialog("open");
+        // Load frequency options
+        loadFrequencyOptions(selectedBocsId);
+        
+        // Open frequency selection dialog
+        $("#frequency-selection-dialog").dialog("open");
     });
+    
+    // Load frequency options for selected bocs
+    function loadFrequencyOptions(bocsId) {
+        const frequencyContainer = $('.frequency-options');
+        frequencyContainer.empty();
+        
+        if (!bocsData[bocsId] || !bocsData[bocsId].priceAdjustment || !bocsData[bocsId].priceAdjustment.adjustments) {
+            frequencyContainer.html('<p><?php esc_html_e('No frequency options available', 'bocs-wordpress'); ?></p>');
+            return;
+        }
+        
+        const adjustments = bocsData[bocsId].priceAdjustment.adjustments;
+        
+        adjustments.forEach(function(adjustment) {
+            // Skip if no frequency or timeUnit
+            if (!adjustment.frequency || !adjustment.timeUnit) {
+                return;
+            }
+            
+            const frequencyText = adjustment.frequency + ' ' + adjustment.timeUnit;
+            let discountText = '';
+            
+            if (adjustment.discount > 0) {
+                discountText = adjustment.discountType === 'dollar' ? 
+                    '$' + adjustment.discount + ' discount' : 
+                    adjustment.discount + '% discount';
+            }
+            
+            const html = `
+                <div class="frequency-option" data-frequency-id="${adjustment.id}">
+                    <div class="frequency-details">
+                        <span class="frequency-name">${frequencyText}</span>
+                        ${discountText ? '<span class="frequency-discount">' + discountText + '</span>' : ''}
+                    </div>
+                    <div class="frequency-select">
+                        <span class="dashicons dashicons-yes-alt" style="display:none;"></span>
+                    </div>
+                </div>
+            `;
+            
+            frequencyContainer.append(html);
+        });
+        
+        // Add click handler for frequency options
+        $('.frequency-option').on('click', function() {
+            $('.frequency-option').removeClass('selected');
+            $('.frequency-option .dashicons').hide();
+            
+            $(this).addClass('selected');
+            $(this).find('.dashicons').show();
+            
+            selectedFrequencyId = $(this).data('frequency-id');
+        });
+    }
     
     // Process the Bocs switch
     function processSwitchBocs() {
-        if (!selectedBocsId) {
+        if (!selectedBocsId || !selectedFrequencyId) {
             return;
         }
         
         // Show loading state
         $(".bocs-switch-container").prepend('<div class="bocs-loading">Processing your request...</div>');
-        
-        // Prepare data for API
-        const subscriptionId = '<?php echo esc_js($subscription_id); ?>';
-        const data = {
-            bocsId: selectedBocsId
-        };
         
         // Make API request to switch Bocs
         $.ajax({
@@ -435,8 +582,9 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: {
                 action: 'switch_bocs_subscription',
-                subscription_id: subscriptionId,
+                subscription_id: '<?php echo esc_js($subscription_id); ?>',
                 bocs_id: selectedBocsId,
+                frequency_id: selectedFrequencyId,
                 security: '<?php echo wp_create_nonce('switch-bocs-nonce'); ?>'
             },
             success: function(response) {
