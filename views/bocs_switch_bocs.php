@@ -45,7 +45,7 @@ if (is_wp_error($subscription)) {
 }
 
 // Fetch available Bocs options
-$url = BOCS_API_URL . 'bocs?status=active';
+$url = BOCS_API_URL . 'bocs';
 $available_bocs = $helper->curl_request($url, 'GET', [], $headers);
 
 // Check if available_bocs is WP_Error
