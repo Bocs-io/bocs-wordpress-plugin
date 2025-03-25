@@ -16,9 +16,6 @@ $helper = new Bocs_Helper();
 global $wp;
 $subscription_id = isset($wp->query_vars['bocs-switch-bocs']) ? sanitize_text_field($wp->query_vars['bocs-switch-bocs']) : '';
 
-// Log diagnostic info
-error_log('[Bocs] Switch Bocs - Subscription ID: ' . $subscription_id);
-
 // Get options for API headers
 $options = get_option('bocs_plugin_options');
 $headers = [];
@@ -29,55 +26,41 @@ if (!empty($options['bocs_headers'])) {
         'Authorization' => $options['bocs_headers']['authorization'] ?? '',
         'Content-Type' => 'application/json'
     ];
-    
-    // Log headers (without sensitive auth data)
-    error_log('[Bocs] Switch Bocs - Headers: Organization=' . $headers['Organization'] . ', Store=' . $headers['Store']);
-} else {
-    error_log('[Bocs] Switch Bocs - WARNING: No headers found in options');
 }
 
 // Fetch current subscription details
 $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-error_log('[Bocs] Switch Bocs - Fetching subscription: ' . $url);
 $subscription = $helper->curl_request($url, 'GET', [], $headers);
 
 // Check if subscription is WP_Error
 if (is_wp_error($subscription)) {
     $has_errors = true;
     $error_message = $subscription->get_error_message();
-    error_log('[Bocs] Switch Bocs - Subscription API Error: ' . $error_message);
 } else {
     // Check for API errors
     $has_errors = false;
     if (!isset($subscription['data']) || empty($subscription['data'])) {
         $has_errors = true;
-        error_log('[Bocs] Switch Bocs - Subscription data empty or invalid');
-    } else {
-        error_log('[Bocs] Switch Bocs - Subscription fetched successfully');
     }
 }
 
 // Fetch available Bocs options
 $url = BOCS_API_URL . 'bocs?status=active';
-error_log('[Bocs] Switch Bocs - Fetching available bocs: ' . $url);
 $available_bocs = $helper->curl_request($url, 'GET', [], $headers);
 
 // Check if available_bocs is WP_Error
 if (is_wp_error($available_bocs)) {
     $has_errors = true;
     $error_message = isset($error_message) ? $error_message : $available_bocs->get_error_message();
-    error_log('[Bocs] Switch Bocs - Bocs list API Error: ' . $error_message);
 } else {
     // Handle nested data structure - bocs items are in data.data
     if (!isset($available_bocs['data']) || 
         !isset($available_bocs['data']['data']) || 
         empty($available_bocs['data']['data'])) {
         $has_errors = true;
-        error_log('[Bocs] Switch Bocs - Bocs list data empty or invalid');
     } else {
         // Store the actual bocs items for easier access
         $bocs_items = $available_bocs['data']['data'];
-        error_log('[Bocs] Switch Bocs - Found ' . count($bocs_items) . ' available bocs');
     }
 }
 
