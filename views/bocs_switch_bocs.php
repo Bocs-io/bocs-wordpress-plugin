@@ -194,6 +194,11 @@ wp_enqueue_script('jquery-ui-dialog');
                     <div class="bocs-option-content">
                         <h3><?php echo esc_html($bocs_name); ?></h3>
                         <p class="bocs-option-description"><?php echo esc_html($bocs_description); ?></p>
+                        <?php if (isset($bocs['type']) && !empty($bocs['type'])): ?>
+                        <div class="bocs-type-badge <?php echo esc_attr(strtolower($bocs['type'])); ?>-type">
+                            <?php echo esc_html(ucfirst(strtolower($bocs['type']))); ?> <?php esc_html_e('Box', 'bocs-wordpress'); ?>
+                        </div>
+                        <?php endif; ?>
                         <div class="bocs-option-details">
                             <p class="bocs-option-price"><?php echo $helper->format_price($bocs_price, $subscription['data']['currency'] ?? ''); ?></p>
                             
@@ -430,6 +435,121 @@ wp_enqueue_script('jquery-ui-dialog');
     text-align: center;
     font-weight: 600;
 }
+
+/* Product Selection Styles */
+.bocs-product-selection-info {
+    background: #f7f7f7;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.bocs-product-selection {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding: 10px;
+}
+
+.bocs-product-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.bocs-product-details {
+    display: flex;
+    flex: 1;
+    align-items: center;
+}
+
+.bocs-product-image {
+    width: 60px;
+    height: 60px;
+    margin-right: 15px;
+}
+
+.bocs-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.bocs-product-info {
+    flex: 1;
+}
+
+.bocs-product-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.bocs-product-price {
+    color: #555;
+    font-size: 0.9em;
+}
+
+.bocs-product-quantity {
+    display: flex;
+    align-items: center;
+}
+
+.quantity-btn {
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    width: 25px;
+    height: 25px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.quantity-input {
+    width: 40px;
+    text-align: center;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    padding: 3px;
+}
+
+.product-total-quantity {
+    font-weight: bold;
+    margin-top: 15px;
+    text-align: right;
+    padding: 10px;
+    background: #f0f7f7;
+    border-radius: 4px;
+}
+
+.bocs-type-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    border-radius: 3px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.fixed-type {
+    background-color: #e9f7f7;
+    color: #2a7d7e;
+    border: 1px solid #c5e8e8;
+}
+
+.custom-type {
+    background-color: #f7f1e9;
+    color: #7d602a;
+    border: 1px solid #e8d9c5;
+}
 </style>
 
 <script type="text/javascript">
@@ -452,7 +572,64 @@ jQuery(document).ready(function($) {
                 // Close frequency dialog
                 $(this).dialog("close");
                 
-                // Update confirmation dialog with selected frequency
+                // Save frequency ID
+                selectedFrequencyId = selectedFrequency;
+                
+                // Check if this is a custom Bocs (needs product selection) or fixed Bocs
+                if (bocsData[selectedBocsId] && bocsData[selectedBocsId].type === 'custom') {
+                    // For custom bocs, open product selection dialog
+                    openProductSelectionDialog();
+                } else {
+                    // For fixed bocs, go directly to confirmation
+                    // Update confirmation dialog with selected frequency
+                    $("#target-bocs-name").text(selectedBocsName);
+                    $("#target-frequency").text(selectedFrequencyText);
+                    $("#switch-confirmation-dialog").dialog("open");
+                }
+            },
+            "Cancel": function() {
+                $(this).dialog("close");
+            }
+        }
+    });
+    
+    // Create a product selection dialog
+    $("body").append(`
+        <div id="product-selection-dialog" style="display:none;" title="<?php esc_attr_e('Select Products', 'bocs-wordpress'); ?>">
+            <p>
+                <?php esc_html_e('Select products for your', 'bocs-wordpress'); ?> 
+                <strong id="product-bocs-name"></strong> <?php esc_html_e('box', 'bocs-wordpress'); ?>:
+            </p>
+            <div class="bocs-product-selection-info"></div>
+            <div class="bocs-product-selection"></div>
+        </div>
+    `);
+    
+    // Initialize product selection dialog
+    $("#product-selection-dialog").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 600,
+        height: 500,
+        buttons: {
+            "Continue": function() {
+                // Validate product selection
+                if (!validateProductSelection()) {
+                    return;
+                }
+                
+                // Close product dialog
+                $(this).dialog("close");
+                
+                // Get selected frequency text for display
+                const selectedFrequencyObj = bocsData[selectedBocsId].priceAdjustment.adjustments.find(
+                    adj => adj.id === selectedFrequencyId
+                );
+                const selectedFrequencyText = selectedFrequencyObj ? 
+                    `${selectedFrequencyObj.frequency} ${selectedFrequencyObj.timeUnit}` : '';
+                
+                // Update confirmation dialog
+                $("#target-bocs-name").text(selectedBocsName);
                 $("#target-frequency").text(selectedFrequencyText);
                 
                 // Open confirmation dialog
@@ -483,6 +660,7 @@ jQuery(document).ready(function($) {
     let selectedBocsId = '';
     let selectedBocsName = '';
     let selectedFrequencyId = '';
+    let selectedProducts = []; // For custom bocs product selection
     let bocsData = {}; // Store bocs data for frequency lookup
     
     // Initialize bocs data from PHP
@@ -576,17 +754,35 @@ jQuery(document).ready(function($) {
         // Show loading state
         $(".bocs-switch-container").prepend('<div class="bocs-loading">Processing your request...</div>');
         
+        // Prepare data for API request
+        const requestData = {
+            action: 'switch_bocs_subscription',
+            subscription_id: '<?php echo esc_js($subscription_id); ?>',
+            bocs_id: selectedBocsId,
+            frequency_id: selectedFrequencyId,
+            security: '<?php echo wp_create_nonce('switch-bocs-nonce'); ?>'
+        };
+        
+        // Add selected products if this is a custom bocs
+        if (bocsData[selectedBocsId] && bocsData[selectedBocsId].type === 'custom') {
+            // Filter out products with quantity > 0
+            const selectedLineItems = selectedProducts
+                .filter(product => product.quantity > 0)
+                .map(product => ({
+                    productId: product.id,
+                    quantity: product.quantity
+                }));
+                
+            if (selectedLineItems.length > 0) {
+                requestData.line_items = JSON.stringify(selectedLineItems);
+            }
+        }
+        
         // Make API request to switch Bocs
         $.ajax({
             url: '<?php echo admin_url('admin-ajax.php'); ?>',
             type: 'POST',
-            data: {
-                action: 'switch_bocs_subscription',
-                subscription_id: '<?php echo esc_js($subscription_id); ?>',
-                bocs_id: selectedBocsId,
-                frequency_id: selectedFrequencyId,
-                security: '<?php echo wp_create_nonce('switch-bocs-nonce'); ?>'
-            },
+            data: requestData,
             success: function(response) {
                 if (response.success) {
                     // Success message
@@ -622,6 +818,176 @@ jQuery(document).ready(function($) {
                 );
             }
         });
+    }
+    
+    // Function to open product selection dialog
+    function openProductSelectionDialog() {
+        $("#product-bocs-name").text(selectedBocsName);
+        
+        // Load product selection UI
+        loadProductSelectionUI();
+        
+        // Open the dialog
+        $("#product-selection-dialog").dialog("open");
+    }
+    
+    // Function to load product selection UI
+    function loadProductSelectionUI() {
+        const bocs = bocsData[selectedBocsId];
+        if (!bocs || !bocs.products || !bocs.products.length) {
+            $('.bocs-product-selection').html('<p><?php esc_html_e("No products available for this Bocs.", "bocs-wordpress"); ?></p>');
+            return;
+        }
+        
+        // Get range info
+        let minQuantity = 0;
+        let maxQuantity = 0;
+        
+        if (bocs.range && Array.isArray(bocs.range) && bocs.range.length >= 2) {
+            minQuantity = parseInt(bocs.range[0]) || 0;
+            maxQuantity = parseInt(bocs.range[1]) || 0;
+        }
+        
+        // Display range info
+        let rangeInfo = '';
+        if (minQuantity > 0 && maxQuantity > 0) {
+            rangeInfo = `<?php esc_html_e("Please select between", "bocs-wordpress"); ?> ${minQuantity} <?php esc_html_e("and", "bocs-wordpress"); ?> ${maxQuantity} <?php esc_html_e("items.", "bocs-wordpress"); ?>`;
+        } else if (minQuantity > 0) {
+            rangeInfo = `<?php esc_html_e("Please select at least", "bocs-wordpress"); ?> ${minQuantity} <?php esc_html_e("items.", "bocs-wordpress"); ?>`;
+        } else if (maxQuantity > 0) {
+            rangeInfo = `<?php esc_html_e("Please select up to", "bocs-wordpress"); ?> ${maxQuantity} <?php esc_html_e("items.", "bocs-wordpress"); ?>`;
+        }
+        
+        $('.bocs-product-selection-info').html(`
+            <p>${rangeInfo}</p>
+            <p><?php esc_html_e("Total selected", "bocs-wordpress"); ?>: <span id="total-selected-quantity">0</span></p>
+        `);
+        
+        // Clear existing products
+        $('.bocs-product-selection').empty();
+        selectedProducts = [];
+        
+        // Add each product to the selection UI
+        bocs.products.forEach(product => {
+            const productImage = product.images && product.images.length > 0 ? 
+                product.images[0].url : 
+                '<?php echo esc_url(wc_placeholder_img_src()); ?>';
+            
+            const productPrice = parseFloat(product.price) || 0;
+            const formattedPrice = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: '<?php echo esc_js($subscription["data"]["currency"] ?? "USD"); ?>'
+            }).format(productPrice);
+            
+            // Add to selected products with initial quantity of 0
+            selectedProducts.push({
+                id: product.id,
+                name: product.name,
+                quantity: 0,
+                price: productPrice
+            });
+            
+            // Unique ID for this product in the UI
+            const productUiId = 'product-' + product.id.replace(/[^a-zA-Z0-9]/g, '');
+            
+            $('.bocs-product-selection').append(`
+                <div class="bocs-product-item" data-product-id="${product.id}" data-product-index="${selectedProducts.length - 1}">
+                    <div class="bocs-product-details">
+                        <div class="bocs-product-image">
+                            <img src="${productImage}" alt="${product.name}">
+                        </div>
+                        <div class="bocs-product-info">
+                            <div class="bocs-product-name">${product.name}</div>
+                            <div class="bocs-product-price">${formattedPrice}</div>
+                        </div>
+                    </div>
+                    <div class="bocs-product-quantity">
+                        <div class="quantity-btn decrease-quantity" data-product-id="${product.id}">-</div>
+                        <input type="number" id="${productUiId}" class="quantity-input" value="0" min="0" max="99" data-product-id="${product.id}">
+                        <div class="quantity-btn increase-quantity" data-product-id="${product.id}">+</div>
+                    </div>
+                </div>
+            `);
+        });
+        
+        // Add quantity change handlers
+        $('.decrease-quantity').on('click', function() {
+            const productId = $(this).data('product-id');
+            const inputField = $(`input[data-product-id="${productId}"]`);
+            let currentVal = parseInt(inputField.val());
+            if (currentVal > 0) {
+                inputField.val(currentVal - 1);
+                updateProductQuantity(productId, currentVal - 1);
+            }
+        });
+        
+        $('.increase-quantity').on('click', function() {
+            const productId = $(this).data('product-id');
+            const inputField = $(`input[data-product-id="${productId}"]`);
+            let currentVal = parseInt(inputField.val());
+            inputField.val(currentVal + 1);
+            updateProductQuantity(productId, currentVal + 1);
+        });
+        
+        $('.quantity-input').on('change', function() {
+            const productId = $(this).data('product-id');
+            const quantity = parseInt($(this).val()) || 0;
+            updateProductQuantity(productId, quantity);
+        });
+    }
+    
+    // Function to update product quantity in the selection
+    function updateProductQuantity(productId, quantity) {
+        // Find product in selected products
+        const productIndex = selectedProducts.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+            selectedProducts[productIndex].quantity = quantity;
+            updateTotalQuantity();
+        }
+    }
+    
+    // Function to update the total quantity counter
+    function updateTotalQuantity() {
+        const totalQuantity = selectedProducts.reduce((total, product) => total + product.quantity, 0);
+        $('#total-selected-quantity').text(totalQuantity);
+    }
+    
+    // Function to validate product selection
+    function validateProductSelection() {
+        const bocs = bocsData[selectedBocsId];
+        if (!bocs || bocs.type !== 'custom') {
+            return true; // No validation needed for fixed bocs
+        }
+        
+        // Get range info
+        let minQuantity = 0;
+        let maxQuantity = 0;
+        
+        if (bocs.range && Array.isArray(bocs.range) && bocs.range.length >= 2) {
+            minQuantity = parseInt(bocs.range[0]) || 0;
+            maxQuantity = parseInt(bocs.range[1]) || 0;
+        }
+        
+        // Calculate total selected quantity
+        const totalQuantity = selectedProducts.reduce((total, product) => total + product.quantity, 0);
+        
+        // Validate against min/max
+        if (minQuantity > 0 && totalQuantity < minQuantity) {
+            alert(`<?php esc_html_e("Please select at least", "bocs-wordpress"); ?> ${minQuantity} <?php esc_html_e("items.", "bocs-wordpress"); ?>`);
+            return false;
+        }
+        
+        if (maxQuantity > 0 && totalQuantity > maxQuantity) {
+            alert(`<?php esc_html_e("Please select no more than", "bocs-wordpress"); ?> ${maxQuantity} <?php esc_html_e("items.", "bocs-wordpress"); ?>`);
+            return false;
+        }
+        
+        if (totalQuantity === 0) {
+            alert('<?php esc_html_e("Please select at least one product.", "bocs-wordpress"); ?>');
+            return false;
+        }
+        
+        return true;
     }
 });
 </script> 

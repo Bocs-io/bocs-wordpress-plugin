@@ -296,6 +296,33 @@ class BOCS_AJAX {
             'frequencyId' => $frequency_id
         ];
         
+        // Check if line items are provided (for custom Bocs)
+        if (isset($_POST['line_items']) && !empty($_POST['line_items'])) {
+            $line_items = json_decode(stripslashes($_POST['line_items']), true);
+            
+            // Validate line items
+            if (is_array($line_items) && !empty($line_items)) {
+                // Sanitize line items
+                $sanitized_line_items = [];
+                foreach ($line_items as $item) {
+                    if (isset($item['productId']) && isset($item['quantity'])) {
+                        $sanitized_line_items[] = [
+                            'productId' => sanitize_text_field($item['productId']),
+                            'quantity' => intval($item['quantity'])
+                        ];
+                    }
+                }
+                
+                // Add to data if we have valid line items
+                if (!empty($sanitized_line_items)) {
+                    $data['lineItems'] = $sanitized_line_items;
+                }
+            }
+        }
+        
+        // Log the request for debugging
+        $helper->log('Switch Bocs request data: ' . json_encode($data), 'info');
+        
         // Make API request
         $response = $helper->curl_request($url, 'PATCH', $data, $headers);
         
