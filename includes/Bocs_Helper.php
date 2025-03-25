@@ -29,6 +29,33 @@ class Bocs_Helper
                 throw new Exception(__('API URL is required', 'bocs-wordpress'));
             }
 
+            // Check if we have required authentication headers
+            if (empty($headers['Organization']) || empty($headers['Store']) || empty($headers['Authorization'])) {
+                // Try to get headers from options if not provided
+                $options = get_option('bocs_plugin_options');
+                if (!empty($options['bocs_headers'])) {
+                    $headers = [
+                        'Organization' => $options['bocs_headers']['organization'] ?? '',
+                        'Store' => $options['bocs_headers']['store'] ?? '',
+                        'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                        'Content-Type' => 'application/json'
+                    ];
+                }
+
+                // If still missing required headers, log and fail
+                if (empty($headers['Organization']) || empty($headers['Store']) || empty($headers['Authorization'])) {
+                    error_log('[Bocs] API Request Failed: Missing required authentication headers');
+                    throw new Exception(__('Missing required API authentication headers', 'bocs-wordpress'));
+                }
+            }
+
+            // Log API request (without authorization header for security)
+            $log_headers = $headers;
+            if (isset($log_headers['Authorization'])) {
+                $log_headers['Authorization'] = 'REDACTED';
+            }
+            error_log('[Bocs] API Request: ' . $method . ' ' . $url . ', Headers: ' . json_encode($log_headers));
+
             $args = [
                 'method'      => $method,
                 'timeout'     => 45,
@@ -79,14 +106,19 @@ class Bocs_Helper
                 throw new Exception(__('Critical: Failed to parse API response', 'bocs-wordpress'));
             }
 
+            // Log success
+            error_log('[Bocs] API Request Success: ' . $method . ' ' . $url);
             return $data;
 
         } catch (Exception $e) {
-            error_log(sprintf(
+            $error_message = sprintf(
                 /* translators: %s: Error message */
                 __('Critical: API Error: %s', 'bocs-wordpress'),
                 $e->getMessage()
-            ));
+            );
+            
+            error_log($error_message . ' (URL: ' . $url . ')');
+            
             return new WP_Error(
                 'bocs_api_error',
                 $e->getMessage(),
