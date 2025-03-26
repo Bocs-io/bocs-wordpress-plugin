@@ -174,6 +174,22 @@ wp_enqueue_script('jquery-ui-dialog');
                     <?php esc_html_e('Change Products', 'bocs-wordpress'); ?>
                 </button>
             </div>
+            <?php elseif (!empty($current_bocs_type) && $current_bocs_type == 'fixed'): ?>
+            <div class="bocs-update-section bocs-fixed-products">
+                <h4><?php esc_html_e('Update Products', 'bocs-wordpress'); ?></h4>
+                <p><?php esc_html_e('This is a fixed box with pre-selected products that cannot be modified.', 'bocs-wordpress'); ?></p>
+                <button class="button disabled" disabled>
+                    <?php esc_html_e('Change Products', 'bocs-wordpress'); ?>
+                </button>
+                <div class="bocs-fixed-note">
+                    <div class="note-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M11,7H13V13H11V7M11,15H13V17H11V15Z"/>
+                        </svg>
+                    </div>
+                    <?php esc_html_e('To select different products, switch to a custom box below.', 'bocs-wordpress'); ?>
+                </div>
+            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -454,6 +470,41 @@ wp_enqueue_script('jquery-ui-dialog');
     box-shadow: 0 4px 12px rgba(60, 123, 124, 0.2);
 }
 
+/* Disabled button for fixed box */
+.bocs-fixed-products button.disabled {
+    background-color: #e0e0e0 !important;
+    color: #9e9e9e !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 0.7;
+}
+
+.bocs-fixed-products button.disabled:hover {
+    background-color: #e0e0e0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.bocs-fixed-note {
+    margin-top: 15px;
+    padding: 10px 12px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #666;
+    display: flex;
+    align-items: center;
+    border-left: 3px solid var(--bocs-secondary);
+}
+
+.note-icon {
+    color: var(--bocs-secondary);
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+}
+
 .bocs-type-badge {
     display: inline-block;
     font-size: 0.8em;
@@ -463,16 +514,6 @@ wp_enqueue_script('jquery-ui-dialog');
     margin-left: 8px;
     vertical-align: middle;
     text-transform: uppercase;
-}
-
-.fixed-type {
-    background-color: #e3f2fd;
-    color: #1976d2;
-}
-
-.custom-type {
-    background-color: #fce4ec;
-    color: #c2185b;
 }
 
 .bocs-switch-intro p {
