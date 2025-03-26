@@ -1864,7 +1864,7 @@ jQuery(document).ready(function($) {
                 
                 // Redirect after delay
                 setTimeout(function() {
-                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.reload();
                 }, 3000);
             },
             error: function(xhr) {
@@ -2068,7 +2068,7 @@ jQuery(document).ready(function($) {
                 
                 // Redirect after delay
                 setTimeout(function() {
-                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.reload();
                 }, 3000);
             },
             error: function(xhr) {
