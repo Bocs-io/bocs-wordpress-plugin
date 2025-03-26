@@ -1374,13 +1374,23 @@ jQuery(document).ready(function($) {
                 return;
             }
             
-            const frequencyText = adjustment.frequency + ' ' + 
-                (adjustment.timeUnit.toLowerCase() === 'day' && adjustment.frequency > 1 ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : 
-                 adjustment.timeUnit.toLowerCase() === 'day' ? '<?php esc_html_e('day', 'bocs-wordpress'); ?>' : 
-                 adjustment.timeUnit.toLowerCase() === 'week' && adjustment.frequency > 1 ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : 
-                 adjustment.timeUnit.toLowerCase() === 'week' ? '<?php esc_html_e('week', 'bocs-wordpress'); ?>' : 
-                 adjustment.timeUnit.toLowerCase() === 'month' && adjustment.frequency > 1 ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : 
-                 adjustment.timeUnit.toLowerCase() === 'month' ? '<?php esc_html_e('month', 'bocs-wordpress'); ?>' : adjustment.timeUnit);
+            function formatFrequencyText(frequency, timeUnit) {
+                const unit = timeUnit.toLowerCase();
+                const plural = frequency > 1;
+                
+                const units = {
+                    'day': plural ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : '<?php esc_html_e('day', 'bocs-wordpress'); ?>',
+                    'days': plural ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : '<?php esc_html_e('day', 'bocs-wordpress'); ?>',
+                    'week': plural ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : '<?php esc_html_e('week', 'bocs-wordpress'); ?>',
+                    'weeks': plural ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : '<?php esc_html_e('week', 'bocs-wordpress'); ?>',
+                    'month': plural ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : '<?php esc_html_e('month', 'bocs-wordpress'); ?>',
+                    'months': plural ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : '<?php esc_html_e('month', 'bocs-wordpress'); ?>'
+                };
+                
+                return `${frequency} ${units[unit] || timeUnit}`;
+            }
+            
+            const frequencyText = formatFrequencyText(adjustment.frequency, adjustment.timeUnit);
             
             // Format discount text
             let discountText = '';
@@ -2372,6 +2382,140 @@ jQuery(document).ready(function($) {
         successEl.hide().fadeIn(300);
         
         return successEl;
+    }
+
+    function calculateSubtotal(selectedProducts, bocsType) {
+        if (!selectedProducts || !Array.isArray(selectedProducts)) {
+            return 0;
+        }
+
+        if (bocsType === 'custom') {
+            return selectedProducts.reduce((total, product) => {
+                if (!product || typeof product.price !== 'number' || typeof product.quantity !== 'number') {
+                    console.warn('Invalid product data:', product);
+                    return total;
+                }
+                return total + (product.price * product.quantity);
+            }, 0);
+        }
+
+        // For fixed type Bocs, use the predefined price
+        return 0;
+    }
+
+    // Update the price calculation in the updatePriceDisplay function
+    function updatePriceDisplay() {
+        try {
+            const selectedBocsId = document.getElementById('bocs-select').value;
+            const selectedBocs = bocsData.find(b => b.id === selectedBocsId);
+            const selectedFrequencyId = document.getElementById('frequency-select').value;
+            const selectedFrequencyObj = selectedBocs.priceAdjustments.find(a => a.id === selectedFrequencyId);
+            
+            if (!selectedBocs || !selectedFrequencyObj) {
+                throw new Error('Invalid Bocs or frequency selection');
+            }
+
+            let subtotal = calculateSubtotal(selectedProducts, selectedBocs.type);
+            let discount = 0;
+            
+            if (selectedFrequencyObj.discountType === 'PERCENT') {
+                discount = subtotal * (selectedFrequencyObj.discount / 100);
+            } else if (selectedFrequencyObj.discountType === 'FIXED') {
+                discount = selectedFrequencyObj.discount;
+            }
+
+            const total = subtotal - discount;
+            
+            // Update price display with proper formatting
+            document.getElementById('subtotal').textContent = formatPrice(subtotal);
+            document.getElementById('discount').textContent = formatPrice(discount);
+            document.getElementById('total').textContent = formatPrice(total);
+        } catch (error) {
+            console.error('Error updating price display:', error);
+            showErrorMessage('<?php esc_html_e('Error calculating price. Please try again.', 'bocs-wordpress'); ?>');
+        }
+    }
+
+    function formatPrice(amount) {
+        return new Intl.NumberFormat('<?php echo esc_js(get_locale()); ?>', {
+            style: 'currency',
+            currency: '<?php echo esc_js(get_woocommerce_currency()); ?>'
+        }).format(amount);
+    }
+
+    function prepareMetadata(selectedBocsId, selectedFrequencyObj, currentSubscription) {
+        if (!selectedBocsId || !selectedFrequencyObj || !currentSubscription) {
+            throw new Error('Missing required data for metadata preparation');
+        }
+
+        const metaUpdates = {
+            '__bocs_bocs_id': String(selectedBocsId),
+            '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
+            '__bocs_frequency_id': String(selectedFrequencyObj.id),
+            '__bocs_frequency_interval': String(selectedFrequencyObj.frequency),
+            '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
+            '__bocs_id': String(currentSubscription.id || ''),
+            '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
+            '__bocs_original_subscription_id': String(currentSubscription.id || ''),
+            '__bocs_switch_date': new Date().toISOString(),
+            '__bocs_switch_status': 'pending'
+        };
+
+        // Add product-specific metadata for custom Bocs
+        if (selectedProducts && selectedProducts.length > 0) {
+            metaUpdates['__bocs_selected_products'] = JSON.stringify(
+                selectedProducts.map(p => ({
+                    id: p.id,
+                    quantity: p.quantity,
+                    price: p.price
+                }))
+            );
+        }
+
+        return metaUpdates;
+    }
+
+    // Update the metadata handling in the switchBocs function
+    async function switchBocs() {
+        try {
+            const selectedBocsId = document.getElementById('bocs-select').value;
+            const selectedBocs = bocsData.find(b => b.id === selectedBocsId);
+            const selectedFrequencyId = document.getElementById('frequency-select').value;
+            const selectedFrequencyObj = selectedBocs.priceAdjustments.find(a => a.id === selectedFrequencyId);
+
+            if (!selectedBocs || !selectedFrequencyObj) {
+                throw new Error('Invalid Bocs or frequency selection');
+            }
+
+            const metaUpdates = prepareMetadata(selectedBocsId, selectedFrequencyObj, currentSubscription);
+            
+            // Validate metadata before proceeding
+            if (!validateMetadata(metaUpdates)) {
+                throw new Error('Invalid metadata structure');
+            }
+
+            // Rest of the switchBocs function...
+        } catch (error) {
+            console.error('Error in switchBocs:', error);
+            showErrorMessage('<?php esc_html_e('Error preparing subscription data. Please try again.', 'bocs-wordpress'); ?>');
+        }
+    }
+
+    function validateMetadata(metadata) {
+        const requiredFields = [
+            '__bocs_bocs_id',
+            '__bocs_discount_type',
+            '__bocs_frequency_id',
+            '__bocs_frequency_interval',
+            '__bocs_frequency_time_unit',
+            '__bocs_id'
+        ];
+
+        return requiredFields.every(field => 
+            metadata[field] !== undefined && 
+            metadata[field] !== null && 
+            String(metadata[field]).trim() !== ''
+        );
     }
 });
 </script> 
