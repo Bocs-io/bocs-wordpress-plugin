@@ -1752,6 +1752,10 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
+                    // Get shipping settings from WooCommerce
+                    const shippingMethod = '<?php echo WC()->shipping ? WC()->shipping->get_shipping_methods() : ''; ?>';
+                    const shippingCost = <?php echo WC()->cart ? WC()->cart->get_shipping_total() : 0; ?>;
+                    
                     // Calculate tax based on WooCommerce settings
                     const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
                     const taxAmount = (total * taxRate) / 100;
@@ -1763,9 +1767,15 @@ jQuery(document).ready(function($) {
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
                     metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
                     metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
+                    metaUpdates['__bocs_shipping_total'] = String(shippingCost.toFixed(2));
                     
-                    // Update discountTotal, couponLines, and taxLines in requestData
+                    // Update requestData with all calculated values
+                    requestData.subtotal = subtotal;
+                    requestData.total = total;
                     requestData.discountTotal = discountAmount;
+                    requestData.shippingTotal = shippingCost;
+                    
+                    // Add coupon lines if there's a discount
                     if (discountAmount > 0) {
                         requestData.couponLines = [{
                             code: 'FREQUENCY_DISCOUNT',
@@ -1775,7 +1785,7 @@ jQuery(document).ready(function($) {
                         requestData.discountTax = 0;
                     }
                     
-                    // Add tax lines
+                    // Add tax lines if tax is applicable
                     if (taxAmount > 0) {
                         requestData.taxLines = [{
                             rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
@@ -1785,6 +1795,15 @@ jQuery(document).ready(function($) {
                             taxTotal: taxAmount,
                             shippingTaxTotal: 0
                         }];
+                    }
+                    
+                    // Add shipping information
+                    if (shippingCost > 0) {
+                        requestData.shipping = {
+                            method: shippingMethod,
+                            total: shippingCost,
+                            tax: 0
+                        };
                     }
                 }
                 
