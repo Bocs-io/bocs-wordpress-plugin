@@ -1766,6 +1766,7 @@ jQuery(document).ready(function($) {
                             discount: discountAmount,
                             discountTax: 0
                         }];
+                        requestData.discountTax = 0; // Add discountTax field
                     }
                 }
                 
@@ -2024,6 +2025,7 @@ jQuery(document).ready(function($) {
                             discount: discountAmount,
                             discountTax: 0
                         }];
+                        requestData.discountTax = 0; // Add discountTax field
                     }
                 }
                 
