@@ -1863,10 +1863,25 @@ jQuery(document).ready(function($) {
                     // Calculate discount
                     let discountAmount = 0;
                     if (selectedFrequencyObj.discount > 0) {
-                        if (selectedFrequencyObj.discountType === 'DOLLAR') {
+                        if (selectedFrequencyObj.discountType.toLowerCase() === 'dollar') {
                             discountAmount = selectedFrequencyObj.discount;
                         } else {
-                            discountAmount = (subtotal * selectedFrequencyObj.discount) / 100;
+                            // For percentage discounts, calculate based on current subscription line items
+                            // if we're not switching products
+                            let calculateSubtotal = subtotal;
+                            
+                            // If we haven't already selected new products but have current subscription items
+                            if ((!selectedProducts || !selectedProducts.some(p => p.quantity > 0)) && 
+                                currentSubscription.lineItems && currentSubscription.lineItems.length > 0) {
+                                calculateSubtotal = currentSubscription.lineItems.reduce((total, item) => {
+                                    const price = parseFloat(item.price) || 0;
+                                    const quantity = parseInt(item.quantity) || 1;
+                                    return total + (price * quantity);
+                                }, 0);
+                                console.log('Using current subscription line items for percentage discount calculation:', calculateSubtotal);
+                            }
+                            
+                            discountAmount = (calculateSubtotal * selectedFrequencyObj.discount) / 100;
                         }
                     }
                     
@@ -1954,10 +1969,26 @@ jQuery(document).ready(function($) {
                 const discountObj = frequencyData || currentSubscription.frequency;
                 
                 if (discountObj && discountObj.discount > 0) {
-                    if (discountObj.discountType === 'DOLLAR') {
+                    if (discountObj.discountType.toLowerCase() === 'dollar') {
                         discountAmount = discountObj.discount;
                     } else {
-                        discountAmount = (subtotal * discountObj.discount) / 100;
+                        // For percentage discounts, we need to calculate based on appropriate product data
+                        let calculateSubtotal = subtotal;
+                        
+                        // If we're not selecting new products (not custom box or no products selected)
+                        // and we have current line items, use those for percentage calculation
+                        if ((!bocs.type || bocs.type !== 'custom' || 
+                             !selectedProducts || !selectedProducts.some(p => p.quantity > 0)) && 
+                            currentSubscription.lineItems && currentSubscription.lineItems.length > 0) {
+                            calculateSubtotal = currentSubscription.lineItems.reduce((total, item) => {
+                                const price = parseFloat(item.price) || 0;
+                                const quantity = parseInt(item.quantity) || 1;
+                                return total + (price * quantity);
+                            }, 0);
+                            console.log('Using current subscription line items for percentage discount calculation:', calculateSubtotal);
+                        }
+                        
+                        discountAmount = (calculateSubtotal * discountObj.discount) / 100;
                     }
                 }
                 
@@ -2190,10 +2221,26 @@ jQuery(document).ready(function($) {
                     // Calculate discount
                     let discountAmount = 0;
                     if (selectedFrequencyObj.discount > 0) {
-                        if (selectedFrequencyObj.discountType === 'DOLLAR') {
+                        if (selectedFrequencyObj.discountType.toLowerCase() === 'dollar') {
                             discountAmount = selectedFrequencyObj.discount;
                         } else {
-                            discountAmount = (subtotal * selectedFrequencyObj.discount) / 100;
+                            // For percentage discounts, we need to calculate based on appropriate product data
+                            let calculateSubtotal = subtotal;
+                            
+                            // If we're not selecting new products (not custom box or no products selected)
+                            // and we have current line items, use those for percentage calculation
+                            if ((!bocs.type || bocs.type !== 'custom' || 
+                                 !selectedProducts || !selectedProducts.some(p => p.quantity > 0)) && 
+                                currentSubscription.lineItems && currentSubscription.lineItems.length > 0) {
+                                calculateSubtotal = currentSubscription.lineItems.reduce((total, item) => {
+                                    const price = parseFloat(item.price) || 0;
+                                    const quantity = parseInt(item.quantity) || 1;
+                                    return total + (price * quantity);
+                                }, 0);
+                                console.log('Using current subscription line items for percentage discount calculation:', calculateSubtotal);
+                            }
+                            
+                            discountAmount = (calculateSubtotal * selectedFrequencyObj.discount) / 100;
                         }
                     }
                     
