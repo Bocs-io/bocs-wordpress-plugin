@@ -1810,7 +1810,7 @@ jQuery(document).ready(function($) {
                     name: product.name,
                     quantity: product.quantity,
                     price: product.price,
-                    total: (product.price * product.quantity).toFixed(2),
+                    total: product.price * product.quantity, // Remove toFixed(2) to keep as number
                     metaData: []
                 }));
         }
@@ -2017,7 +2017,7 @@ jQuery(document).ready(function($) {
                     name: product.name,
                     quantity: product.quantity,
                     price: product.price,
-                    total: (product.price * product.quantity).toFixed(2),
+                    total: product.price * product.quantity, // Remove toFixed(2) to keep as number
                     metaData: []
                 }));
         } else if (bocsById[selectedBocsId] && bocsById[selectedBocsId].products) {
@@ -2027,7 +2027,7 @@ jQuery(document).ready(function($) {
                 name: product.name,
                 quantity: product.quantity || 1,
                 price: parseFloat(product.price) || 0,
-                total: ((parseFloat(product.price) || 0) * (product.quantity || 1)).toFixed(2),
+                total: (parseFloat(product.price) || 0) * (product.quantity || 1), // Remove toFixed(2) to keep as number
                 metaData: []
             }));
         }
