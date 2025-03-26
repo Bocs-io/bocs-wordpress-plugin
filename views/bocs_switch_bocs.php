@@ -993,6 +993,23 @@ wp_enqueue_script('jquery-ui-dialog');
     align-items: center;
 }
 
+.product-current-badge {
+    display: inline-block;
+    background-color: var(--bocs-primary-light);
+    color: var(--bocs-primary);
+    font-size: 0.75em;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-top: 5px;
+    border: 1px solid var(--bocs-primary);
+    font-weight: 500;
+}
+
+.product-option.in-subscription {
+    border-color: var(--bocs-primary);
+    background-color: rgba(60, 123, 124, 0.05);
+}
+
 .product-options {
     max-height: 300px;
     overflow-y: auto;
@@ -1357,6 +1374,7 @@ jQuery(document).ready(function($) {
         const productContainer = $('.product-options');
         productContainer.empty();
         selectedProducts = [];
+        $("#using-current-products").hide();
         
         if (!bocsById[bocsId]) {
             productContainer.html('<p><?php esc_html_e('No products available', 'bocs-wordpress'); ?></p>');
@@ -1386,24 +1404,55 @@ jQuery(document).ready(function($) {
         
         // Determine which products to display
         let productsToShow = [];
+        let usingCurrentProducts = false;
         
         // Check if we have available products for this box
         if (bocs.availableProducts && Array.isArray(bocs.availableProducts) && bocs.availableProducts.length > 0) {
             productsToShow = bocs.availableProducts;
-        }
-        // If no available products but we're updating current box, use current products
-        else if (isUpdatingCurrentBocs && currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
-            // Transform current products to match the expected format
-            productsToShow = currentProducts.map(item => ({
-                id: item.productId,
-                name: item.name,
-                price: parseFloat(item.price) || 0,
-                images: item.image ? [{ url: item.image }] : [],
-                description: ''
-            }));
             
-            // Show the "using current products" message
-            $("#using-current-products").show();
+            // If we're updating current box and have subscription items, mark as using current
+            if (isUpdatingCurrentBocs && currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
+                usingCurrentProducts = true;
+            }
+        }
+        // If no available products in bocs data, try to use API data or current subscription products
+        else if (isUpdatingCurrentBocs) {
+            // Request available products for this box from the API
+            $.ajax({
+                url: '<?php echo esc_js(BOCS_API_URL); ?>bocs/' + bocsId + '/products',
+                type: 'GET',
+                async: false,
+                headers: {
+                    <?php foreach ($headers as $key => $value): ?>
+                    '<?php echo esc_js($key); ?>': '<?php echo esc_js($value); ?>',
+                    <?php endforeach; ?>
+                },
+                success: function(response) {
+                    if (response && response.data && Array.isArray(response.data)) {
+                        productsToShow = response.data.map(item => ({
+                            id: item.id,
+                            name: item.name,
+                            price: parseFloat(item.price) || 0,
+                            images: item.images || [],
+                            description: item.description || ''
+                        }));
+                        usingCurrentProducts = true;
+                    }
+                },
+                error: function() {
+                    // If API fails, fallback to current subscription products
+                    if (currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
+                        productsToShow = currentProducts.map(item => ({
+                            id: item.productId,
+                            name: item.name,
+                            price: parseFloat(item.price) || 0,
+                            images: item.image ? [{ url: item.image }] : [],
+                            description: ''
+                        }));
+                        usingCurrentProducts = true;
+                    }
+                }
+            });
         }
         
         if (productsToShow.length === 0) {
@@ -1411,7 +1460,12 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        // Initialize products array
+        // Show message if using current subscription products
+        if (usingCurrentProducts) {
+            $("#using-current-products").show();
+        }
+        
+        // Initialize products array and display product options
         productsToShow.forEach(function(product) {
             let initialQuantity = 0;
             
@@ -1435,9 +1489,12 @@ jQuery(document).ready(function($) {
                 ? product.images[0].url
                 : '<?php echo esc_url(wc_placeholder_img_src()); ?>';
             
+            // Determine if this product is currently in the subscription
+            const isInSubscription = initialQuantity > 0;
+            
             // Create product option element
             const productOption = $(`
-                <div class="product-option" data-product-id="${product.id}">
+                <div class="product-option ${isInSubscription ? 'in-subscription' : ''}" data-product-id="${product.id}">
                     <div class="product-info">
                         <div class="product-image">
                             <img src="${productImage}" alt="${product.name}">
@@ -1446,6 +1503,7 @@ jQuery(document).ready(function($) {
                             <h4 class="product-name">${product.name}</h4>
                             <div class="product-price">${formatPrice(product.price)}</div>
                             ${product.description ? `<p class="product-description">${product.description}</p>` : ''}
+                            ${isInSubscription ? '<span class="product-current-badge"><?php esc_html_e("Currently Selected", "bocs-wordpress"); ?></span>' : ''}
                         </div>
                     </div>
                     <div class="product-quantity">
