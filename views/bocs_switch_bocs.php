@@ -1752,13 +1752,19 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
+                    // Calculate tax based on WooCommerce settings
+                    const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
+                    const taxAmount = (total * taxRate) / 100;
+                    
                     // Update pricing metadata - ensure all values are strings
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
+                    metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
                     
-                    // Update discountTotal and couponLines in requestData
+                    // Update discountTotal, couponLines, and taxLines in requestData
                     requestData.discountTotal = discountAmount;
                     if (discountAmount > 0) {
                         requestData.couponLines = [{
@@ -1766,7 +1772,19 @@ jQuery(document).ready(function($) {
                             discount: discountAmount,
                             discountTax: 0
                         }];
-                        requestData.discountTax = 0; // Add discountTax field
+                        requestData.discountTax = 0;
+                    }
+                    
+                    // Add tax lines
+                    if (taxAmount > 0) {
+                        requestData.taxLines = [{
+                            rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
+                            rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
+                            label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
+                            compound: false,
+                            taxTotal: taxAmount,
+                            shippingTaxTotal: 0
+                        }];
                     }
                 }
                 
@@ -1806,9 +1824,40 @@ jQuery(document).ready(function($) {
                 
                 const total = subtotal - discountAmount;
                 
-                // Update pricing metadata
-                metaUpdates['__bocs_subtotal'] = subtotal.toFixed(2);
-                metaUpdates['__bocs_total'] = total.toFixed(2);
+                // Calculate tax based on WooCommerce settings
+                const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
+                const taxAmount = (total * taxRate) / 100;
+                
+                // Update pricing metadata - ensure all values are strings
+                metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
+                metaUpdates['__bocs_total'] = String(total.toFixed(2));
+                metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
+                metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
+                metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
+                
+                // Update discountTotal, couponLines, and taxLines in requestData
+                requestData.discountTotal = discountAmount;
+                if (discountAmount > 0) {
+                    requestData.couponLines = [{
+                        code: 'FREQUENCY_DISCOUNT',
+                        discount: discountAmount,
+                        discountTax: 0
+                    }];
+                    requestData.discountTax = 0;
+                }
+                
+                // Add tax lines
+                if (taxAmount > 0) {
+                    requestData.taxLines = [{
+                        rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
+                        rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
+                        label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
+                        compound: false,
+                        taxTotal: taxAmount,
+                        shippingTaxTotal: 0
+                    }];
+                }
                 
                 // Update metadata in the array
                 Object.entries(metaUpdates).forEach(([key, value]) => {
@@ -2011,13 +2060,19 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
+                    // Calculate tax based on WooCommerce settings
+                    const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
+                    const taxAmount = (total * taxRate) / 100;
+                    
                     // Update pricing metadata - ensure all values are strings
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
+                    metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
                     
-                    // Update discountTotal and couponLines in requestData
+                    // Update discountTotal, couponLines, and taxLines in requestData
                     requestData.discountTotal = discountAmount;
                     if (discountAmount > 0) {
                         requestData.couponLines = [{
@@ -2025,21 +2080,33 @@ jQuery(document).ready(function($) {
                             discount: discountAmount,
                             discountTax: 0
                         }];
-                        requestData.discountTax = 0; // Add discountTax field
+                        requestData.discountTax = 0;
                     }
+                    
+                    // Add tax lines
+                    if (taxAmount > 0) {
+                        requestData.taxLines = [{
+                            rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
+                            rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
+                            label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
+                            compound: false,
+                            taxTotal: taxAmount,
+                            shippingTaxTotal: 0
+                        }];
+                    }
+                    
+                    // Update metadata in the array
+                    Object.entries(metaUpdates).forEach(([key, value]) => {
+                        const existingIndex = updatedMetaData.findIndex(item => item.key === key);
+                        if (existingIndex >= 0) {
+                            updatedMetaData[existingIndex].value = value;
+                        } else {
+                            updatedMetaData.push({ key, value });
+                        }
+                    });
+                    
+                    requestData.metaData = updatedMetaData;
                 }
-                
-                // Update metadata in the array
-                Object.entries(metaUpdates).forEach(([key, value]) => {
-                    const existingIndex = updatedMetaData.findIndex(item => item.key === key);
-                    if (existingIndex >= 0) {
-                        updatedMetaData[existingIndex].value = value;
-                    } else {
-                        updatedMetaData.push({ key, value });
-                    }
-                });
-                
-                requestData.metaData = updatedMetaData;
             }
         }
         
