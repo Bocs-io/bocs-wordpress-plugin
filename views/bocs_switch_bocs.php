@@ -340,6 +340,14 @@ wp_enqueue_script('jquery-ui-dialog');
                 <?php esc_html_e('Products selected:', 'bocs-wordpress'); ?> <span id="product-count">0</span>
             </p>
         </div>
+        <div id="using-current-products" style="display:none;" class="current-products-note">
+            <div class="note-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M11,7H13V13H11V7M11,15H13V17H11V15Z"/>
+                </svg>
+            </div>
+            <?php esc_html_e('Showing your current products. Adjust quantities as needed.', 'bocs-wordpress'); ?>
+        </div>
         <div class="product-options">
             <!-- Product options will be dynamically loaded here -->
         </div>
@@ -1100,6 +1108,19 @@ wp_enqueue_script('jquery-ui-dialog');
     border: 1px dashed var(--bocs-primary);
     background-color: var(--bocs-primary-light);
 }
+
+/* Current products note */
+.current-products-note {
+    margin: 0 0 15px 0;
+    padding: 10px 12px;
+    background-color: var(--bocs-primary-light);
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--bocs-primary-dark);
+    display: flex;
+    align-items: center;
+    border-left: 3px solid var(--bocs-primary);
+}
 </style>
 
 <script type="text/javascript">
@@ -1326,6 +1347,8 @@ jQuery(document).ready(function($) {
             
             $(this).addClass('selected');
             $(this).find('.dashicons').show();
+            
+            selectedFrequencyId = $(this).data('frequency-id');
         });
     }
     
@@ -1354,25 +1377,46 @@ jQuery(document).ready(function($) {
         $("#min-products").text(minProducts);
         $("#max-products").text(maxProducts);
         
-        // Get current products if updating
+        // Get current products from subscription
         const currentProducts = <?php 
             echo isset($subscription['data']['lineItems']) 
                 ? json_encode($subscription['data']['lineItems']) 
                 : 'null'; 
         ?>;
         
-        // Get available products for this bocs
-        if (!bocs.availableProducts || !Array.isArray(bocs.availableProducts) || bocs.availableProducts.length === 0) {
+        // Determine which products to display
+        let productsToShow = [];
+        
+        // Check if we have available products for this box
+        if (bocs.availableProducts && Array.isArray(bocs.availableProducts) && bocs.availableProducts.length > 0) {
+            productsToShow = bocs.availableProducts;
+        }
+        // If no available products but we're updating current box, use current products
+        else if (isUpdatingCurrentBocs && currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
+            // Transform current products to match the expected format
+            productsToShow = currentProducts.map(item => ({
+                id: item.productId,
+                name: item.name,
+                price: parseFloat(item.price) || 0,
+                images: item.image ? [{ url: item.image }] : [],
+                description: ''
+            }));
+            
+            // Show the "using current products" message
+            $("#using-current-products").show();
+        }
+        
+        if (productsToShow.length === 0) {
             productContainer.html('<p><?php esc_html_e('No products available for this box', 'bocs-wordpress'); ?></p>');
             return;
         }
         
         // Initialize products array
-        bocs.availableProducts.forEach(function(product) {
+        productsToShow.forEach(function(product) {
             let initialQuantity = 0;
             
-            // If updating current box, set initial quantity from current subscription
-            if (isUpdatingCurrentBocs && currentProducts) {
+            // Check if this product is in the current subscription
+            if (currentProducts && Array.isArray(currentProducts)) {
                 const currentProduct = currentProducts.find(item => item.productId === product.id);
                 if (currentProduct) {
                     initialQuantity = parseInt(currentProduct.quantity) || 0;
@@ -1386,15 +1430,18 @@ jQuery(document).ready(function($) {
                 quantity: initialQuantity
             });
             
+            // Get image URL or use placeholder
+            const productImage = product.images && product.images.length > 0 && product.images[0].url
+                ? product.images[0].url
+                : '<?php echo esc_url(wc_placeholder_img_src()); ?>';
+            
             // Create product option element
             const productOption = $(`
                 <div class="product-option" data-product-id="${product.id}">
                     <div class="product-info">
-                        ${product.images && product.images.length > 0 ? 
-                            `<div class="product-image">
-                                <img src="${product.images[0].url}" alt="${product.name}">
-                            </div>` : ''
-                        }
+                        <div class="product-image">
+                            <img src="${productImage}" alt="${product.name}">
+                        </div>
                         <div class="product-details">
                             <h4 class="product-name">${product.name}</h4>
                             <div class="product-price">${formatPrice(product.price)}</div>
@@ -1745,12 +1792,7 @@ jQuery(document).ready(function($) {
         $('.frequency-option .dashicons').hide();
         
         $(this).addClass('selected');
-        $(this).find('.dashicons')
-            .css('transform', 'scale(0)')
-            .show()
-            .animate({opacity: 1}, 200)
-            .css('transform', 'scale(1.2)')
-            .animate({transform: 'scale(1)'}, 200);
+        $(this).find('.dashicons').show();
         
         selectedFrequencyId = $(this).data('frequency-id');
     });
