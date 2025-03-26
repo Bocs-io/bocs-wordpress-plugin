@@ -1648,8 +1648,10 @@ jQuery(document).ready(function($) {
         
         // Get selected frequency details if updating frequency
         let frequencyData = null;
+        let selectedFrequencyObj = null;
+        
         if (selectedFrequencyId) {
-            const selectedFrequencyObj = bocsById[selectedBocsId].priceAdjustment.adjustments.find(
+            selectedFrequencyObj = bocsById[selectedBocsId].priceAdjustment.adjustments.find(
                 adj => adj.id === selectedFrequencyId
             );
             
@@ -1696,10 +1698,10 @@ jQuery(document).ready(function($) {
                 // Fields to update in metadata
                 const metaUpdates = {
                     '__bocs_bocs_id': String(selectedBocsId),
-                    '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
-                    '__bocs_frequency_id': String(selectedFrequencyId),
-                    '__bocs_frequency_interval': String(selectedFrequencyObj.frequency),
-                    '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
+                    '__bocs_discount_type': selectedFrequencyObj ? selectedFrequencyObj.discountType || 'PERCENT' : 'PERCENT',
+                    '__bocs_frequency_id': String(selectedFrequencyId || ''),
+                    '__bocs_frequency_interval': String(selectedFrequencyObj ? selectedFrequencyObj.frequency : ''),
+                    '__bocs_frequency_time_unit': selectedFrequencyObj ? selectedFrequencyObj.timeUnit : '',
                     '__bocs_id': String(currentSubscription.id || ''),
                     '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
                 };
