@@ -1757,6 +1757,9 @@ jQuery(document).ready(function($) {
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    
+                    // Update discountTotal in requestData
+                    requestData.discountTotal = discountAmount;
                 }
                 
                 metaUpdates['__bocs_renewal_date'] = currentSubscription.nextPaymentDateGmt || '';
@@ -2005,6 +2008,9 @@ jQuery(document).ready(function($) {
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    
+                    // Update discountTotal in requestData
+                    requestData.discountTotal = discountAmount;
                 }
                 
                 // Update metadata in the array
