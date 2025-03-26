@@ -1393,9 +1393,12 @@ jQuery(document).ready(function($) {
             // Check if this is the current frequency
             const isCurrentFrequency = adjustment.id === currentFrequencyId;
             
-            // Create frequency option element
+            // Create frequency option element with data attributes for discount
             const frequencyOption = $(`
-                <div class="frequency-option ${isCurrentFrequency ? 'selected current' : ''}" data-frequency-id="${adjustment.id}">
+                <div class="frequency-option ${isCurrentFrequency ? 'selected current' : ''}" 
+                     data-frequency-id="${adjustment.id}"
+                     data-discount="${adjustment.discount || 0}"
+                     data-discount-type="${adjustment.discountType || 'PERCENT'}">
                     <div class="frequency-details">
                         <span class="frequency-name">${frequencyText}</span>
                         ${discountText ? `<span class="frequency-discount">${discountText}</span>` : ''}
@@ -1417,6 +1420,16 @@ jQuery(document).ready(function($) {
             $(this).find('.dashicons').show();
             
             selectedFrequencyId = $(this).data('frequency-id');
+            
+            // Store the selected frequency's discount information
+            const selectedOption = $(this);
+            selectedFrequencyObj = {
+                id: selectedFrequencyId,
+                frequency: parseInt(selectedOption.find('.frequency-name').text()),
+                timeUnit: selectedOption.find('.frequency-name').text().split(' ')[1],
+                discount: parseFloat(selectedOption.data('discount')),
+                discountType: selectedOption.data('discount-type')
+            };
         });
     }
     
