@@ -1695,20 +1695,55 @@ jQuery(document).ready(function($) {
                 
                 // Fields to update in metadata
                 const metaUpdates = {
-                    '__bocs_bocs_id': selectedBocsId
+                    '__bocs_bocs_id': String(selectedBocsId),
+                    '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
+                    '__bocs_frequency_id': String(selectedFrequencyId),
+                    '__bocs_frequency_interval': String(selectedFrequencyObj.frequency),
+                    '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
+                    '__bocs_id': String(currentSubscription.id || ''),
+                    '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
                 };
                 
-                // Add frequency metadata if updating
-                if (frequencyData) {
-                    Object.assign(metaUpdates, {
-                        '__bocs_discount_type': frequencyData.discountType || 'PERCENT',
-                        '__bocs_frequency_id': frequencyData.id,
-                        '__bocs_frequency_interval': frequencyData.frequency,
-                        '__bocs_frequency_time_unit': frequencyData.timeUnit
-                    });
+                // Calculate new prices if needed
+                if (bocsById[selectedBocsId]) {
+                    const bocs = bocsById[selectedBocsId];
+                    let subtotal = 0;
+                    
+                    // For custom box with selected products
+                    if (bocs.type === 'custom' && selectedProducts && selectedProducts.length > 0 && 
+                        selectedProducts.some(p => p.quantity > 0)) {
+                        subtotal = selectedProducts.reduce((total, product) => {
+                            return total + (product.price * product.quantity);
+                        }, 0);
+                    } 
+                    // For fixed box
+                    else if (bocs.products && bocs.products.length > 0) {
+                        subtotal = bocs.products.reduce((total, product) => {
+                            const price = parseFloat(product.price) || 0;
+                            const quantity = parseInt(product.quantity) || 1;
+                            return total + (price * quantity);
+                        }, 0);
+                    }
+                    
+                    // Calculate discount
+                    let discountAmount = 0;
+                    if (selectedFrequencyObj.discount > 0) {
+                        if (selectedFrequencyObj.discountType === 'DOLLAR') {
+                            discountAmount = selectedFrequencyObj.discount;
+                        } else {
+                            discountAmount = (subtotal * selectedFrequencyObj.discount) / 100;
+                        }
+                    }
+                    
+                    const total = subtotal - discountAmount;
+                    
+                    // Update pricing metadata - ensure all values are strings
+                    metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
+                    metaUpdates['__bocs_total'] = String(total.toFixed(2));
+                    metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
+                    metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
                 }
                 
-                metaUpdates['__bocs_id'] = currentSubscription.id || '';
                 metaUpdates['__bocs_renewal_date'] = currentSubscription.nextPaymentDateGmt || '';
                 
                 // Calculate new prices if needed
@@ -1908,12 +1943,12 @@ jQuery(document).ready(function($) {
                 
                 // Fields to update in metadata
                 const metaUpdates = {
-                    '__bocs_bocs_id': selectedBocsId,
+                    '__bocs_bocs_id': String(selectedBocsId),
                     '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
-                    '__bocs_frequency_id': selectedFrequencyId,
-                    '__bocs_frequency_interval': selectedFrequencyObj.frequency,
+                    '__bocs_frequency_id': String(selectedFrequencyId),
+                    '__bocs_frequency_interval': String(selectedFrequencyObj.frequency),
                     '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
-                    '__bocs_id': currentSubscription.id || '',
+                    '__bocs_id': String(currentSubscription.id || ''),
                     '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
                 };
                 
@@ -1950,9 +1985,11 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
-                    // Update pricing metadata
-                    metaUpdates['__bocs_subtotal'] = subtotal.toFixed(2);
-                    metaUpdates['__bocs_total'] = total.toFixed(2);
+                    // Update pricing metadata - ensure all values are strings
+                    metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
+                    metaUpdates['__bocs_total'] = String(total.toFixed(2));
+                    metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
+                    metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
                 }
                 
                 // Update metadata in the array
