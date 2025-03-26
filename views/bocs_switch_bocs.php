@@ -1758,8 +1758,15 @@ jQuery(document).ready(function($) {
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
                     
-                    // Update discountTotal in requestData
+                    // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
+                    if (discountAmount > 0) {
+                        requestData.couponLines = [{
+                            code: 'FREQUENCY_DISCOUNT',
+                            discount: discountAmount,
+                            discountTax: 0
+                        }];
+                    }
                 }
                 
                 metaUpdates['__bocs_renewal_date'] = currentSubscription.nextPaymentDateGmt || '';
@@ -2009,8 +2016,15 @@ jQuery(document).ready(function($) {
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
                     
-                    // Update discountTotal in requestData
+                    // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
+                    if (discountAmount > 0) {
+                        requestData.couponLines = [{
+                            code: 'FREQUENCY_DISCOUNT',
+                            discount: discountAmount,
+                            discountTax: 0
+                        }];
+                    }
                 }
                 
                 // Update metadata in the array
