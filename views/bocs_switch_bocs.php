@@ -78,6 +78,14 @@ wp_enqueue_script('jquery-ui-dialog');
 <div class="bocs-switch-container">
     <h2><?php esc_html_e('Switch Bocs Subscription', 'bocs-wordpress'); ?></h2>
     
+    <!-- Add loading overlay -->
+    <div class="bocs-loading-overlay" style="display: none;">
+        <div class="bocs-loading-content">
+            <div class="bocs-loading-spinner"></div>
+            <div class="bocs-loading-text"><?php esc_html_e("Processing your request...", "bocs-wordpress"); ?></div>
+        </div>
+    </div>
+    
     <?php if ($has_errors) : ?>
         <div class="woocommerce-error">
             <?php 
@@ -1138,6 +1146,49 @@ wp_enqueue_script('jquery-ui-dialog');
     align-items: center;
     border-left: 3px solid var(--bocs-primary);
 }
+
+/* Add loading overlay styles */
+.bocs-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+}
+
+.bocs-loading-content {
+    background: white;
+    padding: 30px 40px;
+    border-radius: var(--bocs-border-radius);
+    box-shadow: var(--bocs-box-shadow);
+    text-align: center;
+}
+
+.bocs-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--bocs-primary-light);
+    border-top: 3px solid var(--bocs-primary);
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    animation: bocs-spinner 1s linear infinite;
+}
+
+.bocs-loading-text {
+    color: var(--bocs-primary-dark);
+    font-weight: 500;
+    font-size: 1.1em;
+}
+
+@keyframes bocs-spinner {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 </style>
 
 <script type="text/javascript">
@@ -1589,8 +1640,8 @@ jQuery(document).ready(function($) {
     
     // Process saving changes to the current bocs
     function processBocsSave() {
-        // Show loading state
-        $(".bocs-switch-container").prepend('<div class="bocs-loading"><?php esc_html_e("Processing your request...", "bocs-wordpress"); ?></div>');
+        // Show loading overlay
+        $(".bocs-loading-overlay").fadeIn(200);
         
         // Get current subscription data
         const currentSubscription = <?php echo json_encode($subscription['data'] ?? []); ?>;
@@ -1739,6 +1790,9 @@ jQuery(document).ready(function($) {
                 <?php endforeach; ?>
             },
             success: function(response) {
+                // Hide loading overlay
+                $(".bocs-loading-overlay").fadeOut(200);
+                
                 // Success handling
                 let successMessage = '';
                 
@@ -1777,8 +1831,10 @@ jQuery(document).ready(function($) {
                 }, 3000);
             },
             error: function(xhr) {
+                // Hide loading overlay
+                $(".bocs-loading-overlay").fadeOut(200);
+                
                 // Error handling
-                $(".bocs-loading").remove();
                 let errorMsg = '<?php esc_html_e("There was an error processing your request. Please try again.", "bocs-wordpress"); ?>';
                 
                 // Try to get more specific error message from response
@@ -1806,8 +1862,8 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        // Show loading state
-        $(".bocs-switch-container").prepend('<div class="bocs-loading"><?php esc_html_e("Processing your request...", "bocs-wordpress"); ?></div>');
+        // Show loading overlay
+        $(".bocs-loading-overlay").fadeIn(200);
         
         // Get current subscription data
         const currentSubscription = <?php echo json_encode($subscription['data'] ?? []); ?>;
@@ -1949,6 +2005,9 @@ jQuery(document).ready(function($) {
                 <?php endforeach; ?>
             },
             success: function(response) {
+                // Hide loading overlay
+                $(".bocs-loading-overlay").fadeOut(200);
+                
                 // Success handling
                 const successMessage = '<?php esc_html_e("Your subscription has been successfully switched to", "bocs-wordpress"); ?> ' + 
                     selectedBocsName + '. ' +
@@ -1974,8 +2033,10 @@ jQuery(document).ready(function($) {
                 }, 3000);
             },
             error: function(xhr) {
+                // Hide loading overlay
+                $(".bocs-loading-overlay").fadeOut(200);
+                
                 // Error handling
-                $(".bocs-loading").remove();
                 let errorMsg = '<?php esc_html_e("There was an error processing your request. Please try again.", "bocs-wordpress"); ?>';
                 
                 // Try to get more specific error message from response
