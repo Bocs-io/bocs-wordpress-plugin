@@ -1808,6 +1808,7 @@ jQuery(document).ready(function($) {
                         discountTax: 0
                     }];
                 }
+                }
                 
                 metaUpdates['__bocs_renewal_date'] = currentSubscription.nextPaymentDateGmt || '';
                 
@@ -2126,6 +2127,7 @@ jQuery(document).ready(function($) {
                         discount: discountAmount,
                         discountTax: 0
                     }];
+                }
                 
                 // Update metadata in the array
                 Object.entries(metaUpdates).forEach(([key, value]) => {
