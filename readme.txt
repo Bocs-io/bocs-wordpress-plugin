@@ -1,3 +1,17 @@
+v0.0.128 05/08/2025
+* Added total field from metadata to API requests to fix subscription pricing issues
+* Fixed discrepancies in subscription totals when updating or switching subscriptions
+* Implemented Switch Bocs functionality with direct API integration
+* Enhanced subscription management UI with improved modals and animations
+* Added ability to update frequency and products for current subscription box
+* Fixed product selection handling for both fixed and custom box types
+* Resolved discount calculation issues with proper type comparisons
+* Ensured all metadata values use correct formats for API requirements
+* Improved error handling and success messaging throughout subscription forms
+* Fixed multiple JavaScript syntax errors in subscription management
+* Optimized page handling to refresh instead of redirect after subscription updates
+* Implemented modern bocs.io branding and enhanced UI/UX elements
+
 v0.0.127 03/25/2025
 * improve auto_add_bocs_keys implementation and add page load hook
 
