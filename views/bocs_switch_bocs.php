@@ -86,127 +86,6 @@ wp_enqueue_script('jquery-ui-dialog');
         </div>
     </div>
     
-    <!-- Frequency Change Modal -->
-    <div id="frequency-change-modal" class="bocs-modal" style="display: none;">
-        <div class="bocs-modal-content">
-            <div class="bocs-modal-header">
-                <h3><?php esc_html_e('Change Frequency', 'bocs-wordpress'); ?></h3>
-                <button class="bocs-modal-close">&times;</button>
-            </div>
-            <div class="bocs-modal-body">
-                <div class="frequency-options-loading" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <p><?php esc_html_e('Loading frequency options...', 'bocs-wordpress'); ?></p>
-                </div>
-                <div class="frequency-options-content"></div>
-            </div>
-            <div class="bocs-modal-footer">
-                <button class="button cancel-frequency"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-                <button class="button alt save-frequency"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Products Change Modal -->
-    <div id="products-change-modal" class="bocs-modal" style="display: none;">
-        <div class="bocs-modal-content">
-            <div class="bocs-modal-header">
-                <h3><?php esc_html_e('Change Products', 'bocs-wordpress'); ?></h3>
-                <button class="bocs-modal-close">&times;</button>
-            </div>
-            <div class="bocs-modal-body">
-                <div class="products-options-loading" style="display: none;">
-                    <div class="loading-spinner"></div>
-                    <p><?php esc_html_e('Loading product options...', 'bocs-wordpress'); ?></p>
-                </div>
-                <div class="products-options-content"></div>
-            </div>
-            <div class="bocs-modal-footer">
-                <button class="button cancel-products"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-                <button class="button alt save-products"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add CSS for modals -->
-    <style>
-        .bocs-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-
-        .bocs-modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 600px;
-            border-radius: 4px;
-            position: relative;
-        }
-
-        .bocs-modal-header {
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-            position: relative;
-        }
-
-        .bocs-modal-header h3 {
-            margin: 0;
-            padding-right: 30px;
-        }
-
-        .bocs-modal-close {
-            position: absolute;
-            right: 0;
-            top: 0;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            background: none;
-            padding: 0 5px;
-        }
-
-        .bocs-modal-body {
-            padding: 15px 0;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .bocs-modal-footer {
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            text-align: right;
-        }
-
-        .bocs-modal-footer button {
-            margin-left: 10px;
-        }
-
-        .loading-spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-    
     <?php if ($has_errors) : ?>
         <div class="woocommerce-error">
             <?php 
@@ -425,6 +304,17 @@ wp_enqueue_script('jquery-ui-dialog');
         <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="button cancel">
             <?php esc_html_e('Cancel', 'bocs-wordpress'); ?>
         </a>
+    </div>
+    
+    <!-- Frequency Selection Dialog -->
+    <div id="frequency-selection-dialog" style="display:none;" title="<?php esc_attr_e('Select Frequency', 'bocs-wordpress'); ?>">
+        <p>
+            <?php esc_html_e('Select frequency for', 'bocs-wordpress'); ?>
+            <strong id="frequency-bocs-name"></strong>:
+        </p>
+        <div class="frequency-options">
+            <!-- Frequency options will be dynamically loaded here -->
+        </div>
     </div>
     
     <!-- Confirmation Dialog -->
@@ -1484,23 +1374,13 @@ jQuery(document).ready(function($) {
                 return;
             }
             
-            function formatFrequencyText(frequency, timeUnit) {
-                const unit = timeUnit.toLowerCase();
-                const plural = frequency > 1;
-                
-                const units = {
-                    'day': plural ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : '<?php esc_html_e('day', 'bocs-wordpress'); ?>',
-                    'days': plural ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : '<?php esc_html_e('day', 'bocs-wordpress'); ?>',
-                    'week': plural ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : '<?php esc_html_e('week', 'bocs-wordpress'); ?>',
-                    'weeks': plural ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : '<?php esc_html_e('week', 'bocs-wordpress'); ?>',
-                    'month': plural ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : '<?php esc_html_e('month', 'bocs-wordpress'); ?>',
-                    'months': plural ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : '<?php esc_html_e('month', 'bocs-wordpress'); ?>'
-                };
-                
-                return `${frequency} ${units[unit] || timeUnit}`;
-            }
-            
-            const frequencyText = formatFrequencyText(adjustment.frequency, adjustment.timeUnit);
+            const frequencyText = adjustment.frequency + ' ' + 
+                (adjustment.timeUnit.toLowerCase() === 'day' && adjustment.frequency > 1 ? '<?php esc_html_e('days', 'bocs-wordpress'); ?>' : 
+                 adjustment.timeUnit.toLowerCase() === 'day' ? '<?php esc_html_e('day', 'bocs-wordpress'); ?>' : 
+                 adjustment.timeUnit.toLowerCase() === 'week' && adjustment.frequency > 1 ? '<?php esc_html_e('weeks', 'bocs-wordpress'); ?>' : 
+                 adjustment.timeUnit.toLowerCase() === 'week' ? '<?php esc_html_e('week', 'bocs-wordpress'); ?>' : 
+                 adjustment.timeUnit.toLowerCase() === 'month' && adjustment.frequency > 1 ? '<?php esc_html_e('months', 'bocs-wordpress'); ?>' : 
+                 adjustment.timeUnit.toLowerCase() === 'month' ? '<?php esc_html_e('month', 'bocs-wordpress'); ?>' : adjustment.timeUnit);
             
             // Format discount text
             let discountText = '';
@@ -1887,58 +1767,20 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
-                    // Get shipping settings from WooCommerce
-                    const shippingMethod = '<?php echo WC()->shipping ? WC()->shipping->get_shipping_methods() : ''; ?>';
-                    const shippingCost = <?php echo WC()->cart ? WC()->cart->get_shipping_total() : 0; ?>;
-                    
-                    // Calculate tax based on WooCommerce settings
-                    const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
-                    const taxAmount = (total * taxRate) / 100;
-                    
                     // Update pricing metadata - ensure all values are strings
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
-                    metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
-                    metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
-                    metaUpdates['__bocs_shipping_total'] = String(shippingCost.toFixed(2));
                     
-                    // Update requestData with all calculated values
-                    requestData.subtotal = subtotal;
-                    requestData.total = total;
+                    // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
-                    requestData.shippingTotal = shippingCost;
-                    
-                    // Add coupon lines if there's a discount
                     if (discountAmount > 0) {
                         requestData.couponLines = [{
                             code: 'FREQUENCY_DISCOUNT',
                             discount: discountAmount,
                             discountTax: 0
                         }];
-                        requestData.discountTax = 0;
-                    }
-                    
-                    // Add tax lines if tax is applicable
-                    if (taxAmount > 0) {
-                        requestData.taxLines = [{
-                            rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
-                            rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
-                            label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
-                            compound: false,
-                            taxTotal: taxAmount,
-                            shippingTaxTotal: 0
-                        }];
-                    }
-                    
-                    // Add shipping information
-                    if (shippingCost > 0) {
-                        requestData.shipping = {
-                            method: shippingMethod,
-                            total: shippingCost,
-                            tax: 0
-                        };
                     }
                 }
                 
@@ -1994,40 +1836,9 @@ jQuery(document).ready(function($) {
                 
                 const total = subtotal - discountAmount;
                 
-                // Calculate tax based on WooCommerce settings
-                const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
-                const taxAmount = (total * taxRate) / 100;
-                
-                // Update pricing metadata - ensure all values are strings
-                metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
-                metaUpdates['__bocs_total'] = String(total.toFixed(2));
-                metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
-                metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
-                metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
-                metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
-                
-                // Update discountTotal, couponLines, and taxLines in requestData
-                requestData.discountTotal = discountAmount;
-                if (discountAmount > 0) {
-                    requestData.couponLines = [{
-                        code: 'FREQUENCY_DISCOUNT',
-                        discount: discountAmount,
-                        discountTax: 0
-                    }];
-                    requestData.discountTax = 0;
-                }
-                
-                // Add tax lines
-                if (taxAmount > 0) {
-                    requestData.taxLines = [{
-                        rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
-                        rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
-                        label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
-                        compound: false,
-                        taxTotal: taxAmount,
-                        shippingTaxTotal: 0
-                    }];
-                }
+                // Update pricing metadata
+                metaUpdates['__bocs_subtotal'] = subtotal.toFixed(2);
+                metaUpdates['__bocs_total'] = total.toFixed(2);
                 
                 // Update metadata in the array
                 Object.entries(metaUpdates).forEach(([key, value]) => {
@@ -2246,19 +2057,13 @@ jQuery(document).ready(function($) {
                     
                     const total = subtotal - discountAmount;
                     
-                    // Calculate tax based on WooCommerce settings
-                    const taxRate = <?php echo WC()->cart ? WC()->cart->get_tax_rate('') : 0; ?>;
-                    const taxAmount = (total * taxRate) / 100;
-                    
                     // Update pricing metadata - ensure all values are strings
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
-                    metaUpdates['__bocs_tax_rate'] = String(taxRate.toFixed(2));
-                    metaUpdates['__bocs_tax_amount'] = String(taxAmount.toFixed(2));
                     
-                    // Update discountTotal, couponLines, and taxLines in requestData
+                    // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
                     if (discountAmount > 0) {
                         requestData.couponLines = [{
@@ -2266,33 +2071,20 @@ jQuery(document).ready(function($) {
                             discount: discountAmount,
                             discountTax: 0
                         }];
-                        requestData.discountTax = 0;
                     }
-                    
-                    // Add tax lines
-                    if (taxAmount > 0) {
-                        requestData.taxLines = [{
-                            rateCode: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_code('') : ''; ?>',
-                            rateId: <?php echo WC()->cart ? WC()->cart->get_tax_rate_id('') : 0; ?>,
-                            label: '<?php echo WC()->cart ? WC()->cart->get_tax_rate_label('') : ''; ?>',
-                            compound: false,
-                            taxTotal: taxAmount,
-                            shippingTaxTotal: 0
-                        }];
-                    }
-                    
-                    // Update metadata in the array
-                    Object.entries(metaUpdates).forEach(([key, value]) => {
-                        const existingIndex = updatedMetaData.findIndex(item => item.key === key);
-                        if (existingIndex >= 0) {
-                            updatedMetaData[existingIndex].value = value;
-                        } else {
-                            updatedMetaData.push({ key, value });
-                        }
-                    });
-                    
-                    requestData.metaData = updatedMetaData;
                 }
+                
+                // Update metadata in the array
+                Object.entries(metaUpdates).forEach(([key, value]) => {
+                    const existingIndex = updatedMetaData.findIndex(item => item.key === key);
+                    if (existingIndex >= 0) {
+                        updatedMetaData[existingIndex].value = value;
+                    } else {
+                        updatedMetaData.push({ key, value });
+                    }
+                });
+                
+                requestData.metaData = updatedMetaData;
             }
         }
         
@@ -2540,382 +2332,5 @@ jQuery(document).ready(function($) {
         
         return successEl;
     }
-
-    function calculateSubtotal(selectedProducts, bocsType) {
-        if (!selectedProducts || !Array.isArray(selectedProducts)) {
-            return 0;
-        }
-
-        if (bocsType === 'custom') {
-            return selectedProducts.reduce((total, product) => {
-                if (!product || typeof product.price !== 'number' || typeof product.quantity !== 'number') {
-                    console.warn('Invalid product data:', product);
-                    return total;
-                }
-                return total + (product.price * product.quantity);
-            }, 0);
-        }
-
-        // For fixed type Bocs, use the predefined price
-        return 0;
-    }
-
-    // Update the price calculation in the updatePriceDisplay function
-    function updatePriceDisplay() {
-        try {
-            const selectedBocsId = document.getElementById('bocs-select').value;
-            const selectedBocs = bocsData.find(b => b.id === selectedBocsId);
-            const selectedFrequencyId = document.getElementById('frequency-select').value;
-            const selectedFrequencyObj = selectedBocs.priceAdjustments.find(a => a.id === selectedFrequencyId);
-            
-            if (!selectedBocs || !selectedFrequencyObj) {
-                throw new Error('Invalid Bocs or frequency selection');
-            }
-
-            let subtotal = calculateSubtotal(selectedProducts, selectedBocs.type);
-            let discount = 0;
-            
-            if (selectedFrequencyObj.discountType === 'PERCENT') {
-                discount = subtotal * (selectedFrequencyObj.discount / 100);
-            } else if (selectedFrequencyObj.discountType === 'FIXED') {
-                discount = selectedFrequencyObj.discount;
-            }
-
-            const total = subtotal - discount;
-            
-            // Update price display with proper formatting
-            document.getElementById('subtotal').textContent = formatPrice(subtotal);
-            document.getElementById('discount').textContent = formatPrice(discount);
-            document.getElementById('total').textContent = formatPrice(total);
-        } catch (error) {
-            console.error('Error updating price display:', error);
-            showErrorMessage('<?php esc_html_e('Error calculating price. Please try again.', 'bocs-wordpress'); ?>');
-        }
-    }
-
-    function formatPrice(amount) {
-        return new Intl.NumberFormat('<?php echo esc_js(get_locale()); ?>', {
-            style: 'currency',
-            currency: '<?php echo esc_js(get_woocommerce_currency()); ?>'
-        }).format(amount);
-    }
-
-    function prepareMetadata(selectedBocsId, selectedFrequencyObj, currentSubscription) {
-        if (!selectedBocsId || !selectedFrequencyObj || !currentSubscription) {
-            throw new Error('Missing required data for metadata preparation');
-        }
-
-        const metaUpdates = {
-            '__bocs_bocs_id': String(selectedBocsId),
-            '__bocs_discount_type': selectedFrequencyObj.discountType || 'PERCENT',
-            '__bocs_frequency_id': String(selectedFrequencyObj.id),
-            '__bocs_frequency_interval': String(selectedFrequencyObj.frequency),
-            '__bocs_frequency_time_unit': selectedFrequencyObj.timeUnit,
-            '__bocs_id': String(currentSubscription.id || ''),
-            '__bocs_renewal_date': currentSubscription.nextPaymentDateGmt || '',
-            '__bocs_original_subscription_id': String(currentSubscription.id || ''),
-            '__bocs_switch_date': new Date().toISOString(),
-            '__bocs_switch_status': 'pending'
-        };
-
-        // Add product-specific metadata for custom Bocs
-        if (selectedProducts && selectedProducts.length > 0) {
-            metaUpdates['__bocs_selected_products'] = JSON.stringify(
-                selectedProducts.map(p => ({
-                    id: p.id,
-                    quantity: p.quantity,
-                    price: p.price
-                }))
-            );
-        }
-
-        return metaUpdates;
-    }
-
-    // Update the metadata handling in the switchBocs function
-    async function switchBocs() {
-        try {
-            const selectedBocsId = document.getElementById('bocs-select').value;
-            const selectedBocs = bocsData.find(b => b.id === selectedBocsId);
-            const selectedFrequencyId = document.getElementById('frequency-select').value;
-            const selectedFrequencyObj = selectedBocs.priceAdjustments.find(a => a.id === selectedFrequencyId);
-
-            if (!selectedBocs || !selectedFrequencyObj) {
-                throw new Error('Invalid Bocs or frequency selection');
-            }
-
-            const metaUpdates = prepareMetadata(selectedBocsId, selectedFrequencyObj, currentSubscription);
-            
-            // Validate metadata before proceeding
-            if (!validateMetadata(metaUpdates)) {
-                throw new Error('Invalid metadata structure');
-            }
-
-            // Rest of the switchBocs function...
-        } catch (error) {
-            console.error('Error in switchBocs:', error);
-            showErrorMessage('<?php esc_html_e('Error preparing subscription data. Please try again.', 'bocs-wordpress'); ?>');
-        }
-    }
-
-    function validateMetadata(metadata) {
-        const requiredFields = [
-            '__bocs_bocs_id',
-            '__bocs_discount_type',
-            '__bocs_frequency_id',
-            '__bocs_frequency_interval',
-            '__bocs_frequency_time_unit',
-            '__bocs_id'
-        ];
-
-        return requiredFields.every(field => 
-            metadata[field] !== undefined && 
-            metadata[field] !== null && 
-            String(metadata[field]).trim() !== ''
-        );
-    }
-
-    // Modal event handlers
-    $('.update-frequency-button').on('click', function(e) {
-        e.preventDefault();
-        const bocsId = $(this).data('bocs-id');
-        const bocsName = $(this).data('bocs-name');
-        
-        // Show the frequency modal
-        $('#frequency-change-modal').show();
-        
-        // Load frequency options
-        loadFrequencyOptions(bocsId);
-    });
-
-    $('.update-products-button').on('click', function(e) {
-        e.preventDefault();
-        const bocsId = $(this).data('bocs-id');
-        const bocsName = $(this).data('bocs-name');
-        
-        // Show the products modal
-        $('#products-change-modal').show();
-        
-        // Load product options
-        loadProductOptions(bocsId);
-    });
-
-    // Close modal handlers
-    $('.bocs-modal-close, .cancel-frequency, .cancel-products').on('click', function() {
-        $(this).closest('.bocs-modal').hide();
-    });
-
-    // Close modal when clicking outside
-    $(window).on('click', function(e) {
-        if ($(e.target).hasClass('bocs-modal')) {
-            $('.bocs-modal').hide();
-        }
-    });
-
-    async function loadFrequencyOptions(bocsId) {
-        const loadingEl = $('.frequency-options-loading');
-        const contentEl = $('.frequency-options-content');
-        
-        try {
-            loadingEl.show();
-            contentEl.empty();
-            
-            const response = await $.ajax({
-                url: `<?php echo BOCS_API_URL; ?>bocs/${bocsId}`,
-                method: 'GET',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                }
-            });
-            
-            if (!response.data || !response.data.priceAdjustments) {
-                throw new Error('Invalid API response structure');
-            }
-            
-            const frequencies = response.data.priceAdjustments;
-            const currentFrequencyId = '<?php echo esc_js($subscription['data']['frequency']['id'] ?? ''); ?>';
-            
-            const optionsHtml = frequencies.map(freq => {
-                const isSelected = freq.id === currentFrequencyId;
-                const freqText = `${freq.frequency} ${freq.frequency > 1 ? freq.timeUnit : freq.timeUnit.replace(/s$/, '')}`;
-                const discountText = freq.discount > 0 ? 
-                    ` (${freq.discountType === 'DOLLAR' ? '$' + freq.discount : freq.discount + '%'} off)` : '';
-                
-                return `
-                    <div class="frequency-option">
-                        <label>
-                            <input type="radio" name="frequency" value="${freq.id}" 
-                                data-frequency="${freq.frequency}"
-                                data-time-unit="${freq.timeUnit}"
-                                data-discount="${freq.discount}"
-                                data-discount-type="${freq.discountType}"
-                                ${isSelected ? 'checked' : ''}>
-                            Every ${freqText}${discountText}
-                        </label>
-                    </div>
-                `;
-            }).join('');
-            
-            contentEl.html(optionsHtml);
-            
-        } catch (error) {
-            console.error('Error loading frequency options:', error);
-            contentEl.html('<p class="error">Error loading frequency options. Please try again.</p>');
-        } finally {
-            loadingEl.hide();
-        }
-    }
-
-    async function loadProductOptions(bocsId) {
-        const loadingEl = $('.products-options-loading');
-        const contentEl = $('.products-options-content');
-        
-        try {
-            loadingEl.show();
-            contentEl.empty();
-            
-            const response = await $.ajax({
-                url: `<?php echo BOCS_API_URL; ?>bocs/${bocsId}/products`,
-                method: 'GET',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                }
-            });
-            
-            if (!response.data || !response.data.products) {
-                throw new Error('Invalid API response structure');
-            }
-            
-            const products = response.data.products;
-            const currentProducts = <?php echo json_encode($subscription['data']['lineItems'] ?? []); ?>;
-            
-            const productsHtml = products.map(product => {
-                const currentProduct = currentProducts.find(p => p.productId === product.id);
-                const currentQuantity = currentProduct ? currentProduct.quantity : 0;
-                
-                return `
-                    <div class="product-option" data-product-id="${product.id}">
-                        <div class="product-info">
-                            <h4>${product.name}</h4>
-                            <p class="price">${formatPrice(product.price)}</p>
-                            ${product.description ? `<p class="description">${product.description}</p>` : ''}
-                        </div>
-                        <div class="product-quantity">
-                            <label>Quantity:</label>
-                            <input type="number" min="0" value="${currentQuantity}" 
-                                class="quantity-input"
-                                data-product-id="${product.id}"
-                                data-price="${product.price}">
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            contentEl.html(productsHtml);
-            
-        } catch (error) {
-            console.error('Error loading product options:', error);
-            contentEl.html('<p class="error">Error loading product options. Please try again.</p>');
-        } finally {
-            loadingEl.hide();
-        }
-    }
-
-    // Save frequency changes
-    $('.save-frequency').on('click', async function() {
-        const selectedFrequency = $('input[name="frequency"]:checked');
-        if (!selectedFrequency.length) {
-            showErrorMessage('Please select a frequency option.');
-            return;
-        }
-        
-        const frequencyData = {
-            id: selectedFrequency.val(),
-            frequency: parseInt(selectedFrequency.data('frequency')),
-            timeUnit: selectedFrequency.data('time-unit'),
-            discount: parseFloat(selectedFrequency.data('discount')),
-            discountType: selectedFrequency.data('discount-type')
-        };
-        
-        try {
-            $('.bocs-loading-overlay').show();
-            
-            const response = await $.ajax({
-                url: `<?php echo BOCS_API_URL; ?>subscriptions/<?php echo esc_js($subscription_id); ?>/frequency`,
-                method: 'PUT',
-                data: JSON.stringify(frequencyData),
-                contentType: 'application/json',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                }
-            });
-            
-            if (response.code === 200) {
-                location.reload();
-            } else {
-                throw new Error(response.message || 'Failed to update frequency');
-            }
-            
-        } catch (error) {
-            console.error('Error saving frequency:', error);
-            showErrorMessage('Failed to update frequency. Please try again.');
-        } finally {
-            $('.bocs-loading-overlay').hide();
-        }
-    });
-
-    // Save product changes
-    $('.save-products').on('click', async function() {
-        const products = [];
-        $('.product-option').each(function() {
-            const quantity = parseInt($(this).find('.quantity-input').val()) || 0;
-            if (quantity > 0) {
-                products.push({
-                    id: $(this).data('product-id'),
-                    quantity: quantity,
-                    price: parseFloat($(this).find('.quantity-input').data('price'))
-                });
-            }
-        });
-        
-        if (products.length === 0) {
-            showErrorMessage('Please select at least one product.');
-            return;
-        }
-        
-        try {
-            $('.bocs-loading-overlay').show();
-            
-            const response = await $.ajax({
-                url: `<?php echo BOCS_API_URL; ?>subscriptions/<?php echo esc_js($subscription_id); ?>/products`,
-                method: 'PUT',
-                data: JSON.stringify({ products }),
-                contentType: 'application/json',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
-                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
-                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
-                }
-            });
-            
-            if (response.code === 200) {
-                location.reload();
-            } else {
-                throw new Error(response.message || 'Failed to update products');
-            }
-            
-        } catch (error) {
-            console.error('Error saving products:', error);
-            showErrorMessage('Failed to update products. Please try again.');
-        } finally {
-            $('.bocs-loading-overlay').hide();
-        }
-    });
 });
 </script> 
