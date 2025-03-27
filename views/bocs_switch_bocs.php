@@ -1309,11 +1309,27 @@ jQuery(document).ready(function($) {
         $("#frequency-bocs-name").text(selectedBocsName);
         $("#target-bocs-name").text(selectedBocsName);
         
-        // Load frequency options for this bocs
-        loadFrequencyOptions(selectedBocsId);
-        
-        // Open the frequency selection dialog
-        $("#frequency-selection-dialog").dialog("open");
+        // Check if this is a custom box
+        const selectedBocs = bocsById[selectedBocsId];
+        if (selectedBocs && selectedBocs.type && selectedBocs.type.toLowerCase() === 'custom') {
+            console.log('Selected a custom box:', selectedBocsName);
+            // For custom box, load product options first
+            loadProductOptions(selectedBocsId);
+            
+            // Load frequency options for this bocs
+            loadFrequencyOptions(selectedBocsId);
+            
+            // Open the product selection dialog directly
+            $("#product-selection-dialog").dialog("open");
+            $("#products-bocs-name").text(selectedBocsName);
+        } else {
+            // For fixed box, proceed with frequency selection
+            // Load frequency options for this bocs
+            loadFrequencyOptions(selectedBocsId);
+            
+            // Open the frequency selection dialog
+            $("#frequency-selection-dialog").dialog("open");
+        }
     });
     
     // Handle updating frequency for current bocs
@@ -1480,8 +1496,9 @@ jQuery(document).ready(function($) {
             }
         }
         // If no available products in bocs data, try to use API data or current subscription products
-        else if (isUpdatingCurrentBocs) {
-            // Request available products for this box from the API
+        else {
+            // Always make an API request to get products for the box, whether updating current or switching
+            console.log('Fetching products for box ID:', bocsId);
             $.ajax({
                 url: '<?php echo esc_js(BOCS_API_URL); ?>bocs/' + bocsId + '/products',
                 type: 'GET',
@@ -1492,6 +1509,7 @@ jQuery(document).ready(function($) {
                     <?php endforeach; ?>
                 },
                 success: function(response) {
+                    console.log('API response for box products:', response);
                     if (response && response.data && Array.isArray(response.data)) {
                         productsToShow = response.data.map(item => ({
                             id: item.id,
@@ -1500,11 +1518,14 @@ jQuery(document).ready(function($) {
                             images: item.images || [],
                             description: item.description || ''
                         }));
-                        usingCurrentProducts = true;
+                        if (isUpdatingCurrentBocs && currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
+                            usingCurrentProducts = true;
+                        }
                     }
                 },
-                error: function() {
-                    // If API fails, fallback to current subscription products
+                error: function(xhr, status, error) {
+                    console.error('Error fetching products:', status, error);
+                    // If API fails, fallback to current subscription products if available
                     if (currentProducts && Array.isArray(currentProducts) && currentProducts.length > 0) {
                         productsToShow = currentProducts.map(item => ({
                             id: item.productId,
@@ -1520,7 +1541,7 @@ jQuery(document).ready(function($) {
         }
         
         if (productsToShow.length === 0) {
-            productContainer.html('<p><?php esc_html_e('No products available for this box', 'bocs-wordpress'); ?></p>');
+            productContainer.html('<p><?php esc_html_e('No products available for this box. Please contact support for assistance.', 'bocs-wordpress'); ?></p>');
             return;
         }
         
