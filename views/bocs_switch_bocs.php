@@ -1234,7 +1234,8 @@ jQuery(document).ready(function($) {
                     processBocsSave();
                 } else {
                     // For a new box, continue with product selection if custom box
-                    if (bocsById[selectedBocsId] && bocsById[selectedBocsId].type === 'custom') {
+                    const selectedBocs = bocsById[selectedBocsId];
+                    if (selectedBocs && selectedBocs.type && selectedBocs.type.toLowerCase() === 'custom') {
                         // Load products and open product selection dialog
                         loadProductOptions(selectedBocsId);
                         $("#product-selection-dialog").dialog("open");
@@ -1313,17 +1314,15 @@ jQuery(document).ready(function($) {
         const selectedBocs = bocsById[selectedBocsId];
         if (selectedBocs && selectedBocs.type && selectedBocs.type.toLowerCase() === 'custom') {
             console.log('Selected a custom box:', selectedBocsName);
-            // For custom box, load product options first
-            loadProductOptions(selectedBocsId);
             
+            // For new custom box, first select frequency, then products
             // Load frequency options for this bocs
             loadFrequencyOptions(selectedBocsId);
             
-            // Open the product selection dialog directly
-            $("#product-selection-dialog").dialog("open");
-            $("#products-bocs-name").text(selectedBocsName);
+            // Open the frequency selection dialog first
+            $("#frequency-selection-dialog").dialog("open");
         } else {
-            // For fixed box, proceed with frequency selection
+            // For fixed box, proceed with frequency selection only
             // Load frequency options for this bocs
             loadFrequencyOptions(selectedBocsId);
             
@@ -1554,8 +1553,9 @@ jQuery(document).ready(function($) {
         productsToShow.forEach(function(product) {
             let initialQuantity = 0;
             
-            // Check if this product is in the current subscription
-            if (currentProducts && Array.isArray(currentProducts)) {
+            // Check if this product is in the current subscription - only set quantity > 0
+            // when updating an existing subscription (not when switching)
+            if (isUpdatingCurrentBocs && currentProducts && Array.isArray(currentProducts)) {
                 const currentProduct = currentProducts.find(item => item.productId === product.id);
                 if (currentProduct) {
                     initialQuantity = parseInt(currentProduct.quantity) || 0;
