@@ -2383,9 +2383,10 @@ jQuery(document).ready(function($) {
         
         // Insert message and animate
         $(".bocs-switch-container").prepend(successEl);
+        $(".bocs-switch-container").prepend(successEl);
         successEl.hide().fadeIn(300);
         
         return successEl;
     }
 });
-</script> 
+</script>
