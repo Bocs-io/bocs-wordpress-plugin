@@ -1761,11 +1761,11 @@ jQuery(document).ready(function($) {
                         }, 0);
                     }
                     
-                    // Calculate discount
+                    // Calculate discount amount
                     let discountAmount = 0;
                     if (selectedFrequencyObj.discount > 0) {
                         if (selectedFrequencyObj.discountType.toLowerCase() === 'dollar') {
-                            discountAmount = selectedFrequencyObj.discount;
+                            discountAmount = parseFloat(selectedFrequencyObj.discount);
                         } else {
                             // For percentage discounts, calculate based on current subscription line items
                             // if we're not switching products
@@ -1786,23 +1786,27 @@ jQuery(document).ready(function($) {
                         }
                     }
                     
-                    const total = subtotal - discountAmount;
+                    // Ensure discount amount is properly formatted as a number with 2 decimal places
+                    discountAmount = parseFloat(discountAmount.toFixed(2));
+                    const total = parseFloat((subtotal - discountAmount).toFixed(2));
                     
-                    // Update pricing metadata - ensure all values are strings
+                    // Update pricing metadata - ensure all values are strings with consistent formatting
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    metaUpdates['__bocs_discount_type'] = selectedFrequencyObj.discountType.toLowerCase() || 'percent';
                     
                     // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
-                    if (discountAmount > 0) {
-                        requestData.couponLines = [{
-                            code: 'FREQUENCY_DISCOUNT',
-                            discount: discountAmount,
-                            discountTax: 0
-                        }];
-                    }
+                    requestData.discountTax = 0;
+                    
+                    // Always include couponLines for frequency discount
+                    requestData.couponLines = [{
+                        code: 'FREQUENCY_DISCOUNT',
+                        discount: discountAmount,
+                        discountTax: 0
+                    }];
                 }
                 
                 metaUpdates['__bocs_renewal_date'] = currentSubscription.nextPaymentDateGmt || '';
@@ -1833,7 +1837,7 @@ jQuery(document).ready(function($) {
                 
                 if (discountObj && discountObj.discount > 0) {
                     if (discountObj.discountType.toLowerCase() === 'dollar') {
-                        discountAmount = discountObj.discount;
+                        discountAmount = parseFloat(discountObj.discount);
                     } else {
                         // For percentage discounts, we need to calculate based on appropriate product data
                         let calculateSubtotal = subtotal;
@@ -1855,23 +1859,51 @@ jQuery(document).ready(function($) {
                     }
                 }
                 
-                const total = subtotal - discountAmount;
+                // Ensure discount amount is properly formatted as a number with 2 decimal places
+                discountAmount = parseFloat(discountAmount.toFixed(2));
+                const total = parseFloat((subtotal - discountAmount).toFixed(2));
                 
-                // Update pricing metadata
-                metaUpdates['__bocs_subtotal'] = subtotal.toFixed(2);
-                metaUpdates['__bocs_total'] = total.toFixed(2);
+                // Update pricing metadata with consistent string formatting
+                metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
+                metaUpdates['__bocs_total'] = String(total.toFixed(2));
+                metaUpdates['__bocs_discount'] = String(discountObj.discount || '0');
+                metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                metaUpdates['__bocs_discount_type'] = discountObj.discountType.toLowerCase() || 'percent';
                 
-                // Update metadata in the array
-                Object.entries(metaUpdates).forEach(([key, value]) => {
-                    const existingIndex = updatedMetaData.findIndex(item => item.key === key);
-                    if (existingIndex >= 0) {
-                        updatedMetaData[existingIndex].value = value;
-                    } else {
-                        updatedMetaData.push({ key, value });
-                    }
-                });
+                // Update discountTotal and couponLines in requestData
+                requestData.discountTotal = discountAmount;
+                requestData.discountTax = 0;
+                requestData.couponLines = [{
+                    code: 'FREQUENCY_DISCOUNT',
+                    discount: discountAmount,
+                    discountTax: 0
+                }];
                 
-                requestData.metaData = updatedMetaData;
+                // Update metadata with discount information and consistent formatting
+                if (currentSubscription.metaData) {
+                    const updatedMetaData = [...currentSubscription.metaData];
+                    
+                    // Update discount-related metadata with proper formatting
+                    const metaUpdates = {
+                        '__bocs_subtotal': String(subtotal.toFixed(2)),
+                        '__bocs_total': String(total.toFixed(2)),
+                        '__bocs_discount': String(discountObj.discount || '0'),
+                        '__bocs_discount_amount': String(discountAmount.toFixed(2)),
+                        '__bocs_discount_type': discountObj.discountType.toLowerCase() || 'percent'
+                    };
+                    
+                    // Update metadata in the array
+                    Object.entries(metaUpdates).forEach(([key, value]) => {
+                        const existingIndex = updatedMetaData.findIndex(item => item.key === key);
+                        if (existingIndex >= 0) {
+                            updatedMetaData[existingIndex].value = value;
+                        } else {
+                            updatedMetaData.push({ key, value });
+                        }
+                    });
+                    
+                    requestData.metaData = updatedMetaData;
+                }
             }
         }
         
@@ -2050,19 +2082,18 @@ jQuery(document).ready(function($) {
                         }, 0);
                     }
                     
-                    // Calculate discount
+                    // Calculate discount amount
                     let discountAmount = 0;
                     if (selectedFrequencyObj.discount > 0) {
                         if (selectedFrequencyObj.discountType.toLowerCase() === 'dollar') {
-                            discountAmount = selectedFrequencyObj.discount;
+                            discountAmount = parseFloat(selectedFrequencyObj.discount);
                         } else {
-                            // For percentage discounts, we need to calculate based on appropriate product data
+                            // For percentage discounts, calculate based on current subscription line items
+                            // if we're not switching products
                             let calculateSubtotal = subtotal;
                             
-                            // If we're not selecting new products (not custom box or no products selected)
-                            // and we have current line items, use those for percentage calculation
-                            if ((!bocs.type || bocs.type !== 'custom' || 
-                                 !selectedProducts || !selectedProducts.some(p => p.quantity > 0)) && 
+                            // If we haven't already selected new products but have current subscription items
+                            if ((!selectedProducts || !selectedProducts.some(p => p.quantity > 0)) && 
                                 currentSubscription.lineItems && currentSubscription.lineItems.length > 0) {
                                 calculateSubtotal = currentSubscription.lineItems.reduce((total, item) => {
                                     const price = parseFloat(item.price) || 0;
@@ -2076,22 +2107,26 @@ jQuery(document).ready(function($) {
                         }
                     }
                     
-                    const total = subtotal - discountAmount;
+                    // Ensure discount amount is properly formatted as a number with 2 decimal places
+                    discountAmount = parseFloat(discountAmount.toFixed(2));
+                    const total = parseFloat((subtotal - discountAmount).toFixed(2));
                     
-                    // Update pricing metadata - ensure all values are strings
+                    // Update pricing metadata - ensure all values are strings with consistent formatting
                     metaUpdates['__bocs_subtotal'] = String(subtotal.toFixed(2));
                     metaUpdates['__bocs_total'] = String(total.toFixed(2));
                     metaUpdates['__bocs_discount'] = String(selectedFrequencyObj.discount || '0');
                     metaUpdates['__bocs_discount_amount'] = String(discountAmount.toFixed(2));
+                    metaUpdates['__bocs_discount_type'] = selectedFrequencyObj.discountType.toLowerCase() || 'percent';
                     
                     // Update discountTotal and couponLines in requestData
                     requestData.discountTotal = discountAmount;
-                    if (discountAmount > 0) {
-                        requestData.couponLines = [{
-                            code: 'FREQUENCY_DISCOUNT',
-                            discount: discountAmount,
-                            discountTax: 0
-                        }];
+                    requestData.discountTax = 0;
+                    requestData.couponLines = [{
+                        code: 'FREQUENCY_DISCOUNT',
+                        discount: discountAmount,
+                        discountTax: 0
+                    }];
+                    
                     }
                 }
                 
