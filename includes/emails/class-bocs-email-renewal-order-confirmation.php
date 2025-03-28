@@ -62,7 +62,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
         $this->id             = 'bocs_renewal_order_confirmation';
         $this->customer_email = true;
         $this->title          = __('[Bocs Customer] Renewal Order Confirmation', 'bocs-wordpress');
-        $this->description    = __('Renewal order confirmation emails are sent to customers when their renewal order changes from Pending payment to Processing.', 'bocs-wordpress');
+        $this->description    = __('When a renewal order goes from Pending payment to Processing', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-customer-renewal-order-confirmation.php';
         $this->template_plain = 'emails/plain/bocs-customer-renewal-order-confirmation.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;

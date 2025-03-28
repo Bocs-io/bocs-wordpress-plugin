@@ -84,6 +84,31 @@ class Bocs_Email
             $email_classes['WC_Bocs_Email_Renewal_Order_Confirmation'] = new WC_Bocs_Email_Renewal_Order_Confirmation();
         }
 
+        // Register the subscription cancelled email
+        if (class_exists('Bocs_Email_Subscription_Cancelled')) {
+            $email_classes['Bocs_Email_Subscription_Cancelled'] = new Bocs_Email_Subscription_Cancelled();
+        }
+        
+        // Register the subscription paused email
+        if (class_exists('Bocs_Email_Subscription_Paused')) {
+            $email_classes['Bocs_Email_Subscription_Paused'] = new Bocs_Email_Subscription_Paused();
+        }
+        
+        // Register the subscription reactivated email
+        if (class_exists('Bocs_Email_Subscription_Reactivated')) {
+            $email_classes['Bocs_Email_Subscription_Reactivated'] = new Bocs_Email_Subscription_Reactivated();
+        }
+        
+        // Register the payment method updated email
+        if (class_exists('WC_Bocs_Email_Payment_Method_Updated')) {
+            $email_classes['WC_Bocs_Email_Payment_Method_Updated'] = new WC_Bocs_Email_Payment_Method_Updated();
+        } else {
+            include_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-payment-method-updated.php';
+            if (class_exists('WC_Bocs_Email_Payment_Method_Updated')) {
+                $email_classes['WC_Bocs_Email_Payment_Method_Updated'] = new WC_Bocs_Email_Payment_Method_Updated();
+            }
+        }
+
         return $email_classes;
     }
 
@@ -97,7 +122,11 @@ class Bocs_Email
             'class-bocs-email-failed-payment-retry.php',
             'class-bocs-email-upcoming-renewal-reminder.php',
             'class-bocs-email-renewal-order-confirmation.php',
-            'class-bocs-email-subscription-switched.php'
+            'class-bocs-email-subscription-switched.php',
+            'class-bocs-email-subscription-cancelled.php',
+            'class-bocs-email-subscription-paused.php',
+            'class-bocs-email-subscription-reactivated.php',
+            'class-bocs-email-payment-method-updated.php'
         );
 
         foreach ($email_class_files as $file) {

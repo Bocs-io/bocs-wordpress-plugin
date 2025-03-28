@@ -43,8 +43,8 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_subscription_switched';
         $this->customer_email = true;
-        $this->title          = __('Subscription Switch', 'bocs-wordpress');
-        $this->description    = __('This email is sent to customers when their subscription is switched to a different product or frequency.', 'bocs-wordpress');
+        $this->title          = __('[Bocs Customer] Subscription Switched or Updated', 'bocs-wordpress');
+        $this->description    = __('When a product or frequency is updated', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-subscription-switched.php';
         $this->template_plain = 'emails/plain/bocs-subscription-switched.php';
         

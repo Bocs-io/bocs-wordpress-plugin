@@ -57,7 +57,7 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         $this->id             = 'bocs_failed_payment_retry';
         $this->customer_email = true;
         $this->title          = __('[Bocs Customer] Failed Payment Retry', 'bocs-wordpress');
-        $this->description    = __('Failed payment retry emails are sent when a renewal order goes from Pending payment to Failed payment.', 'bocs-wordpress');
+        $this->description    = __('When a renewal order goes from Pending payment to Processing to Failed payment', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-customer-failed-payment-retry.php';
         $this->template_plain = 'emails/plain/bocs-customer-failed-payment-retry.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;

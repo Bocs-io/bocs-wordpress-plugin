@@ -38,7 +38,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
         $this->id             = 'bocs_upcoming_renewal_reminder';
         $this->customer_email = true;
         $this->title          = __('[Bocs Customer] Upcoming Subscription Renewal Reminder', 'bocs-wordpress');
-        $this->description    = __('Upcoming renewal emails are sent to customers before their subscription is automatically renewed.', 'bocs-wordpress');
+        $this->description    = __('When an order is created in Pending payment mode - with notes', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-customer-upcoming-renewal-reminder.php';
         $this->template_plain = 'emails/plain/bocs-customer-upcoming-renewal-reminder.php';
         $this->template_base  = BOCS_TEMPLATE_PATH;
