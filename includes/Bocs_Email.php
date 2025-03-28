@@ -69,6 +69,16 @@ class Bocs_Email
             }
         }
         
+        // Make sure new customer welcome email is ALWAYS registered
+        if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
+            $email_classes['WC_Bocs_Email_New_Customer_Subscription'] = new WC_Bocs_Email_New_Customer_Subscription();
+        } else {
+            include_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-new-customer-subscription.php';
+            if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
+                $email_classes['WC_Bocs_Email_New_Customer_Subscription'] = new WC_Bocs_Email_New_Customer_Subscription();
+            }
+        }
+        
         if (class_exists('WC_Bocs_Email_Failed_Renewal_Payment')) {
             $email_classes['WC_Bocs_Email_Failed_Renewal_Payment'] = new WC_Bocs_Email_Failed_Renewal_Payment();
         }
@@ -108,6 +118,7 @@ class Bocs_Email
             'class-bocs-email-customer-renewal-invoice.php',
             'class-bocs-email-subscription-switched.php',
             'class-bocs-email-subscription-confirmation.php',
+            'class-bocs-email-new-customer-subscription.php',
             'class-bocs-email-failed-renewal-payment.php',
             'class-bocs-email-upcoming-renewal-reminder.php',
             'class-bocs-email-subscription-cancelled.php',
@@ -161,8 +172,12 @@ class Bocs_Email
             'bocs_subscription_switched' => array(
                 'customer_subscription_switched'
             ),
-            // Welcome Email
+            // Welcome Email (Existing Customer)
             'bocs_subscription_confirmation' => array(
+                'customer_new_account'
+            ),
+            // Welcome Email (New Customer)
+            'bocs_new_customer_subscription' => array(
                 'customer_new_account'
             ),
             // Failed Renewal Payment
@@ -345,6 +360,22 @@ class Bocs_Email
             
             // Also force it on WooCommerce payment complete
             add_action('woocommerce_payment_complete', array($welcome_email, 'trigger'), 10, 1);
+        }
+        
+        // New Customer Welcome Email
+        if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
+            $new_customer_email = new WC_Bocs_Email_New_Customer_Subscription();
+            
+            // Hook into all order creation and status change events
+            add_action('woocommerce_new_order', array($new_customer_email, 'trigger'), 10, 1);
+            add_action('woocommerce_order_status_pending_to_processing', array($new_customer_email, 'trigger'), 10, 1);
+            add_action('woocommerce_order_status_pending_to_completed', array($new_customer_email, 'trigger'), 10, 1);
+            add_action('woocommerce_order_status_on-hold_to_processing', array($new_customer_email, 'trigger'), 10, 1);
+            add_action('woocommerce_checkout_order_processed', array($new_customer_email, 'trigger'), 10, 1);
+            add_action('woocommerce_thankyou', array($new_customer_email, 'trigger'), 10, 1);
+            
+            // Also force it on WooCommerce payment complete
+            add_action('woocommerce_payment_complete', array($new_customer_email, 'trigger'), 10, 1);
         }
 
         // Failed Renewal Payment Email
