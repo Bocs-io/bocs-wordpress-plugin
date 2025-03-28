@@ -62,6 +62,9 @@ class Admin
         
         // Also hook into thank you page just to be sure
         add_action('woocommerce_thankyou', array($this, 'trigger_welcome_email_on_thankyou'), 10, 1);
+        
+        // Add test button for upcoming renewal email on order edit page
+        add_action('woocommerce_admin_order_data_after_order_details', array($this, 'add_test_upcoming_renewal_email_button'));
     }
 
     /**
@@ -2151,6 +2154,16 @@ class Admin
             $this,
             'bocs_widget_metabox_content'
         ), 'page', 'side', 'high');
+        
+        // Add test email button to order edit page
+        add_meta_box(
+            'bocs_test_email',
+            __('Bocs Test Tools', 'bocs-wordpress'),
+            array($this, 'render_test_email_metabox'),
+            'shop_order',
+            'side',
+            'high'
+        );
     }
 
     /**
@@ -2805,7 +2818,6 @@ class Admin
 
         } catch (Exception $e) {
             // Log the error but return a safe default
-            error_log('Error in get_order_relationship: ' . $e->getMessage());
             return esc_html__('Related Order', 'bocs-wordpress');
         }
     }
@@ -3003,6 +3015,16 @@ class Admin
             'manage_options',
             'bocs_plugin',
             [$this, 'bocs_render_plugin_settings_page']
+        );
+        
+        // Add a new submenu for testing the upcoming renewal email
+        add_submenu_page(
+            'bocs-settings',
+            'Test Upcoming Renewal Email',
+            'Test Renewal Email',
+            'manage_woocommerce',
+            'bocs-test-renewal-email',
+            array($this, 'bocs_test_renewal_email_page')
         );
     }
 
@@ -3684,6 +3706,218 @@ class Admin
             'bocs_id' => $bocs_id,
             'user_login' => $user_login
         ]);
+    }
+
+    /**
+     * Add a "Test Upcoming Renewal Email" button to the order admin page
+     */
+    public function add_test_upcoming_renewal_email_button() {
+        global $post;
+        
+        if (!$post || get_post_type($post) !== 'shop_order') {
+            return;
+        }
+        
+        $order_id = $post->ID;
+        $url = admin_url('admin-post.php?action=test_upcoming_renewal_email&order_id=' . $order_id);
+        
+        echo '<div style="margin: 10px 0; padding: 10px; background-color: #f8f8f8; border: 1px solid #ddd; border-radius: 4px;">';
+        echo '<h3 style="margin-top: 0;">Bocs Testing Tools</h3>';
+        echo '<p>Use the button below to manually trigger the upcoming renewal reminder email for this order.</p>';
+        echo '<a href="' . esc_url($url) . '" class="button" style="background-color: #4CAF50; color: white; font-weight: bold; padding: 8px 15px; display: inline-block; text-decoration: none; border-radius: 3px; border: none;">';
+        echo 'Send Upcoming Renewal Email';
+        echo '</a>';
+        echo '<p style="margin-top: 5px; font-size: 12px; color: #666;">This will also set the required meta fields for testing.</p>';
+        echo '</div>';
+    }
+
+    /**
+     * Renders the Test Upcoming Renewal Email page
+     */
+    public function bocs_test_renewal_email_page() {
+        // Process form submission
+        $message = '';
+        $message_type = '';
+        
+        if (isset($_POST['test_renewal_email']) && isset($_POST['order_id']) && !empty($_POST['order_id'])) {
+            $order_id = intval($_POST['order_id']);
+            $order = wc_get_order($order_id);
+            
+            if (!$order) {
+                $message = sprintf(__('Order #%s not found.', 'bocs-wordpress'), $order_id);
+                $message_type = 'error';
+            } else {
+                // Set the required meta keys for the order
+                update_post_meta($order_id, '__bocs_order_status', 'upcoming');
+                update_post_meta($order_id, '__bocs_subscription_id', 'test-' . uniqid());
+                update_post_meta($order_id, '_wc_order_attribution_source_type', 'referral');
+                update_post_meta($order_id, '_wc_order_attribution_utm_source', 'Bocs App');
+                
+                // Force delete any previous sent flag
+                delete_post_meta($order_id, '_bocs_new_customer_subscription_email_sent');
+                
+                // Get an instance of the email class
+                $mailer = WC()->mailer();
+                $emails = $mailer->get_emails();
+                
+                if (isset($emails['bocs_upcoming_renewal_reminder'])) {
+                    $email = $emails['bocs_upcoming_renewal_reminder'];
+                    
+                    // Force enable the email
+                    $email->enabled = 'yes';
+                    
+                    // Trigger the email
+                    $email->trigger($order_id, date('Y-m-d', strtotime('+7 days')));
+                    
+                    $recipient = $order->get_billing_email();
+                    $message = sprintf(
+                        __('Test email sent to %s for order #%s. If you don\'t receive it, check your spam folder or WooCommerce email settings.', 'bocs-wordpress'), 
+                        '<strong>' . esc_html($recipient) . '</strong>', 
+                        $order_id
+                    );
+                    $message_type = 'success';
+                } else {
+                    $message = __('Upcoming renewal reminder email is not registered with WooCommerce.', 'bocs-wordpress');
+                    $message_type = 'error';
+                }
+            }
+        }
+        
+        // Render the page
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Test Upcoming Renewal Email', 'bocs-wordpress'); ?></h1>
+            
+            <?php if (!empty($message)) : ?>
+                <div class="notice notice-<?php echo esc_attr($message_type); ?> is-dismissible">
+                    <p><?php echo wp_kses_post($message); ?></p>
+                </div>
+            <?php endif; ?>
+            
+            <div class="card">
+                <h2><?php _e('Send Test Email', 'bocs-wordpress'); ?></h2>
+                <p><?php _e('Use this form to send a test upcoming renewal email for any order. The system will automatically add the required meta data to the order.', 'bocs-wordpress'); ?></p>
+                
+                <form method="post" action="">
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="order_id"><?php _e('Order ID', 'bocs-wordpress'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" name="order_id" id="order_id" class="regular-text" required>
+                                <p class="description"><?php _e('Enter the WooCommerce order ID to send the test email.', 'bocs-wordpress'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p class="submit">
+                        <input type="submit" name="test_renewal_email" class="button button-primary" value="<?php _e('Send Test Email', 'bocs-wordpress'); ?>">
+                    </p>
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2><?php _e('About This Test', 'bocs-wordpress'); ?></h2>
+                <p><?php _e('This test will:', 'bocs-wordpress'); ?></p>
+                <ul style="list-style-type: disc; margin-left: 20px;">
+                    <li><?php _e('Add the required Bocs meta data to the selected order', 'bocs-wordpress'); ?></li>
+                    <li><?php _e('Set a test subscription ID', 'bocs-wordpress'); ?></li>
+                    <li><?php _e('Force the email to be enabled (even if it\'s disabled in settings)', 'bocs-wordpress'); ?></li>
+                    <li><?php _e('Send a test email to the customer\'s email address on the order', 'bocs-wordpress'); ?></li>
+                </ul>
+            </div>
+        </div>
+        <?php
+    }
+
+    public function render_test_email_metabox($post)
+    {
+        $order_id = $post->ID;
+        $order = wc_get_order($order_id);
+        
+        if (!$order) {
+            echo '<p>' . __('Order not found.', 'bocs-wordpress') . '</p>';
+            return;
+        }
+        
+        // Get order meta for debugging
+        $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
+        $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
+        $source_type = get_post_meta($order_id, '_wc_order_attribution_source_type', true);
+        $utm_source = get_post_meta($order_id, '_wc_order_attribution_utm_source', true);
+        
+        echo '<div class="bocs-test-tools">';
+        echo '<h4>' . __('Order Meta:', 'bocs-wordpress') . '</h4>';
+        echo '<ul>';
+        echo '<li>Order Status: ' . esc_html($order->get_status()) . '</li>';
+        echo '<li>Bocs Order Status: ' . esc_html($bocs_order_status) . '</li>';
+        echo '<li>Subscription ID: ' . esc_html($bocs_subscription_id) . '</li>';
+        echo '<li>Source Type: ' . esc_html($source_type) . '</li>';
+        echo '<li>UTM Source: ' . esc_html($utm_source) . '</li>';
+        echo '</ul>';
+        
+        // Add test button
+        $nonce = wp_create_nonce('test_upcoming_renewal_email');
+        $action_url = admin_url('admin-post.php');
+        echo '<form method="post" action="' . esc_url($action_url) . '">';
+        echo '<input type="hidden" name="action" value="test_upcoming_renewal_email">';
+        echo '<input type="hidden" name="order_id" value="' . esc_attr($order_id) . '">';
+        echo '<input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">';
+        echo '<p><input type="submit" class="button button-primary" value="' . esc_attr__('Test Upcoming Renewal Email', 'bocs-wordpress') . '"></p>';
+        echo '</form>';
+        echo '</div>';
+        
+        // Add some basic styling
+        echo '<style>
+            .bocs-test-tools {
+                padding: 10px;
+            }
+            .bocs-test-tools h4 {
+                margin: 0 0 10px 0;
+            }
+            .bocs-test-tools ul {
+                margin: 0 0 15px 0;
+                padding: 0;
+                list-style: none;
+            }
+            .bocs-test-tools li {
+                margin: 0 0 5px 0;
+                padding: 0;
+            }
+        </style>';
+    }
+
+    public function test_upcoming_renewal_email()
+    {
+        // Verify nonce
+        if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 'test_upcoming_renewal_email')) {
+            wp_die(__('Invalid nonce', 'bocs-wordpress'));
+        }
+        
+        // Check permissions
+        if (!current_user_can('edit_shop_orders')) {
+            wp_die(__('You do not have permission to perform this action', 'bocs-wordpress'));
+        }
+        
+        // Get order ID
+        $order_id = isset($_POST['order_id']) ? intval($_POST['order_id']) : 0;
+        if (!$order_id) {
+            wp_die(__('Invalid order ID', 'bocs-wordpress'));
+        }
+        
+        // Get order
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            wp_die(__('Order not found', 'bocs-wordpress'));
+        }
+        
+        // Trigger the email
+        do_action('admin_post_test_upcoming_renewal_email', $order_id);
+        
+        // Redirect back to order page with success message
+        wp_redirect(add_query_arg('bocs_email_sent', '1', get_edit_post_link($order_id, 'raw')));
+        exit;
     }
 }
 

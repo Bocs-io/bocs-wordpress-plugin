@@ -612,3 +612,81 @@ if (is_admin()) {
         error_log(sprintf('Bocs Plugin: Error initializing updater - %s', $e->getMessage()));
     }
 }
+
+// Add a direct test endpoint for the upcoming renewal reminder email
+add_action('admin_post_test_upcoming_renewal_email', 'test_upcoming_renewal_email');
+
+/**
+ * Test function to directly trigger the upcoming renewal reminder email
+ */
+function test_upcoming_renewal_email() {
+    // Check if user is an admin
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized access');
+    }
+
+    // Get the order ID from the request
+    $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 0;
+    
+    if (!$order_id) {
+        wp_die('No order ID provided');
+    }
+    
+    // First set the meta fields to ensure criteria are met
+    update_post_meta($order_id, '__bocs_order_status', 'upcoming');
+    update_post_meta($order_id, '__bocs_subscription_id', 'test-sub-id-' . time());
+    update_post_meta($order_id, '_wc_order_attribution_source_type', 'referral');
+    update_post_meta($order_id, '_wc_order_attribution_utm_source', 'Bocs App');
+    
+    // Get the order object
+    $order = wc_get_order($order_id);
+    if (!$order) {
+        wp_die('Could not find order with ID: ' . $order_id);
+    }
+    
+    // Load the email class
+    include_once plugin_dir_path(__FILE__) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
+    
+    // Create an instance of the email class and enable it
+    $email = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
+    $email->enabled = 'yes'; // Force enable
+    
+    // Get recipient email for verification
+    $recipient = $order->get_billing_email();
+    
+    // Trigger the email directly
+    $email->trigger($order_id);
+    
+    // Add admin notice with more information
+    set_transient('bocs_email_test_message', 
+        sprintf(
+            'Upcoming renewal reminder email sent to %s for order #%s. If you do not receive the email, please check your spam folder or server email settings.',
+            $recipient,
+            $order_id
+        ), 
+        60
+    );
+    
+    // Redirect back to the order edit page
+    wp_redirect(admin_url('post.php?post=' . $order_id . '&action=edit&bocs_email_sent=1'));
+    exit;
+}
+
+// Add a function to display admin notices for email testing
+add_action('admin_notices', 'bocs_display_email_test_notice');
+
+/**
+ * Display admin notice when email test is run
+ */
+function bocs_display_email_test_notice() {
+    // Check if we're coming back from an email test
+    if (isset($_GET['bocs_email_sent'])) {
+        $message = get_transient('bocs_email_test_message');
+        if ($message) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($message) . '</p></div>';
+            delete_transient('bocs_email_test_message');
+        } else {
+            echo '<div class="notice notice-success is-dismissible"><p>Upcoming renewal reminder email test completed.</p></div>';
+        }
+    }
+}
