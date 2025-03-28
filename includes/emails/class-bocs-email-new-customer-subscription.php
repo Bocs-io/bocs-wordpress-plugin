@@ -43,7 +43,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_new_customer_subscription';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] Welcome New Customer New Subscription', 'bocs-wordpress');
+        $this->title          = __('[Bocs Customer] Welcome New Customer New Subscription', 'bocs-wordpress');
         $this->description    = __('Welcome email sent to new customers after setting up their first Bocs subscription.', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-new-customer-subscription.php';
         $this->template_plain = 'emails/plain/bocs-new-customer-subscription.php';

@@ -397,6 +397,26 @@ class Bocs_Email
             // Add the custom hook for upcoming renewals
             add_action('bocs_upcoming_renewal_reminder', array($renewal_reminder, 'trigger'), 10, 2);
             
+            // Hook into order creation for orders with __bocs_order_status = upcoming
+            add_action('woocommerce_new_order', function($order_id) use ($renewal_reminder) {
+                // Check if the order has the __bocs_order_status meta with value 'upcoming'
+                $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
+                if ($bocs_order_status === 'upcoming') {
+                    // Trigger the renewal reminder for this order
+                    $renewal_reminder->trigger($order_id);
+                }
+            }, 20);
+            
+            // Also check when pending orders are created (for notes requirement)
+            add_action('woocommerce_order_status_pending', function($order_id) use ($renewal_reminder) {
+                // Check if the order has the __bocs_order_status meta with value 'upcoming'
+                $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
+                if ($bocs_order_status === 'upcoming') {
+                    // Trigger the renewal reminder for this order
+                    $renewal_reminder->trigger($order_id);
+                }
+            }, 20);
+            
             // Handler for the cron job to find subscriptions about to renew
             add_action('bocs_check_upcoming_renewals', function() use ($renewal_reminder) {
                 if (function_exists('wcs_get_subscriptions')) {

@@ -43,7 +43,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_subscription_confirmation';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] Existing Customer New Subscription', 'bocs-wordpress');
+        $this->title          = __('[Bocs Customer] Existing Customer New Subscription', 'bocs-wordpress');
         $this->description    = __('Confirmation email sent to existing customers after adding a new Bocs subscription.', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-subscription-order-confirmation.php';
         $this->template_plain = 'emails/plain/bocs-subscription-order-confirmation.php';
