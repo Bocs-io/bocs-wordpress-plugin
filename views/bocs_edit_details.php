@@ -1798,6 +1798,23 @@ jQuery(document).ready(function($) {
                         $('.line-items-table .total-row td').text(`${currencySymbol}${finalAmount.toFixed(2)}`);
                     }
                     
+                    // Trigger email notification for the frequency update
+                    var emailData = {
+                        action: 'bocs_trigger_subscription_switched_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-subscription-switched'); ?>',
+                        is_frequency_update: true
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        });
+                    
                     // Show success message with discount info if applicable
                     let message = 'Subscription updated successfully';
                     if (discountAmount > 0) {
