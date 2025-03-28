@@ -1,3 +1,14 @@
+v0.0.129 03/28/2025
+* Implemented comprehensive email system improvements with new templates and notifications
+* Added new email templates for subscription status changes, renewals, and payment retries
+* Enhanced payment methods handling with robust error handling
+* Improved subscription management UI and functionality
+* Added test tools for upcoming renewal emails in admin area
+* Refactored email system using singleton pattern for better performance
+* Fixed various email template compatibility issues
+* Added new customer welcome email and subscription confirmation templates
+* Improved error handling and logging throughout the system
+
 v0.0.128 03/27/2025
 * Added total field from metadata to API requests to fix subscription pricing issues
 * Fixed discrepancies in subscription totals when updating or switching subscriptions
