@@ -108,85 +108,119 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
      * @param WC_Order|bool $order Order object.
      * @return void
      */
-    public function trigger($order_id, $order = false) {
+    public function trigger($order_id, $order = null) {
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Starting trigger method for order ID: ' . $order_id);
+
+        if (!$this->is_enabled()) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Email is not enabled, skipping');
+            return;
+        }
+
         $this->setup_locale();
 
-        // Static tracking to prevent duplicate emails
-        static $processed_orders = array();
-        
-        // Skip if we've already processed this order
-        if (in_array($order_id, $processed_orders)) {
+        if (!$order_id) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: No order ID provided, skipping');
+            $this->restore_locale();
             return;
-        }
-        
-        // Add to tracking array to prevent duplicate processing
-        $processed_orders[] = $order_id;
-        
-        // Check for transient to prevent duplicate emails across multiple PHP executions
-        $email_sent_transient = 'bocs_renewal_email_sent_' . $order_id;
-        if (get_transient($email_sent_transient)) {
-            return;
-        }
-        
-        if ($order_id) {
-            $this->object = $order ? $order : wc_get_order($order_id);
-            if (is_a($this->object, 'WC_Order')) {
-                // Check if the order has the required metadata
-                $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
-                $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
-                
-                // Skip if the Bocs order status is not "upcoming"
-                if (empty(bocs_subscription_id)) {
-                    return;
-                }
-                
-                // Check if the email has already been sent (persistent meta)
-                $email_sent = get_post_meta($order_id, '_bocs_renewal_confirmation_email_sent', true);
-                if ($email_sent === 'yes') {
-                    return;
-                }
-                
-                // Update the Bocs order status to "processing"
-                update_post_meta($order_id, '__bocs_order_status', 'processing');
-                
-                // Update order via Bocs API
-                $this->update_order_in_bocs($order_id);
-                
-                // Set recipient
-                $this->recipient = $this->object->get_billing_email();
-                
-                // Setup placeholders
-                $this->placeholders['{order_date}'] = wc_format_datetime($this->object->get_date_created());
-                $this->placeholders['{order_number}'] = $this->object->get_order_number();
-                
-                // Check for Bocs IDs - legacy support
-                $bocs_bocs_id = get_post_meta($order_id, '__bocs_bocs_id', true);
-                $bocs_id = get_post_meta($order_id, '__bocs_id', true);
-                $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
-                
-                // Set the Bocs ID for the email template if available
-                if (!empty($bocs_bocs_id)) {
-                    $this->bocs_id = $bocs_bocs_id;
-                } elseif (!empty($bocs_id)) {
-                    $this->bocs_id = $bocs_id;
-                } elseif (!empty($bocs_subscription_id)) {
-                    $this->bocs_id = $bocs_subscription_id;
-                }
-            }
         }
 
-        if ($this->is_enabled() && $this->get_recipient()) {
-            $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-            if ($sent && $order_id) {
-                // Mark as sent in post meta for permanent record
-                update_post_meta($order_id, '_bocs_renewal_confirmation_email_sent', 'yes');
-                
-                // Set transient to prevent duplicate emails for 1 hour
-                set_transient($email_sent_transient, true, HOUR_IN_SECONDS);
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Getting order object');
+        $this->object = $order ? $order : wc_get_order($order_id);
+        
+        if (!is_a($this->object, 'WC_Order')) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Invalid order object, skipping');
+            $this->restore_locale();
+            return;
+        }
+
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status: ' . $this->object->get_status());
+
+        // Check if the order has the required metadata
+        $bocs_subscription_id = $this->object->get_meta('__bocs_subscription_id');
+        $bocs_order_status = $this->object->get_meta('__bocs_order_status');
+        $source_type = $this->object->get_meta('_wc_order_attribution_source_type');
+        $utm_source = $this->object->get_meta('_wc_order_attribution_utm_source');
+
+        //// error_log('BOCS DEBUG [Renewal Order Confirmation]: Meta values - ' . 
+        //          'subscription_id: ' . $bocs_subscription_id . 
+        //          ', status: ' . $bocs_order_status . 
+        //          ', source_type: ' . $source_type . 
+        //          ', utm_source: ' . $utm_source);
+
+        // Skip if no subscription ID
+        if (empty($bocs_subscription_id)) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: No subscription ID found, skipping');
+            $this->restore_locale();
+            return;
+        }
+
+        // Check if the email has already been sent
+        $email_sent = $this->object->get_meta('_bocs_renewal_confirmation_email_sent');
+        if ($email_sent === 'yes') {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Email already sent for this order, skipping');
+            $this->restore_locale();
+            return;
+        }
+
+        // Update the Bocs order status to match WooCommerce status
+        if ($this->object->get_status() === 'processing' && $bocs_order_status !== 'processing') {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Updating BOCS order status to processing');
+            $this->object->update_meta_data('__bocs_order_status', 'processing');
+            $this->object->save();
+
+            // Update order via Bocs API
+            $api_updated = $this->update_order_in_bocs_api($order_id);
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: BOCS API update ' . ($api_updated ? 'successful' : 'failed'));
+        }
+
+        // Set recipient
+        $this->recipient = $this->object->get_billing_email();
+        if (!$this->recipient) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: No recipient email found, skipping');
+            $this->restore_locale();
+            return;
+        }
+
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Setting up email for recipient: ' . $this->recipient);
+
+        // Setup placeholders
+        $this->placeholders['{order_date}'] = wc_format_datetime($this->object->get_date_created());
+        $this->placeholders['{order_number}'] = $this->object->get_order_number();
+
+        // Set the Bocs ID for the email template
+        $bocs_bocs_id = $this->object->get_meta('__bocs_bocs_id');
+        $bocs_id = $this->object->get_meta('__bocs_id');
+        
+        if (!empty($bocs_bocs_id)) {
+            $this->bocs_id = $bocs_bocs_id;
+        } elseif (!empty($bocs_id)) {
+            $this->bocs_id = $bocs_id;
+        } elseif (!empty($bocs_subscription_id)) {
+            $this->bocs_id = $bocs_subscription_id;
+        }
+
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Attempting to send email');
+        
+        try {
+            if ($this->is_enabled() && $this->get_recipient()) {
+                $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+                // error_log('BOCS DEBUG [Renewal Order Confirmation]: Email send attempt result: ' . ($sent ? 'success' : 'failed'));
+
+                if ($sent) {
+                    // Mark as sent in post meta
+                    $this->object->update_meta_data('_bocs_renewal_confirmation_email_sent', 'yes');
+                    $this->object->save();
+                    // error_log('BOCS DEBUG [Renewal Order Confirmation]: Marked email as sent in order meta');
+                } else {
+                    // error_log('BOCS DEBUG [Renewal Order Confirmation]: Failed to send email');
+                }
             }
+        } catch (Exception $e) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Exception while sending email: ' . $e->getMessage());
         }
 
         $this->restore_locale();
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Finished processing renewal confirmation email');
     }
 
     /**
@@ -196,35 +230,41 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
      * @param int $order_id The order ID
      * @return bool Whether the update was successful
      */
-    private function update_order_in_bocs($order_id) {
+    private function update_order_in_bocs_api($order_id) {
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Starting API update for order ID: ' . $order_id);
+        
         // Get order data
         $order = wc_get_order($order_id);
         if (!$order) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Could not find order');
             return false;
         }
         
         // Get order status and Bocs ID
         $wc_status = $order->get_status();
-        $bocs_id = get_post_meta($order_id, '__bocs_id', true);
-        if (empty($bocs_id)) {
-            $bocs_id = get_post_meta($order_id, '__bocs_bocs_id', true);
-        }
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
         
-        // Don't proceed if we don't have Bocs ID
-        if (empty($bocs_id)) {
+        // Don't proceed if we don't have subscription ID
+        if (empty($bocs_subscription_id)) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: No subscription ID found');
             return false;
         }
         
         // Get API credentials
         $options = get_option('bocs_plugin_options');
-        $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+        if (!isset($options['bocs_headers'])) {
+            $options['bocs_headers'] = array();
+        }
         
         // Don't proceed if we don't have credentials
         if (empty($options['bocs_headers']['organization']) || 
             empty($options['bocs_headers']['store']) || 
             empty($options['bocs_headers']['authorization'])) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Missing API credentials');
             return false;
         }
+        
+        // error_log('BOCS DEBUG [Renewal Order Confirmation]: Fetching order from API');
         
         // First, fetch the existing order data from the API
         try {
@@ -250,7 +290,10 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
             curl_close($curl);
             
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: API GET response code: ' . $http_code);
+            
             if ($http_code < 200 || $http_code >= 300) {
+                // error_log('BOCS DEBUG [Renewal Order Confirmation]: Failed to fetch order from API');
                 return false;
             }
             
@@ -259,14 +302,17 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             
             // Check if we have valid data
             if (!isset($order_data['data']['data']) || !is_array($order_data['data']['data']) || count($order_data['data']['data']) === 0) {
+                // error_log('BOCS DEBUG [Renewal Order Confirmation]: No order data found in API response');
                 return false;
             }
             
             // Get the first order from the results
             $bocs_order = $order_data['data']['data'][0];
             
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Found order in API, updating status');
+            
             // Update the order status in the metadata
-            $metaData = $bocs_order['metaData'] ?? array();
+            $metaData = isset($bocs_order['metaData']) ? $bocs_order['metaData'] : array();
             $found_meta = false;
             
             foreach ($metaData as $key => $meta) {
@@ -290,10 +336,12 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             $bocs_order['orderStatus'] = $wc_status;
             $bocs_order['status'] = 'processing';
             
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Sending updated order data to API');
+            
             // Now send the updated order data back to the API
             $update_curl = curl_init();
             curl_setopt_array($update_curl, array(
-                CURLOPT_URL => BOCS_API_URL . 'orders/' . $bocs_id,
+                CURLOPT_URL => BOCS_API_URL . 'orders/' . $order_id,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -314,9 +362,15 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             $update_http_code = curl_getinfo($update_curl, CURLINFO_HTTP_CODE);
             curl_close($update_curl);
             
-            return $update_http_code >= 200 && $update_http_code < 300;
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: API PUT response code: ' . $update_http_code);
+            
+            $success = $update_http_code >= 200 && $update_http_code < 300;
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: API update ' . ($success ? 'successful' : 'failed'));
+            
+            return $success;
             
         } catch (Exception $e) {
+            // error_log('BOCS DEBUG [Renewal Order Confirmation]: Exception during API update: ' . $e->getMessage());
             return false;
         }
     }
