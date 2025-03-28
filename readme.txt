@@ -1,4 +1,4 @@
-v0.0.128 05/08/2025
+v0.0.128 03/27/2025
 * Added total field from metadata to API requests to fix subscription pricing issues
 * Fixed discrepancies in subscription totals when updating or switching subscriptions
 * Implemented Switch Bocs functionality with direct API integration
