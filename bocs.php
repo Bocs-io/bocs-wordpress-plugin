@@ -434,28 +434,63 @@ add_filter('wc_get_template_part', 'bocs_locate_template_compat', 10, 3);
  * @return string Modified template path
  */
 function bocs_locate_template($template, $template_name, $template_path, $default_path = '') {
-    // Removed non-critical debug logging
+    // Log the template path for debugging
+    if (class_exists('Bocs_Log_Handler')) {
+        $logger = new Bocs_Log_Handler();
+        $logger->insert_log('debug', '[Template Override] Checking template', [
+            'template' => $template,
+            'template_name' => $template_name,
+            'template_path' => $template_path
+        ]);
+    }
     
-    // Bail early if not a BOCS template
-    if (!(strpos($template_name, 'bocs-') === 0 || 
+    // Handle payment methods template
+    if ($template_name === 'myaccount/payment-methods.php') {
+        // Look for template in yourtheme/bocs-wordpress/ directory first
+        $theme_template = locate_template(array(
+            'bocs-wordpress/myaccount/payment-methods.php',
+        ));
+        
+        if ($theme_template) {
+            if (class_exists('Bocs_Log_Handler')) {
+                $logger->insert_log('debug', '[Template Override] Found theme template', [
+                    'theme_template' => $theme_template
+                ]);
+            }
+            return $theme_template;
+        }
+        
+        // Next, look in the plugin's templates directory
+        $plugin_template = plugin_dir_path(__FILE__) . 'templates/myaccount/payment-methods.php';
+        if (file_exists($plugin_template)) {
+            if (class_exists('Bocs_Log_Handler')) {
+                $logger->insert_log('debug', '[Template Override] Found plugin template', [
+                    'plugin_template' => $plugin_template
+                ]);
+            }
+            return $plugin_template;
+        }
+    }
+    
+    // Handle other BOCS templates
+    if (strpos($template_name, 'bocs-') === 0 || 
         strpos($template_name, 'emails/bocs-') !== false || 
-        strpos($template_name, 'emails/plain/bocs-') !== false)) {
-        return $template;
-    }
-    
-    // Look for template in yourtheme/bocs-wordpress/ directory first
-    $theme_template = locate_template(array(
-        'bocs-wordpress/' . $template_name,
-    ));
-    
-    if ($theme_template) {
-        return $theme_template;
-    }
-    
-    // Next, look in the plugin's templates directory
-    $plugin_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
-    if (file_exists($plugin_template)) {
-        return $plugin_template;
+        strpos($template_name, 'emails/plain/bocs-') !== false) {
+        
+        // Look for template in yourtheme/bocs-wordpress/ directory first
+        $theme_template = locate_template(array(
+            'bocs-wordpress/' . $template_name,
+        ));
+        
+        if ($theme_template) {
+            return $theme_template;
+        }
+        
+        // Next, look in the plugin's templates directory
+        $plugin_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
     }
     
     return $template;
