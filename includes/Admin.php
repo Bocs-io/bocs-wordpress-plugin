@@ -79,6 +79,11 @@ class Admin
          */
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Stock.php';
         
+        /**
+         * The class responsible for handling payment methods
+         */
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-payment-methods.php';
+        
         // Set up AJAX handlers
         add_action('wp_ajax_get_product_stock', array($this, 'get_product_stock_ajax'));
         add_action('wp_ajax_nopriv_get_product_stock', array($this, 'get_product_stock_ajax'));
@@ -3422,7 +3427,7 @@ class Admin
      */
     public function get_bocs_data_from_api($bocs_id) {
         if (empty($bocs_id)) {
-            error_log("[Bocs][WARNING] Cannot fetch BOCS data: Empty BOCS ID");
+            // error_log("[Bocs][WARNING] Cannot fetch BOCS data: Empty BOCS ID");
             return false;
         }
         
