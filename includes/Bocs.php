@@ -109,8 +109,10 @@ class Bocs
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-welcome.php';
             // New email classes
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-renewal-payment.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-payment-retry.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-renewal-order-confirmation.php';
         }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
@@ -355,6 +357,12 @@ class Bocs
         $renewal_invoice = new WC_Bocs_Email_Customer_Renewal_Invoice();
         $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
         $this->loader->add_action('woocommerce_order_status_failed', $renewal_invoice, 'trigger', 10, 1);
+
+        // Failed Payment Retry Email - this occurs when a renewal order transitions from pending to failed
+        if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
+            $failed_payment_retry = new WC_Bocs_Email_Failed_Payment_Retry();
+            $this->loader->add_action('woocommerce_order_status_pending_to_failed', $failed_payment_retry, 'trigger', 10, 1);
+        }
 
         // Subscription Switched Email
         $subscription_switched = new WC_Bocs_Email_Subscription_Switched();

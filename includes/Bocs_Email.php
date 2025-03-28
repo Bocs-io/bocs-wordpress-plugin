@@ -82,6 +82,9 @@ class Bocs_Email
         if (class_exists('WC_Bocs_Email_Failed_Renewal_Payment')) {
             $email_classes['WC_Bocs_Email_Failed_Renewal_Payment'] = new WC_Bocs_Email_Failed_Renewal_Payment();
         }
+        if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
+            $email_classes['WC_Bocs_Email_Failed_Payment_Retry'] = new WC_Bocs_Email_Failed_Payment_Retry();
+        }
         if (class_exists('WC_Bocs_Email_Upcoming_Renewal_Reminder')) {
             $email_classes['WC_Bocs_Email_Upcoming_Renewal_Reminder'] = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
         }
@@ -123,6 +126,7 @@ class Bocs_Email
             'class-bocs-email-subscription-confirmation.php',
             'class-bocs-email-new-customer-subscription.php',
             'class-bocs-email-failed-renewal-payment.php',
+            'class-bocs-email-failed-payment-retry.php',
             'class-bocs-email-upcoming-renewal-reminder.php',
             'class-bocs-email-subscription-cancelled.php',
             'class-bocs-email-payment-method-update.php',
