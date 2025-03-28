@@ -75,106 +75,88 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     /**
      * Trigger the sending of this email.
      *
-     * This method can be triggered in two ways:
-     * 1. With a subscription ID and renewal date - for scheduled upcoming renewals
-     * 2. With an order ID - for orders with meta key '__bocs_order_status' with value 'upcoming'
-     *
      * @since 1.0.0
-     * @param int    $id           The subscription or order ID.
+     * @param int    $id           The order ID.
      * @param string $renewal_date The date of the upcoming renewal (optional).
      * @return void
      */
     public function trigger($id, $renewal_date = '') {
+        if (!$this->is_enabled()) {
+            return;
+        }
+        
         $this->setup_locale();
 
-        // First, try to get a subscription by the provided ID
-        $subscription = null;
-        $order = null;
-        $is_subscription_trigger = false;
-        $is_order_upcoming_status = false;
-        
-        if ($id) {
-            // Try to get a subscription first (if WCS is active)
-            if (function_exists('wcs_get_subscription')) {
-                $subscription = wcs_get_subscription($id);
-                if (is_a($subscription, 'WC_Subscription')) {
-                    $is_subscription_trigger = true;
-                    
-                    // Check if we've already sent this email to avoid duplicates
-                    if (get_post_meta($id, '_bocs_new_customer_subscription_email_sent', true)) {
-                        $this->restore_locale();
-                        return; // Email already sent
-                    }
-                }
-            }
-            
-            // If no subscription was found, try to get an order
-            if (!$is_subscription_trigger) {
-                $order = wc_get_order($id);
-                
-                // Check if this order has the '__bocs_order_status' meta with value 'upcoming'
-                if (is_a($order, 'WC_Order')) {
-                    $bocs_order_status = get_post_meta($id, '__bocs_order_status', true);
-                    if ($bocs_order_status === 'upcoming') {
-                        // Check if we've already sent this email to avoid duplicates
-                        if (get_post_meta($id, '_bocs_new_customer_subscription_email_sent', true)) {
-                            $this->restore_locale();
-                            return; // Email already sent
-                        }
-                        
-                        $is_order_upcoming_status = true;
-                        $this->object = $order;
-                        
-                        // For orders with 'upcoming' status, set the recipient
-                        $this->recipient = $order->get_billing_email();
-                        
-                        // Set placeholders for orders
-                        $this->placeholders['{subscription_date}'] = wc_format_datetime($order->get_date_created());
-                        $this->placeholders['{subscription_number}'] = $order->get_order_number();
-                        $this->placeholders['{renewal_date}'] = $renewal_date ? 
-                            date_i18n(get_option('date_format'), strtotime($renewal_date)) : '';
-                    }
-                }
-            }
-            
-            // Handle subscription-based trigger
-            if ($is_subscription_trigger) {
-                // Get parent order if this is a subscription
-                $order_id = method_exists($subscription, 'get_parent_id') ? $subscription->get_parent_id() : $subscription->get_id();
-                
-                // Check if the order has the required meta data
-                $source_type = get_post_meta($order_id, '_wc_order_attribution_source_type', true);
-                $utm_source = get_post_meta($order_id, '_wc_order_attribution_utm_source', true);
-                
-                // Only proceed if the order meets Bocs requirements
-                if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-                    $this->object = $subscription;
-                    $this->recipient = $subscription->get_billing_email();
-
-                    if (is_a($subscription, 'WC_Subscription')) {
-                        $this->placeholders['{subscription_date}'] = wc_format_datetime($subscription->get_date_created());
-                        $this->placeholders['{subscription_number}'] = $subscription->get_order_number();
-                    } else {
-                        $this->placeholders['{subscription_date}'] = wc_format_datetime($subscription->get_date_created());
-                        $this->placeholders['{subscription_number}'] = $subscription->get_order_number();
-                    }
-                    
-                    $this->placeholders['{renewal_date}'] = $renewal_date ? 
-                        date_i18n(get_option('date_format'), strtotime($renewal_date)) : '';
-                }
-            }
+        if (!$id) {
+            $this->restore_locale();
+            return;
         }
 
-        // Send email if enabled and we have a recipient
-        if ($this->is_enabled() && $this->get_recipient()) {
-            $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-            
-            // Mark email as sent to avoid duplicates
-            if ($is_subscription_trigger && is_a($subscription, 'WC_Subscription')) {
-                update_post_meta($subscription->get_id(), '_bocs_new_customer_subscription_email_sent', 'yes');
-            } elseif ($is_order_upcoming_status && is_a($order, 'WC_Order')) {
-                update_post_meta($order->get_id(), '_bocs_new_customer_subscription_email_sent', 'yes');
-            }
+        $order = wc_get_order($id);
+        
+        if (!is_a($order, 'WC_Order')) {
+            $this->restore_locale();
+            return;
+        }
+
+        // Get required meta values
+        $bocs_order_status = $order->get_meta('__bocs_order_status');
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        $source_type = $order->get_meta('_wc_order_attribution_source_type');
+        $utm_source = $order->get_meta('_wc_order_attribution_utm_source');
+
+        // Check if this is a renewal order based on BOCS meta
+        $is_renewal = false;
+        if ($bocs_order_status === 'upcoming' && !empty($bocs_subscription_id)) {
+            $is_renewal = true;
+        }
+        
+        if (!$is_renewal) {
+            $this->restore_locale();
+            return;
+        }
+
+        // Check if email has already been sent
+        $email_sent = $order->get_meta('_bocs_upcoming_renewal_reminder_email_sent');
+        if ($email_sent === 'yes') {
+            $this->restore_locale();
+            return;
+        }
+
+        // Set up email recipient
+        $this->recipient = $order->get_billing_email();
+        
+        if (!$this->recipient) {
+            $this->restore_locale();
+            return;
+        }
+
+        // Set the order object for the template first
+        $this->object = $order;
+
+        // Set up email placeholders
+        $order_date = $order->get_date_created();
+        if ($order_date) {
+            $this->placeholders['{subscription_date}'] = $order_date->format(wc_date_format());
+        } else {
+            $this->placeholders['{subscription_date}'] = date_i18n(wc_date_format());
+        }
+        
+        $this->placeholders['{subscription_number}'] = $order->get_order_number();
+        $this->placeholders['{renewal_date}'] = $renewal_date ? date_i18n(wc_date_format(), strtotime($renewal_date)) : '';
+
+        // Get email content before sending
+        $content_html = $this->get_content_html();
+        $content_plain = $this->get_content_plain();
+        $subject = $this->get_subject();
+        $headers = $this->get_headers();
+
+        // Send the email
+        $sent = $this->send($this->recipient, $subject, $content_html, $headers, $this->get_attachments());
+
+        if ($sent) {
+            $order->update_meta_data('_bocs_upcoming_renewal_reminder_email_sent', 'yes');
+            $order->save();
         }
 
         $this->restore_locale();
@@ -190,15 +172,16 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
         return wc_get_template_html(
             $this->template_html,
             array(
+                'order'              => $this->object,
                 'subscription'       => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => false,
                 'email'              => $this,
                 'renewal_date'       => $this->placeholders['{renewal_date}'],
+                'additional_content' => $this->get_option('additional_content', '')
             ),
-            '',
+            $this->template_base,
             $this->template_base
         );
     }
@@ -213,15 +196,16 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
         return wc_get_template_html(
             $this->template_plain,
             array(
+                'order'              => $this->object,
                 'subscription'       => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => true,
                 'email'              => $this,
                 'renewal_date'       => $this->placeholders['{renewal_date}'],
+                'additional_content' => $this->get_option('additional_content', '')
             ),
-            '',
+            $this->template_base,
             $this->template_base
         );
     }
@@ -284,5 +268,13 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
                 'desc_tip'    => true,
             ),
         );
+    }
+
+    public function get_heading() {
+        $heading = $this->get_option('heading');
+        if (empty($heading)) {
+            $heading = $this->get_default_heading();
+        }
+        return $this->format_string($heading);
     }
 } 

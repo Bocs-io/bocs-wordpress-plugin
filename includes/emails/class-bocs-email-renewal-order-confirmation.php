@@ -132,10 +132,11 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             $this->object = $order ? $order : wc_get_order($order_id);
             if (is_a($this->object, 'WC_Order')) {
                 // Check if the order has the required metadata
+                $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
                 $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
                 
                 // Skip if the Bocs order status is not "upcoming"
-                if ($bocs_order_status !== 'upcoming') {
+                if (empty(bocs_subscription_id)) {
                     return;
                 }
                 

@@ -73,31 +73,6 @@ class Bocs
                 include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
             }
             
-            // Ensure WooCommerce parent email classes are loaded
-            $wc_email_classes = array(
-                'WC_Email' => 'emails/class-wc-email.php', // Base class first
-                'WC_Email_Customer_Completed_Order' => 'emails/class-wc-email-customer-completed-order.php',
-                'WC_Email_Customer_Processing_Order' => 'emails/class-wc-email-customer-processing-order.php',
-                'WC_Email_Customer_On_Hold_Order' => 'emails/class-wc-email-customer-on-hold-order.php',
-                'WC_Email_Customer_Invoice' => 'emails/class-wc-email-customer-invoice.php',
-                'WC_Email_Failed_Order' => 'emails/class-wc-email-failed-order.php',
-                'WC_Email_Customer_Note' => 'emails/class-wc-email-customer-note.php',
-                'WC_Email_Customer_Reset_Password' => 'emails/class-wc-email-customer-reset-password.php',
-                'WC_Email_Customer_New_Account' => 'emails/class-wc-email-customer-new-account.php'
-            );
-            
-            // Try to include all email classes
-            foreach ($wc_email_classes as $class => $path) {
-                if (!class_exists($class, false)) {
-                    $full_path = WC_ABSPATH . 'includes/' . $path;
-                    if (file_exists($full_path)) {
-                        include_once $full_path;
-                    } else {
-                        error_log("Bocs: Unable to find WooCommerce email class file: {$path}");
-                    }
-                }
-            }
-            
             // Now load our custom email classes
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-confirmation.php';
@@ -105,10 +80,6 @@ class Bocs
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-payment-retry.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-renewal-order-confirmation.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-paused.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-reactivated.php';
         }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';
@@ -304,59 +275,18 @@ class Bocs
 
     public function define_email_hooks()
     {
-        // Initialize email classes
-        $bocs_email = new Bocs_Email();
+        error_log('BOCS DEBUG [Main Plugin]: Starting to define email hooks');
         
-        // Add basic initialization
-        $this->loader->add_action('init', $bocs_email, 'init', 10);
+        // Initialize email classes using singleton pattern
+        $bocs_email = Bocs_Email::get_instance();
         
-        // Initialize email classes after WooCommerce is loaded
-        $this->loader->add_action('woocommerce_init', $bocs_email, 'init_email_classes', 10);
-    }
-
-    /**
-     * Initialize email classes after WooCommerce is loaded
-     */
-    public function init_email_classes() {
-        // Prevent duplicate email registrations
-        static $emails_initialized = false;
-        if ($emails_initialized) {
-            error_log("Bocs: Prevented duplicate email hook registration in Bocs.php");
-            return;
-        }
-        $emails_initialized = true;
+        // Add basic initialization with priority 1 to ensure it runs before other hooks
+        add_action('init', array($bocs_email, 'init'), 1);
+        error_log('BOCS DEBUG [Main Plugin]: Added init hook for email initialization');
         
-        // Failed Payment Retry Email
-        if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
-            $failed_payment_retry = new WC_Bocs_Email_Failed_Payment_Retry();
-            $this->loader->add_action('woocommerce_order_status_pending_to_failed', $failed_payment_retry, 'trigger', 10, 1);
-        }
-
-        // Renewal Order Confirmation Email
-        if (class_exists('WC_Bocs_Email_Renewal_Order_Confirmation')) {
-            $renewal_order_confirmation = new WC_Bocs_Email_Renewal_Order_Confirmation();
-            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $renewal_order_confirmation, 'trigger', 10, 1);
-        }
-
-        // Upcoming Renewal Reminder Email
-        if (class_exists('WC_Bocs_Email_Upcoming_Renewal_Reminder')) {
-            $upcoming_renewal_reminder = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
-            $this->loader->add_action('bocs_upcoming_renewal_reminder', $upcoming_renewal_reminder, 'trigger', 10, 1);
-        }
-        
-        // New Customer Welcome Email
-        if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
-            $new_customer_email = new WC_Bocs_Email_New_Customer_Subscription();
-            $this->loader->add_action('woocommerce_new_order', $new_customer_email, 'trigger', 10, 1);
-            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $new_customer_email, 'trigger', 10, 1);
-        }
-        
-        // Existing Customer Subscription Email
-        if (class_exists('WC_Bocs_Email_Subscription_Confirmation')) {
-            $subscription_confirmation = new WC_Bocs_Email_Subscription_Confirmation();
-            $this->loader->add_action('woocommerce_new_order', $subscription_confirmation, 'trigger', 10, 1);
-            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $subscription_confirmation, 'trigger', 10, 1);
-        }
+        // Add filter to register email classes
+        add_filter('woocommerce_email_classes', array($bocs_email, 'add_bocs_email_classes'), 20);
+        error_log('BOCS DEBUG [Main Plugin]: Added woocommerce_email_classes filter');
     }
 
     public function define_checkout_page_hooks()

@@ -24,7 +24,6 @@ if (!class_exists('WC_Email', false)) {
     
     // If parent class still doesn't exist after attempting to load, log error and return
     if (!class_exists('WC_Email', false)) {
-        error_log('Bocs: WC_Email class not found. Cannot initialize WC_Bocs_Email_Failed_Payment_Retry.');
         return;
     }
 }
@@ -105,11 +104,10 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
             
             if (is_a($this->object, 'WC_Order')) {
                 // Check if the order has the required Bocs meta fields
-                $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
                 $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
                 
                 // Skip if the required meta fields are empty
-                if (empty($bocs_order_status) || empty($bocs_subscription_id)) {
+                if (empty($bocs_subscription_id)) {
                     $this->restore_locale();
                     return;
                 }
@@ -361,10 +359,11 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
             $update_http_code = curl_getinfo($update_curl, CURLINFO_HTTP_CODE);
             curl_close($update_curl);
             
-            return $update_http_code >= 200 && $update_http_code < 300;
+            $success = $update_http_code >= 200 && $update_http_code < 300;
+            
+            return $success;
             
         } catch (Exception $e) {
-            error_log('Bocs API Error: ' . $e->getMessage());
             return false;
         }
         
