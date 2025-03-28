@@ -43,8 +43,8 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_subscription_confirmation';
         $this->customer_email = true;
-        $this->title          = __('[Bocs] Subscription Order Confirmation', 'bocs-wordpress');
-        $this->description    = __('Confirmation email sent to customers after setting up a Bocs subscription.', 'bocs-wordpress');
+        $this->title          = __('[Bocs] Existing Customer New Subscription', 'bocs-wordpress');
+        $this->description    = __('Confirmation email sent to existing customers after adding a new Bocs subscription.', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-subscription-order-confirmation.php';
         $this->template_plain = 'emails/plain/bocs-subscription-order-confirmation.php';
         
@@ -82,7 +82,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your subscription has been set up', 'bocs-wordpress');
+        return __('[Bocs] Thank you for your new subscription', 'bocs-wordpress');
     }
 
     /**
@@ -92,7 +92,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Subscription Confirmed', 'bocs-wordpress');
+        return __('Your New Subscription is Confirmed', 'bocs-wordpress');
     }
 
     /**
@@ -220,7 +220,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
      * @return string Default additional content
      */
     public function get_default_additional_content() {
-        return __('Thanks for subscribing to Bocs. We look forward to serving you!', 'bocs-wordpress');
+        return __('Thank you for expanding your Bocs experience with this new subscription. We value your continued trust and look forward to serving you!', 'bocs-wordpress');
     }
 
     /**
@@ -240,7 +240,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your subscription has been set up</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Thank you for your new subscription</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),
@@ -248,7 +248,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Subscription Confirmed</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Your New Subscription is Confirmed</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
             ),
@@ -256,7 +256,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
                 'title'       => __('Additional content', 'bocs-wordpress'),
                 'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
                 'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('Thanks for subscribing to Bocs. We look forward to serving you!', 'bocs-wordpress'),
+                'placeholder' => __('Thank you for expanding your Bocs experience with this new subscription. We value your continued trust and look forward to serving you!', 'bocs-wordpress'),
                 'type'        => 'textarea',
                 'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,
