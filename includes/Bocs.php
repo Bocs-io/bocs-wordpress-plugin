@@ -275,18 +275,18 @@ class Bocs
 
     public function define_email_hooks()
     {
-        error_log('BOCS DEBUG [Main Plugin]: Starting to define email hooks');
+        // error_log('BOCS DEBUG [Main Plugin]: Starting to define email hooks');
         
         // Initialize email classes using singleton pattern
         $bocs_email = Bocs_Email::get_instance();
         
         // Add basic initialization with priority 1 to ensure it runs before other hooks
         add_action('init', array($bocs_email, 'init'), 1);
-        error_log('BOCS DEBUG [Main Plugin]: Added init hook for email initialization');
+        // error_log('BOCS DEBUG [Main Plugin]: Added init hook for email initialization');
         
         // Add filter to register email classes
         add_filter('woocommerce_email_classes', array($bocs_email, 'add_bocs_email_classes'), 20);
-        error_log('BOCS DEBUG [Main Plugin]: Added woocommerce_email_classes filter');
+        // error_log('BOCS DEBUG [Main Plugin]: Added woocommerce_email_classes filter');
     }
 
     public function define_checkout_page_hooks()

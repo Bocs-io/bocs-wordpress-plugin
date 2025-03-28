@@ -41,11 +41,12 @@ class Bocs_Email
     public function add_bocs_email_classes($email_classes)
     {
         if (self::$email_classes_registered) {
-            error_log("BOCS DEBUG [Bocs_Email]: Email classes already registered, skipping");
+            // error_log("BOCS DEBUG [Bocs_Email]: Email classes already registered, skipping");
             return $email_classes;
         }
 
-        error_log("BOCS DEBUG [Bocs_Email]: Adding BOCS email classes to WooCommerce");
+        // error_log("BOCS DEBUG [Bocs_Email]: Starting to add BOCS email classes to WooCommerce");
+        // error_log("BOCS DEBUG [Bocs_Email]: Current email classes: " . print_r(array_keys($email_classes), true));
         
         // Load WooCommerce email classes if not already loaded
         if (!class_exists('WC_Email', false)) {
@@ -58,36 +59,46 @@ class Bocs_Email
         // Register email classes with correct keys
         if (class_exists('WC_Bocs_Email_Subscription_Confirmation')) {
             $email_classes['bocs_subscription_confirmation'] = new WC_Bocs_Email_Subscription_Confirmation();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered subscription confirmation email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered subscription confirmation email class");
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Confirmation class not found");
         }
         
         if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
             $email_classes['bocs_new_customer_subscription'] = new WC_Bocs_Email_New_Customer_Subscription();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered new customer subscription email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered new customer subscription email class");
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_New_Customer_Subscription class not found");
         }
         
         if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
             $email_classes['bocs_failed_payment_retry'] = new WC_Bocs_Email_Failed_Payment_Retry();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered failed payment retry email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered failed payment retry email class");
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Failed_Payment_Retry class not found");
         }
         
         if (class_exists('WC_Bocs_Email_Upcoming_Renewal_Reminder')) {
             $email_classes['bocs_upcoming_renewal_reminder'] = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered upcoming renewal reminder email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered upcoming renewal reminder email class");
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Upcoming_Renewal_Reminder class not found");
         }
         
         if (class_exists('WC_Bocs_Email_Renewal_Order_Confirmation')) {
             $email_classes['bocs_renewal_order_confirmation'] = new WC_Bocs_Email_Renewal_Order_Confirmation();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered renewal order confirmation email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered renewal order confirmation email class");
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Renewal_Order_Confirmation class not found");
         }
 
         self::$email_classes_registered = true;
-        error_log("BOCS DEBUG [Bocs_Email]: BOCS email classes added successfully");
-        error_log("BOCS DEBUG [Bocs_Email]: Registered email classes: " . print_r(array_keys($email_classes), true));
+        // error_log("BOCS DEBUG [Bocs_Email]: BOCS email classes added successfully");
+        // error_log("BOCS DEBUG [Bocs_Email]: Final registered email classes: " . print_r(array_keys($email_classes), true));
         
         // Verify the email classes are registered
         foreach ($email_classes as $key => $class) {
-            error_log("BOCS DEBUG [Bocs_Email]: Verified email class - Key: " . $key . ", Class: " . get_class($class));
+            // error_log("BOCS DEBUG [Bocs_Email]: Verified email class - Key: " . $key . ", Class: " . get_class($class));
         }
         
         return $email_classes;
@@ -97,6 +108,7 @@ class Bocs_Email
      * Load all BOCS email classes
      */
     private function load_email_classes() {
+        // error_log("BOCS DEBUG [Bocs_Email]: Starting to load email classes");
         $email_class_files = array(
             'class-bocs-email-subscription-confirmation.php',
             'class-bocs-email-new-customer-subscription.php',
@@ -113,9 +125,13 @@ class Bocs_Email
         foreach ($email_class_files as $file) {
             $file_path = BOCS_PLUGIN_DIR . 'includes/emails/' . $file;
             if (file_exists($file_path)) {
+                // error_log("BOCS DEBUG [Bocs_Email]: Loading email class file: " . $file);
                 include_once $file_path;
+            } else {
+                // error_log("BOCS DEBUG [Bocs_Email]: Email class file not found: " . $file_path);
             }
         }
+        // error_log("BOCS DEBUG [Bocs_Email]: Finished loading email classes");
     }
 
     /**
@@ -148,40 +164,70 @@ class Bocs_Email
      */
     public function init()
     {
-        error_log('BOCS DEBUG [Bocs_Email]: Starting init method');
+        // error_log('BOCS DEBUG [Bocs_Email]: Starting init method');
         
         if (!class_exists('WC_Email')) {
-            error_log('BOCS DEBUG [Bocs_Email]: WooCommerce email class not found, skipping initialization');
+            // error_log('BOCS DEBUG [Bocs_Email]: WooCommerce email class not found, skipping initialization');
             return;
         }
 
         // Add filter to register email classes
         add_filter('woocommerce_email_classes', array($this, 'add_bocs_email_classes'), 20);
-        error_log('BOCS DEBUG [Bocs_Email]: Added woocommerce_email_classes filter');
+        // error_log('BOCS DEBUG [Bocs_Email]: Added woocommerce_email_classes filter');
 
         // Register email hooks
         $this->register_email_hooks();
-        error_log('BOCS DEBUG [Bocs_Email]: Registered email hooks');
+        // error_log('BOCS DEBUG [Bocs_Email]: Registered email hooks');
     }
 
     private function register_email_hooks()
     {
-        error_log('BOCS DEBUG [Bocs_Email]: Starting register_email_hooks method');
+        // error_log('BOCS DEBUG [Bocs_Email]: Starting register_email_hooks method');
         
         // Get the email class instance
         $emails = WC()->mailer()->get_emails();
-        error_log('BOCS DEBUG [Bocs_Email]: Available email classes: ' . print_r(array_keys($emails), true));
+        // error_log('BOCS DEBUG [Bocs_Email]: Available email classes: ' . print_r(array_keys($emails), true));
         
-        // Create a new instance if not found in mailer
-        if (!isset($emails['bocs_upcoming_renewal_reminder'])) {
-            error_log('BOCS DEBUG [Bocs_Email]: Creating new instance of upcoming renewal reminder email class');
-            $upcoming_renewal_email = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
+        // Handle failed payment retry email
+        if (!isset($emails['bocs_failed_payment_retry'])) {
+            // error_log('BOCS DEBUG [Bocs_Email]: Creating new instance of failed payment retry email class');
+            $failed_payment_email = new WC_Bocs_Email_Failed_Payment_Retry();
         } else {
-            $upcoming_renewal_email = $emails['bocs_upcoming_renewal_reminder'];
-            error_log('BOCS DEBUG [Bocs_Email]: Found upcoming renewal email class in mailer');
+            $failed_payment_email = $emails['bocs_failed_payment_retry'];
+            // error_log('BOCS DEBUG [Bocs_Email]: Found failed payment retry email class in mailer');
         }
 
         // Remove any existing hooks to prevent duplicates
+        // error_log('BOCS DEBUG [Bocs_Email]: Removing existing hooks for failed payment retry email');
+        remove_action('woocommerce_order_status_failed', array($failed_payment_email, 'trigger'));
+        remove_action('woocommerce_rest_insert_shop_order_object', array($failed_payment_email, 'trigger'));
+        remove_action('woocommerce_rest_shop_order_object_updated', array($failed_payment_email, 'trigger'));
+        remove_action('woocommerce_store_api_checkout_order_processed', array($failed_payment_email, 'trigger'));
+        remove_action('woocommerce_api_create_order', array($failed_payment_email, 'trigger'));
+        remove_action('woocommerce_new_order', array($failed_payment_email, 'trigger'));
+
+        // Register hooks for failed payment retry with high priority
+        // error_log('BOCS DEBUG [Bocs_Email]: Registering hooks for failed payment retry email with priority 5');
+        add_action('woocommerce_order_status_failed', array($failed_payment_email, 'trigger'), 5, 1);
+        add_action('woocommerce_rest_insert_shop_order_object', array($failed_payment_email, 'trigger'), 5, 1);
+        add_action('woocommerce_rest_shop_order_object_updated', array($failed_payment_email, 'trigger'), 5, 1);
+        add_action('woocommerce_store_api_checkout_order_processed', array($failed_payment_email, 'trigger'), 5, 1);
+        add_action('woocommerce_api_create_order', array($failed_payment_email, 'trigger'), 5, 1);
+        add_action('woocommerce_new_order', array($failed_payment_email, 'trigger'), 5, 1);
+        
+        // error_log('BOCS DEBUG [Bocs_Email]: Registered hooks for failed payment retry email with priority 5');
+
+        // Handle upcoming renewal reminder email
+        if (!isset($emails['bocs_upcoming_renewal_reminder'])) {
+            // error_log('BOCS DEBUG [Bocs_Email]: Creating new instance of upcoming renewal reminder email class');
+            $upcoming_renewal_email = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
+        } else {
+            $upcoming_renewal_email = $emails['bocs_upcoming_renewal_reminder'];
+            // error_log('BOCS DEBUG [Bocs_Email]: Found upcoming renewal email class in mailer');
+        }
+
+        // Remove any existing hooks to prevent duplicates
+        // error_log('BOCS DEBUG [Bocs_Email]: Removing existing hooks for upcoming renewal reminder email');
         remove_action('woocommerce_order_status_pending', array($upcoming_renewal_email, 'trigger'));
         remove_action('woocommerce_rest_insert_shop_order_object', array($upcoming_renewal_email, 'trigger'));
         remove_action('woocommerce_rest_shop_order_object_updated', array($upcoming_renewal_email, 'trigger'));
@@ -190,6 +236,7 @@ class Bocs_Email
         remove_action('woocommerce_new_order', array($upcoming_renewal_email, 'trigger'));
 
         // Register hooks for upcoming renewal reminder with high priority
+        // error_log('BOCS DEBUG [Bocs_Email]: Registering hooks for upcoming renewal reminder email with priority 5');
         add_action('woocommerce_order_status_pending', array($upcoming_renewal_email, 'trigger'), 5, 1);
         add_action('woocommerce_rest_insert_shop_order_object', array($upcoming_renewal_email, 'trigger'), 5, 1);
         add_action('woocommerce_rest_shop_order_object_updated', array($upcoming_renewal_email, 'trigger'), 5, 1);
@@ -197,7 +244,7 @@ class Bocs_Email
         add_action('woocommerce_api_create_order', array($upcoming_renewal_email, 'trigger'), 5, 1);
         add_action('woocommerce_new_order', array($upcoming_renewal_email, 'trigger'), 5, 1);
         
-        error_log('BOCS DEBUG [Bocs_Email]: Registered hooks for upcoming renewal reminder email with priority 5');
+        // error_log('BOCS DEBUG [Bocs_Email]: Registered hooks for upcoming renewal reminder email with priority 5');
     }
 }
 
