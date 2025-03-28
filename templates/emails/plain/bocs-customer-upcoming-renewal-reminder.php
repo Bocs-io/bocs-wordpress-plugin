@@ -15,53 +15,52 @@ echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 /* translators: %s: Customer first name */
-echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
+echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
 
-// translators: %1$s: subscription number, %2$s: renewal date
+// translators: %1$s: order number, %2$s: renewal date
 printf(
     esc_html__('This is a reminder that your subscription #%1$s will automatically renew on %2$s.', 'bocs-wordpress'),
-    esc_html($subscription->get_id()),
-    esc_html(date_i18n(wc_date_format(), $subscription->get_time('next_payment', 'site')))
+    esc_html($order->get_order_number()),
+    esc_html($renewal_date ?: __('soon', 'bocs-wordpress'))
 ) . "\n\n";
 
 echo esc_html__('UPCOMING RENEWAL', 'bocs-wordpress') . "\n\n";
 
-if ($subscription->get_payment_method_title()) {
-    echo esc_html__('Payment Method:', 'bocs-wordpress') . ' ' . esc_html($subscription->get_payment_method_title()) . "\n\n";
+if ($order->get_payment_method_title()) {
+    echo esc_html__('Payment Method:', 'bocs-wordpress') . ' ' . esc_html($order->get_payment_method_title()) . "\n\n";
 }
 
 // Check for Bocs App attribution
-$source_type = get_post_meta($subscription->get_id(), '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($subscription->get_id(), '_wc_order_attribution_utm_source', true);
+$source_type = $order->get_meta('_wc_order_attribution_source_type');
+$utm_source = $order->get_meta('_wc_order_attribution_utm_source');
 
 if ($source_type === 'referral' && $utm_source === 'Bocs App') {
     echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
 }
 
 echo esc_html__('To view or manage your subscription, please visit:', 'bocs-wordpress') . "\n";
-echo esc_url($subscription->get_view_order_url()) . "\n\n";
+echo esc_url(add_query_arg(array('view-order' => $order->get_order_number()), wc_get_endpoint_url('view-order', '', wc_get_page_permalink('myaccount')))) . "\n\n";
 
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
 echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
 echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-// Output subscription details
+// Output order details
 echo esc_html__('Product:', 'bocs-wordpress') . ' ';
-$subscription_items = $subscription->get_items();
-if (!empty($subscription_items)) {
+$order_items = $order->get_items();
+if (!empty($order_items)) {
     $product_names = array();
-    foreach ($subscription_items as $item) {
+    foreach ($order_items as $item) {
         $product_names[] = $item->get_name();
     }
     echo implode(', ', $product_names) . "\n";
 }
 
-echo esc_html__('Price:', 'bocs-wordpress') . ' ' . wp_kses_post($subscription->get_formatted_order_total()) . "\n";
-echo esc_html__('Frequency:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_period_interval_strings($subscription->get_billing_interval())) . ' ' . esc_html(wcs_get_subscription_period_strings(1, $subscription->get_billing_period())) . "\n";
-echo esc_html__('Status:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_status_name($subscription->get_status())) . "\n";
+echo esc_html__('Price:', 'bocs-wordpress') . ' ' . wp_kses_post($order->get_formatted_order_total()) . "\n";
+echo esc_html__('Status:', 'bocs-wordpress') . ' ' . esc_html(wc_get_order_status_name($order->get_status())) . "\n";
 
-if ($subscription->get_time('next_payment') > 0) {
-    echo esc_html__('Next Payment Date:', 'bocs-wordpress') . ' ' . esc_html(date_i18n(wc_date_format(), $subscription->get_time('next_payment', 'site'))) . "\n";
+if ($renewal_date) {
+    echo esc_html__('Next Payment Date:', 'bocs-wordpress') . ' ' . esc_html($renewal_date) . "\n";
 }
 
 echo "\n";
@@ -74,7 +73,7 @@ echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
  * @hooked WC_Emails::customer_details() Shows customer details
  * @hooked WC_Emails::email_address() Shows email address
  */
-do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $plain_text, $email);
+do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
 
 if ($additional_content) {
     echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
