@@ -105,6 +105,10 @@ class Bocs
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-payment-retry.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-renewal-order-confirmation.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-paused.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-reactivated.php';
         }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Bocs.php';

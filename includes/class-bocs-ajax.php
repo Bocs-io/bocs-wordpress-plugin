@@ -61,6 +61,18 @@ class BOCS_AJAX {
         // Add new AJAX handler
         add_action('wp_ajax_bocs_trigger_subscription_switched_email', array($this, 'trigger_subscription_switched_email'));
         
+        // Add cancellation email trigger
+        add_action('wp_ajax_bocs_trigger_subscription_cancelled_email', array($this, 'trigger_subscription_cancelled_email'));
+        add_action('wp_ajax_nopriv_bocs_trigger_subscription_cancelled_email', array($this, 'must_login_first'));
+
+        // Add pause email trigger
+        add_action('wp_ajax_bocs_trigger_subscription_paused_email', array($this, 'trigger_subscription_paused_email'));
+        add_action('wp_ajax_nopriv_bocs_trigger_subscription_paused_email', array($this, 'must_login_first'));
+
+        // Add resume email trigger
+        add_action('wp_ajax_bocs_trigger_subscription_resumed_email', array($this, 'trigger_subscription_resumed_email'));
+        add_action('wp_ajax_nopriv_bocs_trigger_subscription_resumed_email', array($this, 'must_login_first'));
+
         // Add box updated email trigger
         add_action('wp_ajax_bocs_trigger_box_updated_email', array($this, 'trigger_box_updated_email'));
         add_action('wp_ajax_nopriv_bocs_trigger_box_updated_email', array($this, 'must_login_first'));
@@ -479,6 +491,156 @@ class BOCS_AJAX {
 
         // Send success response
         wp_send_json_success('Box updated email triggered successfully');
+    }
+    
+    /**
+     * AJAX handler for triggering subscription cancelled email notification
+     */
+    public function trigger_subscription_cancelled_email() {
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-cancelled')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+        if (empty($subscription_id)) {
+            wp_send_json_error('Subscription ID is required');
+            return;
+        }
+        
+        // Get cancellation reason if provided
+        $reason = isset($_POST['reason']) ? sanitize_text_field($_POST['reason']) : '';
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+
+        // Trigger the cancelled email notification by firing the action
+        do_action('bocs_subscription_cancelled', $subscription_data['data'], $reason);
+
+        // Send success response
+        wp_send_json_success('Subscription cancellation email triggered successfully');
+    }
+    
+    /**
+     * AJAX handler for triggering subscription paused email notification
+     */
+    public function trigger_subscription_paused_email() {
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-paused')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+        if (empty($subscription_id)) {
+            wp_send_json_error('Subscription ID is required');
+            return;
+        }
+        
+        // Get pause reason if provided
+        $reason = isset($_POST['reason']) ? sanitize_text_field($_POST['reason']) : '';
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+
+        // Trigger the paused email notification by firing the action
+        do_action('bocs_subscription_paused', $subscription_data['data'], $reason);
+
+        // Send success response
+        wp_send_json_success('Subscription paused email triggered successfully');
+    }
+    
+    /**
+     * AJAX handler for triggering subscription resumed email notification
+     */
+    public function trigger_subscription_resumed_email() {
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-resumed')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+        if (empty($subscription_id)) {
+            wp_send_json_error('Subscription ID is required');
+            return;
+        }
+        
+        // Get resume reason if provided
+        $reason = isset($_POST['reason']) ? sanitize_text_field($_POST['reason']) : '';
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+
+        // Trigger the resumed email notification by firing the action
+        do_action('bocs_subscription_resumed', $subscription_data['data'], $reason);
+
+        // Send success response
+        wp_send_json_success('Subscription reactivated email triggered successfully');
     }
 }
 

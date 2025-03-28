@@ -397,6 +397,9 @@ class Bocs_Payment_Method {
                 throw new Exception('Failed to update subscription payment details: ' . $api_response->get_error_message());
             }
 
+            // Send email notification for successful payment method update
+            $this->send_payment_method_updated_email($payment_method, get_user_by('id', $user_id));
+
             // Redirect back to the subscriptions page with success message
             wp_redirect(add_query_arg('payment_updated', 'success', wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
@@ -404,6 +407,39 @@ class Bocs_Payment_Method {
         } catch (Exception $e) {
             wp_redirect(add_query_arg('payment_updated', 'error', wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
+        }
+    }
+
+    /**
+     * Send payment method updated email.
+     *
+     * Triggers the email notification for when a payment method has been
+     * successfully added or updated.
+     *
+     * @since 1.0.0
+     * @param object $payment_method The payment method object from Stripe
+     * @param WP_User $user The WordPress user
+     * @return void
+     */
+    private function send_payment_method_updated_email($payment_method, $user) {
+        // Load WC mailer
+        $mailer = WC()->mailer();
+        
+        // Load the email class file if it's not already loaded
+        if (!class_exists('WC_Bocs_Email_Payment_Method_Updated', false)) {
+            include_once(plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-payment-method-updated.php');
+        }
+        
+        // Check if the class file exists, instantiate it, and trigger the email
+        if (class_exists('WC_Bocs_Email_Payment_Method_Updated', false)) {
+            $email = new WC_Bocs_Email_Payment_Method_Updated();
+            $email->trigger($payment_method, $user);
+        } else {
+            // Fall back to a simple email if the class isn't found
+            $to = $user->user_email;
+            $subject = sprintf(__('[%s] Your payment method has been updated', 'bocs-wordpress'), get_bloginfo('name'));
+            $message = sprintf(__('Hi %s, your payment method has been successfully updated.', 'bocs-wordpress'), $user->first_name);
+            wp_mail($to, $subject, $message);
         }
     }
 
