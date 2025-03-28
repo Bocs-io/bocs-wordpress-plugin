@@ -1,8 +1,8 @@
 <?php
 /**
- * Customer Subscription Reactivated email (plain text)
+ * Bocs Customer Subscription Reactivated Email (Plain Text)
  *
- * This template can be overridden by copying it to yourtheme/woocommerce/emails/plain/customer-subscription-reactivated.php.
+ * This template can be overridden by copying it to yourtheme/bocs-wordpress/emails/plain/bocs-customer-subscription-reactivated.php
  *
  * @package Bocs/Templates/Emails/Plain
  * @version 1.0.0
@@ -10,71 +10,133 @@
 
 defined('ABSPATH') || exit;
 
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+echo "= " . esc_html($email_heading) . " =\n\n";
 
-/* translators: %s: Customer first name */
-echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($subscription->get_billing_first_name())) . "\n\n";
-
-/* translators: %1$s: subscription ID */
-echo sprintf(esc_html__('Great news! Your subscription #%1$s has been reactivated. Your subscription is now active and scheduled for renewal according to your billing schedule.', 'bocs-wordpress'), esc_html($subscription->get_id())) . "\n\n";
-
-echo esc_html__('SUBSCRIPTION REACTIVATED', 'bocs-wordpress') . "\n\n";
-
-// Check for Bocs App attribution
-$source_type = get_post_meta($subscription->get_id(), '_wc_order_attribution_source_type', true);
-$utm_source = get_post_meta($subscription->get_id(), '_wc_order_attribution_utm_source', true);
-
-if ($source_type === 'referral' && $utm_source === 'Bocs App') {
-    echo esc_html__('This subscription was created through the Bocs App.', 'bocs-wordpress') . "\n\n";
+// Greeting
+$customer_name = '';
+if (isset($subscription['customer']) && isset($subscription['customer']['firstName'])) {
+    $customer_name = $subscription['customer']['firstName'];
+} elseif (isset($subscription['billing']) && isset($subscription['billing']['firstName'])) {
+    $customer_name = $subscription['billing']['firstName'];
 }
+echo "Hi " . esc_html($customer_name) . ",\n\n";
 
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+// Reactivated message
+echo esc_html__('Great news! Your subscription has been successfully reactivated. You\'re back on track to receive your products on schedule.', 'bocs-wordpress') . "\n\n";
 
-// Output subscription details
-echo esc_html__('Product:', 'bocs-wordpress') . ' ';
-$subscription_items = $subscription->get_items();
-if (!empty($subscription_items)) {
-    $product_names = array();
-    foreach ($subscription_items as $item) {
-        $product_names[] = $item->get_name();
+// Reactivated notification
+echo "= " . esc_html__('SUBSCRIPTION REACTIVATED', 'bocs-wordpress') . " =\n";
+echo esc_html__('Your subscription is now active again and your regular billing schedule has resumed.', 'bocs-wordpress') . "\n";
+
+// Add reactivation reason if provided
+$resume_reason = '';
+if (isset($subscription['metaData']) && is_array($subscription['metaData'])) {
+    foreach ($subscription['metaData'] as $meta) {
+        if (isset($meta['key']) && $meta['key'] === 'resume_reason' && !empty($meta['value'])) {
+            $resume_reason = $meta['value'];
+            break;
+        }
     }
-    echo implode(', ', $product_names) . "\n";
 }
 
-echo esc_html__('Price:', 'bocs-wordpress') . ' ' . wp_kses_post($subscription->get_formatted_order_total()) . "\n";
-echo esc_html__('Frequency:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_period_interval_strings($subscription->get_billing_interval())) . ' ' . esc_html(wcs_get_subscription_period_strings(1, $subscription->get_billing_period())) . "\n";
-echo esc_html__('Status:', 'bocs-wordpress') . ' ' . esc_html(wcs_get_subscription_status_name($subscription->get_status())) . "\n";
-
-if ($subscription->get_time('next_payment') > 0) {
-    echo esc_html__('Next Payment Date:', 'bocs-wordpress') . ' ' . esc_html(date_i18n(wc_date_format(), $subscription->get_time('next_payment', 'site'))) . "\n";
+if (!empty($resume_reason)) {
+    echo esc_html__('Reason for reactivation:', 'bocs-wordpress') . ' ' . esc_html($resume_reason) . "\n";
 }
 
+// Add reactivation date
+if (isset($subscription['updatedAt']) || isset($subscription['updatedAtGmt'])) {
+    $date_string = isset($subscription['updatedAtGmt']) ? $subscription['updatedAtGmt'] : $subscription['updatedAt'];
+    $resume_date = new DateTime($date_string);
+    echo esc_html__('Reactivated on:', 'bocs-wordpress') . ' ' . esc_html($resume_date->format('F j, Y')) . "\n";
+}
+
+// Next payment details
+if (isset($subscription['nextPaymentDateGmt'])) {
+    $next_date = new DateTime($subscription['nextPaymentDateGmt']);
+    $total = isset($subscription['total']) ? floatval($subscription['total']) : 0;
+    $currency = isset($subscription['currency']) ? $subscription['currency'] : 'USD';
+    
+    echo "\n" . sprintf(
+        esc_html__('Your next payment of %1$s is scheduled for %2$s.', 'bocs-wordpress'),
+        esc_html(number_format($total, 2)) . ' ' . esc_html($currency),
+        esc_html($next_date->format('F j, Y'))
+    ) . "\n";
+}
 echo "\n";
 
-echo esc_html__('To view or manage your subscription, please visit:', 'bocs-wordpress') . "\n";
-echo esc_url($subscription->get_view_order_url()) . "\n\n";
+// Subscription details
+echo "= " . esc_html__('SUBSCRIPTION DETAILS', 'bocs-wordpress') . " =\n";
+echo sprintf(esc_html__('Subscription #%s', 'bocs-wordpress'), $subscription['id'] ?? '') . "\n";
+if (isset($subscription['createdAt'])) {
+    $created_date = new DateTime($subscription['createdAt']);
+    echo esc_html__('Created on:', 'bocs-wordpress') . ' ' . esc_html($created_date->format('F j, Y')) . "\n";
+}
+echo "\n";
 
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
-echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+// Subscription items
+echo "= " . esc_html__('SUBSCRIPTION ITEMS', 'bocs-wordpress') . " =\n";
 
-/*
- * @hooked WC_Emails::customer_details() Shows customer details
- * @hooked WC_Emails::email_address() Shows email address
- */
-do_action('woocommerce_email_customer_details', $subscription, $sent_to_admin, $plain_text, $email);
+if (isset($subscription['lineItems']) && is_array($subscription['lineItems']) && !empty($subscription['lineItems'])) {
+    echo esc_html__('Product', 'bocs-wordpress') . ' | ' . esc_html__('Quantity', 'bocs-wordpress') . ' | ' . esc_html__('Price', 'bocs-wordpress') . "\n";
+    echo "---------------------------------------\n";
+    
+    foreach ($subscription['lineItems'] as $item) {
+        $product_name = isset($item['name']) ? $item['name'] : 'Product';
+        $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
+        $price = isset($item['price']) ? floatval($item['price']) : 0;
+        $total = $price * $quantity;
+        $currency = isset($subscription['currency']) ? $subscription['currency'] : 'USD';
+        
+        echo esc_html($product_name) . ' | ' . esc_html($quantity) . ' | ' . esc_html(number_format($total, 2)) . ' ' . esc_html($currency) . "\n";
+    }
+} else {
+    echo esc_html__('No items found in this subscription.', 'bocs-wordpress') . "\n";
+}
+echo "\n";
 
-if ($additional_content) {
-    echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
-    echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
+// Frequency details
+if (isset($subscription['frequency'])) {
+    $frequency = $subscription['frequency'];
+    echo "= " . esc_html__('BILLING FREQUENCY', 'bocs-wordpress') . " =\n";
+    
+    echo sprintf(
+        esc_html__('You will be billed every %1$s %2$s', 'bocs-wordpress'),
+        esc_html($frequency['frequency']),
+        esc_html($frequency['timeUnit'])
+    );
+    
+    if (isset($frequency['discount']) && $frequency['discount'] > 0) {
+        echo ' (';
+        if (isset($frequency['discountType']) && $frequency['discountType'] === 'DOLLAR') {
+            echo '$' . esc_html($frequency['discount']) . ' off';
+        } else {
+            echo esc_html($frequency['discount']) . '% off';
+        }
+        echo ')';
+    }
+    
+    echo "\n\n";
 }
 
-echo esc_html__('If you have any questions about your subscription, please contact our customer support team.', 'bocs-wordpress') . "\n\n";
-echo esc_html__('Thank you for being a Bocs customer!', 'bocs-wordpress') . "\n\n";
+// Manage subscription section
+echo "= " . esc_html__('MANAGE YOUR SUBSCRIPTION', 'bocs-wordpress') . " =\n";
+echo esc_html__('Need to make changes? You can manage your subscription at any time by logging into your account.', 'bocs-wordpress') . "\n";
 
-echo wp_kses_post(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text'))); 
+// My account URL
+$account_url = wc_get_account_endpoint_url('bocs-subscriptions');
+if ($account_url) {
+    echo esc_html__('Visit your account:', 'bocs-wordpress') . ' ' . esc_url($account_url) . "\n\n";
+}
+
+// Additional content from settings
+if ($additional_content) {
+    echo "= " . esc_html__('ADDITIONAL INFORMATION', 'bocs-wordpress') . " =\n";
+    echo wp_strip_all_tags(wp_kses_post(wpautop(wptexturize($additional_content))));
+    echo "\n\n";
+}
+
+// Thank you message
+echo esc_html__('Thank you for continuing to be our valued customer!', 'bocs-wordpress') . "\n\n";
+
+// Footer
+echo apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text', '')); 
