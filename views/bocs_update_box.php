@@ -1587,7 +1587,26 @@ jQuery(document).ready(function($) {
                 if (response && response.code === 200) {
                     // Show success message and redirect
                     showNotification('success', '<?php esc_attr_e('Your box has been updated successfully!', 'bocs-wordpress'); ?>');
-                    window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    
+                    // Trigger email notification for the box update
+                    var emailData = {
+                        action: 'bocs_trigger_box_updated_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        })
+                        .always(function() {
+                            // Redirect regardless of email notification success
+                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                        });
                 } else {
                     // Show error message
                     var errorMessage = response && response.message ? response.message : '<?php esc_attr_e('An error occurred while updating your box.', 'bocs-wordpress'); ?>';
@@ -1692,7 +1711,26 @@ jQuery(document).ready(function($) {
                 console.log('Retry Response:', response);
                 if (response && response.code === 200) {
                     showNotification('success', '<?php esc_attr_e('Your box has been updated successfully!', 'bocs-wordpress'); ?>');
-                    window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    
+                    // Trigger email notification for the box update
+                    var emailData = {
+                        action: 'bocs_trigger_box_updated_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        })
+                        .always(function() {
+                            // Redirect regardless of email notification success
+                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                        });
                 } else {
                     var errorMessage = response && response.message ? response.message : '<?php esc_attr_e('An error occurred while updating your box.', 'bocs-wordpress'); ?>';
                     showNotification('error', errorMessage);

@@ -74,7 +74,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         }, 999, 1);
         
         // Add action to trigger this email when a subscription is switched
-        add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 2);
+        add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 4);
     }
 
     /**
@@ -95,6 +95,26 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      */
     public function get_default_heading() {
         return __('Your Subscription Has Been Updated', 'bocs-wordpress');
+    }
+
+    /**
+     * Get box updated email subject.
+     *
+     * @since 1.0.0
+     * @return string Box updated email subject
+     */
+    public function get_box_updated_subject() {
+        return __('[Bocs] Your box contents have been updated', 'bocs-wordpress');
+    }
+
+    /**
+     * Get box updated email heading.
+     *
+     * @since 1.0.0
+     * @return string Box updated email heading
+     */
+    public function get_box_updated_heading() {
+        return __('Your Box Contents Have Been Updated', 'bocs-wordpress');
     }
 
     /**
@@ -124,9 +144,10 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @param array|object $subscription_data The subscription data from Bocs API
      * @param string $bocs_id Optional. The Bocs ID that was switched to
      * @param string $frequency_id Optional. The frequency ID that was chosen
+     * @param bool $is_box_update Optional. Whether this is a box content update rather than a plan switch
      * @return void
      */
-    public function trigger($subscription_data, $bocs_id = '', $frequency_id = '') {
+    public function trigger($subscription_data, $bocs_id = '', $frequency_id = '', $is_box_update = false) {
         // Setup localization
         $this->setup_locale();
         
@@ -156,12 +177,23 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         // Set the Bocs ID (if available)
         $this->bocs_id = $bocs_id ?: ($subscription_data['bocs']['id'] ?? '');
         
+        // Use different subject and heading for box updates
+        if ($is_box_update) {
+            $this->heading = $this->get_box_updated_heading();
+            $this->subject = $this->get_box_updated_subject();
+        } else {
+            $this->heading = $this->get_default_heading();
+            $this->subject = $this->get_default_subject();
+        }
+        
         // Send the email if enabled
         if ($this->is_enabled() && $this->get_recipient()) {
             $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             
             // Log that we sent the email
-            $message = __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
+            $message = $is_box_update 
+                ? __('Box updated email notification sent to customer.', 'bocs-wordpress')
+                : __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
             error_log($message);
         }
         

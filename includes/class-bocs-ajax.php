@@ -60,6 +60,10 @@ class BOCS_AJAX {
 
         // Add new AJAX handler
         add_action('wp_ajax_bocs_trigger_subscription_switched_email', array($this, 'trigger_subscription_switched_email'));
+        
+        // Add box updated email trigger
+        add_action('wp_ajax_bocs_trigger_box_updated_email', array($this, 'trigger_box_updated_email'));
+        add_action('wp_ajax_nopriv_bocs_trigger_box_updated_email', array($this, 'must_login_first'));
     }
 
     /**
@@ -209,6 +213,9 @@ class BOCS_AJAX {
 
         // Check if the update was successful
         if (isset($response['data']) && isset($response['data']['id'])) {
+            // Trigger email notification for the box update
+            do_action('bocs_subscription_switched', $response['data'], '', '', true);
+            
             wp_send_json_success(array(
                 'message' => __('Your box has been updated successfully!', 'bocs-wordpress'),
                 'subscription' => $response['data']
@@ -420,6 +427,54 @@ class BOCS_AJAX {
 
         // Send success response
         wp_send_json_success('Subscription switched email triggered successfully');
+    }
+    
+    /**
+     * AJAX handler for triggering box updated email notification
+     */
+    public function trigger_box_updated_email() {
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-box-updated')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+        if (empty($subscription_id)) {
+            wp_send_json_error('Subscription ID is required');
+            return;
+        }
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+
+        // Trigger the box updated email notification using the same email template
+        // Pass true as the 4th parameter to indicate this is a box update
+        do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
+
+        // Send success response
+        wp_send_json_success('Box updated email triggered successfully');
     }
 }
 
