@@ -103,6 +103,9 @@ class Bocs_Email
         if (class_exists('WC_Bocs_Email_Manual_Renewal_Reminder')) {
             $email_classes['WC_Bocs_Email_Manual_Renewal_Reminder'] = new WC_Bocs_Email_Manual_Renewal_Reminder();
         }
+        if (class_exists('WC_Bocs_Email_Renewal_Order_Confirmation')) {
+            $email_classes['WC_Bocs_Email_Renewal_Order_Confirmation'] = new WC_Bocs_Email_Renewal_Order_Confirmation();
+        }
 
         return $email_classes;
     }
@@ -126,7 +129,8 @@ class Bocs_Email
             'class-bocs-email-payment-retry.php',
             'class-bocs-email-subscription-paused.php',
             'class-bocs-email-subscription-reactivated.php',
-            'class-bocs-email-manual-renewal-reminder.php'
+            'class-bocs-email-manual-renewal-reminder.php',
+            'class-bocs-email-renewal-order-confirmation.php'
         );
 
         foreach ($email_class_files as $file) {
@@ -199,20 +203,23 @@ class Bocs_Email
             ),
             // Payment Method Update
             'bocs_payment_method_update' => array(
-                'customer_payment_retry'
+                'customer_payment_method_updated'
             ),
             // Subscription Paused
             'bocs_subscription_paused' => array(
-                'subscription_put_on_hold'
+                'suspended_subscription'
             ),
             // Subscription Reactivated
             'bocs_subscription_reactivated' => array(
-                'subscription_activated'
+                'customer_payment_method_updated'
             ),
             // Manual Renewal Reminder
             'bocs_manual_renewal_reminder' => array(
-                'customer_renewal_invoice',
-                'customer_payment_retry'
+                'customer_renewal_invoice'
+            ),
+            // Renewal Order Confirmation
+            'bocs_renewal_order_confirmation' => array(
+                'customer_processing_renewal_order'
             )
         );
 
@@ -460,6 +467,16 @@ class Bocs_Email
             // Hook into subscription status changes
             add_action('woocommerce_subscription_status_cancelled', array($subscription_cancelled, 'trigger'), 10, 1);
             add_action('woocommerce_subscription_status_active_to_cancelled', array($subscription_cancelled, 'trigger'), 10, 1);
+        }
+
+        // Renewal Order Confirmation Email
+        if (class_exists('WC_Bocs_Email_Renewal_Order_Confirmation')) {
+            $renewal_confirmation = new WC_Bocs_Email_Renewal_Order_Confirmation();
+            
+            // Hook to handle orders that transition from Pending to Processing with __bocs_order_status = upcoming
+            add_action('woocommerce_order_status_pending_to_processing', function($order_id) use ($renewal_confirmation) {
+                $renewal_confirmation->trigger($order_id);
+            }, 20); // Higher priority to run after WooCommerce's own hooks
         }
     }
 }
