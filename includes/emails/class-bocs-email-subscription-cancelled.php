@@ -283,6 +283,4 @@ class Bocs_Email_Subscription_Cancelled extends WC_Email {
             ),
         );
     }
-}
-
-endif; 
+} 
