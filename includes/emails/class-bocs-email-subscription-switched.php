@@ -121,26 +121,28 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * Trigger the sending of this email.
      *
      * @since 1.0.0
-     * @param WC_Subscription|int $subscription The subscription object or ID
-     * @param array|object $data Optional additional data for the email
+     * @param array|object $subscription_data The subscription data from Bocs API
+     * @param string $bocs_id Optional. The Bocs ID that was switched to
+     * @param string $frequency_id Optional. The frequency ID that was chosen
      * @return void
      */
-    public function trigger($subscription, $data = array()) {
+    public function trigger($subscription_data, $bocs_id = '', $frequency_id = '') {
         // Setup localization
         $this->setup_locale();
         
-        // Get the subscription
-        $subscription_obj = is_numeric($subscription) ? wcs_get_subscription($subscription) : $subscription;
-        
-        // If we don't have a valid subscription, bail
-        if (!$subscription_obj || !is_a($subscription_obj, 'WC_Subscription')) {
+        // Check if we have valid subscription data
+        if (empty($subscription_data) || !is_array($subscription_data)) {
             $this->restore_locale();
             return;
         }
         
         // Set object and email recipient
-        $this->object = $subscription_obj;
-        $this->recipient = $subscription_obj->get_billing_email();
+        $this->object = $subscription_data;
+        
+        // Get recipient email from subscription data
+        $this->recipient = isset($subscription_data['customer']) && isset($subscription_data['customer']['email']) 
+            ? $subscription_data['customer']['email'] 
+            : '';
         
         // Skip if no recipient
         if (!$this->recipient) {
@@ -149,19 +151,18 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         }
         
         // Set the placeholders for email template
-        $this->placeholders['{subscription_id}'] = $subscription_obj->get_id();
+        $this->placeholders['{subscription_id}'] = $subscription_data['id'] ?? '';
         
         // Set the Bocs ID (if available)
-        $this->bocs_id = $subscription_obj->get_meta('__bocs_bocs_id');
+        $this->bocs_id = $bocs_id ?: ($subscription_data['bocs']['id'] ?? '');
         
         // Send the email if enabled
         if ($this->is_enabled() && $this->get_recipient()) {
             $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             
             // Log that we sent the email
-            $subscription_obj->add_order_note(
-                __('Subscription switched email notification sent to customer.', 'bocs-wordpress')
-            );
+            $message = __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
+            error_log($message);
         }
         
         $this->restore_locale();

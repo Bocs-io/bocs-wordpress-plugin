@@ -337,11 +337,28 @@ class BOCS_AJAX {
         
         // Process response
         if (isset($response['code']) && $response['code'] === 200) {
-            // Get subscription from WooCommerce
-            $subscription = wcs_get_subscription($subscription_id);
-            if ($subscription && is_a($subscription, 'WC_Subscription')) {
+            // Get subscription data via Bocs API
+            // We'll use the helper to make API requests
+            $helper = new Bocs_Helper();
+            $options = get_option('bocs_plugin_options');
+            $headers = [];
+            
+            if (!empty($options['bocs_headers'])) {
+                $headers = [
+                    'Organization' => $options['bocs_headers']['organization'] ?? '',
+                    'Store' => $options['bocs_headers']['store'] ?? '',
+                    'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                    'Content-Type' => 'application/json'
+                ];
+            }
+            
+            // Fetch subscription details from Bocs API
+            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+            $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+            
+            if (!is_wp_error($subscription_data) && isset($subscription_data['data'])) {
                 // Trigger an action that can be hooked by email notifications
-                do_action('bocs_subscription_switched', $subscription);
+                do_action('bocs_subscription_switched', $subscription_data['data'], $bocs_id, $frequency_id);
             }
             
             wp_send_json_success('Subscription updated successfully');
@@ -375,15 +392,31 @@ class BOCS_AJAX {
             return;
         }
 
-        // Get subscription from WooCommerce
-        $subscription = wcs_get_subscription($subscription_id);
-        if (!$subscription || !is_a($subscription, 'WC_Subscription')) {
-            wp_send_json_error('Subscription not found');
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            wp_send_json_error('Failed to fetch subscription data from API');
             return;
         }
 
         // Trigger the switched email notification
-        do_action('bocs_subscription_switched', $subscription);
+        do_action('bocs_subscription_switched', $subscription_data['data']);
 
         // Send success response
         wp_send_json_success('Subscription switched email triggered successfully');
