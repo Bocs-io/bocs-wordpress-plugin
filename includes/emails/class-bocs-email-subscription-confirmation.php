@@ -147,15 +147,62 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
             return;
         }
         
+        // Check if this is the customer's first Bocs order - if so, skip as they'll get the welcome email instead
+        $customer_id = $order_obj->get_customer_id();
+        $is_new_customer = true; // Assume new customer by default
+        
+        if ($customer_id > 0) {
+            // Get customer's previous orders with Bocs products
+            $previous_orders = wc_get_orders(array(
+                'customer_id' => $customer_id,
+                'status' => array('wc-completed', 'wc-processing'),
+                'limit' => -1,
+                'return' => 'ids',
+            ));
+            
+            // Exclude current order
+            $previous_orders = array_diff($previous_orders, array($order_id));
+            
+            // If customer has previous orders, check if any of them had Bocs products
+            if (!empty($previous_orders)) {
+                $had_bocs_products = false;
+                
+                foreach ($previous_orders as $prev_order_id) {
+                    $prev_order = wc_get_order($prev_order_id);
+                    if (!$prev_order) continue;
+                    
+                    // Check if order has Bocs meta
+                    if ($prev_order->get_meta('__bocs_subscription_id')) {
+                        $had_bocs_products = true;
+                        break;
+                    }
+                }
+                
+                $is_new_customer = !$had_bocs_products;
+            }
+        }
+        
+        // Skip if this is a new customer (they'll get the welcome email instead)
+        if ($is_new_customer) {
+            $this->restore_locale();
+            return;
+        }
+        
         // Set the placeholders for email template
         $this->placeholders['{order_date}'] = wc_format_datetime($this->object->get_date_created());
         $this->placeholders['{order_number}'] = $this->object->get_order_number();
         
         // Set the Bocs ID (if available)
-        $this->bocs_id = $this->object->get_meta('__bocs_bocs_id');
+        $this->bocs_id = $this->object->get_meta('__bocs_subscription_id');
         
         // Send the email if enabled
         if ($this->is_enabled() && $this->get_recipient()) {
+            // Only send if we have a valid Bocs ID
+            if (empty($this->bocs_id)) {
+                $this->restore_locale();
+                return;
+            }
+            
             // Actually send the email
             $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             

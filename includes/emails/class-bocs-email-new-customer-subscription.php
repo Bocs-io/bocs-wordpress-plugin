@@ -174,7 +174,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                     if (!$prev_order) continue;
                     
                     // Check if order has Bocs meta
-                    if ($prev_order->get_meta('__bocs_bocs_id')) {
+                    if ($prev_order->get_meta('__bocs_subscription_id')) {
                         $had_bocs_products = true;
                         break;
                     }
@@ -195,10 +195,16 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         $this->placeholders['{order_number}'] = $this->object->get_order_number();
         
         // Set the Bocs ID (if available)
-        $this->bocs_id = $this->object->get_meta('__bocs_bocs_id');
+        $this->bocs_id = $this->object->get_meta('__bocs_subscription_id');
         
         // Send the email if enabled
         if ($this->is_enabled() && $this->get_recipient()) {
+            // Only send if we have a valid Bocs subscription ID
+            if (empty($this->bocs_id)) {
+                $this->restore_locale();
+                return;
+            }
+            
             // Actually send the email
             $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             
