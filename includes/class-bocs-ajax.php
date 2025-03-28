@@ -57,6 +57,9 @@ class BOCS_AJAX {
         // Add AJAX handlers
         add_action('wp_ajax_switch_bocs_subscription', array($this, 'switch_bocs_subscription'));
         add_action('wp_ajax_nopriv_switch_bocs_subscription', array($this, 'must_login_first'));
+
+        // Add new AJAX handler
+        add_action('wp_ajax_bocs_trigger_subscription_switched_email', array($this, 'trigger_subscription_switched_email'));
     }
 
     /**
@@ -334,8 +337,12 @@ class BOCS_AJAX {
         
         // Process response
         if (isset($response['code']) && $response['code'] === 200) {
-            // Trigger an action that can be hooked by email notifications
-            do_action('bocs_subscription_switched', $subscription_id, $bocs_id, $frequency_id);
+            // Get subscription from WooCommerce
+            $subscription = wcs_get_subscription($subscription_id);
+            if ($subscription && is_a($subscription, 'WC_Subscription')) {
+                // Trigger an action that can be hooked by email notifications
+                do_action('bocs_subscription_switched', $subscription);
+            }
             
             wp_send_json_success('Subscription updated successfully');
         } else {
@@ -349,6 +356,37 @@ class BOCS_AJAX {
      */
     public function must_login_first() {
         wp_send_json_error(array('message' => __('You must be logged in to perform this action.', 'bocs-wordpress')));
+    }
+
+    /**
+     * AJAX handler for triggering subscription switched email
+     */
+    public function trigger_subscription_switched_email() {
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-switched')) {
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+        if (empty($subscription_id)) {
+            wp_send_json_error('Subscription ID is required');
+            return;
+        }
+
+        // Get subscription from WooCommerce
+        $subscription = wcs_get_subscription($subscription_id);
+        if (!$subscription || !is_a($subscription, 'WC_Subscription')) {
+            wp_send_json_error('Subscription not found');
+            return;
+        }
+
+        // Trigger the switched email notification
+        do_action('bocs_subscription_switched', $subscription);
+
+        // Send success response
+        wp_send_json_success('Subscription switched email triggered successfully');
     }
 }
 

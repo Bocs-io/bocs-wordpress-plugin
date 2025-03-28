@@ -62,6 +62,16 @@ class Bocs_Email
             }
         }
         
+        // Register the subscription switched email
+        if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+            $email_classes['WC_Bocs_Email_Subscription_Switched'] = new WC_Bocs_Email_Subscription_Switched();
+        } else {
+            include_once BOCS_PLUGIN_DIR . 'includes/emails/class-bocs-email-subscription-switched.php';
+            if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+                $email_classes['WC_Bocs_Email_Subscription_Switched'] = new WC_Bocs_Email_Subscription_Switched();
+            }
+        }
+        
         if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
             $email_classes['WC_Bocs_Email_Failed_Payment_Retry'] = new WC_Bocs_Email_Failed_Payment_Retry();
         }
@@ -86,7 +96,8 @@ class Bocs_Email
             'class-bocs-email-new-customer-subscription.php',
             'class-bocs-email-failed-payment-retry.php',
             'class-bocs-email-upcoming-renewal-reminder.php',
-            'class-bocs-email-renewal-order-confirmation.php'
+            'class-bocs-email-renewal-order-confirmation.php',
+            'class-bocs-email-subscription-switched.php'
         );
 
         foreach ($email_class_files as $file) {

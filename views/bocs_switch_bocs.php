@@ -1918,22 +1918,9 @@ jQuery(document).ready(function($) {
                 $(".bocs-loading-overlay").fadeOut(200);
                 
                 // Success handling
-                let successMessage = '';
-                
-                if (isUpdatingCurrentBocs) {
-                    if (frequencyData && selectedProducts && selectedProducts.some(p => p.quantity > 0)) {
-                        successMessage = '<?php esc_html_e("Your subscription frequency and products have been updated", "bocs-wordpress"); ?>';
-                    } else if (frequencyData) {
-                        successMessage = '<?php esc_html_e("Your subscription frequency has been updated", "bocs-wordpress"); ?>';
-                    } else {
-                        successMessage = '<?php esc_html_e("Your subscription products have been updated", "bocs-wordpress"); ?>';
-                    }
-                } else {
-                    successMessage = '<?php esc_html_e("Your subscription has been successfully switched to", "bocs-wordpress"); ?> ' + 
-                        selectedBocsName;
-                }
-                
-                successMessage += '. <?php esc_html_e("You will be redirected to your subscriptions in a few seconds.", "bocs-wordpress"); ?>';
+                const successMessage = '<?php esc_html_e("Your subscription has been successfully switched to", "bocs-wordpress"); ?> ' + 
+                    selectedBocsName + '. ' +
+                    '<?php esc_html_e("You will be redirected to your subscriptions in a few seconds.", "bocs-wordpress"); ?>';
                 
                 const successEl = showSuccessMessage(successMessage);
                 
@@ -1948,6 +1935,23 @@ jQuery(document).ready(function($) {
                         }
                     </style>
                 `);
+                
+                // Trigger email notification via AJAX
+                $.ajax({
+                    url: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
+                    type: 'POST',
+                    data: {
+                        action: 'bocs_trigger_subscription_switched_email',
+                        subscription_id: '<?php echo esc_js($subscription_id); ?>',
+                        security: '<?php echo esc_js(wp_create_nonce('bocs-subscription-switched')); ?>'
+                    },
+                    success: function(emailResponse) {
+                        console.log('Email notification sent:', emailResponse);
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to send email notification:', xhr.responseText);
+                    }
+                });
                 
                 // Redirect after delay
                 setTimeout(function() {
@@ -2190,6 +2194,23 @@ jQuery(document).ready(function($) {
                         }
                     </style>
                 `);
+                
+                // Trigger email notification via AJAX
+                $.ajax({
+                    url: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
+                    type: 'POST',
+                    data: {
+                        action: 'bocs_trigger_subscription_switched_email',
+                        subscription_id: '<?php echo esc_js($subscription_id); ?>',
+                        security: '<?php echo esc_js(wp_create_nonce('bocs-subscription-switched')); ?>'
+                    },
+                    success: function(emailResponse) {
+                        console.log('Email notification sent:', emailResponse);
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to send email notification:', xhr.responseText);
+                    }
+                });
                 
                 // Redirect after delay
                 setTimeout(function() {
