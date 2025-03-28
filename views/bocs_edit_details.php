@@ -510,6 +510,102 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
                 </div>
             </div>
         </div>
+
+        <!-- Cancel Subscription Section -->
+        <div class="edit-section cancel-section">
+            <div class="section-header">
+                <h3><?php esc_html_e('Manage Subscription', 'bocs-wordpress'); ?></h3>
+            </div>
+            
+            <div class="section-content">
+                <div class="subscription-actions">
+                    <?php if ($status !== 'paused'): ?>
+                    <div class="pause-action">
+                        <p class="action-description">
+                            <?php esc_html_e('Temporarily pause your subscription. You can resume it at any time.', 'bocs-wordpress'); ?>
+                        </p>
+                        <button class="button pause-subscription-button" 
+                                data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
+                            <?php esc_html_e('Pause Subscription', 'bocs-wordpress'); ?>
+                        </button>
+                        
+                        <div class="pause-confirm-dialog" style="display: none;">
+                            <p><?php esc_html_e('Are you sure you want to pause this subscription?', 'bocs-wordpress'); ?></p>
+                            <div class="pause-reason-field">
+                                <label for="pause_reason"><?php esc_html_e('Reason for pausing (optional):', 'bocs-wordpress'); ?></label>
+                                <select id="pause_reason" name="pause_reason">
+                                    <option value=""><?php esc_html_e('Select a reason...', 'bocs-wordpress'); ?></option>
+                                    <option value="vacation"><?php esc_html_e('Going on vacation', 'bocs-wordpress'); ?></option>
+                                    <option value="too_many"><?php esc_html_e('Have too many products', 'bocs-wordpress'); ?></option>
+                                    <option value="financial"><?php esc_html_e('Financial reasons', 'bocs-wordpress'); ?></option>
+                                    <option value="other"><?php esc_html_e('Other reason', 'bocs-wordpress'); ?></option>
+                                </select>
+                            </div>
+                            <div class="other-reason-field pause-other-reason" style="display: none;">
+                                <label for="pause_other_reason"><?php esc_html_e('Please specify:', 'bocs-wordpress'); ?></label>
+                                <textarea id="pause_other_reason" name="pause_other_reason" rows="3"></textarea>
+                            </div>
+                            <div class="button-group">
+                                <button type="button" class="button pause-confirm-no"><?php esc_html_e('No, Keep Active', 'bocs-wordpress'); ?></button>
+                                <button type="button" class="button alt pause-confirm-yes"><?php esc_html_e('Yes, Pause Subscription', 'bocs-wordpress'); ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="resume-action">
+                        <p class="action-description">
+                            <?php esc_html_e('Your subscription is currently paused. You can resume it at any time.', 'bocs-wordpress'); ?>
+                        </p>
+                        <button class="button alt resume-subscription-button" 
+                                data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
+                            <?php esc_html_e('Resume Subscription', 'bocs-wordpress'); ?>
+                        </button>
+                        
+                        <div class="resume-confirm-dialog" style="display: none;">
+                            <p><?php esc_html_e('Are you sure you want to resume this subscription?', 'bocs-wordpress'); ?></p>
+                            <div class="button-group">
+                                <button type="button" class="button resume-confirm-no"><?php esc_html_e('No, Keep Paused', 'bocs-wordpress'); ?></button>
+                                <button type="button" class="button alt resume-confirm-yes"><?php esc_html_e('Yes, Resume Subscription', 'bocs-wordpress'); ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="cancel-action">
+                        <p class="cancel-description">
+                            <?php esc_html_e('If you wish to cancel your subscription, please click the button below. This action cannot be undone.', 'bocs-wordpress'); ?>
+                        </p>
+                        <button class="button alt cancel-subscription-button" 
+                                data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
+                            <?php esc_html_e('Cancel Subscription', 'bocs-wordpress'); ?>
+                        </button>
+                        
+                        <div class="cancel-confirm-dialog" style="display: none;">
+                            <p><?php esc_html_e('Are you sure you want to cancel this subscription?', 'bocs-wordpress'); ?></p>
+                            <div class="cancel-reason-field">
+                                <label for="cancel_reason"><?php esc_html_e('Reason for cancellation (optional):', 'bocs-wordpress'); ?></label>
+                                <select id="cancel_reason" name="cancel_reason">
+                                    <option value=""><?php esc_html_e('Select a reason...', 'bocs-wordpress'); ?></option>
+                                    <option value="too_expensive"><?php esc_html_e('Too expensive', 'bocs-wordpress'); ?></option>
+                                    <option value="not_using"><?php esc_html_e('Not using the product', 'bocs-wordpress'); ?></option>
+                                    <option value="switching"><?php esc_html_e('Switching to another service', 'bocs-wordpress'); ?></option>
+                                    <option value="not_satisfied"><?php esc_html_e('Not satisfied with product/service', 'bocs-wordpress'); ?></option>
+                                    <option value="other"><?php esc_html_e('Other reason', 'bocs-wordpress'); ?></option>
+                                </select>
+                            </div>
+                            <div class="other-reason-field cancel-other-reason" style="display: none;">
+                                <label for="other_reason"><?php esc_html_e('Please specify:', 'bocs-wordpress'); ?></label>
+                                <textarea id="other_reason" name="other_reason" rows="3"></textarea>
+                            </div>
+                            <div class="button-group">
+                                <button type="button" class="button cancel-confirm-no"><?php esc_html_e('No, Keep Subscription', 'bocs-wordpress'); ?></button>
+                                <button type="button" class="button alt cancel-confirm-yes"><?php esc_html_e('Yes, Cancel Subscription', 'bocs-wordpress'); ?></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -875,6 +971,114 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
 .preview-price {
     background-color: #f9f9e0;
     transition: background-color 0.3s ease;
+}
+
+/* Manage Subscription styles */
+.cancel-section {
+    background-color: #f9f9f9;
+    border-left: 4px solid #3c7b7c;
+}
+
+.subscription-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+}
+
+.pause-action, 
+.resume-action,
+.cancel-action {
+    padding: 1em;
+    border-radius: 4px;
+}
+
+.pause-action, 
+.resume-action {
+    background-color: #f0f7f7;
+    border: 1px solid #d5e5e5;
+}
+
+.cancel-action {
+    background-color: #fff8f8;
+    border: 1px solid #eba3a3;
+}
+
+.action-description, 
+.cancel-description {
+    margin-bottom: 1em;
+}
+
+.pause-subscription-button,
+.resume-subscription-button {
+    background-color: #3c7b7c !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.pause-subscription-button:hover,
+.resume-subscription-button:hover {
+    background-color: #2a5758 !important;
+}
+
+.cancel-subscription-button {
+    background-color: #dc3232 !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.cancel-subscription-button:hover {
+    background-color: #c62828 !important;
+}
+
+.pause-confirm-dialog,
+.resume-confirm-dialog,
+.cancel-confirm-dialog {
+    margin-top: 1em;
+    padding: 1.5em;
+    background: #fff;
+    border-radius: 4px;
+}
+
+.pause-confirm-dialog,
+.resume-confirm-dialog {
+    border: 1px solid #d5e5e5;
+}
+
+.cancel-confirm-dialog {
+    border: 1px solid #eba3a3;
+}
+
+.pause-reason-field,
+.cancel-reason-field,
+.other-reason-field {
+    margin-bottom: 1em;
+}
+
+.pause-reason-field label,
+.cancel-reason-field label,
+.other-reason-field label {
+    display: block;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.pause-reason-field select,
+.cancel-reason-field select,
+.other-reason-field textarea {
+    width: 100%;
+    padding: 0.5em;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.other-reason-field textarea {
+    resize: vertical;
+}
+
+@media (max-width: 768px) {
+    .subscription-actions {
+        flex-direction: column;
+    }
 }
 </style>
 
@@ -2095,6 +2299,408 @@ jQuery(document).ready(function($) {
         
         // Update total row with preview indicator
         $('.line-items-table .total-row td').text(`${currencySymbol}${finalTotal.toFixed(2)} (Preview)`).addClass('preview-price');
+    });
+    
+    // Cancel subscription handlers
+    $('.cancel-subscription-button').on('click', function(e) {
+        e.preventDefault();
+        // Show confirmation dialog
+        $('.cancel-confirm-dialog').slideDown();
+    });
+    
+    // Cancel reason change handler
+    $('#cancel_reason').on('change', function() {
+        const selectedReason = $(this).val();
+        if (selectedReason === 'other') {
+            $('.other-reason-field').slideDown();
+        } else {
+            $('.other-reason-field').slideUp();
+        }
+    });
+    
+    // Cancel confirmation - No button
+    $('.cancel-confirm-no').on('click', function() {
+        // Reset fields and hide dialog
+        $('#cancel_reason').val('');
+        $('#other_reason').val('');
+        $('.other-reason-field').hide();
+        $('.cancel-confirm-dialog').slideUp();
+    });
+    
+    // Cancel confirmation - Yes button
+    $('.cancel-confirm-yes').on('click', async function() {
+        const button = $(this);
+        const originalButtonText = button.html();
+        const subscriptionId = $('.cancel-subscription-button').data('subscription-id');
+        const reason = $('#cancel_reason').val();
+        const otherReason = $('#other_reason').val();
+        
+        // Combine reasons if applicable
+        let cancelReason = reason;
+        if (reason === 'other' && otherReason) {
+            cancelReason = otherReason;
+        }
+        
+        try {
+            // Disable buttons and show loading state
+            button.prop('disabled', true).html('<span class="loading-spinner"></span> Processing...');
+            $('.cancel-confirm-no').prop('disabled', true);
+            
+            helpers.showNotification('Cancelling subscription...', 'loading');
+            
+            // Prepare cancellation payload
+            const cancelPayload = {
+                subscriptionStatus: 'cancelled'
+            };
+            
+            // Include reason as metadata if provided
+            if (cancelReason) {
+                cancelPayload.metaData = [
+                    { 
+                        key: 'cancellation_reason',
+                        value: cancelReason
+                    }
+                ];
+            }
+            
+            console.log('Sending cancellation request:', cancelPayload);
+            
+            // Send cancellation request to API
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                method: 'PUT',
+                data: JSON.stringify(cancelPayload),
+                contentType: 'application/json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                }
+            });
+            
+            console.log('API response:', response);
+            
+            if (response.code === 200) {
+                // Trigger email notification for the cancellation
+                try {
+                    var emailData = {
+                        action: 'bocs_trigger_subscription_cancelled_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-subscription-cancelled'); ?>',
+                        reason: cancelReason
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        });
+                } catch (emailError) {
+                    console.error('Error sending email notification:', emailError);
+                }
+                
+                // Show success message
+                helpers.showNotification('Your subscription has been cancelled successfully', 'success');
+                
+                // Update status display
+                $('.subscription-status')
+                    .removeClass('status-active status-paused status-pending')
+                    .addClass('status-cancelled')
+                    .text('Cancelled');
+                
+                // Hide cancel section after successful cancellation
+                setTimeout(() => {
+                    $('.cancel-section').slideUp();
+                }, 1000);
+                
+                // Redirect back to subscriptions page after a delay
+                setTimeout(() => {
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                }, 3000);
+                
+            } else {
+                throw new Error(response.message || 'Failed to cancel subscription');
+            }
+            
+        } catch (error) {
+            console.error('Error cancelling subscription:', error);
+            // Re-enable buttons
+            button.prop('disabled', false).html(originalButtonText);
+            $('.cancel-confirm-no').prop('disabled', false);
+            
+            helpers.showNotification('Failed to cancel subscription: ' + (error.message || 'Unknown error'), 'error');
+        }
+    });
+
+    // Pause subscription handlers
+    $('.pause-subscription-button').on('click', function(e) {
+        e.preventDefault();
+        // Show confirmation dialog
+        $('.pause-confirm-dialog').slideDown();
+    });
+
+    // Pause reason change handler
+    $('#pause_reason').on('change', function() {
+        const selectedReason = $(this).val();
+        if (selectedReason === 'other') {
+            $('.other-reason-field').slideDown();
+        } else {
+            $('.other-reason-field').slideUp();
+        }
+    });
+
+    // Pause confirmation - No button
+    $('.pause-confirm-no').on('click', function() {
+        // Reset fields and hide dialog
+        $('#pause_reason').val('');
+        $('#pause_other_reason').val('');
+        $('.other-reason-field').hide();
+        $('.pause-confirm-dialog').slideUp();
+    });
+
+    // Pause confirmation - Yes button
+    $('.pause-confirm-yes').on('click', async function() {
+        const button = $(this);
+        const originalButtonText = button.html();
+        const subscriptionId = $('.pause-subscription-button').data('subscription-id');
+        const reason = $('#pause_reason').val();
+        const otherReason = $('#pause_other_reason').val();
+        
+        // Combine reasons if applicable
+        let pauseReason = reason;
+        if (reason === 'other' && otherReason) {
+            pauseReason = otherReason;
+        }
+        
+        try {
+            // Disable buttons and show loading state
+            button.prop('disabled', true).html('<span class="loading-spinner"></span> Processing...');
+            $('.pause-confirm-no').prop('disabled', true);
+            
+            helpers.showNotification('Pausing subscription...', 'loading');
+            
+            // Prepare pause payload
+            const pausePayload = {
+                subscriptionStatus: 'paused'
+            };
+            
+            // Include reason as metadata if provided
+            if (pauseReason) {
+                pausePayload.metaData = [
+                    { 
+                        key: 'pause_reason',
+                        value: pauseReason
+                    }
+                ];
+            }
+            
+            console.log('Sending pause request:', pausePayload);
+            
+            // Send pause request to API
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/pause`,
+                method: 'PUT',
+                data: JSON.stringify(pausePayload),
+                contentType: 'application/json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                }
+            });
+            
+            console.log('API response:', response);
+            
+            if (response.code === 200) {
+                // Trigger email notification for the pause
+                try {
+                    var emailData = {
+                        action: 'bocs_trigger_subscription_paused_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-subscription-paused'); ?>',
+                        reason: pauseReason
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        });
+                } catch (emailError) {
+                    console.error('Error sending email notification:', emailError);
+                }
+                
+                // Show success message
+                helpers.showNotification('Your subscription has been paused successfully', 'success');
+                
+                // Update status display
+                $('.subscription-status')
+                    .removeClass('status-active status-paused status-pending')
+                    .addClass('status-paused')
+                    .text('Paused');
+                
+                // Hide pause section after successful pause
+                setTimeout(() => {
+                    $('.pause-section').slideUp();
+                }, 1000);
+                
+                // Redirect back to subscriptions page after a delay
+                setTimeout(() => {
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                }, 3000);
+                
+            } else {
+                throw new Error(response.message || 'Failed to pause subscription');
+            }
+            
+        } catch (error) {
+            console.error('Error pausing subscription:', error);
+            // Re-enable buttons
+            button.prop('disabled', false).html(originalButtonText);
+            $('.pause-confirm-no').prop('disabled', false);
+            
+            helpers.showNotification('Failed to pause subscription: ' + (error.message || 'Unknown error'), 'error');
+        }
+    });
+
+    // Resume subscription handlers
+    $('.resume-subscription-button').on('click', function(e) {
+        e.preventDefault();
+        // Show confirmation dialog
+        $('.resume-confirm-dialog').slideDown();
+    });
+
+    // Resume reason change handler
+    $('#resume_reason').on('change', function() {
+        const selectedReason = $(this).val();
+        if (selectedReason === 'other') {
+            $('.other-reason-field').slideDown();
+        } else {
+            $('.other-reason-field').slideUp();
+        }
+    });
+
+    // Resume confirmation - No button
+    $('.resume-confirm-no').on('click', function() {
+        // Reset fields and hide dialog
+        $('#resume_reason').val('');
+        $('#resume_other_reason').val('');
+        $('.other-reason-field').hide();
+        $('.resume-confirm-dialog').slideUp();
+    });
+
+    // Resume confirmation - Yes button
+    $('.resume-confirm-yes').on('click', async function() {
+        const button = $(this);
+        const originalButtonText = button.html();
+        const subscriptionId = $('.resume-subscription-button').data('subscription-id');
+        const reason = $('#resume_reason').val();
+        const otherReason = $('#resume_other_reason').val();
+        
+        // Combine reasons if applicable
+        let resumeReason = reason;
+        if (reason === 'other' && otherReason) {
+            resumeReason = otherReason;
+        }
+        
+        try {
+            // Disable buttons and show loading state
+            button.prop('disabled', true).html('<span class="loading-spinner"></span> Processing...');
+            $('.resume-confirm-no').prop('disabled', true);
+            
+            helpers.showNotification('Resuming subscription...', 'loading');
+            
+            // Prepare resume payload
+            const resumePayload = {
+                subscriptionStatus: 'active'
+            };
+            
+            // Include reason as metadata if provided
+            if (resumeReason) {
+                resumePayload.metaData = [
+                    { 
+                        key: 'resume_reason',
+                        value: resumeReason
+                    }
+                ];
+            }
+            
+            console.log('Sending resume request:', resumePayload);
+            
+            // Send resume request to API
+            const response = await $.ajax({
+                url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                method: 'PUT',
+                data: JSON.stringify(resumePayload),
+                contentType: 'application/json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                    xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                    xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                }
+            });
+            
+            console.log('API response:', response);
+            
+            if (response.code === 200) {
+                // Trigger email notification for the resume
+                try {
+                    var emailData = {
+                        action: 'bocs_trigger_subscription_resumed_email',
+                        subscription_id: subscriptionId,
+                        security: '<?php echo wp_create_nonce('bocs-subscription-resumed'); ?>',
+                        reason: resumeReason
+                    };
+                    
+                    // Send email notification request
+                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+                        .done(function(emailResponse) {
+                            console.log('Email notification triggered:', emailResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                        });
+                } catch (emailError) {
+                    console.error('Error sending email notification:', emailError);
+                }
+                
+                // Show success message
+                helpers.showNotification('Your subscription has been resumed successfully', 'success');
+                
+                // Update status display
+                $('.subscription-status')
+                    .removeClass('status-active status-paused status-pending')
+                    .addClass('status-active')
+                    .text('Active');
+                
+                // Hide resume section after successful resume
+                setTimeout(() => {
+                    $('.resume-section').slideUp();
+                }, 1000);
+                
+                // Redirect back to subscriptions page after a delay
+                setTimeout(() => {
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                }, 3000);
+                
+            } else {
+                throw new Error(response.message || 'Failed to resume subscription');
+            }
+            
+        } catch (error) {
+            console.error('Error resuming subscription:', error);
+            // Re-enable buttons
+            button.prop('disabled', false).html(originalButtonText);
+            $('.resume-confirm-no').prop('disabled', false);
+            
+            helpers.showNotification('Failed to resume subscription: ' + (error.message || 'Unknown error'), 'error');
+        }
     });
 });
 </script> 
