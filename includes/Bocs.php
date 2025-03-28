@@ -100,18 +100,10 @@ class Bocs
             
             // Now load our custom email classes
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Email.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-order.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-processing-renewal-order.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-completed-renewal-order.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-on-hold-renewal-order.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-customer-renewal-invoice.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-welcome.php';
-            // New email classes
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-renewal-payment.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-confirmation.php';
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-new-customer-subscription.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-failed-payment-retry.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-upcoming-renewal-reminder.php';
-            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-cancelled.php';
             require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-renewal-order-confirmation.php';
         }
 
@@ -330,43 +322,37 @@ class Bocs
         }
         $emails_initialized = true;
         
-        // Regular Processing Order Email
-        $processing_regular_orders = new WC_Bocs_Email_Processing_Order();
-        $this->loader->add_action('woocommerce_order_status_processing', $processing_regular_orders, 'trigger', 9, 1);
-        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_regular_orders, 'trigger', 9, 1);
-        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_regular_orders, 'trigger', 9, 1);
-        
-        // Processing Renewal Order Email
-        $processing_orders = new WC_Bocs_Email_Processing_Renewal_Order();
-        $this->loader->add_action('woocommerce_order_status_processing', $processing_orders, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_pending_to_processing', $processing_orders, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_failed_to_processing', $processing_orders, 'trigger', 10, 1);
-
-        // Completed Renewal Order Email
-        $completed_orders = new WC_Bocs_Email_Completed_Renewal_Order();
-        $this->loader->add_action('woocommerce_order_status_completed', $completed_orders, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_processing_to_completed', $completed_orders, 'trigger', 10, 1);
-
-        // On-hold Renewal Order Email
-        $onhold_orders = new WC_Bocs_Email_On_Hold_Renewal_Order();
-        $this->loader->add_action('woocommerce_order_status_on-hold', $onhold_orders, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_pending_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_failed_to_on-hold', $onhold_orders, 'trigger', 10, 1);
-
-        // Customer Renewal Invoice Email
-        $renewal_invoice = new WC_Bocs_Email_Customer_Renewal_Invoice();
-        $this->loader->add_action('woocommerce_order_status_pending', $renewal_invoice, 'trigger', 10, 1);
-        $this->loader->add_action('woocommerce_order_status_failed', $renewal_invoice, 'trigger', 10, 1);
-
-        // Failed Payment Retry Email - this occurs when a renewal order transitions from pending to failed
+        // Failed Payment Retry Email
         if (class_exists('WC_Bocs_Email_Failed_Payment_Retry')) {
             $failed_payment_retry = new WC_Bocs_Email_Failed_Payment_Retry();
             $this->loader->add_action('woocommerce_order_status_pending_to_failed', $failed_payment_retry, 'trigger', 10, 1);
         }
 
-        // Subscription Switched Email
-        $subscription_switched = new WC_Bocs_Email_Subscription_Switched();
-        $this->loader->add_action('bocs_subscription_switched', $subscription_switched, 'trigger', 10, 2);
+        // Renewal Order Confirmation Email
+        if (class_exists('WC_Bocs_Email_Renewal_Order_Confirmation')) {
+            $renewal_order_confirmation = new WC_Bocs_Email_Renewal_Order_Confirmation();
+            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $renewal_order_confirmation, 'trigger', 10, 1);
+        }
+
+        // Upcoming Renewal Reminder Email
+        if (class_exists('WC_Bocs_Email_Upcoming_Renewal_Reminder')) {
+            $upcoming_renewal_reminder = new WC_Bocs_Email_Upcoming_Renewal_Reminder();
+            $this->loader->add_action('bocs_upcoming_renewal_reminder', $upcoming_renewal_reminder, 'trigger', 10, 1);
+        }
+        
+        // New Customer Welcome Email
+        if (class_exists('WC_Bocs_Email_New_Customer_Subscription')) {
+            $new_customer_email = new WC_Bocs_Email_New_Customer_Subscription();
+            $this->loader->add_action('woocommerce_new_order', $new_customer_email, 'trigger', 10, 1);
+            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $new_customer_email, 'trigger', 10, 1);
+        }
+        
+        // Existing Customer Subscription Email
+        if (class_exists('WC_Bocs_Email_Subscription_Confirmation')) {
+            $subscription_confirmation = new WC_Bocs_Email_Subscription_Confirmation();
+            $this->loader->add_action('woocommerce_new_order', $subscription_confirmation, 'trigger', 10, 1);
+            $this->loader->add_action('woocommerce_order_status_pending_to_processing', $subscription_confirmation, 'trigger', 10, 1);
+        }
     }
 
     public function define_checkout_page_hooks()
