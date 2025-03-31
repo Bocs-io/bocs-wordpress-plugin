@@ -173,7 +173,7 @@ class Bocs_Account
                     }
                     
                     if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                        error_log('Bocs Account Debug - Found subscriptions by billing.email');
+                        // error_log('Bocs Account Debug - Found subscriptions by billing.email');
                     } else {
                         // Try order IDs if email didn't work
                         $order_ids = wc_get_orders(array(
