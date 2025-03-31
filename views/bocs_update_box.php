@@ -1638,7 +1638,7 @@ jQuery(document).ready(function($) {
                 if (response && response.code === 200) {
                     // Log success details
                     console.log('✅ Subscription update successful with code:', response.code);
-                    error_log('BOCS UPDATE BOX DEBUG: Subscription update successful for ID: ' + subscriptionId);
+                    console.log('BOCS UPDATE BOX DEBUG: Subscription update successful for ID: ' + subscriptionId);
                     
                     // Fetch the subscription again to verify changes were applied
                     console.log('Verifying changes by retrieving updated subscription...');
@@ -1662,7 +1662,7 @@ jQuery(document).ready(function($) {
                                 console.log('Retrieved line items:', verifiedLineItems);
                                 
                                 // Log verification results
-                                error_log('BOCS UPDATE BOX DEBUG: Verification - Retrieved subscription data with ' + 
+                                console.log('BOCS UPDATE BOX DEBUG: Verification - Retrieved subscription data with ' + 
                                     verifiedLineItems.length + ' line items after update');
                                 
                                 // Show success message and redirect
@@ -1674,13 +1674,13 @@ jQuery(document).ready(function($) {
                             }
                             
                             // Trigger email notification for the box update
-                            triggerEmailAndRedirect();
+                            triggerEmailAndRedirect(subscriptionId);
                         },
                         error: function(xhr, status, error) {
                             console.warn('⚠️ Update succeeded but verification failed:', error);
                             error_log('BOCS UPDATE BOX DEBUG: Update succeeded but verification request failed: ' + error);
                             showNotification('success', '<?php esc_attr_e('Your box has been updated but verification failed.', 'bocs-wordpress'); ?>');
-                            triggerEmailAndRedirect();
+                            triggerEmailAndRedirect(subscriptionId);
                         }
                     });
                 } else {
@@ -1826,11 +1826,11 @@ jQuery(document).ready(function($) {
 });
 
 // Extract email triggering and redirect to a separate function
-function triggerEmailAndRedirect() {
+function triggerEmailAndRedirect(subId) {
     // Trigger email notification for the box update
     var emailData = {
         action: 'bocs_trigger_box_updated_email',
-        subscription_id: subscriptionId,
+        subscription_id: subId,
         security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
     };
     
@@ -1838,11 +1838,11 @@ function triggerEmailAndRedirect() {
     $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
         .done(function(emailResponse) {
             console.log('📧 Email notification triggered:', emailResponse);
-            error_log('BOCS UPDATE BOX DEBUG: Email notification triggered for subscription: ' + subscriptionId);
+            console.log('BOCS UPDATE BOX DEBUG: Email notification triggered for subscription: ' + subId);
         })
         .fail(function(xhr, status, error) {
             console.error('❌ Failed to trigger email notification:', error);
-            error_log('BOCS UPDATE BOX DEBUG: Failed to trigger email notification: ' + error);
+            console.log('BOCS UPDATE BOX DEBUG: Failed to trigger email notification: ' + error);
         })
         .always(function() {
             // Redirect regardless of email notification success
