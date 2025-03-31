@@ -392,14 +392,21 @@ if (!empty($billing_period)) {
                         $product_description = isset($product['description']) ? $product['description'] : '';
                         $external_source_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
                         
-                        // Check if product is in current box
-                        $current_quantity = isset($product['quantity']) ? intval($product['quantity']) : 0;
-                        // Also check line items for this product
+                        // Default quantity to 0 for all products initially
+                        $current_quantity = 0;
+                        
+                        // Then check line items for this product - this should be authoritative
                         foreach ($line_items as $item) {
                             if (isset($item['productId']) && $item['productId'] === $product_id) {
-                                $current_quantity = isset($item['quantity']) ? intval($item['quantity']) : $current_quantity;
+                                $current_quantity = isset($item['quantity']) ? intval($item['quantity']) : 0;
                                 break;
                             }
+                        }
+                        
+                        // Only as a fallback, if we found zero in line items but there's a quantity in the product, use it
+                        // This is to handle cases where products might be in a strange state
+                        if ($current_quantity === 0 && isset($product['quantity']) && intval($product['quantity']) > 0) {
+                            error_log("BOCS UPDATE BOX DEBUG: Product {$product_id} has quantity {$product['quantity']} in product data but not in line items");
                         }
                     ?>
                     <div class="bocs-product-card" 
@@ -1119,17 +1126,25 @@ jQuery(document).ready(function($) {
                 $product_id = isset($product['id']) ? $product['id'] : '';
                 $product_name = isset($product['name']) ? $product['name'] : '';
                 $product_price = isset($product['price']) ? floatval($product['price']) : 0;
-                $product_quantity = isset($product['quantity']) ? intval($product['quantity']) : 0;
                 $external_source_id = isset($product['externalSourceId']) ? $product['externalSourceId'] : '';
                 
                 // Skip if product ID is empty
                 if (empty($product_id)) continue;
+
+                // Default quantity to 0, then look up in line items
+                $initial_quantity = 0;
+                foreach ($line_items as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $product_id) {
+                        $initial_quantity = isset($item['quantity']) ? intval($item['quantity']) : 0;
+                        break;
+                    }
+                }
             ?>
             boxProducts.push({
                 id: '<?php echo esc_js($product_id); ?>',
                 name: '<?php echo esc_js($product_name); ?>',
                 price: <?php echo esc_js($product_price); ?>,
-                quantity: <?php echo esc_js($product_quantity); ?>,
+                quantity: <?php echo esc_js($initial_quantity); ?>,
                 externalSourceId: '<?php echo esc_js($external_source_id); ?>'
             });
         <?php endforeach; ?>
