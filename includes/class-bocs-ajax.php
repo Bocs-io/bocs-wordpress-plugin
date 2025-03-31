@@ -684,50 +684,102 @@ class BOCS_AJAX {
      * AJAX handler for triggering subscription paused email notification
      */
     public function trigger_subscription_paused_email() {
-        // Check security nonce
-        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-paused')) {
-            wp_send_json_error('Invalid security token');
-            return;
-        }
-
-        // Get subscription ID
-        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
-        if (empty($subscription_id)) {
-            wp_send_json_error('Subscription ID is required');
-            return;
-        }
+        error_log('BOCS EMAIL: Starting paused email handler');
         
-        // Get pause reason if provided
-        $reason = isset($_POST['reason']) ? sanitize_text_field($_POST['reason']) : '';
+        try {
+            // Check security nonce
+            if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-paused')) {
+                error_log('BOCS EMAIL: Invalid security token');
+                wp_send_json_error('Invalid security token');
+                return;
+            }
+            
+            // Get subscription ID and pause reason
+            $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+            $pause_reason = isset($_POST['reason']) ? sanitize_text_field($_POST['reason']) : '';
+            
+            if (empty($subscription_id)) {
+                error_log('BOCS EMAIL: Missing subscription ID');
+                wp_send_json_error('Missing subscription ID');
+                return;
+            }
+            
+            error_log('BOCS EMAIL: Processing subscription ID: ' . $subscription_id);
+            error_log('BOCS EMAIL: Pause reason: ' . $pause_reason);
+            
+            // Get subscription via Bocs API
+            $helper = new Bocs_Helper();
+            $options = get_option('bocs_plugin_options');
+            $headers = [];
+            
+            if (!empty($options['bocs_headers'])) {
+                $headers = [
+                    'Organization' => $options['bocs_headers']['organization'] ?? '',
+                    'Store' => $options['bocs_headers']['store'] ?? '',
+                    'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                    'Content-Type' => 'application/json'
+                ];
+            }
+            
+            // Fetch subscription details from Bocs API
+            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+            error_log('BOCS EMAIL: Fetching subscription data from API: ' . $url);
+            
+            $subscription_response = $helper->curl_request($url, 'GET', [], $headers);
+            
+            if (is_wp_error($subscription_response)) {
+                error_log('BOCS EMAIL: API error: ' . $subscription_response->get_error_message());
+                wp_send_json_error('Failed to fetch subscription data from API');
+                return;
+            }
+            
+            if (!isset($subscription_response['data'])) {
+                error_log('BOCS EMAIL: Invalid API response - no data key');
+                wp_send_json_error('Invalid subscription data from API');
+                return;
+            }
+            
+            $subscription_data = $subscription_response['data'];
+            error_log('BOCS EMAIL: Successfully retrieved subscription data');
+            
+            // Try direct email first
+            $email_sent = false;
+            
+            try {
+                if (class_exists('WC_Bocs_Email_Subscription_Paused')) {
+                    $email = new WC_Bocs_Email_Subscription_Paused();
+                    $email_sent = $email->trigger($subscription_data, $pause_reason);
+                    error_log('BOCS EMAIL: Direct email result: ' . ($email_sent ? 'SUCCESS' : 'FAILED'));
+                } else {
+                    error_log('BOCS EMAIL: WC_Bocs_Email_Subscription_Paused class not found');
+                }
+            } catch (Exception $e) {
+                error_log('BOCS EMAIL: Error in direct email: ' . $e->getMessage());
+            }
 
-        // Get subscription via Bocs API
-        $helper = new Bocs_Helper();
-        $options = get_option('bocs_plugin_options');
-        $headers = [];
-        
-        if (!empty($options['bocs_headers'])) {
-            $headers = [
-                'Organization' => $options['bocs_headers']['organization'] ?? '',
-                'Store' => $options['bocs_headers']['store'] ?? '',
-                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-                'Content-Type' => 'application/json'
-            ];
+            // If direct email failed, try action hook
+            if (!$email_sent) {
+                error_log('BOCS EMAIL: Trying action hook method');
+                do_action('bocs_subscription_paused', $subscription_data, $pause_reason);
+            }
+
+            // Try emergency email if needed
+            if (!$email_sent) {
+                error_log('BOCS EMAIL: Trying emergency email');
+                $email_sent = $this->send_emergency_email($subscription_data);
+            }
+
+            if ($email_sent) {
+                wp_send_json_success('Email notification triggered successfully');
+            } else {
+                wp_send_json_error('Failed to send email through all methods');
+            }
+            
+        } catch (Exception $e) {
+            error_log('BOCS EMAIL: Critical error in trigger_subscription_paused_email: ' . $e->getMessage());
+            error_log('BOCS EMAIL: Stack trace: ' . $e->getTraceAsString());
+            wp_send_json_error('Internal server error');
         }
-        
-        // Fetch subscription details from Bocs API
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
-        
-        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
-            wp_send_json_error('Failed to fetch subscription data from API');
-            return;
-        }
-
-        // Trigger the paused email notification by firing the action
-        do_action('bocs_subscription_paused', $subscription_data['data'], $reason);
-
-        // Send success response
-        wp_send_json_success('Subscription paused email triggered successfully');
     }
     
     /**

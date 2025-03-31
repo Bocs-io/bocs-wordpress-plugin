@@ -2525,14 +2525,28 @@ jQuery(document).ready(function($) {
                         reason: pauseReason
                     };
                     
-                    // Send email notification request
-                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
-                        .done(function(emailResponse) {
+                    // Send email notification request with error handling
+                    $.ajax({
+                        url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                        method: 'POST',
+                        data: emailData,
+                        timeout: 5000, // 5 second timeout
+                        success: function(emailResponse) {
                             console.log('Email notification triggered:', emailResponse);
-                        })
-                        .fail(function(xhr, status, error) {
+                        },
+                        error: function(xhr, status, error) {
                             console.error('Failed to trigger email notification:', error);
-                        });
+                            // Server error - use fallback
+                            try {
+                                // Creating a simple email fallback that doesn't rely on WP functions
+                                // For simplicity, we're just going to let the user know they'll need to get email receipts from their account
+                                console.log('Using fallback notification approach');
+                                helpers.showNotification('Email notification failed, but your subscription has been paused successfully. You can view details in your account.', 'success');
+                            } catch (fallbackError) {
+                                console.error('Even fallback notification failed:', fallbackError);
+                            }
+                        }
+                    });
                 } catch (emailError) {
                     console.error('Error sending email notification:', emailError);
                 }
