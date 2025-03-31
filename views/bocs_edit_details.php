@@ -2007,16 +2007,17 @@ jQuery(document).ready(function($) {
                         action: 'bocs_trigger_subscription_switched_email',
                         subscription_id: subscriptionId,
                         security: '<?php echo wp_create_nonce('bocs-subscription-switched'); ?>',
-                        is_frequency_update: true
+                        is_frequency_update: true,
+                        frequency_id: selectedFrequency.id
                     };
                     
                     // Send email notification request
                     $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
                         .done(function(emailResponse) {
-                            console.log('Email notification triggered:', emailResponse);
+                            console.log('Email notification sent:', emailResponse);
                         })
-                        .fail(function(xhr, status, error) {
-                            console.error('Failed to trigger email notification:', error);
+                        .fail(function(xhr) {
+                            console.error('Failed to send email notification:', xhr.responseText);
                         });
                     
                     // Show success message with discount info if applicable

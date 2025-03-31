@@ -39,6 +39,13 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @var array
      */
     public $subscription_data;
+    
+    /**
+     * Frequency ID when frequency is updated
+     *
+     * @var string
+     */
+    public $frequency_id;
 
     /**
      * Constructor
@@ -221,6 +228,21 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         // Replace placeholders in subject/heading
         $this->find['subscription-id'] = '{subscription-id}';
         $this->replace['subscription-id'] = $subscription_data['id'];
+        
+        // Set appropriate subject and heading based on what was updated
+        if (!empty($frequency_id)) {
+            // Set frequency-specific subject and heading if frequency was updated
+            $this->subject = $this->get_frequency_updated_subject();
+            $this->heading = $this->get_frequency_updated_heading();
+            
+            // Store the frequency ID for use in the template
+            $this->frequency_id = $frequency_id;
+        } elseif ($is_box_update) {
+            // Set box update specific subject and heading
+            $this->subject = $this->get_box_updated_subject();
+            $this->heading = $this->get_box_updated_heading();
+        }
+        // Otherwise use the default subject and heading
 
         if (!$this->get_recipient()) {
             // error_log('BOCS EMAIL DEBUG: No recipient set');

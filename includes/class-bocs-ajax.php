@@ -417,6 +417,7 @@ class BOCS_AJAX {
         
         // Check if this is a frequency update
         $is_frequency_update = isset($_POST['is_frequency_update']) ? (bool)$_POST['is_frequency_update'] : false;
+        $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
 
         // Get subscription via Bocs API
         $helper = new Bocs_Helper();
@@ -442,8 +443,7 @@ class BOCS_AJAX {
         }
 
         // Trigger the switched email notification
-        // Pass false for box_update and the frequency_update value for the 5th parameter
-        do_action('bocs_subscription_switched', $subscription_data['data'], '', '', false, $is_frequency_update);
+        do_action('bocs_subscription_switched', $subscription_data['data'], '', $frequency_id, false);
 
         // Send success response
         wp_send_json_success('Subscription email triggered successfully');
