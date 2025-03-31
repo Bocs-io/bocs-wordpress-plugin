@@ -455,212 +455,224 @@ class BOCS_AJAX {
     public function trigger_box_updated_email() {
         error_log('BOCS EMAIL DEBUG: trigger_box_updated_email AJAX handler called');
         
-        // Check security nonce
-        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-box-updated')) {
-            error_log('BOCS EMAIL DEBUG: Invalid security token in trigger_box_updated_email');
-            wp_send_json_error('Invalid security token');
-            return;
-        }
+        try {
+            // Check security nonce
+            if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-box-updated')) {
+                error_log('BOCS EMAIL DEBUG: Invalid security token in trigger_box_updated_email: ' . sanitize_text_field($_POST['security'] ?? 'not set'));
+                wp_send_json_error('Invalid security token');
+                return;
+            }
 
-        // Get subscription ID
-        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
-        if (empty($subscription_id)) {
-            error_log('BOCS EMAIL DEBUG: Empty subscription ID in trigger_box_updated_email');
-            wp_send_json_error('Subscription ID is required');
-            return;
-        }
-        
-        error_log('BOCS EMAIL DEBUG: Processing box update email for subscription: ' . $subscription_id);
-
-        // Get subscription via Bocs API
-        $helper = new Bocs_Helper();
-        $options = get_option('bocs_plugin_options');
-        $headers = [];
-        
-        if (!empty($options['bocs_headers'])) {
-            $headers = [
-                'Organization' => $options['bocs_headers']['organization'] ?? '',
-                'Store' => $options['bocs_headers']['store'] ?? '',
-                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-                'Content-Type' => 'application/json'
-            ];
-        }
-        
-        // Fetch subscription details from Bocs API
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-        error_log('BOCS EMAIL DEBUG: Fetching subscription data from: ' . $url);
-        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
-        
-        if (is_wp_error($subscription_data)) {
-            error_log('BOCS EMAIL DEBUG: API error: ' . $subscription_data->get_error_message());
-            wp_send_json_error('Failed to fetch subscription data from API');
-            return;
-        }
-
-        if (!isset($subscription_data['data'])) {
-            error_log('BOCS EMAIL DEBUG: No subscription data returned from API: ' . print_r($subscription_data, true));
-            wp_send_json_error('Failed to fetch subscription data from API');
-            return;
-        }
-
-        error_log('BOCS EMAIL DEBUG: Successfully fetched subscription data, going to trigger email');
-        
-        // Check if WooCommerce is active and email class is registered
-        if (!class_exists('WC_Emails')) {
-            error_log('BOCS EMAIL DEBUG: WooCommerce emails class not found');
-        } else {
-            // Check WooCommerce email configuration
-            $wc_emails = WC()->mailer();
-            error_log('BOCS EMAIL DEBUG: WooCommerce mailer instance: ' . (is_object($wc_emails) ? 'Found' : 'Not found'));
+            // Get subscription ID
+            $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : 0;
+            if (empty($subscription_id)) {
+                error_log('BOCS EMAIL DEBUG: Empty subscription ID in trigger_box_updated_email');
+                wp_send_json_error('Subscription ID is required');
+                return;
+            }
             
-            if (is_object($wc_emails) && isset($wc_emails->emails)) {
-                $registered_emails = array_keys($wc_emails->emails);
-                error_log('BOCS EMAIL DEBUG: Registered WC emails: ' . implode(', ', $registered_emails));
+            error_log('BOCS EMAIL DEBUG: Processing box update email for subscription: ' . $subscription_id);
+
+            // Get subscription via Bocs API
+            $helper = new Bocs_Helper();
+            $options = get_option('bocs_plugin_options');
+            $headers = [];
+            
+            if (!empty($options['bocs_headers'])) {
+                $headers = [
+                    'Organization' => $options['bocs_headers']['organization'] ?? '',
+                    'Store' => $options['bocs_headers']['store'] ?? '',
+                    'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                    'Content-Type' => 'application/json'
+                ];
+            }
+            
+            error_log('BOCS EMAIL DEBUG: API headers: ' . json_encode($headers));
+            
+            // Fetch subscription details from Bocs API
+            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+            error_log('BOCS EMAIL DEBUG: Fetching subscription data from: ' . $url);
+            $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+            
+            if (is_wp_error($subscription_data)) {
+                error_log('BOCS EMAIL DEBUG: API error: ' . $subscription_data->get_error_message());
+                wp_send_json_error('Failed to fetch subscription data from API: ' . $subscription_data->get_error_message());
+                return;
+            }
+
+            if (!isset($subscription_data['data'])) {
+                error_log('BOCS EMAIL DEBUG: No subscription data returned from API: ' . json_encode($subscription_data));
+                wp_send_json_error('Failed to fetch subscription data from API - no data returned');
+                return;
+            }
+
+            error_log('BOCS EMAIL DEBUG: Successfully fetched subscription data, going to trigger email');
+            
+            // Check if WooCommerce is active and email class is registered
+            if (!class_exists('WC_Emails')) {
+                error_log('BOCS EMAIL DEBUG: WooCommerce emails class not found');
+            } else {
+                // Check WooCommerce email configuration
+                $wc_emails = WC()->mailer();
+                error_log('BOCS EMAIL DEBUG: WooCommerce mailer instance: ' . (is_object($wc_emails) ? 'Found' : 'Not found'));
                 
-                // Check if our email is registered
-                if (isset($wc_emails->emails['bocs_subscription_switched'])) {
-                    error_log('BOCS EMAIL DEBUG: Our email is registered in WC_Emails!');
-                } else {
-                    error_log('BOCS EMAIL DEBUG: Our email is NOT registered in WC_Emails!');
+                if (is_object($wc_emails) && isset($wc_emails->emails)) {
+                    $registered_emails = array_keys($wc_emails->emails);
+                    error_log('BOCS EMAIL DEBUG: Registered WC emails: ' . implode(', ', $registered_emails));
                     
-                    // Try to manually register our email if not found
-                    try {
-                        if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
-                            error_log('BOCS EMAIL DEBUG: Attempting to manually register email');
-                            // Check if there are any existing instances of our email
-                            foreach ($wc_emails->emails as $email) {
-                                if ($email instanceof WC_Bocs_Email_Subscription_Switched) {
-                                    error_log('BOCS EMAIL DEBUG: Found existing instance with different ID: ' . $email->id);
+                    // Check if our email is registered
+                    if (isset($wc_emails->emails['bocs_subscription_switched'])) {
+                        error_log('BOCS EMAIL DEBUG: Our email is registered in WC_Emails!');
+                    } else {
+                        error_log('BOCS EMAIL DEBUG: Our email is NOT registered in WC_Emails!');
+                        
+                        // Try to manually register our email if not found
+                        try {
+                            if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+                                error_log('BOCS EMAIL DEBUG: Attempting to manually register email');
+                                // Check if there are any existing instances of our email
+                                foreach ($wc_emails->emails as $email) {
+                                    if ($email instanceof WC_Bocs_Email_Subscription_Switched) {
+                                        error_log('BOCS EMAIL DEBUG: Found existing instance with different ID: ' . $email->id);
+                                    }
                                 }
+                                
+                                // Manually add our email
+                                $wc_emails->emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+                                error_log('BOCS EMAIL DEBUG: Manually registered our email');
                             }
-                            
-                            // Manually add our email
-                            $wc_emails->emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
-                            error_log('BOCS EMAIL DEBUG: Manually registered our email');
+                        } catch (Exception $e) {
+                            error_log('BOCS EMAIL DEBUG: Error trying to register email: ' . $e->getMessage());
                         }
-                    } catch (Exception $e) {
-                        error_log('BOCS EMAIL DEBUG: Error trying to register email: ' . $e->getMessage());
+                    }
+                } else {
+                    error_log('BOCS EMAIL DEBUG: WooCommerce emails not initialized properly');
+                }
+            }
+
+            // List registered hooks for our action
+            global $wp_filter;
+            if (isset($wp_filter['bocs_subscription_switched'])) {
+                error_log('BOCS EMAIL DEBUG: Found hooks for bocs_subscription_switched: ' . count($wp_filter['bocs_subscription_switched']->callbacks));
+                foreach ($wp_filter['bocs_subscription_switched']->callbacks as $priority => $callbacks) {
+                    error_log('BOCS EMAIL DEBUG: Priority ' . $priority . ' has ' . count($callbacks) . ' callbacks');
+                    foreach ($callbacks as $key => $callback) {
+                        if (is_array($callback['function'])) {
+                            error_log('BOCS EMAIL DEBUG: Callback: ' . (is_object($callback['function'][0]) ? get_class($callback['function'][0]) : print_r($callback['function'][0], true)) . '->' . $callback['function'][1]);
+                        } else {
+                            error_log('BOCS EMAIL DEBUG: Callback: ' . (is_string($callback['function']) ? $callback['function'] : 'Closure'));
+                        }
                     }
                 }
             } else {
-                error_log('BOCS EMAIL DEBUG: WooCommerce emails not initialized properly');
+                error_log('BOCS EMAIL DEBUG: No hooks found for bocs_subscription_switched action!');
             }
-        }
 
-        // List registered hooks for our action
-        global $wp_filter;
-        if (isset($wp_filter['bocs_subscription_switched'])) {
-            error_log('BOCS EMAIL DEBUG: Found hooks for bocs_subscription_switched: ' . count($wp_filter['bocs_subscription_switched']->callbacks));
-            foreach ($wp_filter['bocs_subscription_switched']->callbacks as $priority => $callbacks) {
-                error_log('BOCS EMAIL DEBUG: Priority ' . $priority . ' has ' . count($callbacks) . ' callbacks');
-                foreach ($callbacks as $key => $callback) {
-                    if (is_array($callback['function'])) {
-                        error_log('BOCS EMAIL DEBUG: Callback: ' . (is_object($callback['function'][0]) ? get_class($callback['function'][0]) : print_r($callback['function'][0], true)) . '->' . $callback['function'][1]);
-                    } else {
-                        error_log('BOCS EMAIL DEBUG: Callback: ' . (is_string($callback['function']) ? $callback['function'] : 'Closure'));
-                    }
-                }
-            }
-        } else {
-            error_log('BOCS EMAIL DEBUG: No hooks found for bocs_subscription_switched action!');
-        }
-
-        // Trigger the box updated email notification using the same email template
-        // Pass true as the 4th parameter to indicate this is a box update
-        error_log('BOCS EMAIL DEBUG: About to call do_action for bocs_subscription_switched');
-        $result = do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
-        error_log('BOCS EMAIL DEBUG: do_action completed for bocs_subscription_switched');
-
-        // Check if our email class exists and is properly initialized
-        if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
-            error_log('BOCS EMAIL DEBUG: WC_Bocs_Email_Subscription_Switched class exists');
-            
-            // Try to directly initialize and trigger email for testing
+            // Try direct email method first to ensure delivery
             try {
-                $email = new WC_Bocs_Email_Subscription_Switched();
-                error_log('BOCS EMAIL DEBUG: Directly initializing email class for testing');
-                $email->trigger($subscription_data['data'], '', '', true);
-                error_log('BOCS EMAIL DEBUG: Direct email trigger completed');
+                if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+                    error_log('BOCS EMAIL DEBUG: Using direct email class instantiation');
+                    
+                    $email = new WC_Bocs_Email_Subscription_Switched();
+                    error_log('BOCS EMAIL DEBUG: Directly initializing email class for testing');
+                    $email->trigger($subscription_data['data'], '', '', true);
+                    error_log('BOCS EMAIL DEBUG: Direct email trigger completed');
+                } else {
+                    error_log('BOCS EMAIL DEBUG: Email class not found, trying do_action instead');
+                    
+                    // Trigger the box updated email notification using the action method
+                    error_log('BOCS EMAIL DEBUG: About to call do_action for bocs_subscription_switched');
+                    do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
+                    error_log('BOCS EMAIL DEBUG: do_action completed for bocs_subscription_switched');
+                }
+                
+                // Send success response
+                wp_send_json_success('Box updated email triggered successfully');
             } catch (Exception $e) {
-                error_log('BOCS EMAIL DEBUG: Error directly triggering email: ' . $e->getMessage());
+                error_log('BOCS EMAIL DEBUG: Exception during email sending: ' . $e->getMessage());
+                
+                // Try direct email as a fallback
+                $this->send_emergency_email($subscription_data['data']);
+                
+                // Still return success since we tried the emergency method
+                wp_send_json_success('Box updated email attempted via emergency method');
             }
-        } else {
-            error_log('BOCS EMAIL DEBUG: WC_Bocs_Email_Subscription_Switched class not found!');
-        }
-
-        // Send success response
-        wp_send_json_success('Box updated email triggered successfully');
-        
-        // Try direct email as a very last resort
-        if (isset($subscription_data['data']['customer']['email']) && !empty($subscription_data['data']['customer']['email'])) {
-            $customer_email = $subscription_data['data']['customer']['email'];
+        } catch (Exception $e) {
+            // Log any uncaught exceptions that could cause 500 errors
+            error_log('BOCS EMAIL CRITICAL ERROR: Uncaught exception: ' . $e->getMessage());
+            error_log('BOCS EMAIL CRITICAL ERROR: ' . $e->getTraceAsString());
             
-            // Make sure we have WordPress mail function
-            if (function_exists('wp_mail')) {
-                error_log('BOCS EMAIL DEBUG: Last resort - attempting direct email send to ' . $customer_email);
-                
-                // Basic email content
-                $subject = '[Bocs] Your box contents have been updated';
-                $message = "Hello,\n\nYour Bocs box contents have been updated successfully.\n\n";
-                
-                // Add subscription details if available
-                if (isset($subscription_data['data']['id'])) {
-                    $message .= "Subscription ID: " . $subscription_data['data']['id'] . "\n";
-                }
-                
-                if (isset($subscription_data['data']['bocs']['name'])) {
-                    $message .= "Box Type: " . $subscription_data['data']['bocs']['name'] . "\n\n";
-                }
-                
-                $message .= "Thank you for choosing Bocs!\n";
-                
-                // Send the direct email
-                $headers = ['Content-Type: text/plain; charset=UTF-8'];
-                $mail_result = wp_mail($customer_email, $subject, $message, $headers);
-                
-                error_log('BOCS EMAIL DEBUG: Emergency direct mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
-            }
+            // Return a controlled error response instead of allowing a 500 error
+            wp_send_json_error('An unexpected error occurred: ' . $e->getMessage());
         }
     }
     
     /**
-     * Public function to manually trigger box updated email notification.
-     * This can be called directly from PHP.
+     * Send emergency direct email when other methods fail
      * 
-     * @param int $subscription_id The subscription ID to send the notification for
-     * @return bool True if the email was triggered successfully, false otherwise
+     * @param array $subscription_data Subscription data
+     * @return bool Success or failure
      */
-    public function manual_trigger_box_updated_email($subscription_id) {
-        if (empty($subscription_id)) {
+    private function send_emergency_email($subscription_data) {
+        error_log('BOCS EMAIL DEBUG: Attempting emergency direct email');
+        
+        // Get customer email
+        $customer_email = '';
+        if (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
+            $customer_email = $subscription_data['customer']['email'];
+        } elseif (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
+            $customer_email = $subscription_data['billing']['email'];
+        } else {
+            error_log('BOCS EMAIL DEBUG: No email address found in subscription data');
             return false;
         }
-
-        // Get subscription via Bocs API
-        $helper = new Bocs_Helper();
-        $options = get_option('bocs_plugin_options');
-        $headers = [];
         
-        if (!empty($options['bocs_headers'])) {
+        error_log('BOCS EMAIL DEBUG: Emergency email to: ' . $customer_email);
+        
+        // Make sure we have WordPress mail function
+        if (function_exists('wp_mail')) {
+            // Basic email content
+            $subject = '[Bocs] Your box contents have been updated';
+            $message = "Hello,\n\nYour Bocs box contents have been updated successfully.\n\n";
+            
+            // Add subscription details
+            if (isset($subscription_data['id'])) {
+                $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
+            }
+            
+            if (isset($subscription_data['bocs']['name'])) {
+                $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
+            }
+            
+            $message .= "Thank you for choosing Bocs!\n";
+            
+            // Set up proper headers
+            $site_name = get_bloginfo('name');
+            $admin_email = get_option('admin_email');
             $headers = [
-                'Organization' => $options['bocs_headers']['organization'] ?? '',
-                'Store' => $options['bocs_headers']['store'] ?? '',
-                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-                'Content-Type' => 'application/json'
+                'Content-Type: text/plain; charset=UTF-8',
+                'From: ' . $site_name . ' <' . $admin_email . '>'
             ];
+            
+            error_log('BOCS EMAIL DEBUG: Sending with headers: ' . implode(', ', $headers));
+            
+            // Send the direct email
+            $mail_result = wp_mail($customer_email, $subject, $message, $headers);
+            error_log('BOCS EMAIL DEBUG: Emergency wp_mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
+            
+            // If WordPress mail fails, try PHP mail directly
+            if (!$mail_result && function_exists('mail')) {
+                error_log('BOCS EMAIL DEBUG: WordPress mail failed, trying PHP mail directly');
+                $header_str = implode("\r\n", $headers);
+                $mail_result = mail($customer_email, $subject, $message, $header_str);
+                error_log('BOCS EMAIL DEBUG: Emergency PHP mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
+            }
+            
+            return $mail_result;
         }
         
-        // Fetch subscription details from Bocs API
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
-        
-        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
-            return false;
-        }
-
-        // Trigger the box updated email notification
-        do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
-        
-        return true;
+        error_log('BOCS EMAIL DEBUG: WordPress mail function not available');
+        return false;
     }
     
     /**
