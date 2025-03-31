@@ -41,9 +41,28 @@ if (is_wp_error($subscription_response)) {
 error_log("BOCS UPDATE BOX DEBUG: Successfully retrieved subscription");
 $subscription = $subscription_response['data'];
 
+// Dump full subscription data structure
+error_log("BOCS UPDATE BOX DEBUG: Subscription structure keys: " . print_r(array_keys($subscription), true));
+
 // Get products from the collection or bocs endpoint
 $collection_id = isset($subscription['collection']['id']) ? $subscription['collection']['id'] : '';
 $bocs_id = isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : '';
+
+// If bocs_id is empty, check if we have a direct bocs field
+if (empty($bocs_id) && isset($subscription['bocs'])) {
+    error_log("BOCS UPDATE BOX DEBUG: 'bocs' field exists but 'id' not found in nested array. Bocs value: " . print_r($subscription['bocs'], true));
+    // Try to access the ID directly if bocs field is a string
+    if (is_string($subscription['bocs'])) {
+        $bocs_id = $subscription['bocs'];
+        error_log("BOCS UPDATE BOX DEBUG: Using bocs field directly as ID: {$bocs_id}");
+    }
+}
+
+// Also look for direct bocsId field as an alternative
+if (empty($bocs_id) && isset($subscription['bocsId'])) {
+    $bocs_id = $subscription['bocsId'];
+    error_log("BOCS UPDATE BOX DEBUG: Using bocsId field: {$bocs_id}");
+}
 
 error_log("BOCS UPDATE BOX DEBUG: Collection ID: {$collection_id}, BOCS ID: {$bocs_id}");
 
