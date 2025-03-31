@@ -1,3 +1,25 @@
+v0.0.130 03/31/2025
+* Enhanced subscription pause email handling with improved error recovery
+* Added new email templates for frequency updates and subscription changes
+* Improved box update email system with better customer email extraction and multiple delivery methods
+* Enhanced subscription frequency update handling with email notifications
+* Improved plugin update system for more reliable updates
+* Updated checkout process and enhanced AJAX handling
+* Enhanced admin interface and utility functions
+* Improved order processing and account management functionality
+* Added comprehensive debugging and logging for email delivery
+* Enhanced email notification system for failed payments and subscription changes
+* Fixed email sending with better logging and fallback methods
+* Improved nonce handling and error logging for box update emails
+* Added robust exception handling to prevent 500 errors
+* Fixed JavaScript errors in update functions
+* Added subscription update verification and detailed logging
+* Improved BOCS ID extraction from subscription data
+* Enhanced API request debugging and product retrieval
+* Added emergency mail testing with multiple fallback methods
+* Prevented duplicate subscription creation during payment trigger and manual status edits
+* Enhanced order status updates and payment process notes
+
 v0.0.129 03/28/2025
 * Implemented comprehensive email system improvements with new templates and notifications
 * Added new email templates for subscription status changes, renewals, and payment retries
