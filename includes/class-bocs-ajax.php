@@ -76,6 +76,10 @@ class BOCS_AJAX {
         // Add box updated email trigger
         add_action('wp_ajax_bocs_trigger_box_updated_email', array($this, 'trigger_box_updated_email'));
         add_action('wp_ajax_nopriv_bocs_trigger_box_updated_email', array($this, 'must_login_first'));
+        
+        // Add direct email fallback
+        add_action('wp_ajax_bocs_direct_email_fallback', array($this, 'direct_email_fallback'));
+        add_action('wp_ajax_nopriv_bocs_direct_email_fallback', array($this, 'must_login_first'));
     }
 
     /**
@@ -806,6 +810,121 @@ class BOCS_AJAX {
 
         // Send success response
         wp_send_json_success('Subscription reactivated email triggered successfully');
+    }
+
+    /**
+     * AJAX handler for direct email fallback
+     */
+    public function direct_email_fallback() {
+        error_log('BOCS DIRECT EMAIL: Direct email fallback AJAX handler called');
+        
+        // Check security nonce
+        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-direct-email')) {
+            error_log('BOCS DIRECT EMAIL: Invalid security token in direct_email_fallback');
+            wp_send_json_error('Invalid security token');
+            return;
+        }
+
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            error_log('BOCS DIRECT EMAIL: User not logged in');
+            wp_send_json_error(array('message' => __('You must be logged in to perform this action.', 'bocs-wordpress')));
+            return;
+        }
+
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+        if (empty($subscription_id)) {
+            error_log('BOCS DIRECT EMAIL: Invalid subscription ID');
+            wp_send_json_error(array('message' => __('Invalid subscription ID.', 'bocs-wordpress')));
+            return;
+        }
+        
+        error_log('BOCS DIRECT EMAIL: Processing for subscription ID: ' . $subscription_id);
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        error_log('BOCS DIRECT EMAIL: Fetching subscription data from API: ' . $url);
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data)) {
+            error_log('BOCS DIRECT EMAIL: API error: ' . $subscription_data->get_error_message());
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+        
+        if (!isset($subscription_data['data'])) {
+            error_log('BOCS DIRECT EMAIL: No subscription data returned from API');
+            wp_send_json_error('Failed to fetch subscription data from API');
+            return;
+        }
+        
+        error_log('BOCS DIRECT EMAIL: Successfully retrieved subscription data');
+        
+        // Get customer email
+        $customer_email = '';
+        if (isset($subscription_data['data']['customer']) && isset($subscription_data['data']['customer']['email'])) {
+            $customer_email = $subscription_data['data']['customer']['email'];
+            error_log('BOCS DIRECT EMAIL: Customer email found: ' . $customer_email);
+        } else {
+            error_log('BOCS DIRECT EMAIL: No customer email found in subscription data');
+            wp_send_json_error('No customer email found');
+            return;
+        }
+        
+        // Attempt the WC method first
+        do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
+        error_log('BOCS DIRECT EMAIL: Called bocs_subscription_switched action');
+        
+        // Direct mail fallback
+        if (function_exists('wp_mail')) {
+            error_log('BOCS DIRECT EMAIL: Attempting direct wp_mail');
+            
+            // Basic email content
+            $subject = '[Bocs] Your box contents have been updated';
+            $message = "Hello,\n\nYour Bocs box contents have been updated successfully.\n\n";
+            
+            // Add subscription details if available
+            if (isset($subscription_data['data']['id'])) {
+                $message .= "Subscription ID: " . $subscription_data['data']['id'] . "\n";
+            }
+            
+            if (isset($subscription_data['data']['bocs']['name'])) {
+                $message .= "Box Type: " . $subscription_data['data']['bocs']['name'] . "\n\n";
+            }
+            
+            $message .= "Thank you for choosing Bocs!\n";
+            
+            // Send the direct email
+            $headers = ['Content-Type: text/plain; charset=UTF-8'];
+            error_log('BOCS DIRECT EMAIL: Sending to: ' . $customer_email);
+            $mail_result = wp_mail($customer_email, $subject, $message, $headers);
+            
+            error_log('BOCS DIRECT EMAIL: Direct wp_mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
+            
+            if ($mail_result) {
+                wp_send_json_success('Box updated email sent via direct wp_mail');
+                return;
+            }
+        } else {
+            error_log('BOCS DIRECT EMAIL: wp_mail function not available');
+        }
+        
+        wp_send_json_error('Failed to send email via any method');
     }
 }
 

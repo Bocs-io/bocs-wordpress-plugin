@@ -74,6 +74,9 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         
         // Do not set a default recipient - we'll set it in the trigger method based on the subscription
         
+        // Register with WooCommerce explicitly
+        add_action('woocommerce_email', array($this, 'register_with_woocommerce'));
+        
         // Add a filter to ensure this email is always enabled
         add_filter('woocommerce_email_enabled_' . $this->id, function($enabled) {
             error_log('BOCS EMAIL DEBUG: Email enabled filter triggered, returning "yes"');
@@ -83,6 +86,21 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         // Add action to trigger this email when a subscription is switched
         add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 5);
         error_log('BOCS EMAIL DEBUG: Added action hook for bocs_subscription_switched');
+    }
+
+    /**
+     * Register this email with WooCommerce mailer
+     * 
+     * @param WC_Emails $email_classes WooCommerce email classes
+     */
+    public function register_with_woocommerce($email_classes) {
+        // Make sure we're added to emails
+        if ($email_classes && is_object($email_classes) && isset($email_classes->emails)) {
+            if (!isset($email_classes->emails[$this->id])) {
+                $email_classes->emails[$this->id] = $this;
+                error_log('BOCS EMAIL DEBUG: Explicitly registered with WooCommerce mailer');
+            }
+        }
     }
 
     /**

@@ -41,4 +41,57 @@ public static function get_overridable_templates() {
         'plain/bocs-customer-failed-renewal-payment.php'   => __('Plain text version of failed payment', 'bocs-wordpress'),
         'plain/bocs-customer-manual-renewal-reminder.php'  => __('Plain text version of manual renewal reminder', 'bocs-wordpress'),
     );
-} 
+}
+
+<?php
+/**
+ * Bocs Email Handler
+ * 
+ * Registers email classes with WooCommerce.
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Class BOCS_Emails
+ * 
+ * Handles email registration for BOCS.
+ */
+class BOCS_Emails {
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        // Register custom emails with WooCommerce
+        add_filter('woocommerce_email_classes', array($this, 'register_emails'), 999);
+        error_log('BOCS EMAIL DEBUG: Email registration hooks initialized');
+    }
+
+    /**
+     * Register custom BOCS emails with WooCommerce
+     * 
+     * @param array $emails Array of WooCommerce email classes
+     * @return array Modified array of email classes
+     */
+    public function register_emails($emails) {
+        error_log('BOCS EMAIL DEBUG: WooCommerce email_classes filter called');
+        
+        // Include email class files if not already included
+        if (!class_exists('WC_Bocs_Email_Subscription_Switched')) {
+            include_once dirname(__FILE__) . '/emails/class-bocs-email-subscription-switched.php';
+        }
+        
+        // Register our email classes
+        $emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+        
+        error_log('BOCS EMAIL DEBUG: Successfully registered bocs_subscription_switched email with WooCommerce');
+        
+        return $emails;
+    }
+}
+
+// Initialize the emails class
+new BOCS_Emails(); 

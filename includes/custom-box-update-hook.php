@@ -51,6 +51,19 @@ function bocs_add_custom_box_update_script() {
                 $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
                     .done(function(emailResponse) {
                         console.log('Email notification triggered:', emailResponse);
+                        
+                        // Direct emergency fallback - send direct email via PHP
+                        $.post('<?php echo admin_url('admin-ajax.php'); ?>', {
+                            action: 'bocs_direct_email_fallback',
+                            subscription_id: '<?php echo esc_js($subscription_id); ?>',
+                            security: '<?php echo wp_create_nonce('bocs-direct-email'); ?>'
+                        })
+                        .done(function(directResponse) {
+                            console.log('Direct email fallback attempted:', directResponse);
+                        })
+                        .fail(function(xhr, status, error) {
+                            console.error('Failed to trigger direct email fallback:', error);
+                        });
                     })
                     .fail(function(xhr, status, error) {
                         console.error('Failed to trigger email notification:', error);
