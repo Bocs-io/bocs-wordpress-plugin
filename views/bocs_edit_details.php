@@ -516,93 +516,99 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
             <div class="section-header">
                 <h3><?php esc_html_e('Manage Subscription', 'bocs-wordpress'); ?></h3>
             </div>
-            
             <div class="section-content">
                 <div class="subscription-actions">
-                    <?php if ($status !== 'paused'): ?>
+                    <?php if ($status !== 'paused' && $status !== 'cancelled'): ?>
                     <div class="pause-action">
                         <p class="action-description">
-                            <?php esc_html_e('Temporarily pause your subscription. You can resume it at any time.', 'bocs-wordpress'); ?>
+                            <?php esc_html_e('Temporarily pause your subscription. You will not be charged or receive products during this time.', 'bocs-wordpress'); ?>
                         </p>
-                        <button class="button pause-subscription-button" 
+                        <button class="button alt pause-subscription-button" 
                                 data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
                             <?php esc_html_e('Pause Subscription', 'bocs-wordpress'); ?>
                         </button>
                         
                         <div class="pause-confirm-dialog" style="display: none;">
                             <p><?php esc_html_e('Are you sure you want to pause this subscription?', 'bocs-wordpress'); ?></p>
-                            <div class="pause-reason-field">
-                                <label for="pause_reason"><?php esc_html_e('Reason for pausing (optional):', 'bocs-wordpress'); ?></label>
-                                <select id="pause_reason" name="pause_reason">
-                                    <option value=""><?php esc_html_e('Select a reason...', 'bocs-wordpress'); ?></option>
-                                    <option value="vacation"><?php esc_html_e('Going on vacation', 'bocs-wordpress'); ?></option>
-                                    <option value="too_many"><?php esc_html_e('Have too many products', 'bocs-wordpress'); ?></option>
-                                    <option value="financial"><?php esc_html_e('Financial reasons', 'bocs-wordpress'); ?></option>
-                                    <option value="other"><?php esc_html_e('Other reason', 'bocs-wordpress'); ?></option>
-                                </select>
-                            </div>
-                            <div class="other-reason-field pause-other-reason" style="display: none;">
-                                <label for="pause_other_reason"><?php esc_html_e('Please specify:', 'bocs-wordpress'); ?></label>
-                                <textarea id="pause_other_reason" name="pause_other_reason" rows="3"></textarea>
-                            </div>
                             <div class="button-group">
                                 <button type="button" class="button pause-confirm-no"><?php esc_html_e('No, Keep Active', 'bocs-wordpress'); ?></button>
                                 <button type="button" class="button alt pause-confirm-yes"><?php esc_html_e('Yes, Pause Subscription', 'bocs-wordpress'); ?></button>
                             </div>
                         </div>
                     </div>
-                    <?php else: ?>
+                    <?php elseif ($status === 'paused' || $status === 'cancelled'): ?>
                     <div class="resume-action">
                         <p class="action-description">
+                            <?php if ($status === 'paused'): ?>
                             <?php esc_html_e('Your subscription is currently paused. You can resume it at any time.', 'bocs-wordpress'); ?>
+                            <?php else: ?>
+                                <?php esc_html_e('Your subscription has been cancelled. You can reactivate it to continue receiving your products.', 'bocs-wordpress'); ?>
+                            <?php endif; ?>
                         </p>
                         <button class="button alt resume-subscription-button" 
                                 data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
-                            <?php esc_html_e('Resume Subscription', 'bocs-wordpress'); ?>
+                            <?php 
+                            if ($status === 'cancelled') {
+                                esc_html_e('Reactivate Subscription', 'bocs-wordpress');
+                            } else {
+                                esc_html_e('Resume Subscription', 'bocs-wordpress');
+                            }
+                            ?>
                         </button>
                         
                         <div class="resume-confirm-dialog" style="display: none;">
-                            <p><?php esc_html_e('Are you sure you want to resume this subscription?', 'bocs-wordpress'); ?></p>
-                            <div class="button-group">
-                                <button type="button" class="button resume-confirm-no"><?php esc_html_e('No, Keep Paused', 'bocs-wordpress'); ?></button>
-                                <button type="button" class="button alt resume-confirm-yes"><?php esc_html_e('Yes, Resume Subscription', 'bocs-wordpress'); ?></button>
-                            </div>
+                            <p>
+                            <?php 
+                            if ($status === 'cancelled') {
+                                esc_html_e('Are you sure you want to reactivate this subscription?', 'bocs-wordpress');
+                            } else {
+                                esc_html_e('Are you sure you want to resume this subscription?', 'bocs-wordpress');
+                            }
+                            ?>
+                            </p>
+                             <div class="button-group">
+                                <button type="button" class="button resume-confirm-no">
+                                <?php 
+                                if ($status === 'cancelled') {
+                                    esc_html_e('No, Keep Cancelled', 'bocs-wordpress');
+                                } else {
+                                    esc_html_e('No, Keep Paused', 'bocs-wordpress');
+                                }
+                                ?>
+                                </button>
+                                <button type="button" class="button alt resume-confirm-yes">
+                                <?php 
+                                if ($status === 'cancelled') {
+                                    esc_html_e('Yes, Reactivate Subscription', 'bocs-wordpress');
+                                } else {
+                                    esc_html_e('Yes, Resume Subscription', 'bocs-wordpress');
+                                }
+                                ?>
+                                </button>
+                             </div>
                         </div>
                     </div>
                     <?php endif; ?>
                     
+                    <?php if ($status !== 'cancelled'): ?>
                     <div class="cancel-action">
                         <p class="cancel-description">
-                            <?php esc_html_e('If you wish to cancel your subscription, please click the button below. This action cannot be undone.', 'bocs-wordpress'); ?>
+                            <?php esc_html_e('Cancel your subscription. You will not be charged or receive any more products.', 'bocs-wordpress'); ?>
                         </p>
-                        <button class="button alt cancel-subscription-button" 
+                        <button class="button alt cancel-subscription-button"
                                 data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
                             <?php esc_html_e('Cancel Subscription', 'bocs-wordpress'); ?>
                         </button>
                         
                         <div class="cancel-confirm-dialog" style="display: none;">
                             <p><?php esc_html_e('Are you sure you want to cancel this subscription?', 'bocs-wordpress'); ?></p>
-                            <div class="cancel-reason-field">
-                                <label for="cancel_reason"><?php esc_html_e('Reason for cancellation (optional):', 'bocs-wordpress'); ?></label>
-                                <select id="cancel_reason" name="cancel_reason">
-                                    <option value=""><?php esc_html_e('Select a reason...', 'bocs-wordpress'); ?></option>
-                                    <option value="too_expensive"><?php esc_html_e('Too expensive', 'bocs-wordpress'); ?></option>
-                                    <option value="not_using"><?php esc_html_e('Not using the product', 'bocs-wordpress'); ?></option>
-                                    <option value="switching"><?php esc_html_e('Switching to another service', 'bocs-wordpress'); ?></option>
-                                    <option value="not_satisfied"><?php esc_html_e('Not satisfied with product/service', 'bocs-wordpress'); ?></option>
-                                    <option value="other"><?php esc_html_e('Other reason', 'bocs-wordpress'); ?></option>
-                                </select>
-                            </div>
-                            <div class="other-reason-field cancel-other-reason" style="display: none;">
-                                <label for="other_reason"><?php esc_html_e('Please specify:', 'bocs-wordpress'); ?></label>
-                                <textarea id="other_reason" name="other_reason" rows="3"></textarea>
-                            </div>
                             <div class="button-group">
-                                <button type="button" class="button cancel-confirm-no"><?php esc_html_e('No, Keep Subscription', 'bocs-wordpress'); ?></button>
+                                <button type="button" class="button cancel-confirm-no"><?php esc_html_e('No, Keep Active', 'bocs-wordpress'); ?></button>
                                 <button type="button" class="button alt cancel-confirm-yes"><?php esc_html_e('Yes, Cancel Subscription', 'bocs-wordpress'); ?></button>
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -2589,15 +2595,40 @@ jQuery(document).ready(function($) {
         e.preventDefault();
         // Show confirmation dialog
         $('.resume-confirm-dialog').slideDown();
+        
+        // Add a reactivation reason field if coming from cancelled state
+        if ($('.subscription-status').hasClass('status-cancelled')) {
+            // Only add if not already present
+            if ($('.resume-reason-field').length === 0) {
+                const reasonField = `
+                <div class="resume-reason-field">
+                    <label for="resume_reason"><?php esc_html_e('Reason for reactivation (optional):', 'bocs-wordpress'); ?></label>
+                    <select id="resume_reason" name="resume_reason">
+                        <option value=""><?php esc_html_e('Select a reason...', 'bocs-wordpress'); ?></option>
+                        <option value="need_products"><?php esc_html_e('Need the products again', 'bocs-wordpress'); ?></option>
+                        <option value="changed_mind"><?php esc_html_e('Changed my mind', 'bocs-wordpress'); ?></option>
+                        <option value="good_value"><?php esc_html_e('Good value for money', 'bocs-wordpress'); ?></option>
+                        <option value="other"><?php esc_html_e('Other reason', 'bocs-wordpress'); ?></option>
+                    </select>
+                </div>
+                <div class="other-reason-field resume-other-reason" style="display: none;">
+                    <label for="resume_other_reason"><?php esc_html_e('Please specify:', 'bocs-wordpress'); ?></label>
+                    <textarea id="resume_other_reason" name="resume_other_reason" rows="3"></textarea>
+                </div>`;
+                
+                // Insert after the confirmation message
+                $(reasonField).insertAfter('.resume-confirm-dialog p');
+            }
+        }
     });
 
     // Resume reason change handler
-    $('#resume_reason').on('change', function() {
+    $(document).on('change', '#resume_reason', function() {
         const selectedReason = $(this).val();
         if (selectedReason === 'other') {
-            $('.other-reason-field').slideDown();
+            $('.resume-other-reason').slideDown();
         } else {
-            $('.other-reason-field').slideUp();
+            $('.resume-other-reason').slideUp();
         }
     });
 
@@ -2629,7 +2660,7 @@ jQuery(document).ready(function($) {
             button.prop('disabled', true).html('<span class="loading-spinner"></span> Processing...');
             $('.resume-confirm-no').prop('disabled', true);
             
-            helpers.showNotification('Resuming subscription...', 'loading');
+            helpers.showNotification('Reactivating subscription...', 'loading');
             
             // Prepare resume payload
             const resumePayload = {
@@ -2664,7 +2695,7 @@ jQuery(document).ready(function($) {
             console.log('API response:', response);
             
             if (response.code === 200) {
-                // Trigger email notification for the resume
+                // Trigger email notification for the resume/reactivation
                 try {
                     var emailData = {
                         action: 'bocs_trigger_subscription_resumed_email',
@@ -2685,12 +2716,18 @@ jQuery(document).ready(function($) {
                     console.error('Error sending email notification:', emailError);
                 }
                 
+                // Determine if this was a reactivation or a resume
+                const isReactivation = $('.subscription-status').hasClass('status-cancelled');
+                const successMessage = isReactivation 
+                    ? 'Your subscription has been reactivated successfully' 
+                    : 'Your subscription has been resumed successfully';
+                
                 // Show success message
-                helpers.showNotification('Your subscription has been resumed successfully', 'success');
+                helpers.showNotification(successMessage, 'success');
                 
                 // Update status display
                 $('.subscription-status')
-                    .removeClass('status-active status-paused status-pending')
+                    .removeClass('status-active status-paused status-pending status-cancelled')
                     .addClass('status-active')
                     .text('Active');
                 
@@ -2705,16 +2742,16 @@ jQuery(document).ready(function($) {
                 }, 3000);
                 
             } else {
-                throw new Error(response.message || 'Failed to resume subscription');
+                throw new Error(response.message || 'Failed to reactivate subscription');
             }
             
         } catch (error) {
-            console.error('Error resuming subscription:', error);
+            console.error('Error reactivating subscription:', error);
             // Re-enable buttons
             button.prop('disabled', false).html(originalButtonText);
             $('.resume-confirm-no').prop('disabled', false);
             
-            helpers.showNotification('Failed to resume subscription: ' + (error.message || 'Unknown error'), 'error');
+            helpers.showNotification('Failed to reactivate subscription: ' + (error.message || 'Unknown error'), 'error');
         }
     });
 });
