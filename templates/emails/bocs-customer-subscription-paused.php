@@ -38,10 +38,13 @@ $content .= '<div style="padding: 0 12px; max-width: 100%;">';
 
 // Greeting
 $customer_name = '';
-if (isset($subscription['customer']) && isset($subscription['customer']['firstName'])) {
-    $customer_name = $subscription['customer']['firstName'];
-} elseif (isset($subscription['billing']) && isset($subscription['billing']['firstName'])) {
+// Check billing info first since that's where customer data is stored
+if (isset($subscription['billing']) && isset($subscription['billing']['firstName'])) {
     $customer_name = $subscription['billing']['firstName'];
+} 
+// Fallback to customer data if available
+elseif (isset($subscription['customer']) && isset($subscription['customer']['firstName'])) {
+    $customer_name = $subscription['customer']['firstName'];
 }
 $content .= '<p style="margin: 0 0 16px;">Hi ' . esc_html($customer_name) . ',</p>';
 

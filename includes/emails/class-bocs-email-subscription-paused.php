@@ -1,29 +1,51 @@
 <?php
 /**
- * Class Bocs_Email_Subscription_Paused
+ * Class WC_Bocs_Email_Subscription_Paused
  *
- * Email sent to customers when they pause their subscription.
- *
- * @extends \WC_Email
- * @package Bocs/Emails
- * @version 1.0.0
+ * @package     Bocs\Emails
+ * @version     1.0.0
+ * @since       1.0.0
+ * @author      Bocs
+ * @category    Emails
  */
 
-defined('ABSPATH') || exit;
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
 
 /**
- * Subscription Paused email.
+ * Subscription Paused Email
+ *
+ * An email sent to customers when they pause their subscription.
+ * This handles the email notification sent to the customer after their Bocs subscription is paused.
+ *
+ * @class       WC_Bocs_Email_Subscription_Paused
+ * @version     1.0.0
+ * @package     Bocs\Emails
+ * @extends     WC_Email
  */
-class Bocs_Email_Subscription_Paused extends WC_Email {
+class WC_Bocs_Email_Subscription_Paused extends WC_Email {
+
     /**
-     * Subscription data.
+     * Subscription data
      *
      * @var array
      */
-    protected $subscription;
+    public $subscription_data;
+    
+    /**
+     * Pause reason
+     *
+     * @var string
+     */
+    public $pause_reason;
 
     /**
      * Constructor
+     *
+     * Initializes email parameters and settings.
+     *
+     * @since 1.0.0
      */
     public function __construct() {
         $this->id             = 'bocs_subscription_paused';
@@ -34,29 +56,13 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
         $this->template_plain = 'emails/plain/bocs-customer-subscription-paused.php';
         
         // Make sure we use the correct template path
-        if (defined('BOCS_TEMPLATE_PATH')) {
-            $this->template_base = BOCS_TEMPLATE_PATH;
-        } else {
-            // Fallback to plugin directory
-            $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
-        }
+        $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
         
-        $this->placeholders   = array(
-            '{subscription_id}' => '',
-        );
-
-        // Force enable this email
-        $this->enabled = 'yes';
-
-        // Call parent constructor
+        // Call parent constructor first
         parent::__construct();
         
-        // Do not set a default recipient - we'll set it in the trigger method based on the subscription
-        
-        // Add a filter to ensure this email is always enabled
-        add_filter('woocommerce_email_enabled_' . $this->id, function($enabled) {
-            return 'yes'; // Always enable this email
-        }, 999, 1);
+        // Force enable this email
+        $this->enabled = 'yes';
         
         // Add action to trigger this email when a subscription is paused
         add_action('bocs_subscription_paused', array($this, 'trigger'), 10, 2);
@@ -69,7 +75,7 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[{site_title}] Your subscription has been paused', 'bocs-wordpress');
+        return __('[Bocs] Your subscription has been paused', 'bocs-wordpress');
     }
 
     /**
@@ -88,22 +94,27 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
      * @since 1.0.0
      * @param array $subscription_data The subscription data from Bocs API
      * @param string $pause_reason Optional pause reason
-     * @return void
+     * @return bool Whether the email was sent successfully
      */
-    public function trigger($subscription_data, $pause_reason = '') {
+    public function trigger($subscription_data = array(), $pause_reason = '') {
         // Setup localization
         $this->setup_locale();
         
         // Check if we have valid subscription data
         if (empty($subscription_data) || !is_array($subscription_data)) {
             $this->restore_locale();
-            return;
+            return false;
         }
         
-        // Add pause reason to subscription data if provided
+        // Set object and email recipient
+        $this->subscription_data = $subscription_data;
+        $this->pause_reason = $pause_reason;
+        $this->object = $subscription_data;
+        
+        // Add pause reason to metadata if provided
         if (!empty($pause_reason)) {
             if (!isset($subscription_data['metaData'])) {
-                $subscription_data['metaData'] = [];
+                $subscription_data['metaData'] = array();
             }
             
             // Add or update the pause reason in metadata
@@ -117,41 +128,43 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
             }
             
             if (!$found) {
-                $subscription_data['metaData'][] = [
+                $subscription_data['metaData'][] = array(
                     'key' => 'pause_reason',
                     'value' => $pause_reason
-                ];
+                );
             }
         }
         
-        // Set object and email recipient
-        $this->subscription = $subscription_data;
-        $this->object = $subscription_data;
+        // Get recipient email - prioritize billing email as it's more reliable
+        $this->recipient = '';
         
-        // Get recipient email from subscription data
-        $this->recipient = isset($subscription_data['customer']) && isset($subscription_data['customer']['email']) 
-            ? $subscription_data['customer']['email'] 
-            : '';
-        
-        // Try billing email as fallback
-        if (!$this->recipient && isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
+        // Try billing email first (this is where the API actually stores the email)
+        if (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
             $this->recipient = $subscription_data['billing']['email'];
+        }
+        // Fallback to customer email if billing email isn't available
+        elseif (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
+            $this->recipient = $subscription_data['customer']['email'];
         }
         
         // Skip if no recipient
         if (!$this->recipient) {
             $this->restore_locale();
-            return;
+            return false;
         }
         
         // Set the placeholders for email template
         $this->placeholders['{subscription_id}'] = $subscription_data['id'] ?? '';
 
         // Send email
-        $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-        
-        // Restore localization
-        $this->restore_locale();
+        try {
+            $result = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+            $this->restore_locale();
+            return $result;
+        } catch (Exception $e) {
+            $this->restore_locale();
+            return false;
+        }
     }
 
     /**
@@ -163,10 +176,10 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
         return wc_get_template_html(
             $this->template_html,
             [
-                'subscription'      => $this->subscription,
-                'email_heading'     => $this->get_heading(),
+                'subscription' => $this->subscription_data, // Changed from subscription_data to subscription
+                'email_heading' => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'email'             => $this,
+                'email' => $this,
             ],
             '',
             $this->template_base
@@ -182,10 +195,10 @@ class Bocs_Email_Subscription_Paused extends WC_Email {
         return wc_get_template_html(
             $this->template_plain,
             [
-                'subscription'      => $this->subscription,
-                'email_heading'     => $this->get_heading(),
+                'subscription' => $this->subscription_data, // Changed from subscription_data to subscription
+                'email_heading' => $this->get_heading(),
                 'additional_content' => $this->get_additional_content(),
-                'email'             => $this,
+                'email' => $this,
             ],
             '',
             $this->template_base
