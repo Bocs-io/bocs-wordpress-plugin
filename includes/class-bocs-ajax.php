@@ -494,6 +494,46 @@ class BOCS_AJAX {
     }
     
     /**
+     * Public function to manually trigger box updated email notification.
+     * This can be called directly from PHP.
+     * 
+     * @param int $subscription_id The subscription ID to send the notification for
+     * @return bool True if the email was triggered successfully, false otherwise
+     */
+    public function manual_trigger_box_updated_email($subscription_id) {
+        if (empty($subscription_id)) {
+            return false;
+        }
+
+        // Get subscription via Bocs API
+        $helper = new Bocs_Helper();
+        $options = get_option('bocs_plugin_options');
+        $headers = [];
+        
+        if (!empty($options['bocs_headers'])) {
+            $headers = [
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
+                'Store' => $options['bocs_headers']['store'] ?? '',
+                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
+                'Content-Type' => 'application/json'
+            ];
+        }
+        
+        // Fetch subscription details from Bocs API
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription_data = $helper->curl_request($url, 'GET', [], $headers);
+        
+        if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
+            return false;
+        }
+
+        // Trigger the box updated email notification
+        do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
+        
+        return true;
+    }
+    
+    /**
      * AJAX handler for triggering subscription cancelled email notification
      */
     public function trigger_subscription_cancelled_email() {

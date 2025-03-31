@@ -127,6 +127,7 @@ if (! function_exists('wp_create_nonce')) {
  */
 require plugin_dir_path(__FILE__) . 'includes/Bocs.php';
 require plugin_dir_path(__FILE__) . 'includes/Bocs_Account.php';
+require plugin_dir_path(__FILE__) . 'includes/custom-box-update-hook.php';
 
 // Make sure the api directory exists
 if (!file_exists(plugin_dir_path(__FILE__) . 'includes/api')) {
