@@ -11,9 +11,16 @@ defined('ABSPATH') || exit;
  * @hooked WC_Emails::email_header() Output the email header
  */
 do_action('woocommerce_email_header', $email_heading, $email);
+
+// Determine the type of update - box update or frequency update
+$is_frequency_update = !empty($email->frequency_id);
 ?>
 
-<p><?php esc_html_e('Your box contents have been updated successfully.', 'bocs-wordpress'); ?></p>
+<?php if ($is_frequency_update): ?>
+    <p><?php esc_html_e('Your subscription frequency has been updated successfully.', 'bocs-wordpress'); ?></p>
+<?php else: ?>
+    <p><?php esc_html_e('Your box contents have been updated successfully.', 'bocs-wordpress'); ?></p>
+<?php endif; ?>
 
 <?php if (!empty($subscription_data)) : ?>
     <h2><?php esc_html_e('Box Details', 'bocs-wordpress'); ?></h2>
@@ -26,7 +33,34 @@ do_action('woocommerce_email_header', $email_heading, $email);
         <p><strong><?php esc_html_e('Subscription ID:', 'bocs-wordpress'); ?></strong> <?php echo esc_html($subscription_data['id']); ?></p>
     <?php endif; ?>
 
-    <?php if (!empty($subscription_data['lineItems'])) : ?>
+    <?php if ($is_frequency_update && !empty($subscription_data['frequency'])) : ?>
+        <h3><?php esc_html_e('Subscription Frequency', 'bocs-wordpress'); ?></h3>
+        <p>
+            <strong><?php esc_html_e('Frequency:', 'bocs-wordpress'); ?></strong>
+            <?php 
+                // Display frequency information
+                $frequency = $subscription_data['frequency'];
+                printf(
+                    esc_html__('Every %1$s %2$s', 'bocs-wordpress'),
+                    '<strong>' . esc_html($frequency['frequency']) . '</strong>',
+                    '<strong>' . esc_html($frequency['timeUnit']) . '</strong>'
+                );
+                
+                // Display discount if available
+                if (isset($frequency['discount']) && $frequency['discount'] > 0) {
+                    echo ' <span style="color: #d26e4b;">(';
+                    if (isset($frequency['discountType']) && $frequency['discountType'] === 'DOLLAR') {
+                        echo '$' . esc_html($frequency['discount']) . ' off';
+                    } else {
+                        echo esc_html($frequency['discount']) . '% off';
+                    }
+                    echo ')</span>';
+                }
+            ?>
+        </p>
+    <?php endif; ?>
+
+    <?php if (!$is_frequency_update && !empty($subscription_data['lineItems'])) : ?>
         <h3><?php esc_html_e('Box Contents', 'bocs-wordpress'); ?></h3>
         <table class="td" cellspacing="0" cellpadding="6" style="width: 100%; margin-bottom: 20px;">
             <thead>
