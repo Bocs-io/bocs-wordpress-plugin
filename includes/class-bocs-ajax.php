@@ -567,8 +567,9 @@ class BOCS_AJAX {
 
         // Trigger the box updated email notification using the same email template
         // Pass true as the 4th parameter to indicate this is a box update
+        error_log('BOCS EMAIL DEBUG: About to call do_action for bocs_subscription_switched');
         $result = do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
-        error_log('BOCS EMAIL DEBUG: do_action result for bocs_subscription_switched: ' . print_r($result, true));
+        error_log('BOCS EMAIL DEBUG: do_action completed for bocs_subscription_switched');
 
         // Check if our email class exists and is properly initialized
         if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
