@@ -64,6 +64,20 @@ class WC_Bocs_Email_Payment_Method_Updated extends WC_Email {
     }
 
     /**
+     * Register this email with WooCommerce mailer
+     * 
+     * @param WC_Emails $email_classes WooCommerce email classes
+     */
+    public function register_with_woocommerce($email_classes) {
+        // Make sure we're added to emails
+        if ($email_classes && is_object($email_classes) && isset($email_classes->emails)) {
+            if (!isset($email_classes->emails[$this->id])) {
+                $email_classes->emails[$this->id] = $this;
+            }
+        }
+    }
+
+    /**
      * Get email subject.
      *
      * @return string Default email subject

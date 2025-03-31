@@ -91,9 +91,57 @@ class Bocs_Email
         // Add the box updated email class
         if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
             $email_classes['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+            // Register with WooCommerce mailer
+            if (isset($email_classes['bocs_subscription_switched'])) {
+                $email_classes['bocs_subscription_switched']->register_with_woocommerce($email_classes);
+            }
             // error_log("BOCS DEBUG [Bocs_Email]: Registered subscription switched email class");
         } else {
             // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Switched class not found");
+        }
+        
+        // Add the subscription paused email class
+        if (class_exists('WC_Bocs_Email_Subscription_Paused')) {
+            $email_classes['bocs_subscription_paused'] = new WC_Bocs_Email_Subscription_Paused();
+            // Register with WooCommerce mailer
+            if (isset($email_classes['bocs_subscription_paused'])) {
+                $email_classes['bocs_subscription_paused']->register_with_woocommerce($email_classes);
+            }
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Paused class not found");
+        }
+        
+        // Add the subscription cancelled email class
+        if (class_exists('WC_Bocs_Email_Subscription_Cancelled')) {
+            $email_classes['bocs_subscription_cancelled'] = new WC_Bocs_Email_Subscription_Cancelled();
+            // Register with WooCommerce mailer
+            if (isset($email_classes['bocs_subscription_cancelled'])) {
+                $email_classes['bocs_subscription_cancelled']->register_with_woocommerce($email_classes);
+            }
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Cancelled class not found");
+        }
+        
+        // Add the subscription reactivated email class
+        if (class_exists('WC_Bocs_Email_Subscription_Reactivated')) {
+            $email_classes['bocs_subscription_reactivated'] = new WC_Bocs_Email_Subscription_Reactivated();
+            // Register with WooCommerce mailer
+            if (isset($email_classes['bocs_subscription_reactivated'])) {
+                $email_classes['bocs_subscription_reactivated']->register_with_woocommerce($email_classes);
+            }
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Reactivated class not found");
+        }
+        
+        // Add the payment method updated email class
+        if (class_exists('WC_Bocs_Email_Payment_Method_Updated')) {
+            $email_classes['bocs_payment_method_updated'] = new WC_Bocs_Email_Payment_Method_Updated();
+            // Register with WooCommerce mailer
+            if (isset($email_classes['bocs_payment_method_updated'])) {
+                $email_classes['bocs_payment_method_updated']->register_with_woocommerce($email_classes);
+            }
+        } else {
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Payment_Method_Updated class not found");
         }
 
         self::$email_classes_registered = true;
