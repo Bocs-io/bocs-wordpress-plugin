@@ -1214,6 +1214,26 @@ class Admin
             return false;
         }
 
+        // SKIP SUBSCRIPTION CREATION IN CERTAIN CASES:
+        // 1. Check if this is being triggered by the payment API
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - triggered via REST API");
+            return false;
+        }
+
+        // 2. Check if this is a manual status edit from admin
+        if (is_admin() && did_action('edit_post') && !did_action('woocommerce_checkout_order_processed')) {
+            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - manual status edit");
+            return false;
+        }
+
+        // 3. Check if order already has a Bocs subscription ID (to prevent duplicates)
+        $existing_subscription = get_post_meta($order_id, '__bocs_created_subscription', true);
+        if (!empty($existing_subscription)) {
+            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - subscription already exists");
+            return false;
+        }
+
         // Initialize variables
         $subscription_line_items = [];
 
@@ -1362,6 +1382,11 @@ class Admin
 
         // Create the subscription via API
         $result = $this->create_bocs_subscription($post_data_array, $options);
+        
+        // If successful, mark this order as having a created subscription
+        if ($result) {
+            update_post_meta($order_id, '__bocs_created_subscription', 'yes');
+        }
         
         // Clean up cookies regardless of result
         $this->clear_bocs_cookies($order_id);
