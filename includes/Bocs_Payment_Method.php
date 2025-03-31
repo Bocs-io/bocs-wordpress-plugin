@@ -283,6 +283,49 @@ class Bocs_Payment_Method {
 
             // Get or create Stripe customer
             $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            
+            // Fallback: Try to get customer ID from payment intent if not available directly
+            if (empty($customer_id) && isset($setup_intent->payment_method) && !empty($setup_intent->payment_method)) {
+                try {
+                    // Try to get customer ID from payment method
+                    $payment_method = $stripe->paymentMethods->retrieve($setup_intent->payment_method);
+                    if (!empty($payment_method->customer)) {
+                        $customer_id = $payment_method->customer;
+                        update_user_meta($user_id, '_stripe_customer_id', $customer_id);
+                    }
+                } catch (Exception $e) {
+                    // Log error but continue trying other methods
+                    error_log('Error retrieving customer ID from payment method: ' . $e->getMessage());
+                }
+            }
+            
+            // If still no customer ID, try to find from existing payment intents
+            if (empty($customer_id)) {
+                try {
+                    // Search for payment intents associated with this user's email
+                    $email = wp_get_current_user()->user_email;
+                    $payment_intents = $stripe->paymentIntents->all([
+                        'limit' => 5,
+                        'customer' => null,
+                    ]);
+                    
+                    foreach ($payment_intents->data as $intent) {
+                        if (!empty($intent->customer)) {
+                            $customer = $stripe->customers->retrieve($intent->customer);
+                            if ($customer->email === $email) {
+                                $customer_id = $intent->customer;
+                                update_user_meta($user_id, '_stripe_customer_id', $customer_id);
+                                break;
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // Log error but continue
+                    error_log('Error searching for customer ID in payment intents: ' . $e->getMessage());
+                }
+            }
+            
+            // If still no customer ID, create a new customer
             if (empty($customer_id)) {
                 // Create a new customer
                 $customer = $stripe->customers->create([
@@ -301,9 +344,23 @@ class Bocs_Payment_Method {
 
             // Attach payment method to customer if needed
             if ($payment_method->customer !== $customer_id) {
-                $stripe->paymentMethods->attach($payment_method->id, [
-                    'customer' => $customer_id
-                ]);
+                try {
+                    $stripe->paymentMethods->attach($payment_method->id, [
+                        'customer' => $customer_id
+                    ]);
+                } catch (Exception $e) {
+                    // If attaching fails (e.g., already attached), try to detach first and then reattach
+                    try {
+                        if (!empty($payment_method->customer)) {
+                            $stripe->paymentMethods->detach($payment_method->id);
+                        }
+                        $stripe->paymentMethods->attach($payment_method->id, [
+                            'customer' => $customer_id
+                        ]);
+                    } catch (Exception $detach_error) {
+                        throw new Exception('Failed to attach payment method: ' . $detach_error->getMessage());
+                    }
+                }
             }
 
             // Create and save WC payment token

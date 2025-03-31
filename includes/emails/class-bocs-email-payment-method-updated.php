@@ -177,6 +177,37 @@ class WC_Bocs_Email_Payment_Method_Updated extends WC_Email {
     }
 
     /**
+     * Get the email template header.
+     *
+     * @param string $email_heading Heading for the email.
+     * @return string
+     */
+    public function get_template_header($email_heading) {
+        ob_start();
+        wc_get_template(
+            'emails/email-header.php',
+            array(
+                'email_heading' => $email_heading,
+            )
+        );
+        return ob_get_clean();
+    }
+
+    /**
+     * Get the email template footer.
+     *
+     * @return string
+     */
+    public function get_template_footer() {
+        ob_start();
+        wc_get_template(
+            'emails/email-footer.php',
+            array()
+        );
+        return ob_get_clean();
+    }
+
+    /**
      * Initialize form fields for the email settings
      */
     public function init_form_fields() {
