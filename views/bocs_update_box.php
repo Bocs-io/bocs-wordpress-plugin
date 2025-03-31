@@ -1086,6 +1086,32 @@ jQuery(document).ready(function($) {
     var discountUnit = '<?php echo esc_js($discount_unit); ?>';
     var taxRate = <?php echo $tax_rate; ?>; // Use WooCommerce tax rate
     
+    // Define the triggerEmailAndRedirect function inside jQuery scope
+    function triggerEmailAndRedirect(subId) {
+        // Trigger email notification for the box update
+        var emailData = {
+            action: 'bocs_trigger_box_updated_email',
+            subscription_id: subId,
+            security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
+        };
+        
+        // Send email notification request
+        $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
+            .done(function(emailResponse) {
+                console.log('📧 Email notification triggered:', emailResponse);
+                console.log('BOCS UPDATE BOX DEBUG: Email notification triggered for subscription: ' + subId);
+            })
+            .fail(function(xhr, status, error) {
+                console.error('❌ Failed to trigger email notification:', error);
+                console.log('BOCS UPDATE BOX DEBUG: Failed to trigger email notification: ' + error);
+            })
+            .always(function() {
+                // Redirect regardless of email notification success
+                console.log('⏱️ Redirecting to subscription list...');
+                window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+            });
+    }
+    
     // Initialize box products from bocs products
     <?php if (!empty($available_products)) : ?>
         <?php foreach ($available_products as $product) : ?>
@@ -1825,31 +1851,7 @@ jQuery(document).ready(function($) {
     }
 });
 
-// Extract email triggering and redirect to a separate function
-function triggerEmailAndRedirect(subId) {
-    // Trigger email notification for the box update
-    var emailData = {
-        action: 'bocs_trigger_box_updated_email',
-        subscription_id: subId,
-        security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
-    };
-    
-    // Send email notification request
-    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
-        .done(function(emailResponse) {
-            console.log('📧 Email notification triggered:', emailResponse);
-            console.log('BOCS UPDATE BOX DEBUG: Email notification triggered for subscription: ' + subId);
-        })
-        .fail(function(xhr, status, error) {
-            console.error('❌ Failed to trigger email notification:', error);
-            console.log('BOCS UPDATE BOX DEBUG: Failed to trigger email notification: ' + error);
-        })
-        .always(function() {
-            // Redirect regardless of email notification success
-            console.log('⏱️ Redirecting to subscription list...');
-            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
-        });
-}
+// Remove the duplicate triggerEmailAndRedirect function that's outside jQuery scope
 </script>
 
 <style>
