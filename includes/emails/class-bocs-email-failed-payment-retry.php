@@ -97,19 +97,19 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
      * @return void
      */
     public function trigger($order_id) {
-        error_log('BOCS DEBUG [Failed Payment Retry]: Trigger called for order ID: ' . $order_id);
-        error_log('BOCS DEBUG [Failed Payment Retry]: Current hook: ' . current_filter());
-        error_log('BOCS DEBUG [Failed Payment Retry]: Backtrace: ' . print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), true));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Trigger called for order ID: ' . $order_id);
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Current hook: ' . current_filter());
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Backtrace: ' . print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), true));
         
         if (!$this->is_enabled()) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Email is disabled in WooCommerce settings');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Email is disabled in WooCommerce settings');
             return;
         }
         
         $this->setup_locale();
 
         if (!$order_id) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: No order ID provided');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: No order ID provided');
             $this->restore_locale();
             return;
         }
@@ -117,12 +117,12 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         $order = wc_get_order($order_id);
         
         if (!is_a($order, 'WC_Order')) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Could not find order object for ID: ' . $order_id);
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Could not find order object for ID: ' . $order_id);
             $this->restore_locale();
             return;
         }
 
-        error_log('BOCS DEBUG [Failed Payment Retry]: Found order object for ID: ' . $order_id . ', order status: ' . $order->get_status());
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Found order object for ID: ' . $order_id . ', order status: ' . $order->get_status());
 
         // Get required meta values first
         $bocs_order_status = $order->get_meta('__bocs_order_status');
@@ -130,28 +130,28 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         $source_type = $order->get_meta('_wc_order_attribution_source_type');
         $utm_source = $order->get_meta('_wc_order_attribution_utm_source');
 
-        error_log('BOCS DEBUG [Failed Payment Retry]: Meta values - status: ' . $bocs_order_status . 
-                 ', subscription_id: ' . $bocs_subscription_id . 
-                 ', source_type: ' . $source_type . 
-                 ', utm_source: ' . $utm_source);
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Meta values - status: ' . $bocs_order_status . 
+        //         ', subscription_id: ' . $bocs_subscription_id . 
+        //         ', source_type: ' . $source_type . 
+        //         ', utm_source: ' . $utm_source);
 
         // Check order details
         $line_items = $order->get_items();
         $order_total = $order->get_total();
         
-        error_log('BOCS DEBUG [Failed Payment Retry]: Order details - ' . 
-                 'Line items count: ' . count($line_items) . 
-                 ', Order total: ' . $order_total);
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Order details - ' . 
+        //         'Line items count: ' . count($line_items) . 
+         //        ', Order total: ' . $order_total);
 
         // Only skip if there are no line items AND no subscription ID
         /*if (empty($line_items) && empty($bocs_subscription_id)) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Order has no line items and no subscription ID, skipping email');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Order has no line items and no subscription ID, skipping email');
             $this->restore_locale();
             return;
         }
 
         if (!empty($line_items)) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Order line items: ' . print_r(array_map(function($item) {
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Order line items: ' . print_r(array_map(function($item) {
                 return array(
                     'name' => $item->get_name(),
                     'quantity' => $item->get_quantity(),
@@ -159,7 +159,7 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
                 );
             }, $line_items), true));
         } else {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Order has no line items but has subscription ID ' . $bocs_subscription_id . ', proceeding with email');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Order has no line items but has subscription ID ' . $bocs_subscription_id . ', proceeding with email');
         }*/
 
         // Check if this is a failed payment order based on BOCS meta
@@ -167,13 +167,13 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         if ((!empty($bocs_subscription_id) && 
             ($bocs_order_status === 'failed' || $order->get_status() === 'failed'))) {
             $is_failed_payment = true;
-            error_log('BOCS DEBUG [Failed Payment Retry]: Found failed payment order with subscription ID: ' . $bocs_subscription_id);
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Found failed payment order with subscription ID: ' . $bocs_subscription_id);
         }
         
-        error_log('BOCS DEBUG [Failed Payment Retry]: Is failed payment order: ' . ($is_failed_payment ? 'Yes' : 'No'));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Is failed payment order: ' . ($is_failed_payment ? 'Yes' : 'No'));
         
         if (!$is_failed_payment) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Not a failed payment order, skipping');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Not a failed payment order, skipping');
             $this->restore_locale();
             return;
         }
@@ -181,7 +181,7 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         // Check if email has already been sent
         $email_sent = $order->get_meta('_bocs_failed_payment_retry_email_sent');
         if ($email_sent === 'yes') {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Email already sent for this order');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Email already sent for this order');
             $this->restore_locale();
             return;
         }
@@ -190,16 +190,16 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         $this->recipient = $order->get_billing_email();
         
         if (!$this->recipient) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: No recipient email found');
+            //error_log('BOCS DEBUG [Failed Payment Retry]: No recipient email found');
             $this->restore_locale();
             return;
         }
 
-        error_log('BOCS DEBUG [Failed Payment Retry]: Attempting to send email to: ' . $this->recipient);
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Attempting to send email to: ' . $this->recipient);
 
         // Set the order object for the template first
         $this->object = $order;
-        error_log('BOCS DEBUG [Failed Payment Retry]: Set order object for template');
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Set order object for template');
 
         // Set up email placeholders
         $order_date = $order->get_date_created();
@@ -211,55 +211,55 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         
         $this->placeholders['{order_number}'] = $order->get_order_number();
 
-        error_log('BOCS DEBUG [Failed Payment Retry]: Email placeholders: ' . print_r($this->placeholders, true));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Email placeholders: ' . print_r($this->placeholders, true));
 
         // Get email content before sending
-        error_log('BOCS DEBUG [Failed Payment Retry]: Getting email content');
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Getting email content');
         $content_html = $this->get_content_html();
-        error_log('BOCS DEBUG [Failed Payment Retry]: Got HTML content, length: ' . strlen($content_html));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Got HTML content, length: ' . strlen($content_html));
         
         $content_plain = $this->get_content_plain();
-        error_log('BOCS DEBUG [Failed Payment Retry]: Got plain content, length: ' . strlen($content_plain));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Got plain content, length: ' . strlen($content_plain));
         
         $subject = $this->get_subject();
-        error_log('BOCS DEBUG [Failed Payment Retry]: Got subject: ' . $subject);
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Got subject: ' . $subject);
         
         $headers = $this->get_headers();
-        error_log('BOCS DEBUG [Failed Payment Retry]: Got headers: ' . print_r($headers, true));
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Got headers: ' . print_r($headers, true));
 
-        error_log('BOCS DEBUG [Failed Payment Retry]: Attempting to send email with all content prepared');
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Attempting to send email with all content prepared');
 
         // Send the email
         try {
             $sent = $this->send($this->recipient, $subject, $content_html, $headers, $this->get_attachments());
-            error_log('BOCS DEBUG [Failed Payment Retry]: Send attempt completed, result: ' . ($sent ? 'success' : 'failed'));
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Send attempt completed, result: ' . ($sent ? 'success' : 'failed'));
 
             if ($sent) {
-                error_log('BOCS DEBUG [Failed Payment Retry]: Email sent successfully');
+                //error_log('BOCS DEBUG [Failed Payment Retry]: Email sent successfully');
                 $order->update_meta_data('_bocs_failed_payment_retry_email_sent', 'yes');
                 $order->save();
-                error_log('BOCS DEBUG [Failed Payment Retry]: Updated order meta to mark email as sent');
+                //error_log('BOCS DEBUG [Failed Payment Retry]: Updated order meta to mark email as sent');
             } else {
-                error_log('BOCS DEBUG [Failed Payment Retry]: Failed to send email');
+                //error_log('BOCS DEBUG [Failed Payment Retry]: Failed to send email');
                 // Check WP Mail errors
                 global $phpmailer;
                 if (isset($phpmailer)) {
-                    error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer object exists');
+                    //error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer object exists');
                     if (is_wp_error($phpmailer->ErrorInfo)) {
-                        error_log('BOCS DEBUG [Failed Payment Retry]: WP Mail Error: ' . $phpmailer->ErrorInfo);
+                        //error_log('BOCS DEBUG [Failed Payment Retry]: WP Mail Error: ' . $phpmailer->ErrorInfo);
                     } else {
-                        error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer error info: ' . print_r($phpmailer->ErrorInfo, true));
+                        //error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer error info: ' . print_r($phpmailer->ErrorInfo, true));
                     }
                 } else {
-                    error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer object not available');
+                    //error_log('BOCS DEBUG [Failed Payment Retry]: PHPMailer object not available');
                 }
             }
         } catch (Exception $e) {
-            error_log('BOCS DEBUG [Failed Payment Retry]: Exception while sending email: ' . $e->getMessage());
+            //error_log('BOCS DEBUG [Failed Payment Retry]: Exception while sending email: ' . $e->getMessage());
         }
 
         $this->restore_locale();
-        error_log('BOCS DEBUG [Failed Payment Retry]: Finished processing failed payment retry email');
+        //error_log('BOCS DEBUG [Failed Payment Retry]: Finished processing failed payment retry email');
     }
 
     /**

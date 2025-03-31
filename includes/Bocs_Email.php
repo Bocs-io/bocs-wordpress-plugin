@@ -41,13 +41,9 @@ class Bocs_Email
     public function add_bocs_email_classes($email_classes)
     {
         if (self::$email_classes_registered) {
-            // error_log("BOCS DEBUG [Bocs_Email]: Email classes already registered, skipping");
             return $email_classes;
         }
 
-        // error_log("BOCS DEBUG [Bocs_Email]: Starting to add BOCS email classes to WooCommerce");
-        // error_log("BOCS DEBUG [Bocs_Email]: Current email classes: " . print_r(array_keys($email_classes), true));
-        
         // Load WooCommerce email classes if not already loaded
         if (!class_exists('WC_Email', false)) {
             include_once WC_ABSPATH . 'includes/emails/class-wc-email.php';
@@ -95,9 +91,9 @@ class Bocs_Email
         // Add the box updated email class
         if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
             $email_classes['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
-            error_log("BOCS DEBUG [Bocs_Email]: Registered subscription switched email class");
+            // error_log("BOCS DEBUG [Bocs_Email]: Registered subscription switched email class");
         } else {
-            error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Switched class not found");
+            // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Switched class not found");
         }
 
         self::$email_classes_registered = true;

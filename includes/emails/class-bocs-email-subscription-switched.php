@@ -56,23 +56,23 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         $this->template_plain = 'emails/plain/bocs-subscription-switched.php';
         
         // Log for debugging
-        error_log('BOCS EMAIL DEBUG: Initializing ' . $this->id . ' email class');
+        // error_log('BOCS EMAIL DEBUG: Initializing ' . $this->id . ' email class');
         
         // Make sure we use the correct template path
         $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
-        error_log('BOCS EMAIL DEBUG: Using template path: ' . $this->template_base);
-        error_log('BOCS EMAIL DEBUG: Full HTML template path: ' . $this->template_base . $this->template_html);
+        // error_log('BOCS EMAIL DEBUG: Using template path: ' . $this->template_base);
+        // error_log('BOCS EMAIL DEBUG: Full HTML template path: ' . $this->template_base . $this->template_html);
         
         // Call parent constructor first
         parent::__construct();
         
         // Force enable this email
         $this->enabled = 'yes';
-        error_log('BOCS EMAIL DEBUG: Force enabling email');
+        // error_log('BOCS EMAIL DEBUG: Force enabling email');
         
         // Add action to trigger this email when a subscription is switched
         add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 4);
-        error_log('BOCS EMAIL DEBUG: Added action hook for bocs_subscription_switched');
+        // error_log('BOCS EMAIL DEBUG: Added action hook for bocs_subscription_switched');
     }
 
     /**
@@ -85,7 +85,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         if ($email_classes && is_object($email_classes) && isset($email_classes->emails)) {
             if (!isset($email_classes->emails[$this->id])) {
                 $email_classes->emails[$this->id] = $this;
-                error_log('BOCS EMAIL DEBUG: Explicitly registered with WooCommerce mailer');
+                // error_log('BOCS EMAIL DEBUG: Explicitly registered with WooCommerce mailer');
             }
         }
     }
@@ -181,12 +181,12 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return bool success
      */
     public function trigger($subscription_data = array(), $bocs_id = '', $frequency_id = '', $is_box_update = false) {
-        error_log('BOCS EMAIL DEBUG: Trigger called with subscription data: ' . json_encode($subscription_data));
+        // error_log('BOCS EMAIL DEBUG: Trigger called with subscription data: ' . json_encode($subscription_data));
         
         $this->subscription_data = $subscription_data;
         
         if (empty($subscription_data)) {
-            error_log('BOCS EMAIL DEBUG: No subscription data provided');
+            // error_log('BOCS EMAIL DEBUG: No subscription data provided');
             return false;
         }
 
@@ -199,11 +199,11 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         }
 
         if (empty($recipient)) {
-            error_log('BOCS EMAIL DEBUG: No recipient email found');
+            // error_log('BOCS EMAIL DEBUG: No recipient email found');
             return false;
         }
 
-        error_log('BOCS EMAIL DEBUG: Sending to recipient: ' . $recipient);
+        // error_log('BOCS EMAIL DEBUG: Sending to recipient: ' . $recipient);
         
         // Set recipient
         $this->recipient = $recipient;
@@ -216,27 +216,27 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         $this->from_name = get_bloginfo('name');
         $this->from_email = 'noreply@' . $domain;
 
-        error_log('BOCS EMAIL DEBUG: From: ' . $this->from_name . ' <' . $this->from_email . '>');
+        // error_log('BOCS EMAIL DEBUG: From: ' . $this->from_name . ' <' . $this->from_email . '>');
 
         // Replace placeholders in subject/heading
         $this->find['subscription-id'] = '{subscription-id}';
         $this->replace['subscription-id'] = $subscription_data['id'];
 
         if (!$this->get_recipient()) {
-            error_log('BOCS EMAIL DEBUG: No recipient set');
+            // error_log('BOCS EMAIL DEBUG: No recipient set');
             return false;
         }
 
-        error_log('BOCS EMAIL DEBUG: Attempting to send email');
+        // error_log('BOCS EMAIL DEBUG: Attempting to send email');
         
         try {
             // Get the content first to check for errors
             $content = $this->get_content();
-            error_log('BOCS EMAIL DEBUG: Content generated, length: ' . strlen($content));
+            // error_log('BOCS EMAIL DEBUG: Content generated, length: ' . strlen($content));
             
             // Get headers
             $headers = $this->get_headers();
-            error_log('BOCS EMAIL DEBUG: Headers: ' . print_r($headers, true));
+            // error_log('BOCS EMAIL DEBUG: Headers: ' . print_r($headers, true));
             
             // Send the email
             $sent = wp_mail(
@@ -246,24 +246,24 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 $headers
             );
             
-            error_log('BOCS EMAIL DEBUG: wp_mail result: ' . ($sent ? 'SUCCESS' : 'FAILED'));
+            // error_log('BOCS EMAIL DEBUG: wp_mail result: ' . ($sent ? 'SUCCESS' : 'FAILED'));
             
             if (!$sent) {
                 // Try direct PHP mail as fallback
-                error_log('BOCS EMAIL DEBUG: Trying PHP mail fallback');
+                // error_log('BOCS EMAIL DEBUG: Trying PHP mail fallback');
                 $sent = mail(
                     $this->get_recipient(),
                     $this->get_subject(),
                     wp_strip_all_tags($content),
                     implode("\r\n", $headers)
                 );
-                error_log('BOCS EMAIL DEBUG: PHP mail result: ' . ($sent ? 'SUCCESS' : 'FAILED'));
+                // error_log('BOCS EMAIL DEBUG: PHP mail result: ' . ($sent ? 'SUCCESS' : 'FAILED'));
             }
             
             return $sent;
         } catch (Exception $e) {
-            error_log('BOCS EMAIL DEBUG: Error sending email: ' . $e->getMessage());
-            error_log('BOCS EMAIL DEBUG: Stack trace: ' . $e->getTraceAsString());
+            // error_log('BOCS EMAIL DEBUG: Error sending email: ' . $e->getMessage());
+            // error_log('BOCS EMAIL DEBUG: Stack trace: ' . $e->getTraceAsString());
             return false;
         }
     }
@@ -275,13 +275,13 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Email HTML content
      */
     public function get_content_html() {
-        error_log('BOCS EMAIL DEBUG: Getting HTML content');
-        error_log('BOCS EMAIL DEBUG: Template base: ' . $this->template_base);
-        error_log('BOCS EMAIL DEBUG: Template HTML: ' . $this->template_html);
+        // error_log('BOCS EMAIL DEBUG: Getting HTML content');
+        // error_log('BOCS EMAIL DEBUG: Template base: ' . $this->template_base);
+        // error_log('BOCS EMAIL DEBUG: Template HTML: ' . $this->template_html);
         
         $template_path = $this->template_base . $this->template_html;
-        error_log('BOCS EMAIL DEBUG: Full template path: ' . $template_path);
-        error_log('BOCS EMAIL DEBUG: Template exists: ' . (file_exists($template_path) ? 'YES' : 'NO'));
+        // error_log('BOCS EMAIL DEBUG: Full template path: ' . $template_path);
+        // error_log('BOCS EMAIL DEBUG: Template exists: ' . (file_exists($template_path) ? 'YES' : 'NO'));
         
         ob_start();
         
@@ -298,13 +298,13 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 '',
                 $this->template_base
             );
-            error_log('BOCS EMAIL DEBUG: Template loaded successfully');
+            // error_log('BOCS EMAIL DEBUG: Template loaded successfully');
         } catch (Exception $e) {
-            error_log('BOCS EMAIL DEBUG: Error loading template: ' . $e->getMessage());
+            // error_log('BOCS EMAIL DEBUG: Error loading template: ' . $e->getMessage());
         }
         
         $content = ob_get_clean();
-        error_log('BOCS EMAIL DEBUG: Content length: ' . strlen($content));
+        // error_log('BOCS EMAIL DEBUG: Content length: ' . strlen($content));
         
         return $content;
     }
