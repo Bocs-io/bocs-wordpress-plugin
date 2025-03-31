@@ -76,9 +76,22 @@ if (is_wp_error($products_response)) {
 }
 
 $response_data = $products_response['data'];
-$available_products = isset($response_data['products']) ? $response_data['products'] : array();
 
+// Additional check to ensure products array exists and is valid
+// The products should be directly in the response_data, not nested further
+if (!isset($response_data['products']) || !is_array($response_data['products'])) {
+    error_log("BOCS UPDATE BOX DEBUG: Products array missing or invalid in response: " . print_r($response_data, true));
+    echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
+    return;
+}
+
+$available_products = $response_data['products'];
+
+// Log each product to verify structure
 error_log("BOCS UPDATE BOX DEBUG: Retrieved " . count($available_products) . " products from {$endpoint_type} endpoint");
+if (count($available_products) > 0) {
+    error_log("BOCS UPDATE BOX DEBUG: First product: " . print_r($available_products[0], true));
+}
 
 // Get range for minimum and maximum quantity
 $min_quantity = 0;
