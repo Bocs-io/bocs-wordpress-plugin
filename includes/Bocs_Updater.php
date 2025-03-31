@@ -162,14 +162,14 @@ class Bocs_Updater {
             ));
 
             if (is_wp_error($response)) {
-                error_log('Bocs Updater: GitHub API request failed - ' . $response->get_error_message());
+                //error_log('Bocs Updater: GitHub API request failed - ' . $response->get_error_message());
                 return false;
             }
 
             $response_body = json_decode(wp_remote_retrieve_body($response));
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log('Bocs Updater: JSON decode error - ' . json_last_error_msg());
+                //error_log('Bocs Updater: JSON decode error - ' . json_last_error_msg());
                 return false;
             }
 
