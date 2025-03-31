@@ -127,7 +127,7 @@ class Bocs_Payment_API {
                 $order->add_order_note(
                     sprintf(
                         /* translators: %s: Gateway title */
-                        __('Processing payment via %s', 'bocs-wordpress'),
+                        __('Payment processing initiated via %s', 'bocs-wordpress'),
                         $gateway->get_title()
                     ),
                     false
@@ -141,6 +141,7 @@ class Bocs_Payment_API {
 
                     // Verify we have both customer ID and payment method
                     if (empty($stripe_customer_id) || empty($payment_method_id)) {
+                        $order->update_status('failed', __('Missing required Stripe customer or payment method information.', 'bocs-wordpress'));
                         throw new Exception(
                             __('Missing required Stripe customer or payment method information.', 'bocs-wordpress')
                         );
@@ -154,6 +155,12 @@ class Bocs_Payment_API {
                     );
 
                     if ($payment_result['success']) {
+                        // payment_complete() was already called in process_stripe_payment, but add detailed note
+                        $order->add_order_note(
+                            __('Payment processed successfully via Stripe API. Order status updated.', 'bocs-wordpress'),
+                            false
+                        );
+                        
                         return new WP_REST_Response(
                             array(
                                 'success' => true,
@@ -163,6 +170,8 @@ class Bocs_Payment_API {
                         );
                     }
 
+                    // Mark order as failed if payment failed
+                    $order->update_status('failed', $payment_result['message']);
                     throw new Exception($payment_result['message']);
                 }
 
@@ -170,6 +179,16 @@ class Bocs_Payment_API {
                 $result = $gateway->process_payment($order_id);
                 
                 if ($result['result'] === 'success') {
+                    // Most gateways change status within process_payment, but ensure it's no longer pending
+                    if ($order->has_status('pending')) {
+                        $order->update_status('processing', __('Payment processed successfully via gateway.', 'bocs-wordpress'));
+                    } else {
+                        $order->add_order_note(
+                            __('Payment processed successfully via gateway. Order status updated by payment gateway.', 'bocs-wordpress'),
+                            false
+                        );
+                    }
+                    
                     return new WP_REST_Response(
                         array(
                             'success' => true,
@@ -179,9 +198,13 @@ class Bocs_Payment_API {
                     );
                 }
 
+                // Mark order as failed if gateway payment failed
+                $order->update_status('failed', __('Payment processing failed through gateway.', 'bocs-wordpress'));
                 throw new Exception(__('Payment processing failed.', 'bocs-wordpress'));
             }
 
+            // Mark order as on-hold if gateway not available
+            $order->update_status('on-hold', __('Payment gateway not available. Order placed on hold.', 'bocs-wordpress'));
             throw new Exception(__('Payment gateway not available.', 'bocs-wordpress'));
 
         } catch (Exception $e) {
@@ -316,11 +339,30 @@ class Bocs_Payment_API {
                 $stripe_customer_id,
                 $payment_method_id
             ));
+            
+            $order->add_order_note(
+                sprintf(
+                    /* translators: 1: Payment method ID, 2: Customer ID */
+                    __('Attempting Stripe payment with payment method %1$s for customer %2$s', 'bocs-wordpress'),
+                    $payment_method_id,
+                    $stripe_customer_id
+                ),
+                false
+            );
 
             // Check for existing payment intent
             $existing_intent_id = $order->get_meta('_stripe_intent_id');
             if (!empty($existing_intent_id)) {
                 try {
+                    $order->add_order_note(
+                        sprintf(
+                            /* translators: %s: Payment intent ID */
+                            __('Found existing Stripe payment intent: %s. Attempting to process.', 'bocs-wordpress'),
+                            $existing_intent_id
+                        ),
+                        false
+                    );
+                    
                     // Initialize Stripe client
                     $stripe = new \Stripe\StripeClient($secret_key);
 
@@ -339,6 +381,11 @@ class Bocs_Payment_API {
                                 'currency' => strtolower($order->get_currency())
                             )
                         );
+                        
+                        $order->add_order_note(
+                            __('Updated existing payment intent with current order data.', 'bocs-wordpress'),
+                            false
+                        );
 
                         // Then confirm the payment intent
                         $payment_intent = $stripe->paymentIntents->confirm(
@@ -347,6 +394,15 @@ class Bocs_Payment_API {
                                 'payment_method' => $payment_method_id,
                                 'customer' => $stripe_customer_id
                             )
+                        );
+                        
+                        $order->add_order_note(
+                            sprintf(
+                                /* translators: %s: Payment intent status */
+                                __('Confirmed payment intent. Status: %s', 'bocs-wordpress'),
+                                $payment_intent->status
+                            ),
+                            false
                         );
                     }
 
@@ -374,11 +430,30 @@ class Bocs_Payment_API {
                         $order->get_id(),
                         $e->getMessage()
                     ));
+                    
+                    $order->add_order_note(
+                        sprintf(
+                            /* translators: 1: Payment intent ID, 2: Error message */
+                            __('Failed to process existing payment intent %1$s: %2$s. Attempting to create new payment intent.', 'bocs-wordpress'),
+                            $existing_intent_id,
+                            $e->getMessage()
+                        ),
+                        false
+                    );
                 }
             }
             
             // If no existing intent or processing failed, create a new one
             try {
+                $order->add_order_note(
+                    sprintf(
+                        /* translators: %s: Order amount */
+                        __('Creating new Stripe payment intent for %s.', 'bocs-wordpress'),
+                        wc_price($order->get_total())
+                    ),
+                    false
+                );
+                
                 // Create a new payment intent directly with Stripe
                 $stripe = new \Stripe\StripeClient($secret_key);
                 $payment_intent = $stripe->paymentIntents->create(array(
@@ -389,6 +464,16 @@ class Bocs_Payment_API {
                     'confirm' => true,
                     'off_session' => true
                 ));
+                
+                $order->add_order_note(
+                    sprintf(
+                        /* translators: 1: Payment intent ID, 2: Payment intent status */
+                        __('Created new payment intent %1$s. Status: %2$s', 'bocs-wordpress'),
+                        $payment_intent->id,
+                        $payment_intent->status
+                    ),
+                    false
+                );
 
                 // Handle success response
                 if ($payment_intent->status === 'succeeded') {
