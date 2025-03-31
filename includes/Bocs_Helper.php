@@ -26,11 +26,15 @@ class Bocs_Helper
     {
         try {
             if (empty($url)) {
+                error_log("BOCS API DEBUG: Empty URL provided to curl_request");
                 throw new Exception(__('API URL is required', 'bocs-wordpress'));
             }
 
+            error_log("BOCS API DEBUG: Making {$method} request to {$url}");
+
             // Check if we have required authentication headers
             if (empty($headers['Organization']) || empty($headers['Store']) || empty($headers['Authorization'])) {
+                error_log("BOCS API DEBUG: Missing headers, attempting to get from options");
                 // Try to get headers from options if not provided
                 $options = get_option('bocs_plugin_options');
                 if (!empty($options['bocs_headers'])) {
@@ -40,10 +44,14 @@ class Bocs_Helper
                         'Authorization' => $options['bocs_headers']['authorization'] ?? '',
                         'Content-Type' => 'application/json'
                     ];
+                    error_log("BOCS API DEBUG: Headers retrieved from options: " . 
+                              "Organization=" . substr($headers['Organization'], 0, 5) . "..., " .
+                              "Store=" . substr($headers['Store'], 0, 5) . "...");
                 }
 
                 // If still missing required headers, log and fail
                 if (empty($headers['Organization']) || empty($headers['Store']) || empty($headers['Authorization'])) {
+                    error_log("BOCS API DEBUG: Still missing required headers after options fetch");
                     throw new Exception(__('Missing required API authentication headers', 'bocs-wordpress'));
                 }
             }
@@ -61,27 +69,37 @@ class Bocs_Helper
             // Add query parameters for GET requests
             if ($method === 'GET' && !empty($data)) {
                 $url = add_query_arg($data, $url);
+                error_log("BOCS API DEBUG: Added query params to URL: {$url}");
             }
 
             // Add body data for non-GET requests
             if ($method !== 'GET' && !empty($data)) {
                 $args['body'] = wp_json_encode($data);
+                error_log("BOCS API DEBUG: Added request body: " . wp_json_encode($data));
             }
 
+            error_log("BOCS API DEBUG: Sending request with args: " . print_r($args, true));
             $response = wp_remote_request($url, $args);
 
             if (is_wp_error($response)) {
+                $error_message = $response->get_error_message();
+                error_log("BOCS API DEBUG: wp_remote_request failed: {$error_message}");
                 throw new Exception(
                     sprintf(
                         /* translators: %s: Error message */
                         __('Critical: API request failed: %s', 'bocs-wordpress'),
-                        $response->get_error_message()
+                        $error_message
                     )
                 );
             }
 
             $response_code = wp_remote_retrieve_response_code($response);
+            $response_body = wp_remote_retrieve_body($response);
+            error_log("BOCS API DEBUG: Response code: {$response_code}");
+            error_log("BOCS API DEBUG: Response body: {$response_body}");
+
             if ($response_code !== 200) {
+                error_log("BOCS API DEBUG: Non-success status code {$response_code}");
                 throw new Exception(
                     sprintf(
                         /* translators: %d: HTTP response code */
@@ -95,23 +113,24 @@ class Bocs_Helper
             $data = json_decode($body, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
+                $json_error = json_last_error_msg();
+                error_log("BOCS API DEBUG: JSON parse error: {$json_error}");
                 throw new Exception(__('Critical: Failed to parse API response', 'bocs-wordpress'));
             }
 
-            return $data;
-
-        } catch (Exception $e) {
-            $error_message = sprintf(
-                /* translators: %s: Error message */
-                __('Critical: API Error: %s', 'bocs-wordpress'),
-                $e->getMessage()
-            );
+            error_log("BOCS API DEBUG: Successfully parsed response JSON");
             
-            return new WP_Error(
-                'bocs_api_error',
-                $e->getMessage(),
-                ['status' => 400]
-            );
+            // If data is empty or missing, log it
+            if (empty($data) || !isset($data['data'])) {
+                error_log("BOCS API DEBUG: Response data is empty or missing 'data' key: " . print_r($data, true));
+            } else {
+                error_log("BOCS API DEBUG: Response contains data: " . substr(print_r($data, true), 0, 500) . "...");
+            }
+
+            return $data;
+        } catch (Exception $e) {
+            error_log("BOCS API DEBUG: Exception in curl_request: " . $e->getMessage());
+            return new WP_Error('bocs_api_error', $e->getMessage());
         }
     }
 

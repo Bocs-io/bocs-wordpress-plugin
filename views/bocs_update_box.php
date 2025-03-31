@@ -25,41 +25,60 @@ if (empty($subscription_id)) {
 // Get subscription details
 $helper = new Bocs_Helper();
 $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+error_log("BOCS UPDATE BOX DEBUG: Fetching subscription details from {$url}");
 $subscription_response = $helper->curl_request($url, 'GET', [], $this->headers);
 
-if (is_wp_error($subscription_response) || !isset($subscription_response['data'])) {
+if (is_wp_error($subscription_response)) {
+    error_log("BOCS UPDATE BOX DEBUG: Error retrieving subscription: " . $subscription_response->get_error_message());
+    echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details.', 'bocs-wordpress') . '</div>';
+    return;
+} else if (!isset($subscription_response['data'])) {
+    error_log("BOCS UPDATE BOX DEBUG: Subscription response missing data key: " . print_r($subscription_response, true));
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details.', 'bocs-wordpress') . '</div>';
     return;
 }
 
+error_log("BOCS UPDATE BOX DEBUG: Successfully retrieved subscription");
 $subscription = $subscription_response['data'];
 
 // Get products from the collection or bocs endpoint
 $collection_id = isset($subscription['collection']['id']) ? $subscription['collection']['id'] : '';
 $bocs_id = isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : '';
 
+error_log("BOCS UPDATE BOX DEBUG: Collection ID: {$collection_id}, BOCS ID: {$bocs_id}");
+
 if (!empty($collection_id)) {
     // Use collection endpoint if collection ID exists
     $url = BOCS_API_URL . 'collections/' . $collection_id;
+    error_log("BOCS UPDATE BOX DEBUG: Fetching products from collection endpoint: {$url}");
     $products_response = $helper->curl_request($url, 'GET', [], $this->headers);
     $endpoint_type = 'collection';
 } elseif (!empty($bocs_id)) {
     // Fall back to bocs endpoint if no collection ID but bocs ID exists
     $url = BOCS_API_URL . 'bocs/' . $bocs_id;
+    error_log("BOCS UPDATE BOX DEBUG: Fetching products from bocs endpoint: {$url}");
     $products_response = $helper->curl_request($url, 'GET', [], $this->headers);
     $endpoint_type = 'bocs';
 } else {
+    error_log("BOCS UPDATE BOX DEBUG: Neither collection ID nor bocs ID found in subscription data");
     echo '<div class="woocommerce-error">' . esc_html__('Unable to find collection or bocs ID for this subscription.', 'bocs-wordpress') . '</div>';
     return;
 }
 
-if (is_wp_error($products_response) || !isset($products_response['data'])) {
+if (is_wp_error($products_response)) {
+    error_log("BOCS UPDATE BOX DEBUG: Error retrieving products: " . $products_response->get_error_message());
+    echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
+    return;
+} else if (!isset($products_response['data'])) {
+    error_log("BOCS UPDATE BOX DEBUG: Products response missing data key: " . print_r($products_response, true));
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
     return;
 }
 
 $response_data = $products_response['data'];
 $available_products = isset($response_data['products']) ? $response_data['products'] : array();
+
+error_log("BOCS UPDATE BOX DEBUG: Retrieved " . count($available_products) . " products from {$endpoint_type} endpoint");
 
 // Get range for minimum and maximum quantity
 $min_quantity = 0;
