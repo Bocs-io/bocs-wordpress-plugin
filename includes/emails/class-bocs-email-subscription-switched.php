@@ -197,6 +197,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     public function trigger($subscription_data, $bocs_id = '', $frequency_id = '', $is_box_update = false, $is_frequency_update = false) {
         // Enhanced logging for debugging
         error_log('BOCS EMAIL DEBUG: Email trigger method called');
+        error_log('BOCS EMAIL DEBUG: Is box update: ' . ($is_box_update ? 'YES' : 'NO'));
         
         // Setup localization
         $this->setup_locale();
@@ -208,15 +209,23 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
             return;
         }
         
+        // Dump subscription data for debugging
+        error_log('BOCS EMAIL DEBUG: Subscription data structure: ' . print_r(array_keys($subscription_data), true));
+        
         // Set object and email recipient
         $this->object = $subscription_data;
         
         // Get recipient email from subscription data
-        $this->recipient = isset($subscription_data['customer']) && isset($subscription_data['customer']['email']) 
-            ? $subscription_data['customer']['email'] 
-            : '';
-        
-        error_log('BOCS EMAIL DEBUG: Recipient set to: ' . $this->recipient);
+        if (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
+            $this->recipient = $subscription_data['customer']['email'];
+            error_log('BOCS EMAIL DEBUG: Found recipient in customer.email: ' . $this->recipient);
+        } elseif (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
+            $this->recipient = $subscription_data['billing']['email'];
+            error_log('BOCS EMAIL DEBUG: Found recipient in billing.email: ' . $this->recipient);
+        } else {
+            error_log('BOCS EMAIL DEBUG: Could not find recipient email in subscription data');
+            $this->recipient = '';
+        }
         
         // Skip if no recipient
         if (!$this->recipient) {
@@ -254,122 +263,80 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         if ($this->is_enabled() && $this->get_recipient()) {
             error_log('BOCS EMAIL DEBUG: Attempting to send email to: ' . $this->get_recipient());
             
+            // Make sure we have proper sender
+            $site_name = get_bloginfo('name');
+            $admin_email = get_option('admin_email');
+            $this->set_headers(['From: ' . $site_name . ' <' . $admin_email . '>']);
+            
             // Get email content
             $html_content = $this->get_content_html();
             error_log('BOCS EMAIL DEBUG: Email content length: ' . strlen($html_content));
             
-            // Check WP mail configuration
-            $mailserver_url = ini_get('SMTP') ?: 'Not set';
-            $mailserver_port = ini_get('smtp_port') ?: 'Not set';
-            $default_from = get_option('admin_email') ?: 'Not set';
-            
-            error_log('BOCS EMAIL DEBUG: Mail configuration - SMTP: ' . $mailserver_url . ', Port: ' . $mailserver_port . ', From: ' . $default_from);
-            error_log('BOCS EMAIL DEBUG: WordPress mail function exists: ' . (function_exists('wp_mail') ? 'Yes' : 'No'));
-            
-            // Check if a mail plugin is active
-            $active_plugins = get_option('active_plugins');
-            $mail_plugins = array_filter($active_plugins, function($plugin) {
-                return (
-                    stripos($plugin, 'mail') !== false || 
-                    stripos($plugin, 'smtp') !== false || 
-                    stripos($plugin, 'post') !== false
-                );
-            });
-            
-            if (!empty($mail_plugins)) {
-                error_log('BOCS EMAIL DEBUG: Mail related plugins found: ' . implode(', ', $mail_plugins));
-            } else {
-                error_log('BOCS EMAIL DEBUG: No mail related plugins found');
-            }
+            // Display headers for debugging
+            error_log('BOCS EMAIL DEBUG: Using email headers: ' . print_r($this->get_headers(), true));
             
             // Send email and check result
             $send_result = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             error_log('BOCS EMAIL DEBUG: Email send result: ' . ($send_result ? 'SUCCESS' : 'FAILED'));
             
-            // Try direct wp_mail as a fallback if WooCommerce email fails
-            if (!$send_result && function_exists('wp_mail')) {
-                error_log('BOCS EMAIL DEBUG: Attempting fallback with direct wp_mail');
-                $direct_result = wp_mail(
-                    $this->get_recipient(), 
-                    'DIRECT TEST - ' . $this->get_subject(), 
-                    'This is a direct test of the WordPress mail system. If you received this, it means WooCommerce email is failing but direct WordPress mail works.' . "\n\n" . $this->get_content_plain(),
-                    $this->get_headers()
-                );
-                error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($direct_result ? 'SUCCESS' : 'FAILED'));
-            }
-            
-            // Log that we sent the email
+            // Generate a standardized message
             $message = '';
             if ($is_frequency_update) {
-                $message = __('Frequency updated email notification sent to customer.', 'bocs-wordpress');
+                $message = __('Your subscription frequency has been updated.', 'bocs-wordpress');
             } else if ($is_box_update) {
-                $message = __('Box updated email notification sent to customer.', 'bocs-wordpress');
+                $message = __('Your box contents have been updated successfully.', 'bocs-wordpress');
             } else {
-                $message = __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
+                $message = __('Your subscription has been switched to a new plan.', 'bocs-wordpress');
             }
             
-            // Add subscription details if available
-            if (isset($subscription_data['data']['id'])) {
-                $message .= "Subscription ID: " . $subscription_data['data']['id'] . "\n";
+            // Add subscription details
+            $message .= "\n\n";
+            if (isset($subscription_data['id'])) {
+                $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
             }
             
-            if (isset($subscription_data['data']['bocs']['name'])) {
-                $message .= "Box Type: " . $subscription_data['data']['bocs']['name'] . "\n\n";
+            if (isset($subscription_data['bocs']['name'])) {
+                $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
             }
             
             $message .= "Thank you for choosing Bocs!\n";
             
-            // Send the direct email
-            $headers = ['Content-Type: text/plain; charset=UTF-8'];
-            
-            // Add sender information which might be missing
-            $site_name = get_bloginfo('name');
-            $admin_email = get_option('admin_email');
-            $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
-            
-            error_log('BOCS EMAIL DEBUG: Sending to: ' . $this->get_recipient());
-            error_log('BOCS EMAIL DEBUG: Using headers: ' . print_r($headers, true));
-            
-            // Add emergency notification to admin
-            $admin_message = "ADMIN NOTICE: A box update email was attempted to be sent to: " . $this->get_recipient() .
-                "\n\nThis is a debugging message to verify mail functionality." .
-                "\n\nOriginal message was: \n\n" . $message;
-            
-            // First try sending to admin as test
-            error_log('BOCS EMAIL DEBUG: Attempting test mail to admin: ' . $admin_email);
-            $admin_test = wp_mail($admin_email, '[BOCS DEBUG] Mail Test', $admin_message, $headers);
-            error_log('BOCS EMAIL DEBUG: Admin test email result: ' . ($admin_test ? 'SUCCESS' : 'FAILED'));
-            
-            // Now try customer email
-            $mail_result = wp_mail($this->get_recipient(), $this->get_subject(), $message, $headers);
-            error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
-            
-            // If wp_mail fails, try one more approach with PHP mail directly
-            if (!$mail_result) {
-                error_log('BOCS EMAIL DEBUG: WordPress mail failed, trying PHP mail() function directly');
-                // Format headers for PHP mail()
-                $header_str = implode("\r\n", $headers);
-                $php_mail_result = mail($this->get_recipient(), $this->get_subject(), $message, $header_str);
-                error_log('BOCS EMAIL DEBUG: PHP mail() result: ' . ($php_mail_result ? 'SUCCESS' : 'FAILED'));
+            // CRITICAL: If WooCommerce email fails, try direct WordPress mail
+            if (!$send_result) {
+                error_log('BOCS EMAIL DEBUG: WooCommerce email failed, trying direct wp_mail');
                 
-                if (!$php_mail_result) {
-                    // Log mail configuration for debugging
-                    error_log('BOCS EMAIL DEBUG: Mail configuration issues detected');
-                    error_log('BOCS EMAIL DEBUG: PHP mail enabled: ' . (function_exists('mail') ? 'Yes' : 'No'));
-                    error_log('BOCS EMAIL DEBUG: sendmail_path: ' . ini_get('sendmail_path'));
-                    error_log('BOCS EMAIL DEBUG: SMTP settings: ' . ini_get('SMTP') . ':' . ini_get('smtp_port'));
-                    
-                    // Check for mail plugins that might be interfering
-                    $active_plugins = get_option('active_plugins');
-                    foreach ($active_plugins as $plugin) {
-                        if (strpos($plugin, 'mail') !== false || strpos($plugin, 'smtp') !== false) {
-                            error_log('BOCS EMAIL DEBUG: Possible mail plugin detected: ' . $plugin);
-                        }
-                    }
+                // Set up proper headers
+                $headers = [
+                    'Content-Type: text/plain; charset=UTF-8',
+                    'From: ' . $site_name . ' <' . $admin_email . '>'
+                ];
+                
+                // First send a test to admin
+                $admin_test = wp_mail(
+                    $admin_email, 
+                    '[BOCS DEBUG] Mail Test', 
+                    "A box update email failed via WooCommerce mailer.\n\nThis test email was sent to verify mail functionality is working.\n\nTarget recipient: " . $this->get_recipient(),
+                    $headers
+                );
+                error_log('BOCS EMAIL DEBUG: Admin test email result: ' . ($admin_test ? 'SUCCESS' : 'FAILED'));
+                
+                // Try sending to customer
+                $direct_result = wp_mail(
+                    $this->get_recipient(),
+                    $this->get_subject(),
+                    $message,
+                    $headers
+                );
+                error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($direct_result ? 'SUCCESS' : 'FAILED'));
+                
+                // If WordPress mail fails, try PHP mail as last resort
+                if (!$direct_result && function_exists('mail')) {
+                    error_log('BOCS EMAIL DEBUG: WordPress mail failed, trying PHP mail directly');
+                    $header_str = implode("\r\n", $headers);
+                    $mail_result = mail($this->get_recipient(), $this->get_subject(), $message, $header_str);
+                    error_log('BOCS EMAIL DEBUG: PHP mail() function result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
                 }
             }
-            
-            error_log($message);
         } else {
             error_log('BOCS EMAIL DEBUG: Email not sent - Enabled: ' . ($this->is_enabled() ? 'YES' : 'NO') . ', Recipient: ' . $this->get_recipient());
         }
