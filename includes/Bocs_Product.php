@@ -70,7 +70,7 @@ class Bocs_Product
             ]);
     
         } catch (Exception $e) {
-            error_log("Error in get_wc_product_price: " . $e->getMessage());
+            // error_log("Error in get_wc_product_price: " . $e->getMessage());
             wp_send_json_error([
                 'message' => 'Server error occurred',
                 'details' => $e->getMessage()
@@ -94,7 +94,7 @@ class Bocs_Product
         try {
             // Verify security nonce
             if (!check_ajax_referer('get_product_details', 'nonce', false)) {
-                error_log('BOCS: Nonce verification failed in get_product_details_ajax');
+                // error_log('BOCS: Nonce verification failed in get_product_details_ajax');
                 wp_send_json_error('Security check failed');
                 return;
             }
@@ -103,7 +103,7 @@ class Bocs_Product
             $product_ids = isset($_POST['product_ids']) ? (array) $_POST['product_ids'] : array();
             
             if (empty($product_ids)) {
-                error_log('BOCS: No product IDs provided in get_product_details_ajax');
+                // error_log('BOCS: No product IDs provided in get_product_details_ajax');
                 wp_send_json_error('No product IDs provided');
                 return;
             }
@@ -119,12 +119,12 @@ class Bocs_Product
                         'sku' => $product->get_sku()
                     );
                 } else {
-                    error_log(sprintf('BOCS: Product not found for ID %s in get_product_details_ajax', $product_id));
+                    // error_log(sprintf('BOCS: Product not found for ID %s in get_product_details_ajax', $product_id));
                 }
             }
             
             if (empty($products)) {
-                error_log('BOCS: No valid products found in get_product_details_ajax');
+                // error_log('BOCS: No valid products found in get_product_details_ajax');
                 wp_send_json_error('No valid products found');
                 return;
             }
@@ -132,7 +132,7 @@ class Bocs_Product
             wp_send_json_success($products);
             
         } catch (Exception $e) {
-            error_log('BOCS: Exception in get_product_details_ajax: ' . $e->getMessage());
+            // error_log('BOCS: Exception in get_product_details_ajax: ' . $e->getMessage());
             wp_send_json_error('Internal server error');
         }
     }

@@ -55,7 +55,7 @@ class Bocs_Order_Hooks {
         
         // Send the renewal invoice email
         if (class_exists('WC_Bocs_Email_Customer_Renewal_Invoice')) {
-            error_log("Bocs - Sending renewal invoice email for API-created order #$order_id");
+            // error_log("Bocs - Sending renewal invoice email for API-created order #$order_id");
             $email = new WC_Bocs_Email_Customer_Renewal_Invoice();
             $email->trigger($order_id);
         }

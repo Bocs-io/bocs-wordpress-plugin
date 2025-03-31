@@ -96,11 +96,9 @@ class Bocs_Account
 
         // Only proceed if we have a logged-in user
         if (! empty($user_id)) {
-            //error_log('Bocs Account Debug - User ID: ' . $user_id);
-
+            
             $bocs_customer_id = get_user_meta($user_id, 'bocs_user_id', true);
-            //error_log('Bocs Account Debug - Bocs Customer ID: ' . $bocs_customer_id);
-
+            
             $current_user = wp_get_current_user();
             $url = BOCS_API_URL . 'subscriptions';
 
@@ -108,34 +106,29 @@ class Bocs_Account
             if (!empty($bocs_customer_id)) {
                 $query = 'customer.id:' . urlencode($bocs_customer_id);
                 $url .= '?query=' . urlencode($query);
-                //error_log('Bocs Account Debug - Trying customer.id URL: ' . $url);
                 
                 $helper = new Bocs_Helper();
                 $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                 
                 if (is_wp_error($subscriptions)) {
-                    error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
                     return;
                 }
                 
                 if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                    //error_log('Bocs Account Debug - Found subscriptions by customer.id');
+                    // Found subscriptions by customer.id
                 } else {
                     // Step 2: Try billing.email if customer.id didn't work
                     if ($current_user->exists()) {
                         $query = 'billing.email:' . urlencode($current_user->user_email);
                         $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                        //error_log('Bocs Account Debug - Trying billing.email URL: ' . $url);
-                        
                         $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                         
                         if (is_wp_error($subscriptions)) {
-                            error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
                             return;
                         }
                         
                         if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                            //error_log('Bocs Account Debug - Found subscriptions by billing.email');
+                            // Found subscriptions by billing.email
                         } else {
                             // Step 3: Try order IDs if email didn't work
                             $order_ids = wc_get_orders(array(
@@ -150,8 +143,6 @@ class Bocs_Account
                                 }, $order_ids);
                                 $query = implode(' OR ', $order_id_queries);
                                 $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                                //error_log('Bocs Account Debug - Trying order IDs URL: ' . $url);
-                                
                                 $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                             }
                         }
@@ -162,13 +153,11 @@ class Bocs_Account
                 if ($current_user->exists()) {
                     $query = 'billing.email:' . urlencode($current_user->user_email);
                     $url .= '?query=' . urlencode($query);
-                    //error_log('Bocs Account Debug - Trying billing.email URL: ' . $url);
                     
                     $helper = new Bocs_Helper();
                     $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                     
                     if (is_wp_error($subscriptions)) {
-                        error_log('Bocs Account Error: ' . $subscriptions->get_error_message());
                         return;
                     }
                     
@@ -188,7 +177,6 @@ class Bocs_Account
                             }, $order_ids);
                             $query = implode(' OR ', $order_id_queries);
                             $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                            //error_log('Bocs Account Debug - Trying order IDs URL: ' . $url);
                             
                             $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                         }
@@ -198,8 +186,6 @@ class Bocs_Account
 
             // Add fields parameter to get only needed data
             //$url .= '&fields=' . urlencode('id,subscriptionStatus,nextPaymentDateGmt,startDateGmt,total,currency,billingPeriod,frequency,externalSourceParentOrderId,orderKey,paymentMethodTitle,lineItems');
-            //error_log('Bocs Account Debug - Final URL: ' . $url);
-
             if (isset($subscriptions['data']['data'])) {
                 //error_log('Bocs Account Debug - Number of subscriptions found: ' . count($subscriptions['data']['data']));
             } else {
