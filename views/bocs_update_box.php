@@ -25,24 +25,24 @@ if (empty($subscription_id)) {
 // Get subscription details
 $helper = new Bocs_Helper();
 $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-error_log("BOCS UPDATE BOX DEBUG: Fetching subscription details from {$url}");
+
 $subscription_response = $helper->curl_request($url, 'GET', [], $this->headers);
 
 if (is_wp_error($subscription_response)) {
-    error_log("BOCS UPDATE BOX DEBUG: Error retrieving subscription: " . $subscription_response->get_error_message());
+    
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details.', 'bocs-wordpress') . '</div>';
     return;
 } else if (!isset($subscription_response['data'])) {
-    // error_log("BOCS UPDATE BOX DEBUG: Subscription response missing data key: " . print_r($subscription_response, true));
+    // 
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details.', 'bocs-wordpress') . '</div>';
     return;
 }
 
-error_log("BOCS UPDATE BOX DEBUG: Successfully retrieved subscription");
+
 $subscription = $subscription_response['data'];
 
 // Dump full subscription data structure
-// error_log("BOCS UPDATE BOX DEBUG: Subscription structure keys: " . print_r(array_keys($subscription), true));
+// 
 
 // Get products from the collection or bocs endpoint
 $collection_id = isset($subscription['collection']['id']) ? $subscription['collection']['id'] : '';
@@ -50,46 +50,46 @@ $bocs_id = isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : ''
 
 // If bocs_id is empty, check if we have a direct bocs field
 if (empty($bocs_id) && isset($subscription['bocs'])) {
-    // error_log("BOCS UPDATE BOX DEBUG: 'bocs' field exists but 'id' not found in nested array. Bocs value: " . print_r($subscription['bocs'], true));
+    // 
     // Try to access the ID directly if bocs field is a string
     if (is_string($subscription['bocs'])) {
         $bocs_id = $subscription['bocs'];
-        error_log("BOCS UPDATE BOX DEBUG: Using bocs field directly as ID: {$bocs_id}");
+        
     }
 }
 
 // Also look for direct bocsId field as an alternative
 if (empty($bocs_id) && isset($subscription['bocsId'])) {
     $bocs_id = $subscription['bocsId'];
-    error_log("BOCS UPDATE BOX DEBUG: Using bocsId field: {$bocs_id}");
+    
 }
 
-error_log("BOCS UPDATE BOX DEBUG: Collection ID: {$collection_id}, BOCS ID: {$bocs_id}");
+
 
 if (!empty($collection_id)) {
     // Use collection endpoint if collection ID exists
     $url = BOCS_API_URL . 'collections/' . $collection_id;
-    error_log("BOCS UPDATE BOX DEBUG: Fetching products from collection endpoint: {$url}");
+    
     $products_response = $helper->curl_request($url, 'GET', [], $this->headers);
     $endpoint_type = 'collection';
 } elseif (!empty($bocs_id)) {
     // Fall back to bocs endpoint if no collection ID but bocs ID exists
     $url = BOCS_API_URL . 'bocs/' . $bocs_id;
-    error_log("BOCS UPDATE BOX DEBUG: Fetching products from bocs endpoint: {$url}");
+    
     $products_response = $helper->curl_request($url, 'GET', [], $this->headers);
     $endpoint_type = 'bocs';
 } else {
-    error_log("BOCS UPDATE BOX DEBUG: Neither collection ID nor bocs ID found in subscription data");
+    
     echo '<div class="woocommerce-error">' . esc_html__('Unable to find collection or bocs ID for this subscription.', 'bocs-wordpress') . '</div>';
     return;
 }
 
 if (is_wp_error($products_response)) {
-    error_log("BOCS UPDATE BOX DEBUG: Error retrieving products: " . $products_response->get_error_message());
+    
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
     return;
 } else if (!isset($products_response['data'])) {
-    // error_log("BOCS UPDATE BOX DEBUG: Products response missing data key: " . print_r($products_response, true));
+    // 
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
     return;
 }
@@ -99,7 +99,7 @@ $response_data = $products_response['data'];
 // Additional check to ensure products array exists and is valid
 // The products should be directly in the response_data, not nested further
 if (!isset($response_data['products']) || !is_array($response_data['products'])) {
-    // error_log("BOCS UPDATE BOX DEBUG: Products array missing or invalid in response: " . print_r($response_data, true));
+    // 
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve available products.', 'bocs-wordpress') . '</div>';
     return;
 }
@@ -107,9 +107,9 @@ if (!isset($response_data['products']) || !is_array($response_data['products']))
 $available_products = $response_data['products'];
 
 // Log each product to verify structure
-error_log("BOCS UPDATE BOX DEBUG: Retrieved " . count($available_products) . " products from {$endpoint_type} endpoint");
+
 if (count($available_products) > 0) {
-    error_log("BOCS UPDATE BOX DEBUG: First product: " . print_r($available_products[0], true));
+    
 }
 
 // Get range for minimum and maximum quantity
@@ -406,7 +406,7 @@ if (!empty($billing_period)) {
                         // Only as a fallback, if we found zero in line items but there's a quantity in the product, use it
                         // This is to handle cases where products might be in a strange state
                         if ($current_quantity === 0 && isset($product['quantity']) && intval($product['quantity']) > 0) {
-                            error_log("BOCS UPDATE BOX DEBUG: Product {$product_id} has quantity {$product['quantity']} in product data but not in line items");
+                            
                         }
                     ?>
                     <div class="bocs-product-card" 
@@ -1105,16 +1105,11 @@ jQuery(document).ready(function($) {
         // Send email notification request
         $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
             .done(function(emailResponse) {
-                console.log('📧 Email notification triggered:', emailResponse);
-                console.log('BOCS UPDATE BOX DEBUG: Email notification triggered for subscription: ' + subId);
+                // Redirect after email notification
+                window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
             })
             .fail(function(xhr, status, error) {
-                console.error('❌ Failed to trigger email notification:', error);
-                console.log('BOCS UPDATE BOX DEBUG: Failed to trigger email notification: ' + error);
-            })
-            .always(function() {
                 // Redirect regardless of email notification success
-                console.log('⏱️ Redirecting to subscription list...');
                 window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
             });
     }
@@ -1656,7 +1651,7 @@ jQuery(document).ready(function($) {
             }];
         }
         
-        console.log('Request Data:', data);
+        
         
         // Make API request directly to Bocs API
         $.ajax({
@@ -1671,74 +1666,24 @@ jQuery(document).ready(function($) {
                 xhr.setRequestHeader('Authorization', '<?php echo esc_js($this->headers['Authorization']); ?>');
                 
                 // Log the request data for debugging
-                console.log('Request URL:', '<?php echo esc_url(BOCS_API_URL); ?>subscriptions/' + subscriptionId);
-                console.log('Request Data:', data);
+                 ?>subscriptions/' + subscriptionId);
+                
             },
             success: function(response) {
-                console.log('API Response:', response);
                 if (response && response.code === 200) {
-                    // Log success details
-                    console.log('✅ Subscription update successful with code:', response.code);
-                    console.log('BOCS UPDATE BOX DEBUG: Subscription update successful for ID: ' + subscriptionId);
+                    // Show success message and redirect
+                    showNotification('success', '<?php esc_attr_e('Your box has been updated successfully!', 'bocs-wordpress'); ?>');
                     
-                    // Fetch the subscription again to verify changes were applied
-                    console.log('Verifying changes by retrieving updated subscription...');
-                    $.ajax({
-                        url: '<?php echo esc_url(BOCS_API_URL); ?>subscriptions/' + subscriptionId,
-                        type: 'GET',
-                        contentType: 'application/json',
-                        beforeSend: function(xhr) {
-                            xhr.setRequestHeader('Store', '<?php echo esc_js($this->headers['Store']); ?>');
-                            xhr.setRequestHeader('Organization', '<?php echo esc_js($this->headers['Organization']); ?>');
-                            xhr.setRequestHeader('Authorization', '<?php echo esc_js($this->headers['Authorization']); ?>');
-                        },
-                        success: function(verifyResponse) {
-                            console.log('✅ Verification retrieval successful:', verifyResponse);
-                            
-                            // Compare line items to verify changes were applied correctly
-                            if (verifyResponse && verifyResponse.data && verifyResponse.data.lineItems) {
-                                let verified = true;
-                                let verifiedLineItems = verifyResponse.data.lineItems;
-                                console.log('Original line items sent:', lineItems);
-                                console.log('Retrieved line items:', verifiedLineItems);
-                                
-                                // Log verification results
-                                console.log('BOCS UPDATE BOX DEBUG: Verification - Retrieved subscription data with ' + 
-                                    verifiedLineItems.length + ' line items after update');
-                                
-                                // Show success message and redirect
-                                showNotification('success', '<?php esc_attr_e('Your box has been updated and verified successfully!', 'bocs-wordpress'); ?>');
-                            } else {
-                                console.warn('⚠️ Could not fully verify changes - subscription retrieved but line items structure unexpected');
-                                error_log('BOCS UPDATE BOX DEBUG: Verification partial - subscription retrieved but line items structure unexpected');
-                                showNotification('success', '<?php esc_attr_e('Your box has been updated, but verification incomplete.', 'bocs-wordpress'); ?>');
-                            }
-                            
-                            // Trigger email notification for the box update
-                            triggerEmailAndRedirect(subscriptionId);
-                        },
-                        error: function(xhr, status, error) {
-                            console.warn('⚠️ Update succeeded but verification failed:', error);
-                            error_log('BOCS UPDATE BOX DEBUG: Update succeeded but verification request failed: ' + error);
-                            showNotification('success', '<?php esc_attr_e('Your box has been updated but verification failed.', 'bocs-wordpress'); ?>');
-                            triggerEmailAndRedirect(subscriptionId);
-                        }
-                    });
+                    // Trigger email notification for the box update
+                    triggerEmailAndRedirect(subscriptionId);
                 } else {
                     // Show error message
                     var errorMessage = response && response.message ? response.message : '<?php esc_attr_e('An error occurred while updating your box.', 'bocs-wordpress'); ?>';
-                    console.error('❌ API returned error:', errorMessage);
-                    error_log('BOCS UPDATE BOX DEBUG: API returned error: ' + errorMessage);
                     showNotification('error', errorMessage);
                     button.html(originalText).prop('disabled', false);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error Status:', status);
-                console.error('AJAX Error:', error);
-                console.error('Status Code:', xhr.status);
-                console.error('Response Text:', xhr.responseText);
-                
                 var errorMessage = '';
                 
                 // Handle 502 Bad Gateway specifically
@@ -1755,7 +1700,6 @@ jQuery(document).ready(function($) {
                     errorMessage = response.message || '';
                 } catch (e) {
                     // If parsing fails, use generic message
-                    console.error('Error parsing response:', e);
                 }
                 
                 showNotification('error', errorMessage || '<?php esc_attr_e('An error occurred while updating your box. Please try again.', 'bocs-wordpress'); ?>');
@@ -1812,8 +1756,6 @@ jQuery(document).ready(function($) {
             }];
         }
         
-        console.log('Retrying with simplified data:', simplifiedData);
-        
         // Make a simplified request
         $.ajax({
             url: '<?php echo esc_url(BOCS_API_URL); ?>subscriptions/' + subscriptionId,
@@ -1827,29 +1769,9 @@ jQuery(document).ready(function($) {
                 xhr.setRequestHeader('Authorization', '<?php echo esc_js($this->headers['Authorization']); ?>');
             },
             success: function(response) {
-                console.log('Retry Response:', response);
                 if (response && response.code === 200) {
                     showNotification('success', '<?php esc_attr_e('Your box has been updated successfully!', 'bocs-wordpress'); ?>');
-                    
-                    // Trigger email notification for the box update
-                    var emailData = {
-                        action: 'bocs_trigger_box_updated_email',
-                        subscription_id: subscriptionId,
-                        security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
-                    };
-                    
-                    // Send email notification request
-                    $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
-                        .done(function(emailResponse) {
-                            console.log('Email notification triggered:', emailResponse);
-                        })
-                        .fail(function(xhr, status, error) {
-                            console.error('Failed to trigger email notification:', error);
-                        })
-                        .always(function() {
-                            // Redirect regardless of email notification success
-                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
-                        });
+                    triggerEmailAndRedirect(subscriptionId);
                 } else {
                     var errorMessage = response && response.message ? response.message : '<?php esc_attr_e('An error occurred while updating your box.', 'bocs-wordpress'); ?>';
                     showNotification('error', errorMessage);
@@ -1857,8 +1779,6 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Retry Error Status:', status);
-                console.error('Retry Error:', error);
                 showNotification('error', '<?php esc_attr_e('Unable to update your box. Please try again later or contact support.', 'bocs-wordpress'); ?>');
                 button.html(originalText).prop('disabled', false);
             }
