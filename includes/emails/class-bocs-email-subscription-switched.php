@@ -34,6 +34,13 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
     public $bocs_id;
 
     /**
+     * Subscription data
+     *
+     * @var array
+     */
+    public $subscription_data;
+
+    /**
      * Constructor
      *
      * Initializes email parameters and settings.
@@ -84,7 +91,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         }, 999, 1);
         
         // Add action to trigger this email when a subscription is switched
-        add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 5);
+        add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 4);
         error_log('BOCS EMAIL DEBUG: Added action hook for bocs_subscription_switched');
     }
 
@@ -187,161 +194,72 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * Trigger the sending of this email.
      *
      * @since 1.0.0
-     * @param array|object $subscription_data The subscription data from Bocs API
+     * @param array $subscription_data The subscription data
      * @param string $bocs_id Optional. The Bocs ID that was switched to
      * @param string $frequency_id Optional. The frequency ID that was chosen
      * @param bool $is_box_update Optional. Whether this is a box content update rather than a plan switch
-     * @param bool $is_frequency_update Optional. Whether this is a frequency update
-     * @return void
+     * @return bool success
      */
-    public function trigger($subscription_data, $bocs_id = '', $frequency_id = '', $is_box_update = false, $is_frequency_update = false) {
-        // Enhanced logging for debugging
-        error_log('BOCS EMAIL DEBUG: Email trigger method called');
-        error_log('BOCS EMAIL DEBUG: Is box update: ' . ($is_box_update ? 'YES' : 'NO'));
+    public function trigger($subscription_data = array(), $bocs_id = '', $frequency_id = '', $is_box_update = false) {
+        error_log('BOCS EMAIL DEBUG: Trigger called with subscription data: ' . json_encode($subscription_data));
         
-        // Setup localization
-        $this->setup_locale();
+        $this->subscription_data = $subscription_data;
         
-        // Check if we have valid subscription data
-        if (empty($subscription_data) || !is_array($subscription_data)) {
-            error_log('BOCS EMAIL DEBUG: Invalid subscription data - ' . print_r($subscription_data, true));
-            $this->restore_locale();
-            return;
+        if (empty($subscription_data)) {
+            error_log('BOCS EMAIL DEBUG: No subscription data provided');
+            return false;
         }
-        
-        // Dump subscription data for debugging
-        error_log('BOCS EMAIL DEBUG: Subscription data structure: ' . print_r(array_keys($subscription_data), true));
-        
-        // Set object and email recipient
-        $this->object = $subscription_data;
-        
-        // Get recipient email from subscription data
-        if (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
-            $this->recipient = $subscription_data['customer']['email'];
-            error_log('BOCS EMAIL DEBUG: Found recipient in customer.email: ' . $this->recipient);
-        } elseif (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
-            $this->recipient = $subscription_data['billing']['email'];
-            error_log('BOCS EMAIL DEBUG: Found recipient in billing.email: ' . $this->recipient);
-        } else {
-            error_log('BOCS EMAIL DEBUG: Could not find recipient email in subscription data');
-            $this->recipient = '';
+
+        // Get the recipient
+        $recipient = '';
+        if (!empty($subscription_data['customer']['email'])) {
+            $recipient = $subscription_data['customer']['email'];
+        } elseif (!empty($subscription_data['billing']['email'])) {
+            $recipient = $subscription_data['billing']['email'];
         }
-        
-        // Skip if no recipient
-        if (!$this->recipient) {
-            error_log('BOCS EMAIL DEBUG: No recipient found, aborting email');
-            $this->restore_locale();
-            return;
+
+        if (empty($recipient)) {
+            error_log('BOCS EMAIL DEBUG: No recipient email found');
+            return false;
         }
+
+        error_log('BOCS EMAIL DEBUG: Sending to recipient: ' . $recipient);
         
-        // Set the placeholders for email template
-        $this->placeholders['{subscription_id}'] = $subscription_data['id'] ?? '';
-        
-        // Set the Bocs ID (if available)
-        $this->bocs_id = $bocs_id ?: ($subscription_data['bocs']['id'] ?? '');
-        
-        // Use different subject and heading based on the update type
-        if ($is_frequency_update) {
-            $this->heading = $this->get_frequency_updated_heading();
-            $this->subject = $this->get_frequency_updated_subject();
-            error_log('BOCS EMAIL DEBUG: Using frequency update template');
-        } else if ($is_box_update) {
-            $this->heading = $this->get_box_updated_heading();
-            $this->subject = $this->get_box_updated_subject();
-            error_log('BOCS EMAIL DEBUG: Using box update template');
-        } else {
-            $this->heading = $this->get_default_heading();
-            $this->subject = $this->get_default_subject();
-            error_log('BOCS EMAIL DEBUG: Using default template');
+        // Set recipient
+        $this->recipient = $recipient;
+
+        // Get site domain
+        $site_url = parse_url(get_site_url());
+        $domain = isset($site_url['host']) ? $site_url['host'] : '';
+
+        // Set proper from name and email
+        $this->from_name = get_bloginfo('name');
+        $this->from_email = 'noreply@' . $domain;
+
+        error_log('BOCS EMAIL DEBUG: From: ' . $this->from_name . ' <' . $this->from_email . '>');
+
+        // Replace placeholders in subject/heading
+        $this->find['subscription-id'] = '{subscription-id}';
+        $this->replace['subscription-id'] = $subscription_data['id'];
+
+        if (!$this->get_recipient()) {
+            error_log('BOCS EMAIL DEBUG: No recipient set');
+            return false;
         }
+
+        error_log('BOCS EMAIL DEBUG: Attempting to send email');
         
-        // Check if email is enabled
-        error_log('BOCS EMAIL DEBUG: Email enabled status: ' . ($this->is_enabled() ? 'YES' : 'NO'));
-        error_log('BOCS EMAIL DEBUG: Email recipient: ' . $this->get_recipient());
-        
-        // Send the email if enabled
-        if ($this->is_enabled() && $this->get_recipient()) {
-            error_log('BOCS EMAIL DEBUG: Attempting to send email to: ' . $this->get_recipient());
+        try {
+            // Send the email
+            $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
             
-            // Make sure we have proper sender
-            $site_name = get_bloginfo('name');
-            $admin_email = get_option('admin_email');
-            $this->set_headers(['From: ' . $site_name . ' <' . $admin_email . '>']);
+            error_log('BOCS EMAIL DEBUG: Email send result: ' . ($sent ? 'SUCCESS' : 'FAILED'));
             
-            // Get email content
-            $html_content = $this->get_content_html();
-            error_log('BOCS EMAIL DEBUG: Email content length: ' . strlen($html_content));
-            
-            // Display headers for debugging
-            error_log('BOCS EMAIL DEBUG: Using email headers: ' . print_r($this->get_headers(), true));
-            
-            // Send email and check result
-            $send_result = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-            error_log('BOCS EMAIL DEBUG: Email send result: ' . ($send_result ? 'SUCCESS' : 'FAILED'));
-            
-            // Generate a standardized message
-            $message = '';
-            if ($is_frequency_update) {
-                $message = __('Your subscription frequency has been updated.', 'bocs-wordpress');
-            } else if ($is_box_update) {
-                $message = __('Your box contents have been updated successfully.', 'bocs-wordpress');
-            } else {
-                $message = __('Your subscription has been switched to a new plan.', 'bocs-wordpress');
-            }
-            
-            // Add subscription details
-            $message .= "\n\n";
-            if (isset($subscription_data['id'])) {
-                $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
-            }
-            
-            if (isset($subscription_data['bocs']['name'])) {
-                $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
-            }
-            
-            $message .= "Thank you for choosing Bocs!\n";
-            
-            // CRITICAL: If WooCommerce email fails, try direct WordPress mail
-            if (!$send_result) {
-                error_log('BOCS EMAIL DEBUG: WooCommerce email failed, trying direct wp_mail');
-                
-                // Set up proper headers
-                $headers = [
-                    'Content-Type: text/plain; charset=UTF-8',
-                    'From: ' . $site_name . ' <' . $admin_email . '>'
-                ];
-                
-                // First send a test to admin
-                $admin_test = wp_mail(
-                    $admin_email, 
-                    '[BOCS DEBUG] Mail Test', 
-                    "A box update email failed via WooCommerce mailer.\n\nThis test email was sent to verify mail functionality is working.\n\nTarget recipient: " . $this->get_recipient(),
-                    $headers
-                );
-                error_log('BOCS EMAIL DEBUG: Admin test email result: ' . ($admin_test ? 'SUCCESS' : 'FAILED'));
-                
-                // Try sending to customer
-                $direct_result = wp_mail(
-                    $this->get_recipient(),
-                    $this->get_subject(),
-                    $message,
-                    $headers
-                );
-                error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($direct_result ? 'SUCCESS' : 'FAILED'));
-                
-                // If WordPress mail fails, try PHP mail as last resort
-                if (!$direct_result && function_exists('mail')) {
-                    error_log('BOCS EMAIL DEBUG: WordPress mail failed, trying PHP mail directly');
-                    $header_str = implode("\r\n", $headers);
-                    $mail_result = mail($this->get_recipient(), $this->get_subject(), $message, $header_str);
-                    error_log('BOCS EMAIL DEBUG: PHP mail() function result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
-                }
-            }
-        } else {
-            error_log('BOCS EMAIL DEBUG: Email not sent - Enabled: ' . ($this->is_enabled() ? 'YES' : 'NO') . ', Recipient: ' . $this->get_recipient());
+            return $sent;
+        } catch (Exception $e) {
+            error_log('BOCS EMAIL DEBUG: Error sending email: ' . $e->getMessage());
+            return false;
         }
-        
-        $this->restore_locale();
     }
 
     /**
@@ -358,9 +276,10 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
             wc_get_template(
                 $this->template_html,
                 array(
-                    'subscription'     => $this->object,
+                    'subscription_data' => $this->subscription_data,
                     'email_heading'    => $this->get_heading(),
-                    'additional_content' => $this->get_additional_content(),
+                    'sent_to_admin' => false,
+                    'plain_text' => false,
                     'email'             => $this,
                     'bocs_id'          => $this->bocs_id,
                 ),
@@ -386,9 +305,10 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
             wc_get_template(
                 $this->template_plain,
                 array(
-                    'subscription'     => $this->object,
+                    'subscription_data' => $this->subscription_data,
                     'email_heading'    => $this->get_heading(),
-                    'additional_content' => $this->get_additional_content(),
+                    'sent_to_admin' => false,
+                    'plain_text' => true,
                     'email'            => $this,
                     'bocs_id'          => $this->bocs_id,
                 ),
