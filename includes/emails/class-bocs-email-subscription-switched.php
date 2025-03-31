@@ -48,12 +48,17 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         $this->template_html  = 'emails/bocs-subscription-switched.php';
         $this->template_plain = 'emails/plain/bocs-subscription-switched.php';
         
+        // Log for debugging
+        error_log('BOCS EMAIL DEBUG: Initializing ' . $this->id . ' email class');
+        
         // Make sure we use the correct template path
         if (defined('BOCS_TEMPLATE_PATH')) {
             $this->template_base = BOCS_TEMPLATE_PATH;
+            error_log('BOCS EMAIL DEBUG: Using template path: ' . BOCS_TEMPLATE_PATH);
         } else {
             // Fallback to plugin directory
             $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
+            error_log('BOCS EMAIL DEBUG: Using fallback template path: ' . $this->template_base);
         }
         
         $this->placeholders   = array(
@@ -62,6 +67,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
 
         // Force enable this email
         $this->enabled = 'yes';
+        error_log('BOCS EMAIL DEBUG: Force enabling email');
 
         // Call parent constructor
         parent::__construct();
@@ -70,11 +76,13 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         
         // Add a filter to ensure this email is always enabled
         add_filter('woocommerce_email_enabled_' . $this->id, function($enabled) {
+            error_log('BOCS EMAIL DEBUG: Email enabled filter triggered, returning "yes"');
             return 'yes'; // Always enable this email
         }, 999, 1);
         
         // Add action to trigger this email when a subscription is switched
         add_action('bocs_subscription_switched', array($this, 'trigger'), 10, 5);
+        error_log('BOCS EMAIL DEBUG: Added action hook for bocs_subscription_switched');
     }
 
     /**
@@ -169,11 +177,15 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return void
      */
     public function trigger($subscription_data, $bocs_id = '', $frequency_id = '', $is_box_update = false, $is_frequency_update = false) {
+        // Enhanced logging for debugging
+        error_log('BOCS EMAIL DEBUG: Email trigger method called');
+        
         // Setup localization
         $this->setup_locale();
         
         // Check if we have valid subscription data
         if (empty($subscription_data) || !is_array($subscription_data)) {
+            error_log('BOCS EMAIL DEBUG: Invalid subscription data - ' . print_r($subscription_data, true));
             $this->restore_locale();
             return;
         }
@@ -186,8 +198,11 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
             ? $subscription_data['customer']['email'] 
             : '';
         
+        error_log('BOCS EMAIL DEBUG: Recipient set to: ' . $this->recipient);
+        
         // Skip if no recipient
         if (!$this->recipient) {
+            error_log('BOCS EMAIL DEBUG: No recipient found, aborting email');
             $this->restore_locale();
             return;
         }
@@ -202,17 +217,68 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
         if ($is_frequency_update) {
             $this->heading = $this->get_frequency_updated_heading();
             $this->subject = $this->get_frequency_updated_subject();
+            error_log('BOCS EMAIL DEBUG: Using frequency update template');
         } else if ($is_box_update) {
             $this->heading = $this->get_box_updated_heading();
             $this->subject = $this->get_box_updated_subject();
+            error_log('BOCS EMAIL DEBUG: Using box update template');
         } else {
             $this->heading = $this->get_default_heading();
             $this->subject = $this->get_default_subject();
+            error_log('BOCS EMAIL DEBUG: Using default template');
         }
+        
+        // Check if email is enabled
+        error_log('BOCS EMAIL DEBUG: Email enabled status: ' . ($this->is_enabled() ? 'YES' : 'NO'));
+        error_log('BOCS EMAIL DEBUG: Email recipient: ' . $this->get_recipient());
         
         // Send the email if enabled
         if ($this->is_enabled() && $this->get_recipient()) {
-            $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+            error_log('BOCS EMAIL DEBUG: Attempting to send email to: ' . $this->get_recipient());
+            
+            // Get email content
+            $html_content = $this->get_content_html();
+            error_log('BOCS EMAIL DEBUG: Email content length: ' . strlen($html_content));
+            
+            // Check WP mail configuration
+            $mailserver_url = ini_get('SMTP') ?: 'Not set';
+            $mailserver_port = ini_get('smtp_port') ?: 'Not set';
+            $default_from = get_option('admin_email') ?: 'Not set';
+            
+            error_log('BOCS EMAIL DEBUG: Mail configuration - SMTP: ' . $mailserver_url . ', Port: ' . $mailserver_port . ', From: ' . $default_from);
+            error_log('BOCS EMAIL DEBUG: WordPress mail function exists: ' . (function_exists('wp_mail') ? 'Yes' : 'No'));
+            
+            // Check if a mail plugin is active
+            $active_plugins = get_option('active_plugins');
+            $mail_plugins = array_filter($active_plugins, function($plugin) {
+                return (
+                    stripos($plugin, 'mail') !== false || 
+                    stripos($plugin, 'smtp') !== false || 
+                    stripos($plugin, 'post') !== false
+                );
+            });
+            
+            if (!empty($mail_plugins)) {
+                error_log('BOCS EMAIL DEBUG: Mail related plugins found: ' . implode(', ', $mail_plugins));
+            } else {
+                error_log('BOCS EMAIL DEBUG: No mail related plugins found');
+            }
+            
+            // Send email and check result
+            $send_result = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+            error_log('BOCS EMAIL DEBUG: Email send result: ' . ($send_result ? 'SUCCESS' : 'FAILED'));
+            
+            // Try direct wp_mail as a fallback if WooCommerce email fails
+            if (!$send_result && function_exists('wp_mail')) {
+                error_log('BOCS EMAIL DEBUG: Attempting fallback with direct wp_mail');
+                $direct_result = wp_mail(
+                    $this->get_recipient(), 
+                    'DIRECT TEST - ' . $this->get_subject(), 
+                    'This is a direct test of the WordPress mail system. If you received this, it means WooCommerce email is failing but direct WordPress mail works.' . "\n\n" . $this->get_content_plain(),
+                    $this->get_headers()
+                );
+                error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($direct_result ? 'SUCCESS' : 'FAILED'));
+            }
             
             // Log that we sent the email
             $message = '';
@@ -224,6 +290,8 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 $message = __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
             }
             error_log($message);
+        } else {
+            error_log('BOCS EMAIL DEBUG: Email not sent - Enabled: ' . ($this->is_enabled() ? 'YES' : 'NO') . ', Recipient: ' . $this->get_recipient());
         }
         
         $this->restore_locale();
