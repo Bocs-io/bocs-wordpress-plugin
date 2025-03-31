@@ -43,10 +43,17 @@ jQuery(window).on('load', function() {
 		} else {
 			// Get frequency ID from cookie if available
 			frequencyId = '';
-			if (isset($_COOKIE['__bocs_frequency_id'])) {
-				frequencyId = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
-			}
-			if(frequencyId){
+			// Get the cookie value using JavaScript
+			const getCookie = (name) => {
+				const value = `; ${document.cookie}`;
+				const parts = value.split(`; ${name}=`);
+				if (parts.length === 2) return parts.pop().split(';').shift();
+				return null;
+			};
+			
+			const frequencyCookie = getCookie('__bocs_frequency_id');
+			if (frequencyCookie) {
+				frequencyId = frequencyCookie;
 				for ( var i = 0, l = bocsCheckoutObject.bocs['priceAdjustment']['adjustments'].length; i < l; i++ ) {
 					if(bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['id'] == frequencyId){
 						recurringFreq = formatFrequency( bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['frequency'], bocsCheckoutObject.bocs['priceAdjustment']['adjustments'][i]['timeUnit'] );
