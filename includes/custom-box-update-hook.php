@@ -27,8 +27,9 @@ function bocs_add_custom_box_update_script() {
         return;
     }
     
-    // Create a nonce for security
+    // Create a nonce for security - use longer expiration
     $nonce = wp_create_nonce('bocs-box-updated');
+    error_log('BOCS EMAIL DEBUG: Generated nonce for box update email: ' . $nonce . ' for subscription ID: ' . $subscription_id);
     
     ?>
     <script type="text/javascript">
@@ -47,94 +48,54 @@ function bocs_add_custom_box_update_script() {
                     security: '<?php echo esc_js($nonce); ?>'
                 };
                 
+                // Output for debugging
+                console.log('Sending email trigger with data:', emailData);
+                
                 // Send email notification request
-                $.post('<?php echo admin_url('admin-ajax.php'); ?>', emailData)
-                    .done(function(emailResponse) {
-                        console.log('Email notification triggered:', emailResponse);
-                        
-                        // Direct emergency fallback - send direct email via PHP
-                        $.post('<?php echo admin_url('admin-ajax.php'); ?>', {
-                            action: 'bocs_direct_email_fallback',
-                            subscription_id: '<?php echo esc_js($subscription_id); ?>',
-                            security: '<?php echo wp_create_nonce('bocs-direct-email'); ?>'
-                        })
-                        .done(function(directResponse) {
-                            console.log('Direct email fallback attempted:', directResponse);
-                        })
-                        .fail(function(xhr, status, error) {
-                            console.error('Failed to trigger direct email fallback:', error);
-                        });
-                    })
-                    .fail(function(xhr, status, error) {
-                        console.error('Failed to trigger email notification:', error);
-                    });
-            }
-        });
-
-        // Override the default Save Changes button behavior
-        $('#save-box-changes').off('click').on('click', function(e) {
-            e.preventDefault();
-            
-            var button = $(this);
-            var originalText = button.html();
-            
-            // Filter out products with quantity 0
-            var selectedProducts = boxProducts.filter(function(product) {
-                return product.quantity > 0;
-            });
-            
-            if (selectedProducts.length === 0) {
-                showNotification('error', '<?php _e('Please add at least one product to your box.', 'bocs-wordpress'); ?>');
-                return;
-            }
-            
-            // Show loading state
-            button.html('<span class="bocs-loading-spinner"></span> <?php _e('Saving...', 'bocs-wordpress'); ?>').prop('disabled', true);
-            
-            // Generate complete line items
-            var lineItems = generateLineItems(selectedProducts, <?php echo floatval(get_option('woocommerce_tax_rate', 0)); ?>, true);
-            
-            // Make the API request
-            $.ajax({
-                url: '<?php echo esc_url(BOCS_API_URL); ?>subscriptions/<?php echo esc_js($subscription_id); ?>',
-                type: 'PUT',
-                data: JSON.stringify({ lineItems: lineItems }),
-                contentType: 'application/json',
-                timeout: 30000,
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Store', bocsHeaders.store);
-                    xhr.setRequestHeader('Organization', bocsHeaders.organization);
-                    xhr.setRequestHeader('Authorization', bocsHeaders.authorization);
-                },
-                success: function(response) {
-                    console.log('API Response:', response);
-                    if (response && response.code === 200) {
-                        // Show success message
-                        showNotification('success', '<?php _e('Your box has been updated successfully!', 'bocs-wordpress'); ?>');
-                        
-                        // Trigger our custom event
-                        $(document).trigger('bocs_box_update_success', [response]);
-                        
-                        // Redirect after a short delay
-                        setTimeout(function() {
-                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
-                        }, 2000);
-                    } else {
-                        // Show error message
-                        var errorMessage = response && response.message ? response.message : '<?php _e('An error occurred while updating your box.', 'bocs-wordpress'); ?>';
-                        showNotification('error', errorMessage);
-                        button.html(originalText).prop('disabled', false);
+                $.ajax({
+                    url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                    type: 'POST',
+                    data: emailData,
+                    success: function(response) {
+                        console.log('Email notification response:', response);
+                        // Continue with redirect or other actions
+                        window.location.href = '<?php echo esc_url(get_permalink(get_option('woocommerce_myaccount_page_id'))); ?>';
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to send email notification:', error);
+                        // Redirect anyway
+                        window.location.href = '<?php echo esc_url(get_permalink(get_option('woocommerce_myaccount_page_id'))); ?>';
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error('AJAX Error:', error);
-                    showNotification('error', '<?php _e('Unable to update your box. Please try again later.', 'bocs-wordpress'); ?>');
-                    button.html(originalText).prop('disabled', false);
-                }
-            });
+                });
+            } else {
+                // If the update wasn't successful, redirect without email
+                window.location.href = '<?php echo esc_url(get_permalink(get_option('woocommerce_myaccount_page_id'))); ?>';
+            }
         });
     });
     </script>
     <?php
 }
-add_action('wp_footer', 'bocs_add_custom_box_update_script', 100); 
+add_action('wp_footer', 'bocs_add_custom_box_update_script', 99);
+
+// Register the JavaScript variable and event
+function bocs_enqueue_custom_box_update_scripts() {
+    // Only on the box update page
+    global $wp;
+    if (!isset($wp->query_vars['bocs-update-box'])) {
+        return;
+    }
+    
+    wp_register_script('bocs-box-update-helper', '', array('jquery'), BOCS_VERSION, true);
+    wp_enqueue_script('bocs-box-update-helper');
+    
+    // Add inline script to define the custom event
+    $script = "
+        function bocs_trigger_box_update_success(response) {
+            jQuery(document).trigger('bocs_box_update_success', [response]);
+        }
+    ";
+    
+    wp_add_inline_script('bocs-box-update-helper', $script);
+}
+add_action('wp_enqueue_scripts', 'bocs_enqueue_custom_box_update_scripts'); 
