@@ -1095,35 +1095,50 @@ jQuery(document).ready(function($) {
     
     // Define the triggerEmailAndRedirect function inside jQuery scope
     function triggerEmailAndRedirect(subId) {
-        // Trigger email notification for the box update
+        // Prepare the data to send
         var emailData = {
             action: 'bocs_trigger_box_updated_email',
             subscription_id: subId,
             security: '<?php echo wp_create_nonce('bocs-box-updated'); ?>'
         };
         
-        console.log('Sending email trigger with data:', emailData);
-        
-        // Send email notification request
+        // Send email notification request with improved error handling
         $.ajax({
             url: '<?php echo admin_url('admin-ajax.php'); ?>',
             type: 'POST',
             data: emailData,
-            timeout: 20000, // 20 second timeout
+            timeout: 30000, // 30 second timeout
             success: function(response) {
-                console.log('Email notification success response:', response);
-                // Redirect after email notification
-                window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                if (response.success) {
+                    console.log('Email notification sent successfully');
+                    window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                } else {
+                    console.error('Email notification failed:', response);
+                    // Try emergency fallback
+                    $.ajax({
+                        url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                        type: 'POST',
+                        data: {
+                            action: 'bocs_direct_email_fallback',
+                            subscription_id: subId,
+                            security: '<?php echo wp_create_nonce('bocs-direct-email'); ?>'
+                        },
+                        complete: function() {
+                            // Redirect regardless of fallback result
+                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                        }
+                    });
+                }
             },
             error: function(xhr, status, error) {
                 console.error('Email notification error:', {
                     status: xhr.status,
                     statusText: xhr.statusText,
-                    responseText: xhr.responseText,
-                    error: error
+                    error: error,
+                    response: xhr.responseText
                 });
                 
-                // Try an emergency direct email fallback
+                // Try emergency fallback
                 $.ajax({
                     url: '<?php echo admin_url('admin-ajax.php'); ?>',
                     type: 'POST',
@@ -1132,14 +1147,8 @@ jQuery(document).ready(function($) {
                         subscription_id: subId,
                         security: '<?php echo wp_create_nonce('bocs-direct-email'); ?>'
                     },
-                    success: function(response) {
-                        console.log('Emergency email fallback response:', response);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Emergency email fallback failed:', error);
-                    },
                     complete: function() {
-                        // Redirect regardless of email notification success
+                        // Redirect regardless of fallback result
                         window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
                     }
                 });

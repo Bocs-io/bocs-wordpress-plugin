@@ -524,8 +524,6 @@ class Admin
                 }
             }
         }
-
-        // error_log(print_r($current_frequency, true));
         
         if (is_checkout()) {
             // checks the stripe checkbox and make it checked as default
@@ -1210,27 +1208,31 @@ class Admin
         // Get the order details
         $order = wc_get_order($order_id);
         if (!$order) {
-            $this->log_error("Invalid order ID: {$order_id}");
+            $reason = "Invalid order ID: {$order_id}";
+            update_post_meta($order_id, '__bocs_subscription_creation_failed', $reason);
             return false;
         }
 
         // SKIP SUBSCRIPTION CREATION IN CERTAIN CASES:
         // 1. Check if this is being triggered by the payment API
-        if (defined('REST_REQUEST') && REST_REQUEST) {
-            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - triggered via REST API");
+        /*if (defined('REST_REQUEST') && REST_REQUEST) {
+            $reason = "Triggered via REST API";
+            update_post_meta($order_id, '__bocs_subscription_creation_skipped', $reason);
             return false;
-        }
+        }*/
 
         // 2. Check if this is a manual status edit from admin
         if (is_admin() && did_action('edit_post') && !did_action('woocommerce_checkout_order_processed')) {
-            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - manual status edit");
+            $reason = "Manual status edit from admin";
+            update_post_meta($order_id, '__bocs_subscription_creation_skipped', $reason);
             return false;
         }
 
         // 3. Check if order already has a Bocs subscription ID (to prevent duplicates)
         $existing_subscription = get_post_meta($order_id, '__bocs_created_subscription', true);
         if (!empty($existing_subscription)) {
-            $this->log_info("Skipping Bocs subscription creation for order #{$order_id} - subscription already exists");
+            $reason = "Subscription already exists";
+            update_post_meta($order_id, '__bocs_subscription_creation_skipped', $reason);
             return false;
         }
 
@@ -1249,6 +1251,8 @@ class Admin
         // Only proceed if this is a Bocs order
         $is_bocs = !empty($bocsid);
         if (!$is_bocs) {
+            $reason = "Not a Bocs order (missing Bocs ID)";
+            update_post_meta($order_id, '__bocs_subscription_creation_skipped', $reason);
             return false;
         }
 
@@ -1281,7 +1285,8 @@ class Admin
 
         // Check if we have any line items
         if (empty($subscription_line_items)) {
-            $this->log_error("No valid line items found for order ID: {$order_id}");
+            $reason = "No valid line items found";
+            update_post_meta($order_id, '__bocs_subscription_creation_failed', $reason);
             return false;
         }
 
@@ -1293,7 +1298,8 @@ class Admin
         if (empty($options['bocs_headers']['organization']) || 
             empty($options['bocs_headers']['store']) || 
             empty($options['bocs_headers']['authorization'])) {
-            $this->log_error("Missing Bocs API credentials");
+            $reason = "Missing Bocs API credentials";
+            update_post_meta($order_id, '__bocs_subscription_creation_failed', $reason);
             return false;
         }
 
@@ -1307,6 +1313,11 @@ class Admin
             // If no Bocs customer ID found, try to fetch it from API
             if (empty($bocs_customer_id)) {
                 $bocs_customer_id = $this->get_bocs_customer_id($customer_id, $order, $options);
+                if (empty($bocs_customer_id)) {
+                    $reason = "Failed to create or retrieve Bocs customer ID";
+                    update_post_meta($order_id, '__bocs_subscription_creation_warning', $reason);
+                    // Continue anyway as this might not be fatal
+                }
             }
         }
 
@@ -1324,7 +1335,8 @@ class Admin
 
         // Validate frequency data
         if (empty($current_frequency['id']) || empty($current_frequency['timeUnit'])) {
-            $this->log_warning("Missing frequency data for order ID: {$order_id}. Using defaults.");
+            $reason = "Missing frequency data";
+            update_post_meta($order_id, '__bocs_subscription_creation_warning', $reason);
             
             // Set default values if missing
             if (empty($current_frequency['timeUnit'])) {
@@ -1386,6 +1398,9 @@ class Admin
         // If successful, mark this order as having a created subscription
         if ($result) {
             update_post_meta($order_id, '__bocs_created_subscription', 'yes');
+        } else {
+            $reason = "API call to create subscription failed";
+            update_post_meta($order_id, '__bocs_subscription_creation_failed', $reason);
         }
         
         // Clean up cookies regardless of result
@@ -2875,7 +2890,6 @@ class Admin
         // Validate headers
         foreach (['organization', 'store', 'authorization'] as $key) {
             if (empty($headers[$key])) {
-                error_log("[Bocs][Critical] Missing required API header: $key");
                 return false;
             }
         }
@@ -2911,7 +2925,6 @@ class Admin
 
         // Handle response
         if (is_wp_error($response)) {
-            error_log("[Bocs][ERROR] Failed to sync customer: " . $response->get_error_message());
             return false;
         }
 
@@ -2920,7 +2933,6 @@ class Admin
             return $response_body['data'];
         }
 
-        error_log("[Bocs][ERROR] Unexpected response from Bocs API: " . wp_remote_retrieve_body($response));
         return false;
     }
 
@@ -2990,7 +3002,7 @@ class Admin
                  esc_html(trim($billingInterval . ' ' . $billingPeriod)) . '</td>';
             echo '</tr>';
         } catch (Exception $e) {
-            error_log('Critical: Error rendering subscription data: ' . $e->getMessage());
+            // Error rendering subscription data 
         }
     }
 
@@ -3010,7 +3022,7 @@ class Admin
             echo '<td>' . wp_kses_post($order->get_formatted_order_total()) . '</td>';
             echo '</tr>';
         } catch (Exception $e) {
-            error_log('Critical: Error rendering order data: ' . $e->getMessage());
+            // Error rendering order data
         }
     }
 
@@ -3023,8 +3035,6 @@ class Admin
             basename($e->getFile()),
             $e->getLine()
         );
-        
-        error_log($message);
         
         if (current_user_can('manage_options')) {
             add_action('admin_notices', function() use ($message) {
@@ -3430,7 +3440,6 @@ class Admin
 
             } catch (Exception $e) {
                 $retry_count++;
-                error_log('Critical: API Error: ' . $e->getMessage());
 
                 // If we haven't reached max retries, wait before trying again
                 if ($retry_count < $max_retries) {
@@ -3452,7 +3461,6 @@ class Admin
      */
     public function get_bocs_data_from_api($bocs_id) {
         if (empty($bocs_id)) {
-            // error_log("[Bocs][WARNING] Cannot fetch BOCS data: Empty BOCS ID");
             return false;
         }
         
@@ -3470,14 +3478,12 @@ class Admin
         // Validate headers
         foreach (['organization', 'store', 'authorization'] as $key) {
             if (empty($headers[$key])) {
-                error_log("[Bocs][ERROR] Missing required API header: {$key}");
                 return false;
             }
         }
         
         // Construct API URL
         $url = BOCS_API_URL . 'bocs/' . $bocs_id;
-        error_log("[Bocs][INFO] Fetching BOCS data from: {$url}");
         
         // Initialize Bocs_Helper
         $helper = new Bocs_Helper();
@@ -3506,12 +3512,10 @@ class Admin
                     throw new Exception('API returned non-200 response code: ' . $response['response']);
                 }
                 
-                error_log("[Bocs][INFO] Successfully fetched BOCS data for ID: {$bocs_id}");
                 return $response;
                 
             } catch (Exception $e) {
                 $retry_count++;
-                error_log("[Bocs][ERROR] Error fetching BOCS data (attempt {$retry_count}): " . $e->getMessage());
                 
                 // If we haven't reached max retries, wait before trying again
                 if ($retry_count < $max_retries) {
@@ -3522,7 +3526,6 @@ class Admin
             }
         }
         
-        error_log("[Bocs][ERROR] Failed to fetch BOCS data after {$max_retries} attempts");
         return false;
     }
 
