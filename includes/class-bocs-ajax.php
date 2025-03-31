@@ -890,6 +890,9 @@ class BOCS_AJAX {
         do_action('bocs_subscription_switched', $subscription_data['data'], '', '', true);
         error_log('BOCS DIRECT EMAIL: Called bocs_subscription_switched action');
         
+        // EMERGENCY: Send mail using all possible methods
+        $this->emergency_mail_test($customer_email, $subscription_data['data']);
+        
         // Direct mail fallback
         if (function_exists('wp_mail')) {
             error_log('BOCS DIRECT EMAIL: Attempting direct wp_mail');
@@ -911,7 +914,15 @@ class BOCS_AJAX {
             
             // Send the direct email
             $headers = ['Content-Type: text/plain; charset=UTF-8'];
+            
+            // Add sender information
+            $site_name = get_bloginfo('name');
+            $admin_email = get_option('admin_email');
+            $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
+            
             error_log('BOCS DIRECT EMAIL: Sending to: ' . $customer_email);
+            error_log('BOCS DIRECT EMAIL: Using headers: ' . implode(', ', $headers));
+            
             $mail_result = wp_mail($customer_email, $subject, $message, $headers);
             
             error_log('BOCS DIRECT EMAIL: Direct wp_mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
@@ -925,6 +936,117 @@ class BOCS_AJAX {
         }
         
         wp_send_json_error('Failed to send email via any method');
+    }
+    
+    /**
+     * Emergency mail test using all possible methods
+     * 
+     * @param string $recipient Recipient email address
+     * @param array $subscription_data Subscription data
+     * @return void
+     */
+    private function emergency_mail_test($recipient, $subscription_data) {
+        error_log('BOCS EMERGENCY MAIL: Starting emergency mail test');
+        
+        // Set up test message
+        $subject = '[URGENT BOCS TEST] Mail System Test';
+        $message = "This is an emergency mail test from the BOCS plugin.\n\n";
+        $message .= "If you're receiving this, please notify the developer that mail is working via this method.\n\n";
+        $message .= "Subscription ID: " . ($subscription_data['id'] ?? 'Unknown') . "\n";
+        $message .= "Customer Email: " . $recipient . "\n";
+        $message .= "Test Time: " . date('Y-m-d H:i:s') . "\n";
+        
+        // Add server information
+        $message .= "\nServer Information:\n";
+        $message .= "PHP Version: " . PHP_VERSION . "\n";
+        $message .= "WordPress Version: " . get_bloginfo('version') . "\n";
+        $message .= "Server Software: " . $_SERVER['SERVER_SOFTWARE'] . "\n";
+        
+        // Basic headers
+        $headers = [
+            'Content-Type: text/plain; charset=UTF-8',
+        ];
+        
+        // Add sender information
+        $site_name = get_bloginfo('name');
+        $admin_email = get_option('admin_email');
+        $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
+        
+        // Get a test recipient (admin email)
+        $test_recipient = $admin_email;
+        
+        // METHOD 1: WordPress mail
+        error_log('BOCS EMERGENCY MAIL: Testing WordPress mail function to admin: ' . $test_recipient);
+        if (function_exists('wp_mail')) {
+            $wp_mail_result = wp_mail($test_recipient, $subject, $message, $headers);
+            error_log('BOCS EMERGENCY MAIL: wp_mail result: ' . ($wp_mail_result ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log('BOCS EMERGENCY MAIL: wp_mail function not available');
+        }
+        
+        // METHOD 2: PHP mail function
+        if (function_exists('mail')) {
+            error_log('BOCS EMERGENCY MAIL: Testing PHP mail function');
+            $header_str = implode("\r\n", $headers);
+            $php_mail_result = mail($test_recipient, $subject, $message, $header_str);
+            error_log('BOCS EMERGENCY MAIL: PHP mail result: ' . ($php_mail_result ? 'SUCCESS' : 'FAILED'));
+            
+            // Also try the customer email
+            $customer_php_mail = mail($recipient, $subject, $message, $header_str);
+            error_log('BOCS EMERGENCY MAIL: PHP mail to customer result: ' . ($customer_php_mail ? 'SUCCESS' : 'FAILED'));
+        } else {
+            error_log('BOCS EMERGENCY MAIL: PHP mail function not available');
+        }
+        
+        // METHOD 3: Try using WP PHPMailer directly
+        error_log('BOCS EMERGENCY MAIL: Testing PHPMailer directly');
+        try {
+            // Try to use WordPress PHPMailer
+            global $phpmailer;
+            
+            // Initialize if not set
+            if (!is_object($phpmailer) || !($phpmailer instanceof PHPMailer\PHPMailer\PHPMailer)) {
+                require_once ABSPATH . WPINC . '/PHPMailer/PHPMailer.php';
+                require_once ABSPATH . WPINC . '/PHPMailer/SMTP.php';
+                require_once ABSPATH . WPINC . '/PHPMailer/Exception.php';
+                $phpmailer = new PHPMailer\PHPMailer\PHPMailer(true);
+            }
+            
+            // Clear all recipients and previous data
+            $phpmailer->clearAllRecipients();
+            $phpmailer->clearAttachments();
+            $phpmailer->clearCustomHeaders();
+            $phpmailer->clearReplyTos();
+            
+            // Set up mailer
+            $phpmailer->isMail();
+            $phpmailer->CharSet = 'UTF-8';
+            $phpmailer->From = $admin_email;
+            $phpmailer->FromName = $site_name;
+            $phpmailer->Subject = $subject . ' (Direct PHPMailer)';
+            $phpmailer->Body = $message . "\n\nSent using direct PHPMailer";
+            $phpmailer->addAddress($test_recipient);
+            
+            // Send mail
+            $phpmailer_result = $phpmailer->send();
+            error_log('BOCS EMERGENCY MAIL: PHPMailer direct result: ' . ($phpmailer_result ? 'SUCCESS' : 'FAILED'));
+        } catch (Exception $e) {
+            error_log('BOCS EMERGENCY MAIL: PHPMailer error: ' . $e->getMessage());
+        }
+        
+        // Log mail configuration for debugging
+        error_log('BOCS EMERGENCY MAIL: Mail configuration:');
+        error_log('BOCS EMERGENCY MAIL: PHP mail enabled: ' . (function_exists('mail') ? 'Yes' : 'No'));
+        error_log('BOCS EMERGENCY MAIL: sendmail_path: ' . ini_get('sendmail_path'));
+        error_log('BOCS EMERGENCY MAIL: SMTP settings: ' . ini_get('SMTP') . ':' . ini_get('smtp_port'));
+        
+        // Check for mail plugins that might be interfering
+        $active_plugins = get_option('active_plugins');
+        foreach ($active_plugins as $plugin) {
+            if (strpos($plugin, 'mail') !== false || strpos($plugin, 'smtp') !== false) {
+                error_log('BOCS EMERGENCY MAIL: Possible mail plugin detected: ' . $plugin);
+            }
+        }
     }
 }
 

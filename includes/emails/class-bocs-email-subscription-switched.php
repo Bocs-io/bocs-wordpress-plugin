@@ -307,6 +307,68 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
             } else {
                 $message = __('Subscription switched email notification sent to customer.', 'bocs-wordpress');
             }
+            
+            // Add subscription details if available
+            if (isset($subscription_data['data']['id'])) {
+                $message .= "Subscription ID: " . $subscription_data['data']['id'] . "\n";
+            }
+            
+            if (isset($subscription_data['data']['bocs']['name'])) {
+                $message .= "Box Type: " . $subscription_data['data']['bocs']['name'] . "\n\n";
+            }
+            
+            $message .= "Thank you for choosing Bocs!\n";
+            
+            // Send the direct email
+            $headers = ['Content-Type: text/plain; charset=UTF-8'];
+            
+            // Add sender information which might be missing
+            $site_name = get_bloginfo('name');
+            $admin_email = get_option('admin_email');
+            $headers[] = 'From: ' . $site_name . ' <' . $admin_email . '>';
+            
+            error_log('BOCS EMAIL DEBUG: Sending to: ' . $this->get_recipient());
+            error_log('BOCS EMAIL DEBUG: Using headers: ' . print_r($headers, true));
+            
+            // Add emergency notification to admin
+            $admin_message = "ADMIN NOTICE: A box update email was attempted to be sent to: " . $this->get_recipient() .
+                "\n\nThis is a debugging message to verify mail functionality." .
+                "\n\nOriginal message was: \n\n" . $message;
+            
+            // First try sending to admin as test
+            error_log('BOCS EMAIL DEBUG: Attempting test mail to admin: ' . $admin_email);
+            $admin_test = wp_mail($admin_email, '[BOCS DEBUG] Mail Test', $admin_message, $headers);
+            error_log('BOCS EMAIL DEBUG: Admin test email result: ' . ($admin_test ? 'SUCCESS' : 'FAILED'));
+            
+            // Now try customer email
+            $mail_result = wp_mail($this->get_recipient(), $this->get_subject(), $message, $headers);
+            error_log('BOCS EMAIL DEBUG: Direct wp_mail result: ' . ($mail_result ? 'SUCCESS' : 'FAILED'));
+            
+            // If wp_mail fails, try one more approach with PHP mail directly
+            if (!$mail_result) {
+                error_log('BOCS EMAIL DEBUG: WordPress mail failed, trying PHP mail() function directly');
+                // Format headers for PHP mail()
+                $header_str = implode("\r\n", $headers);
+                $php_mail_result = mail($this->get_recipient(), $this->get_subject(), $message, $header_str);
+                error_log('BOCS EMAIL DEBUG: PHP mail() result: ' . ($php_mail_result ? 'SUCCESS' : 'FAILED'));
+                
+                if (!$php_mail_result) {
+                    // Log mail configuration for debugging
+                    error_log('BOCS EMAIL DEBUG: Mail configuration issues detected');
+                    error_log('BOCS EMAIL DEBUG: PHP mail enabled: ' . (function_exists('mail') ? 'Yes' : 'No'));
+                    error_log('BOCS EMAIL DEBUG: sendmail_path: ' . ini_get('sendmail_path'));
+                    error_log('BOCS EMAIL DEBUG: SMTP settings: ' . ini_get('SMTP') . ':' . ini_get('smtp_port'));
+                    
+                    // Check for mail plugins that might be interfering
+                    $active_plugins = get_option('active_plugins');
+                    foreach ($active_plugins as $plugin) {
+                        if (strpos($plugin, 'mail') !== false || strpos($plugin, 'smtp') !== false) {
+                            error_log('BOCS EMAIL DEBUG: Possible mail plugin detected: ' . $plugin);
+                        }
+                    }
+                }
+            }
+            
             error_log($message);
         } else {
             error_log('BOCS EMAIL DEBUG: Email not sent - Enabled: ' . ($this->is_enabled() ? 'YES' : 'NO') . ', Recipient: ' . $this->get_recipient());
