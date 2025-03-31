@@ -91,6 +91,14 @@ class Bocs_Email
         } else {
             // error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Renewal_Order_Confirmation class not found");
         }
+        
+        // Add the box updated email class
+        if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+            $email_classes['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+            error_log("BOCS DEBUG [Bocs_Email]: Registered subscription switched email class");
+        } else {
+            error_log("BOCS DEBUG [Bocs_Email]: WC_Bocs_Email_Subscription_Switched class not found");
+        }
 
         self::$email_classes_registered = true;
         // error_log("BOCS DEBUG [Bocs_Email]: BOCS email classes added successfully");
