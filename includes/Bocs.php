@@ -146,6 +146,7 @@ class Bocs
         $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_payment_method, 'display_payment_update_notices');
         // Add AJAX action for updating subscription payment method
         $this->loader->add_action('wp_ajax_bocs_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
+        $this->loader->add_action('wp_ajax_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
         // Add scripts and styles
         $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'enqueue_scripts');
     }

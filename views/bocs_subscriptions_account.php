@@ -381,7 +381,7 @@ $frequency_text = ''; // or whatever default value is appropriate
                                 onclick="event.preventDefault(); event.stopPropagation(); window.location.href='<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-edit-details'), '/') . '/' . $subscription['id']); ?>';">
                                 <?php esc_html_e('Edit Details', 'bocs-wordpress'); ?>
                             </a>
-                            <button class="woocommerce-button button edit-payment-method" 
+                            <button type="button" class="woocommerce-button button edit-payment-method" 
                                 data-subscription-id="<?php echo esc_attr($subscription['id']); ?>">
                                 <?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?>
                             </button>
