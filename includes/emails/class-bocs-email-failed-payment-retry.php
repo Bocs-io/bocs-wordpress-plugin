@@ -67,6 +67,18 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
 
         // Call parent constructor
         parent::__construct();
+        
+        // Prevent default WooCommerce failed payment emails if this one is sent
+        add_action('woocommerce_email_before_send', array($this, 'maybe_prevent_default_emails'), 10, 3);
+        
+        // Disable WooCommerce default failed order emails for BOCS subscription orders
+        add_action('init', array($this, 'disable_wc_failed_order_emails'), 20);
+        
+        // More aggressive prevention of failed order emails
+        add_filter('woocommerce_email_enabled_failed_order', array($this, 'disable_failed_order_email_for_bocs'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_failed_order', array($this, 'disable_failed_order_email_for_bocs'), 10, 2);
+        add_filter('woocommerce_email_recipient_failed_order', array($this, 'filter_failed_order_email_recipient'), 10, 2);
+        add_filter('woocommerce_email_recipient_customer_failed_order', array($this, 'filter_failed_order_email_recipient'), 10, 2);
     }
 
     /**
@@ -499,6 +511,161 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
         }
         
         return false;
+    }
+
+    /**
+     * Prevent default WooCommerce failed payment emails if our email has been sent
+     *
+     * @param bool $send Whether to send the email
+     * @param WC_Email $email The email object
+     * @param mixed $email_args Email arguments
+     * @return bool Whether to send the email
+     */
+    public function maybe_prevent_default_emails($send, $email, $email_args) {
+        // Check if this is a failed order email from WooCommerce
+        if ($send && in_array($email->id, array('failed_order', 'customer_failed_order')) && isset($email_args['order_id'])) {
+            $order_id = $email_args['order_id'];
+            $order = wc_get_order($order_id);
+            
+            if ($order) {
+                // If our failed payment retry email was sent, prevent default failed emails
+                $our_email_sent = $order->get_meta('_bocs_failed_payment_retry_email_sent');
+                if ($our_email_sent === 'yes') {
+                    return false;
+                }
+                
+                // Also check if this is a BOCS subscription order
+                $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+                if (!empty($bocs_subscription_id)) {
+                    // This is a BOCS subscription order, our email will be sent
+                    // Let's prevent the default email
+                    return false;
+                }
+            }
+        }
+        
+        return $send;
+    }
+
+    /**
+     * Disable WooCommerce default failed order emails for BOCS orders
+     */
+    public function disable_wc_failed_order_emails() {
+        // Get WooCommerce mailer
+        $mailer = WC()->mailer();
+        
+        if ($mailer) {
+            // Remove all failed order email actions to prevent any default emails from being sent
+            remove_action('woocommerce_order_status_pending_to_failed_notification', array($mailer, 'failed_order'));
+            remove_action('woocommerce_order_status_on-hold_to_failed_notification', array($mailer, 'failed_order'));
+            remove_action('woocommerce_order_status_processing_to_failed_notification', array($mailer, 'failed_order'));
+            
+            // Remove customer_failed_order notifications
+            remove_action('woocommerce_order_status_failed_notification', array($mailer->emails['WC_Email_Customer_Failed_Order'], 'trigger'));
+            remove_action('woocommerce_order_status_pending_to_failed_notification', array($mailer->emails['WC_Email_Customer_Failed_Order'], 'trigger'));
+            remove_action('woocommerce_order_status_on-hold_to_failed_notification', array($mailer->emails['WC_Email_Customer_Failed_Order'], 'trigger'));
+            
+            // Add our custom filter to check if it's a BOCS order before sending
+            add_action('woocommerce_order_status_pending_to_failed_notification', array($this, 'maybe_send_wc_failed_order_email'), 10);
+            add_action('woocommerce_order_status_on-hold_to_failed_notification', array($this, 'maybe_send_wc_failed_order_email'), 10);
+            add_action('woocommerce_order_status_processing_to_failed_notification', array($this, 'maybe_send_wc_failed_order_email'), 10);
+            
+            // Handle direct trigger calls for failed orders
+            if (isset($mailer->emails['WC_Email_Failed_Order'])) {
+                // Override the trigger method to check for BOCS orders
+                add_filter('woocommerce_email_enabled_failed_order', array($this, 'disable_failed_order_email_for_bocs'), 10, 2);
+            }
+            
+            if (isset($mailer->emails['WC_Email_Customer_Failed_Order'])) {
+                // Override the trigger method to check for BOCS orders
+                add_filter('woocommerce_email_enabled_customer_failed_order', array($this, 'disable_failed_order_email_for_bocs'), 10, 2);
+            }
+        }
+        
+        // Global action to prevent any failed order emails from being sent for BOCS orders
+        add_action('woocommerce_before_resend_order_emails', array($this, 'prevent_resend_failed_emails_for_bocs'), 10, 2);
+    }
+
+    /**
+     * Conditionally send WooCommerce failed order email only for non-BOCS orders
+     *
+     * @param int $order_id Order ID
+     */
+    public function maybe_send_wc_failed_order_email($order_id) {
+        $order = wc_get_order($order_id);
+        
+        if (!$order) {
+            return;
+        }
+        
+        // Check if this is a BOCS subscription order
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        
+        // If not a BOCS subscription order, trigger the default WooCommerce failed order email
+        if (empty($bocs_subscription_id)) {
+            // Get WooCommerce mailer
+            $mailer = WC()->mailer();
+            
+            if ($mailer) {
+                $mailer->failed_order($order_id);
+            }
+        }
+    }
+
+    /**
+     * Disable failed order emails for BOCS orders
+     * 
+     * @param bool $enabled Whether the email is enabled
+     * @param WC_Order $order The order object
+     * @return bool
+     */
+    public function disable_failed_order_email_for_bocs($enabled, $order) {
+        if (is_object($order) && method_exists($order, 'get_meta')) {
+            $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+            if (!empty($bocs_subscription_id)) {
+                return false; // Disable the email for BOCS orders
+            }
+        }
+        return $enabled;
+    }
+
+    /**
+     * Filter the recipient email address for failed order emails
+     * 
+     * @param string $recipient The recipient email address
+     * @param WC_Order $order The order object
+     * @return string Empty string for BOCS orders, original recipient otherwise
+     */
+    public function filter_failed_order_email_recipient($recipient, $order) {
+        if (is_object($order) && method_exists($order, 'get_meta')) {
+            $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+            if (!empty($bocs_subscription_id)) {
+                return ''; // Return empty recipient for BOCS orders
+            }
+        }
+        return $recipient;
+    }
+
+    /**
+     * Prevent manual resending of failed order emails for BOCS orders
+     * 
+     * @param WC_Order $order The order object
+     * @param array $email_ids Email IDs being resent
+     */
+    public function prevent_resend_failed_emails_for_bocs($order, $email_ids) {
+        if (!is_object($order) || !method_exists($order, 'get_meta')) {
+            return;
+        }
+        
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        if (!empty($bocs_subscription_id)) {
+            // Remove failed order emails from the list
+            foreach ($email_ids as $key => $email_id) {
+                if (in_array($email_id, array('failed_order', 'customer_failed_order'))) {
+                    unset($email_ids[$key]);
+                }
+            }
+        }
     }
 }
 

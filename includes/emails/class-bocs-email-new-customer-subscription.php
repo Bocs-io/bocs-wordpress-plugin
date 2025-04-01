@@ -142,10 +142,10 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         
         // Skip if we've already sent this email for this order (check meta)
         $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
-        if ($already_sent === 'yes') {
+        /*if ($already_sent === 'yes') {
             $this->restore_locale();
             return;
-        }
+        }*/
         
         // Check if this is the customer's first Bocs order
         $customer_id = $order_obj->get_customer_id();
