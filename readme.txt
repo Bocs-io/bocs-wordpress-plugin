@@ -1,3 +1,14 @@
+v0.0.132 04/02/2025
+* Improved order processing and synchronization
+* Updated email templates and added empty template structure
+* Added existing customer subscription email notification
+* Centralized WooCommerce email integration
+* Enhanced payment retry handling and customer subscription emails
+* Improved renewal order confirmation email handling
+* Cleaned up plugin initialization code
+* Enhanced REST API order update handling
+* Enhanced Stripe payment integration with improved UI and error handling
+
 v0.0.131 04/01/2025
 * Enhanced payment method management with improved UI
 * Fixed email delivery reliability with multiple fallback methods
