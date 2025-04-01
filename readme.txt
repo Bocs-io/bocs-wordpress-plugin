@@ -1,3 +1,13 @@
+v0.0.131 04/01/2025
+* Enhanced payment method management with improved UI
+* Fixed email delivery reliability with multiple fallback methods
+* Improved subscription display and core plugin hooks
+* Enhanced customer details editing interface
+* Improved email templates for subscription status changes 
+* Fixed standardization of email class registration with WooCommerce
+* Enhanced payment method handling and related emails
+* Added comprehensive error handling for payment processing
+
 v0.0.130 03/31/2025
 * Enhanced subscription pause email handling with improved error recovery
 * Added new email templates for frequency updates and subscription changes
