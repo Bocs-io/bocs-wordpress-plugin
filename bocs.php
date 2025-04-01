@@ -153,6 +153,35 @@ function bocs_load_textdomain() {
 add_action('plugins_loaded', 'bocs_load_textdomain');
 
 /**
+ * Disable default WooCommerce processing email for Bocs renewal orders
+ * 
+ * @since    0.0.131
+ * @param    bool     $enabled  Whether the email is enabled
+ * @param    WC_Order $order    The order object
+ * @return   bool     Whether the email should be enabled
+ */
+function bocs_disable_wc_processing_email($enabled, $order) {
+    // If email is already disabled, return early
+    if (!$enabled) {
+        return $enabled;
+    }
+    
+    // Check if this is a Bocs renewal order
+    if (is_object($order) && method_exists($order, 'get_meta')) {
+        $subscription_id = $order->get_meta('__bocs_subscription_id');
+        
+        // If this is a Bocs renewal order, disable the default processing email
+        if (!empty($subscription_id)) {
+            error_log('BOCS DEBUG [Global Filter]: Disabling default WooCommerce processing email for order #' . $order->get_id());
+            return false;
+        }
+    }
+    
+    return $enabled;
+}
+add_filter('woocommerce_email_enabled_customer_processing_order', 'bocs_disable_wc_processing_email', 10, 2);
+
+/**
  * Check if another instance of Bocs plugin is already active
  * 
  * @since    0.0.109
