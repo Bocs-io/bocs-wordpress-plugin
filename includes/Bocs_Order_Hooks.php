@@ -22,6 +22,9 @@ class Bocs_Order_Hooks {
         
         // Hook into order status changes for renewal order confirmation
         add_action('woocommerce_order_status_pending_to_processing', array($this, 'process_renewal_order_confirmation'), 10, 1);
+        
+        // Disable default WooCommerce processing email for Bocs renewal orders
+        add_action('woocommerce_email_before_order_table', array($this, 'maybe_disable_wc_processing_email'), 5, 4);
     }
     
     /**
@@ -346,6 +349,30 @@ class Bocs_Order_Hooks {
             
         } catch (Exception $e) {
             return false;
+        }
+    }
+    
+    /**
+     * Disable the default WooCommerce processing email for Bocs renewal orders
+     *
+     * @param WC_Order $order Order object
+     * @param bool $sent_to_admin Whether the email is being sent to admin
+     * @param bool $plain_text Whether the email is plain text
+     * @param WC_Email $email The email object
+     */
+    public function maybe_disable_wc_processing_email($order, $sent_to_admin, $plain_text, $email) {
+        // Only proceed if this is the WooCommerce processing email
+        if (!is_a($email, 'WC_Email_Customer_Processing_Order')) {
+            return;
+        }
+        
+        // Check if this is a Bocs renewal order
+        $subscription_id = get_post_meta($order->get_id(), '__bocs_subscription_id', true);
+        
+        // If this is a Bocs renewal order, disable the default processing email
+        if (!empty($subscription_id)) {
+            error_log('BOCS DEBUG [Order Hooks]: Disabling default WooCommerce processing email for order #' . $order->get_id());
+            add_filter('woocommerce_email_enabled_customer_processing_order', '__return_false', 999);
         }
     }
 }
