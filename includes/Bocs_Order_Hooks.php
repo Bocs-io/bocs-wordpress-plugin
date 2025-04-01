@@ -153,6 +153,12 @@ class Bocs_Order_Hooks {
             return;
         }
 
+        // Verify the order status is 'processing' before proceeding
+        if ($order->get_status() !== 'processing') {
+            error_log('BOCS DEBUG [Order Hooks]: Order status is not "processing", skipping: ' . $order->get_status());
+            return;
+        }
+
         // Check if we have a subscription ID - required for renewal orders
         $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
         if (empty($subscription_id)) {
