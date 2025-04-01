@@ -45,6 +45,63 @@ do_action('woocommerce_email_header', $email_heading, $email);
 </h2>
 
 <?php
+// Start custom line items display
+?>
+<div style="margin-bottom: 40px;">
+    <table cellspacing="0" cellpadding="6" border="1" style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: #ffffff;">
+        <thead>
+            <tr>
+                <th scope="col" style="text-align: left; padding: 12px; background-color: #f7f7f7; color: #636363; border: 1px solid #e5e5e5;"><?php esc_html_e('Product', 'bocs-wordpress'); ?></th>
+                <th scope="col" style="text-align: left; padding: 12px; background-color: #f7f7f7; color: #636363; border: 1px solid #e5e5e5;"><?php esc_html_e('Quantity', 'bocs-wordpress'); ?></th>
+                <th scope="col" style="text-align: right; padding: 12px; background-color: #f7f7f7; color: #636363; border: 1px solid #e5e5e5;"><?php esc_html_e('Price', 'bocs-wordpress'); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            foreach ($order->get_items() as $item_id => $item) :
+                $product = $item->get_product();
+                ?>
+                <tr>
+                    <td style="text-align: left; vertical-align: middle; padding: 12px; color: #636363; border: 1px solid #e5e5e5;">
+                        <?php 
+                        echo wp_kses_post($item->get_name());
+                        if ($product && $product->get_sku()) {
+                            echo ' <small>' . esc_html__('SKU:', 'bocs-wordpress') . ' ' . esc_html($product->get_sku()) . '</small>';
+                        }
+                        
+                        // Show item meta data
+                        wc_display_item_meta($item);
+                        ?>
+                    </td>
+                    <td style="text-align: left; vertical-align: middle; padding: 12px; color: #636363; border: 1px solid #e5e5e5;">
+                        <?php echo esc_html($item->get_quantity()); ?>
+                    </td>
+                    <td style="text-align: right; vertical-align: middle; padding: 12px; color: #636363; border: 1px solid #e5e5e5;">
+                        <?php echo wp_kses_post($order->get_formatted_line_subtotal($item)); ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+        <tfoot>
+            <?php
+            $totals = $order->get_order_item_totals();
+            if ($totals) :
+                foreach ($totals as $total) :
+                    ?>
+                    <tr>
+                        <th scope="row" colspan="2" style="text-align: right; padding: 10px; background-color: #f8f8f8; border: 1px solid #e5e5e5;"><?php echo wp_kses_post($total['label']); ?></th>
+                        <td style="text-align: right; padding: 10px; border: 1px solid #e5e5e5;"><?php echo wp_kses_post($total['value']); ?></td>
+                    </tr>
+                <?php
+                endforeach;
+            endif;
+            ?>
+        </tfoot>
+    </table>
+</div>
+<?php
+// End custom line items display
+
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
  * @hooked WC_Structured_Data::generate_order_data() Generates structured data.

@@ -207,6 +207,13 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
             $this->restore_locale();
             return;
         }
+        
+        // Skip if __bocs_order_status is not 'upcoming'
+        if (empty($bocs_order_status) || $bocs_order_status !== 'upcoming') {
+            error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status is not "upcoming", current status: ' . $bocs_order_status);
+            $this->restore_locale();
+            return;
+        }
 
         // Check if the email has already been sent
         $email_sent = $this->object->get_meta('_bocs_renewal_confirmation_email_sent');

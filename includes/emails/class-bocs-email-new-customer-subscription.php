@@ -73,6 +73,22 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         add_filter('woocommerce_email_enabled_' . $this->id, function($enabled) {
             return 'yes'; // Always enable this email
         }, 999, 1);
+        
+        // Prevent default WooCommerce emails for Bocs subscription orders
+        add_filter('woocommerce_email_enabled_new_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_processing_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_completed_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_new_account', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_on_hold_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_invoice', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_note', array($this, 'maybe_disable_wc_email'), 10, 2);
+        add_filter('woocommerce_email_enabled_customer_refunded_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        
+        // Add a more aggressive filter to catch all emails
+        add_filter('woocommerce_mail_callback', array($this, 'maybe_disable_all_wc_emails'), 10, 1);
+        
+        // Also hook earlier in the process to disable emails
+        add_action('woocommerce_before_template_part', array($this, 'maybe_disable_email_template'), 10, 4);
     }
 
     /**
@@ -127,11 +143,18 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         // Setup localization
         $this->setup_locale();
         
+        // Handle case where order is passed as object instead of ID
+        if (is_object($order_id) && is_a($order_id, 'WC_Order')) {
+            $order = $order_id;
+            $order_id = $order->get_id();
+        }
+        
         // Get the order
         $order_obj = $order instanceof WC_Order ? $order : wc_get_order($order_id);
         
         // If we don't have a valid order, bail
         if (!$order_obj || !is_a($order_obj, 'WC_Order')) {
+            $this->log_error("Invalid order for ID: {$order_id}");
             $this->restore_locale();
             return;
         }
@@ -140,78 +163,58 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         $this->object = $order_obj;
         $this->recipient = $order_obj->get_billing_email();
         
-        // Skip if we've already sent this email for this order (check meta)
-        $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
-        /*if ($already_sent === 'yes') {
-            $this->restore_locale();
-            return;
-        }*/
+        // Debug log
+        $this->log_debug("Processing email for order #{$order_id} with recipient: {$this->recipient}");
         
-        // Check if this is the customer's first Bocs order
-        $customer_id = $order_obj->get_customer_id();
+        // Check if this is a Bocs subscription order
+        $bocs_subscription_id = $order_obj->get_meta('__bocs_subscription_id');
         
-        // If customer ID is 0, this is likely a guest checkout that created an account
-        $is_new_customer = true; // Assume new customer by default
-        
-        if ($customer_id > 0) {
-            // Get customer's previous orders with Bocs products
-            $previous_orders = wc_get_orders(array(
-                'customer_id' => $customer_id,
-                'status' => array('wc-completed', 'wc-processing'),
-                'limit' => -1,
-                'return' => 'ids',
-            ));
-            
-            // Exclude current order
-            $previous_orders = array_diff($previous_orders, array($order_id));
-            
-            // If customer has previous orders, check if any of them had Bocs products
-            if (!empty($previous_orders)) {
-                $had_bocs_products = false;
-                
-                foreach ($previous_orders as $prev_order_id) {
-                    $prev_order = wc_get_order($prev_order_id);
-                    if (!$prev_order) continue;
-                    
-                    // Check if order has Bocs meta
-                    if ($prev_order->get_meta('__bocs_subscription_id')) {
-                        $had_bocs_products = true;
-                        break;
-                    }
-                }
-                
-                $is_new_customer = !$had_bocs_products;
-            }
-        }
-        
-        // Only send if this is a new customer
-        if (!$is_new_customer) {
+        // If no Bocs subscription ID, bail
+        if (empty($bocs_subscription_id)) {
+            $this->log_debug("No __bocs_subscription_id found for order #{$order_id}, skipping email.");
             $this->restore_locale();
             return;
         }
+        
+        // Set the Bocs ID
+        $this->bocs_id = $bocs_subscription_id;
+        $this->log_debug("Using Bocs subscription ID: {$this->bocs_id} for order #{$order_id}");
         
         // Set the placeholders for email template
         $this->placeholders['{order_date}'] = wc_format_datetime($this->object->get_date_created());
         $this->placeholders['{order_number}'] = $this->object->get_order_number();
         
-        // Set the Bocs ID (if available)
-        $this->bocs_id = $this->object->get_meta('__bocs_subscription_id');
+        // Check if we've already sent this email 
+        $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
+        if ($already_sent === 'yes') {
+            $this->log_debug("Email already sent for order #{$order_id}, skipping duplicate.");
+            $this->restore_locale();
+            return;
+        }
         
-        // Send the email if enabled
+        // Always send for Bocs subscription orders with valid email
         if ($this->is_enabled() && $this->get_recipient()) {
-            // Only send if we have a valid Bocs subscription ID
-            if (empty($this->bocs_id)) {
-                $this->restore_locale();
-                return;
+            try {
+                // Send the email with a generous timeout
+                add_filter('wp_mail_timeout', function() { return 15; }); // 15 second timeout
+                
+                // Send the email
+                $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
+                
+                // Debug log
+                $this->log_debug("Email send attempted for order #{$order_id}: " . ($sent ? 'SUCCESS' : 'FAILED'));
+                
+                // Mark as sent to prevent duplicates
+                if ($sent) {
+                    update_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', 'yes');
+                } else {
+                    $this->log_error("Failed to send email for order #{$order_id}");
+                }
+            } catch (Exception $e) {
+                $this->log_error("Exception when sending email for order #{$order_id}: " . $e->getMessage());
             }
-            
-            // Actually send the email
-            $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
-            
-            // Mark as sent to prevent duplicates
-            if ($sent) {
-                update_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', 'yes');
-            }
+        } else {
+            $this->log_debug("Email not sent - email disabled or no recipient for order #{$order_id}");
         }
         
         // Restore localization
@@ -320,5 +323,173 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                 'desc_tip'    => true,
             ),
         );
+    }
+
+    /**
+     * Maybe disable WooCommerce emails for Bocs subscription orders
+     *
+     * @param bool $enabled Whether the email is enabled.
+     * @param object $order The order object if available.
+     * @return bool
+     */
+    public function maybe_disable_wc_email($enabled, $order = null) {
+        // Only proceed if we have an order
+        if (!$order || !is_a($order, 'WC_Order')) {
+            return $enabled;
+        }
+        
+        // Check if this is a Bocs subscription order
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        
+        // If this is a Bocs subscription order, disable the default email
+        if (!empty($bocs_subscription_id)) {
+            // Check if we've already sent our custom email for this order
+            $order_id = $order->get_id();
+            $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
+            
+            // If our email has been sent or will be sent, disable the default email
+            if ($already_sent === 'yes' || $this->is_customer_eligible_for_email($order)) {
+                return false;
+            }
+        }
+        
+        return $enabled;
+    }
+
+    /**
+     * Check if customer is eligible for the welcome email
+     *
+     * @param WC_Order $order The order object
+     * @return bool
+     */
+    private function is_customer_eligible_for_email($order) {
+        // Check if this is the customer's first Bocs order
+        $customer_id = $order->get_customer_id();
+        $is_new_customer = true;
+        
+        if ($customer_id > 0) {
+            // Get customer's previous orders with Bocs products
+            $previous_orders = wc_get_orders(array(
+                'customer_id' => $customer_id,
+                'status' => array('wc-completed', 'wc-processing'),
+                'limit' => -1,
+                'return' => 'ids',
+            ));
+            
+            // Exclude current order
+            $previous_orders = array_diff($previous_orders, array($order->get_id()));
+            
+            // If customer has previous orders, check if any of them had Bocs products
+            if (!empty($previous_orders)) {
+                $had_bocs_products = false;
+                
+                foreach ($previous_orders as $prev_order_id) {
+                    $prev_order = wc_get_order($prev_order_id);
+                    if (!$prev_order) continue;
+                    
+                    // Check if order has Bocs meta
+                    if ($prev_order->get_meta('__bocs_subscription_id')) {
+                        $had_bocs_products = true;
+                        break;
+                    }
+                }
+                
+                $is_new_customer = !$had_bocs_products;
+            }
+        }
+        
+        // Only eligible if this is a new customer with a Bocs subscription ID
+        return $is_new_customer && !empty($order->get_meta('__bocs_subscription_id'));
+    }
+
+    /**
+     * Maybe disable all WooCommerce emails for Bocs subscription orders
+     *
+     * @param callable $callback The original email callback
+     * @return callable|bool
+     */
+    public function maybe_disable_all_wc_emails($callback) {
+        global $post;
+        
+        // Try to get the current order
+        $order = null;
+        
+        // Check if we're in an email about a specific order
+        if (isset($_REQUEST['order_id'])) {
+            $order = wc_get_order($_REQUEST['order_id']);
+        } elseif (is_object($post) && isset($post->ID) && get_post_type($post->ID) === 'shop_order') {
+            $order = wc_get_order($post->ID);
+        }
+        
+        // If we have an order, check if it's a Bocs subscription
+        if ($order && is_a($order, 'WC_Order')) {
+            // Check if this is a Bocs subscription order
+            $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+            
+            // If this is a Bocs subscription order, disable the default email
+            if (!empty($bocs_subscription_id)) {
+                return false; // Disable the email entirely
+            }
+        }
+        
+        return $callback;
+    }
+
+    /**
+     * Maybe disable WooCommerce email templates for Bocs subscription orders
+     *
+     * @param string $template_name Template name
+     * @param string $template_path Template path
+     * @param string $located Located template path
+     * @param array $args Arguments
+     */
+    public function maybe_disable_email_template($template_name, $template_path, $located, $args) {
+        // Check if this is an email template
+        if (strpos($template_name, 'emails/') !== false) {
+            // Check if we have access to the order
+            if (isset($args['order']) && is_a($args['order'], 'WC_Order')) {
+                $order = $args['order'];
+                
+                // Check if this is a Bocs subscription order
+                $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+                
+                // If this is a Bocs subscription order, prevent the template from loading
+                if (!empty($bocs_subscription_id)) {
+                    // For admin notifications, use a filter to prevent rendering
+                    if (strpos($template_name, 'emails/admin-new-order.php') !== false || 
+                        strpos($template_name, 'emails/admin-') !== false) {
+                        // Add a filter that will return an empty string for this template
+                        add_filter('wc_get_template', function($template, $template_name_filter) use ($template_name) {
+                            if ($template_name_filter === $template_name) {
+                                return plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/emails/empty-template.php';
+                            }
+                            return $template;
+                        }, 90, 2);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Log debug message
+     *
+     * @param string $message Message to log
+     * @return void
+     */
+    private function log_debug($message) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('BOCS EMAIL DEBUG: ' . $message);
+        }
+    }
+
+    /**
+     * Log error message
+     *
+     * @param string $message Message to log
+     * @return void
+     */
+    private function log_error($message) {
+        error_log('BOCS EMAIL ERROR: ' . $message);
     }
 } 
