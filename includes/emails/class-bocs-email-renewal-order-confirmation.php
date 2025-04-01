@@ -181,6 +181,14 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
 
         error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status: ' . $this->object->get_status());
 
+        // Explicitly check if the order status is 'processing' - only send for processing status
+        if ($this->object->get_status() !== 'processing') {
+            error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status is not "processing", skipping email: ' . $this->object->get_status());
+            delete_transient($email_sent_transient);
+            $this->restore_locale();
+            return;
+        }
+
         // Check if the order has the required metadata
         $bocs_subscription_id = $this->object->get_meta('__bocs_subscription_id');
         $bocs_order_status = $this->object->get_meta('__bocs_order_status');
@@ -219,18 +227,13 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
         error_log('BOCS DEBUG [Renewal Order Confirmation]: Set transient to prevent concurrent processing');
 
         // Update the Bocs order status to match WooCommerce status
-        if ($this->object->get_status() === 'processing') {
-            error_log('BOCS DEBUG [Renewal Order Confirmation]: Updating BOCS order status to processing');
-            $this->object->update_meta_data('__bocs_order_status', 'processing');
-            $this->object->save();
+        error_log('BOCS DEBUG [Renewal Order Confirmation]: Updating BOCS order status to processing');
+        $this->object->update_meta_data('__bocs_order_status', 'processing');
+        $this->object->save();
 
-            // Update order via Bocs API
-            $api_updated = $this->update_order_in_bocs_api($order_id);
-            error_log('BOCS DEBUG [Renewal Order Confirmation]: BOCS API update ' . ($api_updated ? 'successful' : 'failed'));
-        } else {
-            error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status condition not met - WC status: ' . 
-                       $this->object->get_status() . ', Bocs status: ' . $bocs_order_status);
-        }
+        // Update order via Bocs API
+        $api_updated = $this->update_order_in_bocs_api($order_id);
+        error_log('BOCS DEBUG [Renewal Order Confirmation]: BOCS API update ' . ($api_updated ? 'successful' : 'failed'));
 
         // Set recipient
         $this->recipient = $this->object->get_billing_email();
