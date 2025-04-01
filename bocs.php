@@ -166,12 +166,12 @@ function bocs_disable_wc_processing_email($enabled, $order) {
         return $enabled;
     }
     
-    // Check if this is a Bocs renewal order
-    if (is_object($order) && method_exists($order, 'get_meta')) {
+    // Check if this is a Bocs renewal order with processing status
+    if (is_object($order) && method_exists($order, 'get_meta') && method_exists($order, 'get_status')) {
         $subscription_id = $order->get_meta('__bocs_subscription_id');
         
-        // If this is a Bocs renewal order, disable the default processing email
-        if (!empty($subscription_id)) {
+        // Only disable for orders with processing status and Bocs subscription ID
+        if (!empty($subscription_id) && $order->get_status() === 'processing') {
             error_log('BOCS DEBUG [Global Filter]: Disabling default WooCommerce processing email for order #' . $order->get_id());
             return false;
         }
