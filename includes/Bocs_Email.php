@@ -300,15 +300,15 @@ class Bocs_Email
 
         // Handle renewal order confirmation email
         if (!isset($emails['bocs_renewal_order_confirmation'])) {
-            //error_log('BOCS DEBUG [Bocs_Email]: Creating new instance of renewal order confirmation email class');
+            error_log('BOCS DEBUG [Bocs_Email]: Creating new instance of renewal order confirmation email class');
             $renewal_confirmation_email = new WC_Bocs_Email_Renewal_Order_Confirmation();
         } else {
             $renewal_confirmation_email = $emails['bocs_renewal_order_confirmation'];
-            //error_log('BOCS DEBUG [Bocs_Email]: Found renewal order confirmation email class in mailer');
+            error_log('BOCS DEBUG [Bocs_Email]: Found renewal order confirmation email class in mailer');
         }
 
         // Remove any existing hooks to prevent duplicates
-        //error_log('BOCS DEBUG [Bocs_Email]: Removing existing hooks for renewal order confirmation email');
+        error_log('BOCS DEBUG [Bocs_Email]: Removing existing hooks for renewal order confirmation email');
         remove_action('woocommerce_order_status_pending_to_processing', array($renewal_confirmation_email, 'trigger'));
         remove_action('woocommerce_order_status_failed_to_processing', array($renewal_confirmation_email, 'trigger'));
         remove_action('woocommerce_order_status_on-hold_to_processing', array($renewal_confirmation_email, 'trigger'));
@@ -316,14 +316,14 @@ class Bocs_Email
         remove_action('woocommerce_rest_shop_order_object_updated', array($renewal_confirmation_email, 'trigger'));
 
         // Register hooks for renewal order confirmation with high priority
-        //error_log('BOCS DEBUG [Bocs_Email]: Registering hooks for renewal order confirmation email with priority 5');
+        error_log('BOCS DEBUG [Bocs_Email]: Registering hooks for renewal order confirmation email with priority 5');
         add_action('woocommerce_order_status_pending_to_processing', array($renewal_confirmation_email, 'trigger'), 5, 1);
         add_action('woocommerce_order_status_failed_to_processing', array($renewal_confirmation_email, 'trigger'), 5, 1);
         add_action('woocommerce_order_status_on-hold_to_processing', array($renewal_confirmation_email, 'trigger'), 5, 1);
         add_action('woocommerce_rest_insert_shop_order_object', array($renewal_confirmation_email, 'trigger'), 5, 1);
         add_action('woocommerce_rest_shop_order_object_updated', array($renewal_confirmation_email, 'trigger'), 5, 1);
 
-        //error_log('BOCS DEBUG [Bocs_Email]: Registered hooks for renewal order confirmation email with priority 5');
+        error_log('BOCS DEBUG [Bocs_Email]: Registered hooks for renewal order confirmation email with priority 5');
     }
 }
 
