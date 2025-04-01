@@ -74,6 +74,9 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
 
         // Call parent constructor
         parent::__construct();
+        
+        // Disable default WooCommerce processing email for Bocs renewal orders
+        add_action('woocommerce_email_before_order_table', array($this, 'maybe_disable_wc_processing_email'), 5, 4);
     }
 
     /**
@@ -557,6 +560,32 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
      */
     public static function email_functionality_explanation() {
         return __('This email is sent to customers when their renewal order transitions from Pending payment to Processing and has the __bocs_order_status=upcoming meta set. It also updates the order status via the BOCS API.', 'bocs-wordpress');
+    }
+
+    /**
+     * Disable the default WooCommerce processing email for Bocs renewal orders
+     *
+     * @since 0.0.1
+     * @param WC_Order $order Order object
+     * @param bool $sent_to_admin Whether the email is being sent to admin
+     * @param bool $plain_text Whether the email is plain text
+     * @param WC_Email $email The email object
+     */
+    public function maybe_disable_wc_processing_email($order, $sent_to_admin, $plain_text, $email) {
+        // Only proceed if this is the WooCommerce processing email
+        if (!is_a($email, 'WC_Email_Customer_Processing_Order')) {
+            return;
+        }
+        
+        // Check if this is a Bocs renewal order
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        $bocs_order_status = $order->get_meta('__bocs_order_status');
+        
+        // If this is a Bocs renewal order, disable the default processing email
+        if (!empty($bocs_subscription_id) && !empty($bocs_order_status)) {
+            error_log('BOCS DEBUG [Renewal Order Confirmation]: Disabling default WooCommerce processing email for order #' . $order->get_id());
+            add_filter('woocommerce_email_enabled_customer_processing_order', '__return_false', 999);
+        }
     }
 }
 
