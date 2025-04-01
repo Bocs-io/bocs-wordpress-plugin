@@ -1,3 +1,36 @@
+/**
+ * Main plugin class.
+ */
+class Bocs {
+	
+	/**
+	 * Constructor
+	 */
+	public function __construct() {
+		// Add actions and filters
+		add_action('plugins_loaded', array($this, 'init'));
+		
+		// Load WooCommerce integration early
+		$this->load_woocommerce_integration();
+	}
+	
+	/**
+	 * Initialize the plugin
+	 */
+	public function init() {
+		// Check if WooCommerce is active
+		if (!class_exists('WooCommerce')) {
+			// WooCommerce is required
+			add_action('admin_notices', array($this, 'woocommerce_required_notice'));
+			return;
+		}
+		
+		// Register email classes
+		add_filter('woocommerce_email_classes', array($this, 'register_email_classes'));
+		
+		// Rest of the initialization...
+	}
+
 	/**
 	 * Register our custom email classes with WooCommerce
 	 *
@@ -28,4 +61,16 @@
 		$email_classes['Bocs_Email_Subscription_Reactivated'] = new Bocs_Email_Subscription_Reactivated();
 
 		return $email_classes;
-	} 
+	}
+
+	/**
+	 * Load WooCommerce Integration
+	 */
+	private function load_woocommerce_integration() {
+		// Check if WooCommerce is active
+		if (class_exists('WooCommerce')) {
+			require_once BOCS_PLUGIN_DIR . 'includes/class-bocs-woocommerce.php';
+			new Bocs_WooCommerce();
+		}
+	}
+} 
