@@ -14,17 +14,30 @@ class Bocs_Order_Hooks {
      * Initialize hooks
      */
     public function __construct() {
-        // Hook into REST API order creation
+        // Hook into WooCommerce API endpoints
         add_action('woocommerce_rest_insert_shop_order_object', array($this, 'process_api_order'), 10, 3);
+        add_action('woocommerce_rest_update_shop_order_object', array($this, 'process_api_order_update'), 10, 3);
         
-        // Handle REST API order updates
-        add_action('woocommerce_rest_shop_order_object_updated', array($this, 'process_api_order_update'), 10, 3);
+        // Hook into order status changes for renewal orders
+        add_action('woocommerce_order_status_changed', array($this, 'process_renewal_order_confirmation'), 10, 1);
         
-        // Hook into order status changes for renewal order confirmation
-        add_action('woocommerce_order_status_pending_to_processing', array($this, 'process_renewal_order_confirmation'), 10, 1);
+        // Disable default processing email for Bocs renewal orders
+        add_action('woocommerce_email_before_order_table', array($this, 'maybe_disable_wc_processing_email'), 10, 4);
         
-        // Disable default WooCommerce processing email for Bocs renewal orders
-        add_action('woocommerce_email_before_order_table', array($this, 'maybe_disable_wc_processing_email'), 5, 4);
+        // Hook into payment complete to ensure subscription emails are sent
+        add_action('woocommerce_payment_complete', array($this, 'ensure_subscription_email_sent'), 10, 1);
+        
+        // Also hook into order status changes as a backup for ensuring emails are sent
+        add_action('woocommerce_order_status_processing', array($this, 'ensure_subscription_email_sent'), 20, 1);
+        add_action('woocommerce_order_status_completed', array($this, 'ensure_subscription_email_sent'), 20, 1);
+        
+        // Hook into a custom scheduled event to retry failed emails
+        add_action('bocs_retry_failed_emails', array($this, 'retry_failed_subscription_emails'));
+        
+        // Schedule a daily event to retry sending any failed emails
+        if (!wp_next_scheduled('bocs_retry_failed_emails')) {
+            wp_schedule_event(time(), 'daily', 'bocs_retry_failed_emails');
+        }
     }
     
     /**
@@ -42,10 +55,6 @@ class Bocs_Order_Hooks {
         
         $order_id = $order->get_id();
         
-        // Set all required Bocs meta data
-        update_post_meta($order_id, '_wc_order_attribution_source_type', 'referral');
-        update_post_meta($order_id, '_wc_order_attribution_utm_source', 'Bocs App');
-        
         // Set Bocs IDs if they don't already exist
         if (!get_post_meta($order_id, '__bocs_bocs_id', true)) {
             update_post_meta($order_id, '__bocs_bocs_id', wp_generate_uuid4());
@@ -58,6 +67,9 @@ class Bocs_Order_Hooks {
         if (!get_post_meta($order_id, '__bocs_subscription_id', true)) {
             update_post_meta($order_id, '__bocs_subscription_id', wp_generate_uuid4());
         }
+        
+        // Mark this as a Bocs order to help with identification
+        update_post_meta($order_id, '__bocs_source_type', 'app');
         
         // Send the renewal invoice email
         if (class_exists('WC_Bocs_Email_Customer_Renewal_Invoice')) {
@@ -372,13 +384,134 @@ class Bocs_Order_Hooks {
             return;
         }
         
-        // Check if this is a Bocs renewal order
+        // Check if this is a Bocs order
         $subscription_id = get_post_meta($order->get_id(), '__bocs_subscription_id', true);
         
-        // If this is a Bocs renewal order, disable the default processing email
+        // If this has a Bocs subscription ID, disable the default processing email
+        // as we'll handle it with our custom Bocs email
         if (!empty($subscription_id)) {
             error_log('BOCS DEBUG [Order Hooks]: Disabling default WooCommerce processing email for order #' . $order->get_id());
             add_filter('woocommerce_email_enabled_customer_processing_order', '__return_false', 999);
         }
+    }
+    
+    /**
+     * Ensure subscription emails are sent after API timeouts
+     * 
+     * @param int $order_id Order ID
+     * @return void
+     */
+    public function ensure_subscription_email_sent($order_id) {
+        // Check if the order has a bocs subscription ID
+        $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
+        
+        // If we have a subscription ID, check if the subscription email has been sent
+        if (!empty($subscription_id)) {
+            // Check if either of our subscription emails have been sent
+            $new_customer_email_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true) === 'yes';
+            $existing_customer_email_sent = get_post_meta($order_id, '_bocs_existing_customer_subscription_email_sent', true) === 'yes';
+            
+            // If neither email has been sent, try to send the appropriate one
+            if (!$new_customer_email_sent && !$existing_customer_email_sent) {
+                // Get the email classes
+                $mailer = WC()->mailer();
+                $emails = $mailer->get_emails();
+                
+                // Check if customer has previous Bocs orders
+                $order = wc_get_order($order_id);
+                if ($order) {
+                    $customer_id = $order->get_customer_id();
+                    $is_existing_customer = false;
+                    
+                    if ($customer_id > 0) {
+                        // Get customer's previous orders with Bocs products
+                        $previous_orders = wc_get_orders(array(
+                            'customer_id' => $customer_id,
+                            'status' => array('wc-completed', 'wc-processing'),
+                            'limit' => -1,
+                            'return' => 'ids',
+                        ));
+                        
+                        // Exclude current order
+                        $previous_orders = array_diff($previous_orders, array($order_id));
+                        
+                        // Check if any previous orders had Bocs products
+                        foreach ($previous_orders as $prev_order_id) {
+                            $prev_order = wc_get_order($prev_order_id);
+                            if (!$prev_order) continue;
+                            
+                            // Check if order has Bocs meta
+                            if ($prev_order->get_meta('__bocs_subscription_id')) {
+                                $is_existing_customer = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Increase timeouts to help with connection issues
+                    set_time_limit(30);
+                    
+                    try {
+                        // Add a filter to increase the email sending timeout
+                        add_filter('wp_mail_timeout', function() { return 15; }); // 15 seconds
+                        
+                        if ($is_existing_customer && isset($emails['bocs_existing_customer_subscription'])) {
+                            // Trigger the existing customer email
+                            $emails['bocs_existing_customer_subscription']->trigger($order_id);
+                            error_log('BOCS RECOVERY: Triggered existing customer subscription email for order #' . $order_id);
+                        } elseif (isset($emails['bocs_new_customer_subscription'])) {
+                            // Trigger the new customer email
+                            $emails['bocs_new_customer_subscription']->trigger($order_id);
+                            error_log('BOCS RECOVERY: Triggered new customer subscription email for order #' . $order_id);
+                        }
+                    } catch (Exception $e) {
+                        error_log('BOCS ERROR: Failed to send recovery email: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Retry sending subscription emails that previously failed
+     * 
+     * @return void
+     */
+    public function retry_failed_subscription_emails() {
+        error_log('BOCS RETRY: Starting retry of failed subscription emails');
+        
+        // Query for orders with __bocs_subscription_id that don't have the email sent meta
+        global $wpdb;
+        
+        // Find orders with Bocs subscription IDs
+        $query = $wpdb->prepare(
+            "SELECT p.ID FROM {$wpdb->posts} p
+            JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id
+            LEFT JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = %s
+            WHERE p.post_type = %s
+            AND p.post_status IN ('wc-processing', 'wc-completed')
+            AND pm1.meta_key = %s
+            AND pm1.meta_value != ''
+            AND (pm2.meta_value IS NULL OR pm2.meta_value != %s)
+            LIMIT 50",
+            '_bocs_new_customer_subscription_email_sent',
+            'shop_order',
+            '__bocs_subscription_id',
+            'yes'
+        );
+        
+        $orders = $wpdb->get_results($query);
+        
+        error_log('BOCS RETRY: Found ' . count($orders) . ' orders with missing email confirmations');
+        
+        foreach ($orders as $order) {
+            // Try to send the email for this order
+            $this->ensure_subscription_email_sent($order->ID);
+            
+            // Add a small delay to avoid overwhelming the server
+            usleep(500000); // 0.5 seconds
+        }
+        
+        error_log('BOCS RETRY: Completed retry of failed subscription emails');
     }
 }

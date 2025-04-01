@@ -109,33 +109,61 @@ class Sync
 			throw new Exception("Failed to create Bocs user. API Error: " . $result);
 		}
 
-		// Handle successful response
-		if (isset($result->data)) {
-			$bocs_contact_id = null;
-			
-			if (isset($result->data->data)) {
-				$data = $result->data->data;
-				$bocs_contact_id = is_array($data) ? $data[0]->id : $data->id;
-			} else {
-				$data = $result->data;
-				$bocs_contact_id = is_array($data) ? $data[0]->id : $data->id;
-			}
+		// If there's an error property in the response, throw exception
+		if (isset($result->error) && $result->error) {
+			$error_message = sprintf(
+				"API returned error: %s (Code: %s)",
+				$result->message ?? 'Unknown error',
+				$result->code ?? 'unknown'
+			);
+			$this->logMessage('ERROR', $error_message, [
+				'user_id' => $user['id'],
+				'response' => $result
+			]);
+			throw new Exception($error_message);
+		}
 
-			if ($bocs_contact_id) {
-				add_user_meta($user['id'], 'bocs_contact_id', $bocs_contact_id);
-				$this->logMessage('INFO', "Successfully created Bocs user", [
-					'user_id' => $user['id'],
-					'bocs_id' => $bocs_contact_id
-				]);
-				return $result;
+		// Extract the Bocs contact ID safely
+		$bocs_contact_id = null;
+		
+		if (isset($result->data)) {
+			// Case 1: data->data array structure
+			if (isset($result->data->data) && is_array($result->data->data) && !empty($result->data->data) && isset($result->data->data[0]->id)) {
+				$bocs_contact_id = $result->data->data[0]->id;
+			}
+			// Case 2: data->data object structure
+			else if (isset($result->data->data) && is_object($result->data->data) && isset($result->data->data->id)) {
+				$bocs_contact_id = $result->data->data->id;
+			}
+			// Case 3: data array structure
+			else if (is_array($result->data) && !empty($result->data) && isset($result->data[0]->id)) {
+				$bocs_contact_id = $result->data[0]->id;
+			}
+			// Case 4: data object structure
+			else if (is_object($result->data) && isset($result->data->id)) {
+				$bocs_contact_id = $result->data->id;
 			}
 		}
 
-		$this->logMessage('ERROR', "Invalid response format from Bocs API", [
+		if (!$bocs_contact_id) {
+			$this->logMessage('ERROR', "Could not find Bocs contact ID in response", [
+				'user_id' => $user['id'],
+				'response' => $result
+			]);
+			throw new Exception("Failed to extract Bocs contact ID from API response");
+		}
+
+		// Successfully got a Bocs contact ID
+		$this->logMessage('INFO', "Successfully created Bocs user", [
 			'user_id' => $user['id'],
-			'response' => $result
+			'bocs_id' => $bocs_contact_id
 		]);
-		throw new Exception("Failed to create Bocs user for ID: " . intval($user['id']));
+		
+		// Store the Bocs contact ID in user meta
+		delete_user_meta($user['id'], 'bocs_contact_id'); // Remove any existing ID to avoid duplicates
+		add_user_meta($user['id'], 'bocs_contact_id', $bocs_contact_id);
+		
+		return $result;
 	}
 
 	/**
@@ -816,9 +844,19 @@ class Sync
 	 * @since 1.0.0
 	 */
 	public function bocs_user_register($user_id) {
+		$this->logMessage('INFO', "Starting user registration sync process", [
+			'user_id' => $user_id
+		]);
+		
 		try {
 			// Validate user
 			$user = $this->validateUser($user_id);
+			
+			$this->logMessage('INFO', "User validation successful", [
+				'user_id' => $user_id,
+				'email' => $user->user_email,
+				'username' => $user->user_login
+			]);
 			
 			// Initialize API client
 			$curl = new Curl();
@@ -828,12 +866,31 @@ class Sync
 			
 			// Create new Bocs user if none exists
 			if (empty($bocs_contact_id)) {
-				$this->createBocsUser($user, $curl);
+				$this->logMessage('INFO', "No existing Bocs user found, creating new one", [
+					'user_id' => $user_id
+				]);
+				
+				$bocs_contact_id = $this->createBocsUser($user, $curl);
+				
+				if (empty($bocs_contact_id)) {
+					throw new Exception("Failed to create Bocs user - no contact ID returned");
+				}
+				
+				$this->logMessage('INFO', "Successfully created new Bocs user", [
+					'user_id' => $user_id,
+					'bocs_contact_id' => $bocs_contact_id
+				]);
+			} else {
+				$this->logMessage('INFO', "Using existing Bocs user", [
+					'user_id' => $user_id,
+					'bocs_contact_id' => $bocs_contact_id
+				]);
 			}
 			
-			$this->logMessage('INFO', "Completed user registration sync", [
+			$this->logMessage('INFO', "Completed user registration sync successfully", [
 				'user_id' => $user_id,
-				'email' => $user->user_email
+				'email' => $user->user_email,
+				'bocs_contact_id' => $bocs_contact_id
 			]);
 			
 		} catch (Exception $e) {
@@ -929,27 +986,38 @@ class Sync
 			throw new Exception("Failed to search Bocs user. API Error: " . $result);
 		}
 		
-		// Check if user exists in response
+		// Extract the Bocs contact ID safely
+		$bocs_contact_id = null;
+		
 		if (isset($result->data)) {
-			$bocs_contact_id = null;
-			
-			if (isset($result->data->data)) {
-				$data = $result->data->data;
-				$bocs_contact_id = is_array($data) && !empty($data) ? $data[0]->id : (isset($data->id) ? $data->id : null);
-			} else {
-				$data = $result->data;
-				$bocs_contact_id = is_array($data) && !empty($data) ? $data[0]->id : (isset($data->id) ? $data->id : null);
+			// Case 1: data->data array structure
+			if (isset($result->data->data) && is_array($result->data->data) && !empty($result->data->data) && isset($result->data->data[0]->id)) {
+				$bocs_contact_id = $result->data->data[0]->id;
 			}
-			
-			if ($bocs_contact_id) {
-				$this->logMessage('INFO', "Found existing Bocs user", [
-					'bocs_contact_id' => $bocs_contact_id,
-					'user_id' => $user->ID
-				]);
-				
-				add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-				return $bocs_contact_id;
+			// Case 2: data->data object structure
+			else if (isset($result->data->data) && is_object($result->data->data) && isset($result->data->data->id)) {
+				$bocs_contact_id = $result->data->data->id;
 			}
+			// Case 3: data array structure
+			else if (is_array($result->data) && !empty($result->data) && isset($result->data[0]->id)) {
+				$bocs_contact_id = $result->data[0]->id;
+			}
+			// Case 4: data object structure
+			else if (is_object($result->data) && isset($result->data->id)) {
+				$bocs_contact_id = $result->data->id;
+			}
+		}
+		
+		if ($bocs_contact_id) {
+			$this->logMessage('INFO', "Found existing Bocs user", [
+				'bocs_contact_id' => $bocs_contact_id,
+				'user_id' => $user->ID
+			]);
+			
+			// Store the Bocs contact ID in user meta
+			delete_user_meta($user->ID, 'bocs_contact_id'); // Remove any existing ID to avoid duplicates
+			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
+			return $bocs_contact_id;
 		}
 		
 		$this->logMessage('DEBUG', "No existing Bocs user found", [
@@ -991,51 +1059,25 @@ class Sync
 			$params['role'] = $user->roles[0];
 		}
 
-		$result = $this->_createUser($params);
-
-		// Check for API errors first
-		if (isset($result->error) && $result->error) {
-			$error_message = sprintf(
-				"Failed to create Bocs user (Error: %s, Code: %s)",
-				$result->message ?? 'Unknown error',
-				$result->code ?? 'unknown'
-			);
+		try {
+			$result = $this->_createUser($params);
 			
+			// _createUser will handle adding user meta and throws exceptions on failures
+			// If we get here, the user was created successfully
+			$this->logMessage('INFO', "Successfully created Bocs user via createBocsUser", [
+				'user_id' => $user->ID
+			]);
+			
+			return get_user_meta($user->ID, 'bocs_contact_id', true);
+		} catch (Exception $e) {
+			// Re-throw the exception with additional context
+			$error_message = "Failed to create Bocs user: " . $e->getMessage();
 			$this->logMessage('ERROR', $error_message, [
 				'user_id' => $user->ID,
-				'response' => $result,
 				'params' => $params
 			]);
-			
 			throw new Exception($error_message);
 		}
-
-		// Check for valid response data
-		if ($result->data && 
-			((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-			 (isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
-			
-			$bocs_contact_id = isset($result->data->data) ? 
-							 (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-							 (is_array($result->data) ? $result->data[0]->id : $result->data->id);
-			
-			$this->logMessage('INFO', "Successfully created Bocs user", [
-				'user_id' => $user->ID,
-				'bocs_id' => $bocs_contact_id
-			]);
-
-			add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-			return $bocs_contact_id;
-		}
-
-		// If we get here, we have an unexpected response format
-		$error_message = "Failed to create Bocs user: Unexpected response format";
-		$this->logMessage('ERROR', $error_message, [
-			'user_id' => $user->ID,
-			'response' => $result,
-			'params' => $params
-		]);
-		throw new Exception($error_message);
 	}
 
 	/**
