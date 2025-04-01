@@ -147,6 +147,13 @@ class Bocs
         // Add AJAX action for updating subscription payment method
         $this->loader->add_action('wp_ajax_bocs_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
         $this->loader->add_action('wp_ajax_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
+        $this->loader->add_action('wp_ajax_bocs_create_setup_intent', $bocs_payment_method, 'create_setup_intent');
+        $this->loader->add_action('wp_ajax_bocs_get_stripe_setup', $bocs_payment_method, 'get_stripe_setup');
+        $this->loader->add_action('wp_ajax_bocs_get_subscription_payment_methods', $bocs_payment_method, 'get_subscription_payment_methods');
+        $this->loader->add_action('woocommerce_payment_token_deleted', $bocs_payment_method, 'payment_token_deleted', 10, 2);
+        $this->loader->add_filter('woocommerce_payment_tokens_list', $bocs_payment_method, 'get_customer_payment_tokens', 10, 3);
+        $this->loader->add_filter('woocommerce_payment_gateways', $bocs_payment_method, 'add_stripe_to_gateways');
+        $this->loader->add_action('template_redirect', $bocs_payment_method, 'show_status_messages');
         // Add scripts and styles
         $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'enqueue_scripts');
     }

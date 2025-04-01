@@ -598,53 +598,88 @@ class Bocs_Payment_Method {
                 throw new Exception('BOCS API credentials are not properly configured');
             }
             
-            // Update the subscription with merged metadata
-            error_log("BOCS DEBUG - Sending API request now...");
-            $api_response = wp_remote_request(
-                $request_url,
-                array(
-                    'method' => 'PUT',
-                    'headers' => $request_headers,
-                    'body' => $request_body,
-                    'timeout' => 30
-                )
-            );
-
-            if (is_wp_error($api_response)) {
-                $error_message = $api_response->get_error_message();
-                error_log("BOCS DEBUG - WP Error in API response: " . $error_message);
-                error_log("BOCS DEBUG - WP Error code: " . $api_response->get_error_code());
-                throw new Exception('Failed to update subscription payment details: ' . $error_message);
-            }
+            // Add retry logic for API call
+            $max_retries = 3;
+            $retry_count = 0;
+            $success = false;
+            $last_error = '';
+            $retry_delay = 1; // Start with 1 second delay
             
-            $response_code = wp_remote_retrieve_response_code($api_response);
-            $response_body = wp_remote_retrieve_body($api_response);
-            $response_headers = wp_remote_retrieve_headers($api_response);
-            
-            error_log("BOCS DEBUG - API response code: {$response_code}");
-            error_log("BOCS DEBUG - API response headers: " . json_encode($response_headers));
-            error_log("BOCS DEBUG - API response body: {$response_body}");
-            
-            // Try to parse response body as JSON for more detailed debugging
-            $parsed_body = json_decode($response_body, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($parsed_body)) {
-                error_log("BOCS DEBUG - Parsed API response: " . json_encode($parsed_body));
+            while ($retry_count < $max_retries && !$success) {
+                // If this is a retry, add delay and log
+                if ($retry_count > 0) {
+                    error_log("BOCS DEBUG - Retry attempt {$retry_count} after {$retry_delay} seconds");
+                    sleep($retry_delay);
+                    $retry_delay *= 2; // Exponential backoff
+                }
                 
-                // Check for specific error messages in the response
-                if (isset($parsed_body['message'])) {
-                    error_log("BOCS DEBUG - API error message: " . $parsed_body['message']);
+                // Update the subscription with merged metadata
+                error_log("BOCS DEBUG - Sending API request now for subscription ID: {$subscription_id}");
+                $api_response = wp_remote_request(
+                    $request_url,
+                    array(
+                        'method' => 'PUT',
+                        'headers' => array(
+                            'Content-Type' => 'application/json',
+                            'Organization' => $options['bocs_headers']['organization'],
+                            'Store' => $options['bocs_headers']['store'],
+                            'Authorization' => $options['bocs_headers']['authorization'],
+                        ),
+                        'body' => $request_body,
+                        'timeout' => 30
+                    )
+                );
+    
+                if (is_wp_error($api_response)) {
+                    $error_message = $api_response->get_error_message();
+                    error_log("BOCS DEBUG - WP Error in API response: " . $error_message);
+                    $last_error = 'Failed to update subscription payment details: ' . $error_message;
+                    $retry_count++;
+                    continue;
                 }
-                if (isset($parsed_body['error'])) {
-                    error_log("BOCS DEBUG - API error details: " . json_encode($parsed_body['error']));
+                
+                $response_code = wp_remote_retrieve_response_code($api_response);
+                $response_body = wp_remote_retrieve_body($api_response);
+                
+                error_log("BOCS DEBUG - API response code: {$response_code}");
+                error_log("BOCS DEBUG - API response body: {$response_body}");
+                
+                // Try to parse response body as JSON for more detailed debugging
+                $parsed_body = json_decode($response_body, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($parsed_body)) {
+                    error_log("BOCS DEBUG - Parsed API response: " . json_encode($parsed_body));
+                    
+                    // Check for specific error messages in the response
+                    if (isset($parsed_body['message'])) {
+                        error_log("BOCS DEBUG - API error message: " . $parsed_body['message']);
+                    }
                 }
-            } else {
-                error_log("BOCS DEBUG - Could not parse response as JSON: " . json_last_error_msg());
+                
+                // Check if successful (2xx status code)
+                if ($response_code >= 200 && $response_code < 300) {
+                    $success = true;
+                    break;
+                }
+                
+                // If we got a 500 error, retry
+                if ($response_code == 500) {
+                    error_log("BOCS DEBUG - Server error (500), will retry");
+                    $last_error = "API server error (500) - please try again";
+                    $retry_count++;
+                    continue;
+                }
+                
+                // Other error codes are not retried
+                $parsed_response = json_decode($response_body, true);
+                $error_message = isset($parsed_response['message']) ? $parsed_response['message'] : "API returned status {$response_code}";
+                $last_error = "Failed to update subscription: {$error_message}";
+                break;
             }
             
-            if ($response_code < 200 || $response_code >= 300) {
-                error_log("BOCS DEBUG - API returned error status: {$response_code}, Body: {$response_body}");
-                throw new Exception("Failed to update subscription: API returned status {$response_code}" . 
-                    (isset($parsed_body['message']) ? " - " . $parsed_body['message'] : ""));
+            // If not successful after all retries, throw exception
+            if (!$success) {
+                error_log("BOCS DEBUG - API call failed after {$retry_count} retries");
+                throw new Exception($last_error);
             }
             
             // Log success
@@ -666,7 +701,39 @@ class Bocs_Payment_Method {
             exit;
 
         } catch (Exception $e) {
-            wp_redirect(add_query_arg('payment_updated', 'error', wc_get_account_endpoint_url('bocs-subscriptions')));
+            // Log the full error details
+            $error_message = $e->getMessage();
+            error_log('Payment update failed: ' . $error_message);
+            
+            // Determine if this is a server error or client error
+            $is_server_error = (strpos($error_message, 'API server error (500)') !== false);
+            $error_type = $is_server_error ? 'server' : 'client';
+            
+            // Add the error message to the URL if it's safe to display
+            $redirect_args = array(
+                'payment_updated' => 'error',
+                'error_type' => $error_type
+            );
+            
+            // Add simplified error message for user
+            if ($is_server_error) {
+                $redirect_args['error_message'] = 'The payment service is temporarily unavailable. Please try again later.';
+            } else {
+                // Simplified error message for clients
+                $simple_message = 'There was a problem updating your payment method. Please try again.';
+                
+                // Only add specific error details if it seems safe/useful for the user
+                if (strpos($error_message, 'card') !== false || 
+                    strpos($error_message, 'payment') !== false ||
+                    strpos($error_message, 'subscription') !== false) {
+                    $simple_message = preg_replace('/API returned status \d+ - /', '', $error_message);
+                    $simple_message = preg_replace('/Failed to update subscription: /', '', $simple_message);
+                }
+                
+                $redirect_args['error_message'] = urlencode($simple_message);
+            }
+            
+            wp_redirect(add_query_arg($redirect_args, wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
         }
     }
@@ -897,33 +964,90 @@ class Bocs_Payment_Method {
                 );
             }
             
-            // Update the subscription with merged metadata
-            $api_response = wp_remote_request(
-                $api_url,
-                array(
-                    'method' => 'PUT',
-                    'headers' => array(
-                        'Content-Type' => 'application/json',
-                        'Organization' => $options['bocs_headers']['organization'],
-                        'Store' => $options['bocs_headers']['store'],
-                        'Authorization' => $options['bocs_headers']['authorization'],
-                    ),
-                    'body' => json_encode(array('metaData' => $updated_metadata)),
-                    'timeout' => 30
-                )
-            );
-
-            if (is_wp_error($api_response)) {
-                throw new Exception('Failed to update subscription payment details: ' . $api_response->get_error_message());
-            }
+            // Add retry logic for API call
+            $max_retries = 3;
+            $retry_count = 0;
+            $success = false;
+            $last_error = '';
+            $retry_delay = 1; // Start with 1 second delay
+            $api_url = BOCS_API_URL . "subscriptions/{$subscription_id}";
+            $request_body = json_encode(array('metaData' => $updated_metadata));
             
-            $response_code = wp_remote_retrieve_response_code($api_response);
-            $response_body = wp_remote_retrieve_body($api_response);
-            
-            if ($response_code < 200 || $response_code >= 300) {
+            while ($retry_count < $max_retries && !$success) {
+                // If this is a retry, add delay and log
+                if ($retry_count > 0) {
+                    error_log("BOCS DEBUG - Retry attempt {$retry_count} after {$retry_delay} seconds");
+                    sleep($retry_delay);
+                    $retry_delay *= 2; // Exponential backoff
+                }
+                
+                // Update the subscription with merged metadata
+                error_log("BOCS DEBUG - Sending API request now for subscription ID: {$subscription_id}");
+                $api_response = wp_remote_request(
+                    $api_url,
+                    array(
+                        'method' => 'PUT',
+                        'headers' => array(
+                            'Content-Type' => 'application/json',
+                            'Organization' => $options['bocs_headers']['organization'],
+                            'Store' => $options['bocs_headers']['store'],
+                            'Authorization' => $options['bocs_headers']['authorization'],
+                        ),
+                        'body' => $request_body,
+                        'timeout' => 30
+                    )
+                );
+    
+                if (is_wp_error($api_response)) {
+                    $error_message = $api_response->get_error_message();
+                    error_log("BOCS DEBUG - WP Error in API response: " . $error_message);
+                    $last_error = 'Failed to update subscription payment details: ' . $error_message;
+                    $retry_count++;
+                    continue;
+                }
+                
+                $response_code = wp_remote_retrieve_response_code($api_response);
+                $response_body = wp_remote_retrieve_body($api_response);
+                
+                error_log("BOCS DEBUG - API response code: {$response_code}");
+                error_log("BOCS DEBUG - API response body: {$response_body}");
+                
+                // Try to parse response body as JSON for more detailed debugging
+                $parsed_body = json_decode($response_body, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($parsed_body)) {
+                    error_log("BOCS DEBUG - Parsed API response: " . json_encode($parsed_body));
+                    
+                    // Check for specific error messages in the response
+                    if (isset($parsed_body['message'])) {
+                        error_log("BOCS DEBUG - API error message: " . $parsed_body['message']);
+                    }
+                }
+                
+                // Check if successful (2xx status code)
+                if ($response_code >= 200 && $response_code < 300) {
+                    $success = true;
+                    break;
+                }
+                
+                // If we got a 500 error, retry
+                if ($response_code == 500) {
+                    error_log("BOCS DEBUG - Server error (500), will retry");
+                    $last_error = "API server error (500) - please try again";
+                    $retry_count++;
+                    continue;
+                }
+                
+                // Other error codes are not retried
                 $parsed_response = json_decode($response_body, true);
                 $error_message = isset($parsed_response['message']) ? $parsed_response['message'] : "API returned status {$response_code}";
-                throw new Exception("Failed to update subscription: {$error_message}");
+                $last_error = "Failed to update subscription: {$error_message}";
+                break;
+            }
+            
+            // If not successful after all retries, throw exception
+            if (!$success) {
+                error_log("BOCS DEBUG - API call failed after {$retry_count} retries");
+                throw new Exception($last_error);
             }
             
             // Send email notification for successful payment method update
@@ -2510,6 +2634,36 @@ class Bocs_Payment_Method {
                 'message' => $e->getMessage(),
                 'subscription_id' => $subscription_id ?? 'not set'
             ]);
+        }
+    }
+
+    /**
+     * Display status messages.
+     *
+     * Shows success/error messages after payment method updates.
+     *
+     * @since 0.0.115
+     * @return void
+     */
+    public function show_status_messages() {
+        if (isset($_GET['payment_updated'])) {
+            if ($_GET['payment_updated'] === 'success') {
+                wc_add_notice(__('Payment method updated successfully.', 'bocs'), 'success');
+            } else if ($_GET['payment_updated'] === 'error') {
+                $message = 'Failed to update payment method. Please try again.';
+                
+                // Use the specific error message if available
+                if (isset($_GET['error_message']) && !empty($_GET['error_message'])) {
+                    $message = urldecode($_GET['error_message']);
+                }
+                
+                // Add additional help text for server errors
+                if (isset($_GET['error_type']) && $_GET['error_type'] === 'server') {
+                    $message .= ' If this problem persists, please contact support.';
+                }
+                
+                wc_add_notice($message, 'error');
+            }
         }
     }
 }
