@@ -51,6 +51,11 @@ class Bocs_Bocs
             $this->headers
         );
 
+        // Check if the response is a WP_Error
+        if (is_wp_error($api_response)) {
+            throw new Exception('API request failed: ' . $api_response->get_error_message());
+        }
+
         // Check if the response is valid
         if (!is_array($api_response)) {
             throw new Exception('Invalid API response: Not an array');
