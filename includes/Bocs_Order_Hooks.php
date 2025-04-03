@@ -21,6 +21,9 @@ class Bocs_Order_Hooks {
         // Hook into order status changes for renewal orders
         add_action('woocommerce_order_status_changed', array($this, 'process_renewal_order_confirmation'), 10, 1);
         
+        // Hook into order status changes to sync status to BOCS API
+        add_action('woocommerce_order_status_changed', array($this, 'sync_order_status_to_bocs_api'), 10, 4);
+        
         // Disable default processing email for Bocs renewal orders
         add_action('woocommerce_email_before_order_table', array($this, 'maybe_disable_wc_processing_email'), 10, 4);
         
@@ -30,6 +33,10 @@ class Bocs_Order_Hooks {
         // Also hook into order status changes as a backup for ensuring emails are sent
         add_action('woocommerce_order_status_processing', array($this, 'ensure_subscription_email_sent'), 20, 1);
         add_action('woocommerce_order_status_completed', array($this, 'ensure_subscription_email_sent'), 20, 1);
+        
+        // Hook into order status changes to update user role on first purchase
+        add_action('woocommerce_order_status_processing', array($this, 'update_user_role_on_first_purchase'), 10, 1);
+        add_action('woocommerce_order_status_completed', array($this, 'update_user_role_on_first_purchase'), 10, 1);
         
         // Hook into a custom scheduled event to retry failed emails
         add_action('bocs_retry_failed_emails', array($this, 'retry_failed_subscription_emails'));
@@ -320,7 +327,7 @@ class Bocs_Order_Hooks {
             
             foreach ($metaData as $key => $meta) {
                 if ($meta['key'] === '__bocs_order_status') {
-                    $metaData[$key]['value'] = 'processing';
+                    $metaData[$key]['value'] = $wc_status;
                     $found_meta = true;
                     break;
                 }
@@ -330,14 +337,14 @@ class Bocs_Order_Hooks {
             if (!$found_meta) {
                 $metaData[] = array(
                     'key' => '__bocs_order_status',
-                    'value' => 'processing'
+                    'value' => $wc_status
                 );
             }
             
             // Update the order data
             $bocs_order['metaData'] = $metaData;
             $bocs_order['orderStatus'] = $wc_status;
-            $bocs_order['status'] = 'processing';
+            $bocs_order['status'] = $wc_status;
             
             // Now send the updated order data back to the API
             $update_curl = curl_init();
@@ -513,5 +520,111 @@ class Bocs_Order_Hooks {
         }
         
         error_log('BOCS RETRY: Completed retry of failed subscription emails');
+    }
+
+    /**
+     * Updates a user's role to "subscriber" on their first purchase of any Bocs product
+     * 
+     * @param int $order_id The order ID
+     * @return void
+     */
+    public function update_user_role_on_first_purchase($order_id) {
+        // Get the order
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        // Check if this is a Bocs subscription order
+        $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
+        if (empty($subscription_id)) {
+            // Not a Bocs subscription order, skip
+            return;
+        }
+
+        // Get the customer ID
+        $customer_id = $order->get_customer_id();
+        if (!$customer_id) {
+            return;
+        }
+
+        // Get the WP_User object
+        $user = get_user_by('id', $customer_id);
+        if (!$user) {
+            return;
+        }
+
+        // Check if this is the user's first order with Bocs products
+        $previous_bocs_orders = wc_get_orders(array(
+            'customer_id' => $customer_id,
+            'status' => array('wc-completed', 'wc-processing'),
+            'exclude' => array($order_id), // Exclude current order
+            'limit' => 1,
+            'return' => 'ids',
+            'meta_key' => '__bocs_subscription_id',
+            'meta_compare' => 'EXISTS',
+        ));
+
+        // If this is not their first Bocs order, skip
+        if (!empty($previous_bocs_orders)) {
+            return;
+        }
+
+        // This is their first Bocs order - set user role to "subscriber"
+        $user->set_role('subscriber');
+        error_log('BOCS DEBUG [User Role]: Updated user #' . $customer_id . ' role to subscriber for their first Bocs purchase');
+
+        // Sync role with Bocs API if Sync class is available
+        if (class_exists('Sync')) {
+            $sync = new Sync();
+            try {
+                // Create user data array for sync
+                $user_data = array(
+                    'id' => $user->ID,
+                    'username' => $user->user_login,
+                    'email' => $user->user_email,
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'role' => 'subscriber'
+                );
+                
+                // Get sync method if it exists
+                if (method_exists($sync, 'profile_update')) {
+                    $sync->profile_update($user->ID, $user, array_merge($user_data, array('role' => 'subscriber')));
+                }
+            } catch (Exception $e) {
+                error_log('BOCS ERROR [User Role]: Failed to sync user role with Bocs API: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Sync order status changes to the BOCS API for any order with a subscription ID
+     * 
+     * @param int $order_id Order ID
+     * @param string $status_from Previous status
+     * @param string $status_to New status
+     * @param WC_Order $order Order object
+     */
+    public function sync_order_status_to_bocs_api($order_id, $status_from, $status_to, $order) {
+        // Check if this order has a Bocs subscription ID
+        $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
+        if (!$subscription_id) {
+            $subscription_id = get_post_meta($order_id, '_bocs_subscription_id', true);
+        }
+        
+        if (empty($subscription_id)) {
+            // Not a Bocs subscription order, skip
+            return;
+        }
+        
+        error_log('BOCS DEBUG [Order Hooks]: Syncing status change for order #' . $order_id . ' from ' . $status_from . ' to ' . $status_to);
+        
+        // Update Bocs order status meta
+        update_post_meta($order_id, '__bocs_order_status', $status_to);
+        
+        // Update the order in the BOCS API
+        $api_updated = $this->update_order_in_bocs_api($order_id);
+        error_log('BOCS DEBUG [Order Hooks]: API status update ' . ($api_updated ? 'successful' : 'failed'));
     }
 }
