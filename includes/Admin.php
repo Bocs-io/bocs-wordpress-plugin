@@ -65,6 +65,9 @@ class Admin
         
         // Add test button for upcoming renewal email on order edit page
         add_action('woocommerce_admin_order_data_after_order_details', array($this, 'add_test_upcoming_renewal_email_button'));
+        
+        // Add the BOCS subscription registration setting to WooCommerce Accounts settings
+        add_filter('woocommerce_get_settings_account', array($this, 'add_bocs_registration_setting'));
     }
 
     /**
@@ -3951,6 +3954,47 @@ class Admin
         // Redirect back to order page with success message
         wp_redirect(add_query_arg('bocs_email_sent', '1', get_edit_post_link($order_id, 'raw')));
         exit;
+    }
+
+    /**
+     * Add setting to allow BOCS subscription customers to create an account during checkout
+     * This is similar to WooCommerce Subscriptions' implementation
+     * 
+     * @param array $settings WooCommerce account settings
+     * @return array Modified settings array
+     */
+    public function add_bocs_registration_setting($settings) {
+        // Check if our setting already exists to prevent duplication
+        $setting_exists = false;
+        foreach ($settings as $setting) {
+            if (isset($setting['id']) && 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions' === $setting['id']) {
+                $setting_exists = true;
+                break;
+            }
+        }
+        
+        // Only add if it doesn't exist
+        if (!$setting_exists) {
+            foreach ($settings as $key => $setting) {
+                if (isset($setting['id']) && 'woocommerce_enable_signup_and_login_from_checkout' === $setting['id']) {
+                    $bocs_setting = array(
+                        'id'            => 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions',
+                        'name'          => __('Allow bocs subscription customers to create an account during checkout', 'bocs-wordpress'),
+                        'desc'          => __('Allow bocs subscription customers to create an account during checkout', 'bocs-wordpress'),
+                        'default'       => 'yes',
+                        'type'          => 'checkbox',
+                        'checkboxgroup' => '',
+                        'autoload'      => false,
+                    );
+                    
+                    // Insert our setting after the existing setting
+                    array_splice($settings, $key + 1, 0, array($bocs_setting));
+                    break;
+                }
+            }
+        }
+        
+        return $settings;
     }
 }
 

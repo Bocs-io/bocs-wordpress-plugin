@@ -65,6 +65,7 @@ class Bocs
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-ajax.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-bocs-api.php';
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Payment_API.php';
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Checkout.php';
 
         // Check if WooCommerce is active and email classes exist
         if (function_exists('WC')) {
@@ -302,6 +303,9 @@ class Bocs
         $bocs_cart = new Bocs_Cart();
         $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
         $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
+        
+        // Initialize the checkout class to handle account creation requirements
+        $bocs_checkout = new Bocs_Checkout();
     }
 
     public function define_bocs_email_api()
