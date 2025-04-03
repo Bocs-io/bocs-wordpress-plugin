@@ -1,7 +1,10 @@
 v0.0.132 04/03/2025
-* feat(checkout): enable account creation for BOCS subscription customers
-* feat(orders): sync order status with BOCS API and update user roles
-* fix(api): improve error handling for WP_Error in API responses
+* Account Management: Added account creation for BOCS subscription customers and updated user roles
+* Order Processing: Enhanced synchronization with BOCS API and improved status handling
+* API Integration: Improved error handling and enhanced REST API functionality
+* Email System: Updated templates, added notifications, and improved delivery for subscription events
+* Payment Processing: Enhanced Stripe integration with better UI and error handling
+* Code Quality: Cleaned up initialization code and centralized WooCommerce integration
 
 v0.0.131 04/01/2025
 * Improved payment method management with improved UI
