@@ -1,0 +1,133 @@
+/**
+ * BOCS Checkout Styles - Simplified
+ */
+
+/* General checkout styles for BOCS subscriptions */
+.woocommerce-checkout.bocs-checkout .woocommerce-info {
+    border-left-color: #4e3dc8;
+}
+
+/* Enhanced styling for subscription notices */
+.woocommerce-checkout .bocs-subscription-info {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-left: 3px solid #4e3dc8;
+}
+
+/* Payment section enhancements */
+.woocommerce-checkout.has-bocs-subscription #payment {
+    background-color: #fbfbfb;
+}
+
+/* Save payment method checkbox styling */
+.woocommerce-checkout .save-payment-method-checkbox label {
+    font-weight: 600;
+}
+
+/* Custom recurring totals styling */
+.woocommerce-checkout .bocs-recurring-totals-header th {
+    padding-top: 15px;
+    border-top: 1px solid #e5e5e5;
+    font-weight: 600;
+}
+
+.woocommerce-checkout .bocs-recurring-total td,
+.woocommerce-checkout .bocs-recurring-total th {
+    padding: 10px 0;
+}
+
+/* Tax info styling */
+.woocommerce-checkout .tax-info td {
+    font-size: 0.9em;
+    color: #666;
+    padding-top: 0 !important;
+    text-align: right;
+}
+
+/* Regular recurring totals (backup styling) */
+.woocommerce-checkout .recurring-totals th {
+    font-weight: 600 !important;
+    color: #4e3dc8 !important;
+    padding-top: 20px !important;
+    padding-bottom: 5px !important;
+    font-size: 1.1em !important;
+}
+
+.woocommerce-checkout .recurring-total td,
+.woocommerce-checkout .recurring-total th {
+    font-weight: 700 !important;
+    border-top: 2px solid #e5e5e5 !important;
+    border-bottom: 2px solid #e5e5e5 !important;
+    padding-top: 15px !important;
+    padding-bottom: 15px !important;
+    background-color: #f9f9f9 !important;
+}
+
+.woocommerce-checkout .recurring-total .woocommerce-Price-amount {
+    font-weight: 700 !important;
+    color: #333 !important;
+    font-size: 1.1em !important;
+}
+
+/* Force display the recurring rows */
+.woocommerce-checkout tr.recurring-totals,
+.woocommerce-checkout tr.recurring-total {
+    display: table-row !important;
+    visibility: visible !important;
+}
+
+/* Remove any zero value from display */
+.woocommerce-checkout .recurring-total .woocommerce-Price-amount:contains("$0"),
+.woocommerce-checkout .recurring-total bdi:contains("$0") {
+    visibility: hidden;
+}
+
+/* Hide the original recurring totals */
+.woocommerce-checkout tr.recurring-totals:not(.bocs-recurring-totals-header),
+.woocommerce-checkout tr.recurring-total:not(.bocs-recurring-total) {
+    display: none !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .woocommerce-checkout .bocs-subscription-notice {
+        padding: 10px;
+    }
+}
+
+/* Hide any $0 values */
+tr:has(.woocommerce-Price-amount:contains("$0")) {
+    display: none;
+}
+
+/* Essential subscription info */
+.bocs-subscription-info {
+  margin-bottom: 1em;
+  padding: 1em;
+  background-color: #f8f9fa;
+  border-left: 3px solid #4e3dc8;
+}
+
+/* Basic recurring styles */
+.bocs-recurring-total th,
+.bocs-recurring-total td {
+  padding: 8px 0;
+}
+
+/* Hide zero values */
+tr:has(.amount:contains("0.00")),
+tr:has(.woocommerce-Price-amount:contains("$0")) {
+  display: none;
+}
+
+/* Total due today styling */
+.order-total th {
+  font-size: 0;
+}
+.order-total th:after {
+  content: "Total due today";
+  font-size: 14px;
+  font-weight: bold;
+  color: #3C7B7C;
+} 
