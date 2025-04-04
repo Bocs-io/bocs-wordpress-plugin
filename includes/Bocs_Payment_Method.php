@@ -51,6 +51,14 @@ class Bocs_Payment_Method {
         
         // Add direct debug for payment method retrieval
         add_action('wp_ajax_debug_payment_method', array($this, 'debug_payment_method'));
+        
+        // Add hooks for managing payment methods
+        add_action('wp_ajax_bocs_get_payment_methods', array($this, 'ajax_get_payment_methods'));
+        add_action('wp_ajax_nopriv_bocs_get_payment_methods', array($this, 'ajax_get_payment_methods'));
+        add_action('wp_ajax_bocs_update_payment_method', array($this, 'ajax_update_payment_method'));
+        
+        // Show any payment method status messages
+        add_action('woocommerce_before_account_payment_methods', array($this, 'show_status_messages'));
     }
     
     /**
@@ -2646,24 +2654,15 @@ class Bocs_Payment_Method {
      * @return void
      */
     public function show_status_messages() {
-        if (isset($_GET['payment_updated'])) {
-            if ($_GET['payment_updated'] === 'success') {
-                wc_add_notice(__('Payment method updated successfully.', 'bocs'), 'success');
-            } else if ($_GET['payment_updated'] === 'error') {
-                $message = 'Failed to update payment method. Please try again.';
-                
-                // Use the specific error message if available
-                if (isset($_GET['error_message']) && !empty($_GET['error_message'])) {
-                    $message = urldecode($_GET['error_message']);
-                }
-                
-                // Add additional help text for server errors
-                if (isset($_GET['error_type']) && $_GET['error_type'] === 'server') {
-                    $message .= ' If this problem persists, please contact support.';
-                }
-                
-                wc_add_notice($message, 'error');
-            }
+        // Check for the payment_method_updated flag
+        $payment_method_updated = get_transient('bocs_payment_method_updated_' . get_current_user_id());
+        
+        // Show message if payment method was updated
+        if ($payment_method_updated) {
+            wc_print_notice(__('Your payment method has been successfully updated.', 'bocs-wordpress'), 'success');
+            
+            // Delete the transient so the message is only shown once
+            delete_transient('bocs_payment_method_updated_' . get_current_user_id());
         }
     }
 }

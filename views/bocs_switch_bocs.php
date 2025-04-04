@@ -1260,7 +1260,7 @@ jQuery(document).ready(function($) {
         height: 500,
         buttons: {
             "Continue": function() {
-                const selectedCount = selectedProducts.reduce((total, product) => total + (product.quantity > 0 ? 1 : 0), 0);
+                const selectedCount = selectedProducts.reduce((total, product) => total + product.quantity, 0);
                 const minProducts = parseInt($("#min-products").text());
                 const maxProducts = parseInt($("#max-products").text());
                 
@@ -1624,12 +1624,12 @@ jQuery(document).ready(function($) {
             let value = parseInt(input.val()) || 0;
             
             const selectedCount = selectedProducts.reduce((total, product) => 
-                total + (product.quantity > 0 && product.id !== productId ? 1 : 0), 0);
+                total + (product.id !== productId ? product.quantity : 0), 0);
             
             const maxProducts = parseInt($("#max-products").text());
             
             // Don't allow adding more products if already at max
-            if (value === 0 && selectedCount >= maxProducts) {
+            if (selectedCount >= maxProducts) {
                 alert(`<?php esc_html_e('You can select a maximum of', 'bocs-wordpress'); ?> ${maxProducts} <?php esc_html_e('products.', 'bocs-wordpress'); ?>`);
                 return;
             }
@@ -1663,7 +1663,7 @@ jQuery(document).ready(function($) {
     
     // Update the displayed product count
     function updateProductCount() {
-        const count = selectedProducts.reduce((total, product) => total + (product.quantity > 0 ? 1 : 0), 0);
+        const count = selectedProducts.reduce((total, product) => total + product.quantity, 0);
         $("#product-count").text(count);
     }
     

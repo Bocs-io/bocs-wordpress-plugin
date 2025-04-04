@@ -28,7 +28,7 @@
  */
 async function bocs_add_to_cart(params) {
 
-	console.log(params);
+	// console.log(params);
 
 	const {price, discount, selectedFrequency: frequency, selectedProducts: products, total} = params;
 	let {bocsId, collectionId} = params;
