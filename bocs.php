@@ -15,7 +15,7 @@
  * Plugin Name:       Bocs (alpha)
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.132
+ * Version:           0.0.133
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -35,7 +35,7 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
  * Current plugin version.
  * Start at version 0.0.109 and use SemVer - https://semver.org
  */
-define('BOCS_VERSION', '0.0.132');
+define('BOCS_VERSION', '0.0.133');
 
 /**
  * Flush rewrite rules on plugin load for development
@@ -678,3 +678,16 @@ if (is_admin()) {
         error_log(sprintf('Bocs Plugin: Error initializing updater - %s', $e->getMessage()));
     }
 }
+
+/**
+ * Prevent removal of BOCS coupons
+ */
+function bocs_prevent_coupon_removal($coupon_code) {
+    // Check if it's a BOCS coupon by the prefix
+    if (strpos($coupon_code, 'bocs-') === 0) {
+        // Return false to prevent removing the coupon
+        return false;
+    }
+    return $coupon_code;
+}
+add_filter('woocommerce_remove_coupon_code', 'bocs_prevent_coupon_removal', 10, 1);

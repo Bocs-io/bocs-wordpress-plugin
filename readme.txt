@@ -1,3 +1,10 @@
+v0.0.133 04/11/2025
+* Checkout System: Enhanced subscription display with recurring totals and improved formatting
+* Cart Functionality: Improved add-to-cart flow and payment method integration
+* Admin Interface: Updated administrative dashboard and improved shortcode functionality
+* Templates: Added new checkout templates for better subscription information display
+* User Experience: Enhanced frontend display of subscription frequencies and pricing
+
 v0.0.132 04/03/2025
 * Account Management: Added account creation for BOCS subscription customers and updated user roles
 * Order Processing: Enhanced synchronization with BOCS API and improved status handling
