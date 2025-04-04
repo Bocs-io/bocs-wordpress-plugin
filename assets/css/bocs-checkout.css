@@ -130,4 +130,54 @@ tr:has(.woocommerce-Price-amount:contains("$0")) {
   font-size: 14px;
   font-weight: bold;
   color: #3C7B7C;
+}
+
+/* Hide the remove/X button for coupons in the order summary */
+.woocommerce-checkout .woocommerce-checkout-review-order-table .woocommerce-remove-coupon,
+tr.cart-discount[class*="coupon-bocs-"] td a.woocommerce-remove-coupon,
+tr.cart-discount[class*="coupon-bocs-"] .woocommerce-remove-coupon {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Hide any coupon input field on checkout which may allow removing applied coupon */
+.woocommerce-checkout .checkout_coupon,
+.woocommerce-checkout .coupon,
+.woocommerce-checkout .showcoupon {
+  display: none !important;
+}
+
+/* Additional styles to make coupon code appear like static text without removal option */
+tr.cart-discount[class*="coupon-bocs-"] th,
+tr.cart-discount[class*="coupon-bocs-"] td {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Hide recurring total section with $0 value */
+tr.bocs-recurring-totals-header,
+tr.bocs-recurring-total,
+.wc-block-components-totals-item:has(.wc-block-components-totals-item__label:contains("Recurring total every")),
+.wc-block-components-totals-wrapper:has(.wc-block-components-totals-item__label:contains("Recurring total every")) {
+  display: none !important;
+}
+
+/* Alternative selectors for browsers that don't support :has */
+.wc-block-components-totals-item .wc-block-components-totals-item__label[data-recurring="true"],
+.wp-block-woocommerce-checkout-order-summary-subtotal-block:has([data-recurring="true"]),
+div.wc-block-components-totals-item:has(.wc-block-components-totals-item__description:contains("Starting:")),
+.wc-block-components-totals-item:contains("Recurring total") {
+  display: none !important;
+}
+
+/* Target specifically the block containing "Recurring total every 3rd month" */
+.wc-block-components-totals-item:has(.wc-block-components-totals-item__label:contains("Recurring total every 3rd month")) {
+  display: none !important;
+}
+
+/* Override any inline styles that might enable the X button */
+.woocommerce-checkout .woocommerce-remove-coupon[style] {
+  display: none !important;
 } 

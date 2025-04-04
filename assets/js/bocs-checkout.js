@@ -62,14 +62,20 @@ jQuery(window).on('load', function() {
 				}
 			}
 		}
-		
+
+		// Get the actual total amount from the page
+		var currentTotal = jQuery('.wc-block-components-totals-footer-item-tax-value').first().text();
+		// Remove the dollar sign if needed
+		if (currentTotal.startsWith('$')) {
+			currentTotal = currentTotal.substring(1);
+		}
 		
 		// Create HTML element for recurring total display
 		var htmlElement = '<div data-block-name="woocommerce/checkout-order-summary-totals-block" class="wp-block-woocommerce-checkout-order-summary-totals-block">' +
 			'<div class="wp-block-woocommerce-checkout-order-summary-subtotal-block wc-block-components-totals-wrapper">' +
 			'<div class="wc-block-components-totals-item">' +
 			'<span class="wc-block-components-totals-item__label">Recurring total '+recurringFreq+'</span>' +
-			'<span class="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">$' + total + '</span>' +
+			'<span class="wc-block-formatted-money-amount wc-block-components-formatted-money-amount wc-block-components-totals-item__value">$' + currentTotal + '</span>' +
 			'<div class="wc-block-components-totals-item__description"><span>Starting: ' + formattedDate + '</span></div>' +
 			'</div></div>' +
 			'<div class="wp-block-woocommerce-checkout-order-summary-discount-block wc-block-components-totals-wrapper"></div>' +
@@ -77,7 +83,7 @@ jQuery(window).on('load', function() {
 		
 		// Update DOM elements
 		jQuery('div.wc-block-components-totals-footer-item span.wc-block-components-totals-item__label').text("Total due today");
-		jQuery( jQuery(htmlElement) ).insertBefore( jQuery("div.wp-block-woocommerce-checkout-order-summary-totals-block") );
+		jQuery( jQuery(htmlElement) ).insertAfter( jQuery("div.wc-block-components-totals-footer-item") );
 	}
 });
 
