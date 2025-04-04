@@ -472,7 +472,7 @@ class Admin
             'authId' => $options['bocs_headers']['authorization'] ?? '',
             'update_product_nonce' => wp_create_nonce('ajax-update-product-nonce'),
             'couponNonce' => wp_create_nonce('ajax-create-coupon-nonce'),
-            'isLoggedIn' => is_user_logged_in() ? '1' : '0',
+            'isLoggedIn' => '1', // Always treat users as logged in to show the widget
             'loginURL' => wp_login_url()
         ));
 
@@ -542,7 +542,7 @@ class Admin
                 'bocs-checkout-js', 
                 plugin_dir_url(__FILE__) . '../assets/js/bocs-checkout.js',
                 array('jquery'),
-                '20250324.1',
+                '20250404.4',
                 true
             );
 
@@ -3964,37 +3964,53 @@ class Admin
      * @return array Modified settings array
      */
     public function add_bocs_registration_setting($settings) {
-        // Check if our setting already exists to prevent duplication
-        $setting_exists = false;
-        foreach ($settings as $setting) {
-            if (isset($setting['id']) && 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions' === $setting['id']) {
-                $setting_exists = true;
+        // Find the position after the main signup/login setting
+        $insert_after = false;
+        
+        foreach ($settings as $key => $setting) {
+            if (isset($setting['id']) && 'woocommerce_enable_signup_and_login_from_checkout' === $setting['id']) {
+                $insert_after = $key;
                 break;
             }
         }
         
-        // Only add if it doesn't exist
-        if (!$setting_exists) {
-            foreach ($settings as $key => $setting) {
-                if (isset($setting['id']) && 'woocommerce_enable_signup_and_login_from_checkout' === $setting['id']) {
-                    $bocs_setting = array(
-                        'id'            => 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions',
-                        'name'          => __('Allow bocs subscription customers to create an account during checkout', 'bocs-wordpress'),
-                        'desc'          => __('Allow bocs subscription customers to create an account during checkout', 'bocs-wordpress'),
-                        'default'       => 'yes',
-                        'type'          => 'checkbox',
-                        'checkboxgroup' => '',
-                        'autoload'      => false,
-                    );
-                    
-                    // Insert our setting after the existing setting
-                    array_splice($settings, $key + 1, 0, array($bocs_setting));
-                    break;
-                }
-            }
+        // If we found the position, insert our setting
+        if ($insert_after !== false) {
+            $bocs_setting = array(
+                'id'            => 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions',
+                'name'          => __('Allow BOCS subscription customers to create an account during checkout', 'bocs-wordpress'),
+                'desc'          => __('Allow BOCS subscription customers to create an account during checkout', 'bocs-wordpress'),
+                'default'       => 'yes',
+                'type'          => 'checkbox',
+                'checkboxgroup' => '',
+                'autoload'      => false,
+            );
+            
+            // Insert the new setting after the main signup/login setting
+            array_splice($settings, $insert_after + 1, 0, array($bocs_setting));
         }
         
         return $settings;
+    }
+
+    /**
+     * Display a custom login message for users visiting the login page with a BOCS parameter
+     * 
+     * @param string $message The default login message
+     * @return string Modified login message
+     */
+    public function modify_login_message_for_bocs_users($message) {
+        // Check if there's a BOCS ID in the cookie/session
+        $bocs_id = isset($_COOKIE['__bocs_id']) ? sanitize_text_field($_COOKIE['__bocs_id']) : '';
+        
+        if (!empty($bocs_id)) {
+            return sprintf(
+                '<p class="message">%s</p>',
+                esc_html__('Please log in or create an account to continue with your subscription purchase.', 'bocs-wordpress')
+            );
+        }
+        
+        return $message;
     }
 }
 

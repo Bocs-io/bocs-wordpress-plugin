@@ -279,7 +279,7 @@ class Bocs
         $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
         $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
 
-        $this->loader->add_filter('login_message', $plugin_admin, 'display_bocs_login_message');
+        $this->loader->add_filter('login_message', $plugin_admin, 'modify_login_message_for_bocs_users');
     }
 
     public function define_email_hooks()
