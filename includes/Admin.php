@@ -455,7 +455,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.03.18.2',  // Updated version number to March 17
+            '2025.04.07.1',  // Updated version number to March 17
             true
         );
 

@@ -1,4 +1,4 @@
-v0.0.133 04/11/2025
+v0.0.133 04/04/2025
 * Checkout System: Enhanced subscription display with recurring totals and improved formatting
 * Cart Functionality: Improved add-to-cart flow and payment method integration
 * Admin Interface: Updated administrative dashboard and improved shortcode functionality
