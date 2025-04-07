@@ -589,9 +589,19 @@ function bocs_replace_woocommerce_colors($content) {
 
 /**
  * Filter WooCommerce email content to replace any remaining WooCommerce purple colors with Bocs teal
+ * and add custom inline styles to emails
  */
 function bocs_filter_woocommerce_mail_content($content) {
-    return bocs_replace_woocommerce_colors($content);
+    // Add custom inline styles to the email content
+    $custom_style = '<style>
+        p { font-size: 16px; }
+    </style>';
+    
+    // Apply the existing color replacement
+    $content = bocs_replace_woocommerce_colors($content);
+    
+    // Return the styled content
+    return $custom_style . $content;
 }
 add_filter('woocommerce_mail_content', 'bocs_filter_woocommerce_mail_content', 99);
 
