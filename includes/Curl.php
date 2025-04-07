@@ -11,9 +11,10 @@ class Curl
      * @param string $data
      * @param string $module
      * @param string $id
+     * @param array $headers
      * @return array|object
      */
-    private function process($url, $method = "GET", $data = "", $module = '', $id = '')
+    private function process($url, $method = "GET", $data = "", $module = '', $id = '', $headers = [])
     {
         $result = null;
         $max_retries = 3;
@@ -39,13 +40,19 @@ class Curl
                         CURLOPT_FOLLOWLOCATION => true,
                         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                         CURLOPT_CUSTOMREQUEST => $method,
-                        CURLOPT_HTTPHEADER => array(
+                    );
+                    
+                    // Use custom headers if provided, otherwise use default headers
+                    if (!empty($headers)) {
+                        $header[CURLOPT_HTTPHEADER] = $headers;
+                    } else {
+                        $header[CURLOPT_HTTPHEADER] = array(
                             'Organization: ' . $options['bocs_headers']['organization'],
                             'Content-Type: application/json',
                             'Store: ' . $options['bocs_headers']['store'],
                             'Authorization: ' . $options['bocs_headers']['authorization']
-                        )
-                    );
+                        );
+                    }
 
                     if ($method === "PUT" || $method === "POST" || $data === "") {
                         $header[CURLOPT_POSTFIELDS] = $data;
@@ -145,9 +152,9 @@ class Curl
      *
      * @return array|object
      */
-    public function post($url, $data, $module = '', $id = '')
+    public function post($url, $data, $module = '', $id = '', $headers = [])
     {
-        return $this->process(BOCS_API_URL . $url, "POST", $data, $module, $id);
+        return $this->process(BOCS_API_URL . $url, "POST", $data, $module, $id, $headers);
     }
 
     /**
@@ -155,9 +162,9 @@ class Curl
      *
      * @return array|object
      */
-    public function put($url, $data, $module = '', $id = '')
+    public function put($url, $data, $module = '', $id = '', $headers = [])
     {
-        return $this->process(BOCS_API_URL . $url, "PUT", $data, $module, $id);
+        return $this->process(BOCS_API_URL . $url, "PUT", $data, $module, $id, $headers);
     }
 
     /**
@@ -165,8 +172,8 @@ class Curl
      *
      * @return array|object
      */
-    public function get($url, $module = '', $id = '')
+    public function get($url, $module = '', $id = '', $headers = [])
     {
-        return $this->process(BOCS_API_URL . $url, "GET", NULL, $module, $id);
+        return $this->process(BOCS_API_URL . $url, "GET", NULL, $module, $id, $headers);
     }
 }

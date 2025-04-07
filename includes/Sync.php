@@ -91,7 +91,16 @@ class Sync
 			'data' => $data
 		]);
 
-		$result = $curl->post($url, $data, 'contacts', $user['id']);
+		$options = get_option('bocs_settings');
+
+		$headers = array(
+			'Organization: ' . $options['bocs_headers']['organization'],
+			'Content-Type: application/json',
+			'Store: ' . $options['bocs_headers']['store'],
+			'Authorization: ' . $options['bocs_headers']['authorization']
+		);
+
+		$result = $curl->post($url, $data, 'contacts', $user['id'], $headers);
 
 		if (!$result) {
 			$this->logMessage('ERROR', "Failed to get response from Bocs API", [
@@ -454,23 +463,45 @@ class Sync
 					'email' => $new_user_email
 				]);
 				
-				$get_user = $curl->get($url, 'contacts', $user_id);
+				$options = get_option('bocs_settings');
+				$headers = array(
+					'Organization: ' . $options['bocs_headers']['organization'],
+					'Content-Type: application/json',
+					'Store: ' . $options['bocs_headers']['store'],
+					'Authorization: ' . $options['bocs_headers']['authorization']
+				);
+				
+				$get_user = $curl->get($url, 'contacts', $user_id, $headers);
 
-				if ($result->data && 
-					((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-					(isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
+				if ($get_user && isset($get_user->data)) {
+					$bocs_contact_id = null;
 					
-					$bocs_contact_id = isset($result->data->data) ? 
-									(is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-									(is_array($result->data) ? $result->data[0]->id : $result->data->id);
+					// Case 1: data->data array structure
+					if (isset($get_user->data->data) && is_array($get_user->data->data) && !empty($get_user->data->data) && isset($get_user->data->data[0]->id)) {
+						$bocs_contact_id = $get_user->data->data[0]->id;
+					}
+					// Case 2: data->data object structure
+					else if (isset($get_user->data->data) && is_object($get_user->data->data) && isset($get_user->data->data->id)) {
+						$bocs_contact_id = $get_user->data->data->id;
+					}
+					// Case 3: data array structure
+					else if (is_array($get_user->data) && !empty($get_user->data) && isset($get_user->data[0]->id)) {
+						$bocs_contact_id = $get_user->data[0]->id;
+					}
+					// Case 4: data object structure
+					else if (is_object($get_user->data) && isset($get_user->data->id)) {
+						$bocs_contact_id = $get_user->data->id;
+					}
 					
-					$this->logMessage('INFO', "Successfully created Bocs user", [
-						'user_id' => $user->ID,
-						'bocs_id' => $bocs_contact_id
-					]);
-
-					add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-					return $bocs_contact_id;
+					if ($bocs_contact_id) {
+						$this->logMessage('INFO', "Found existing Bocs user", [
+							'user_id' => $user_id,
+							'bocs_id' => $bocs_contact_id
+						]);
+						
+						add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+						return;
+					}
 				} else {
 					$this->logMessage('DEBUG', "No existing Bocs user found");
 				}
@@ -495,26 +526,41 @@ class Sync
 				
 				$createdUser = $this->_createUser($params);
 
-				if ($createdUser->data && 
-                    ((isset($createdUser->data->data) && (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id)) || 
-                     (isset($createdUser->data) && (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id)))) {
-                    
-                    $bocs_contact_id = isset($createdUser->data->data) ? 
-                                     (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id) : 
-                                     (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id);
-                    
-                    $this->logMessage('INFO', "Successfully created Bocs user", [
-                        'bocs_id' => $bocs_contact_id
-                    ]);
-                    add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
-                } else {
+				if ($createdUser && isset($createdUser->data)) {
+					$bocs_contact_id = null;
+					
+					// Extract the Bocs contact ID safely
+					if (isset($createdUser->data->data) && is_array($createdUser->data->data) && !empty($createdUser->data->data) && isset($createdUser->data->data[0]->id)) {
+						$bocs_contact_id = $createdUser->data->data[0]->id;
+					}
+					else if (isset($createdUser->data->data) && is_object($createdUser->data->data) && isset($createdUser->data->data->id)) {
+						$bocs_contact_id = $createdUser->data->data->id;
+					}
+					else if (is_array($createdUser->data) && !empty($createdUser->data) && isset($createdUser->data[0]->id)) {
+						$bocs_contact_id = $createdUser->data[0]->id;
+					}
+					else if (is_object($createdUser->data) && isset($createdUser->data->id)) {
+						$bocs_contact_id = $createdUser->data->id;
+					}
+					
+					if ($bocs_contact_id) {
+						$this->logMessage('INFO', "Successfully created Bocs user", [
+							'bocs_id' => $bocs_contact_id
+						]);
+						add_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+					} else {
+						$this->logMessage('ERROR', "Created Bocs user but couldn't extract ID", [
+							'response' => $createdUser
+						]);
+					}
+				} else {
 					$this->logMessage('ERROR', "Failed to create Bocs user", [
 						'response' => $createdUser
 					]);
 				}
 			} else {
 				// Update existing user
-				$data = $this->buildJsonData($this->buildUpdateParams($bocs_contact_id, $new_data));
+				$data = $this->buildJsonData($params);
 
 				$url = 'wp/sync/contacts/' . $old_user_data->ID;
 				$this->logMessage('DEBUG', "Updating Bocs user", [
@@ -522,19 +568,27 @@ class Sync
 					'data' => $data
 				]);
 				
-				$addedSync = $curl->put($url, $data, 'contacts', $old_user_data->ID);
+				$options = get_option('bocs_settings');
+				$headers = array(
+					'Organization: ' . $options['bocs_headers']['organization'],
+					'Content-Type: application/json',
+					'Store: ' . $options['bocs_headers']['store'],
+					'Authorization: ' . $options['bocs_headers']['authorization']
+				);
+				
+				$addedSync = $curl->put($url, $data, 'contacts', $old_user_data->ID, $headers);
 
-				if ($addedSync->code != 200) {
+				if (!$addedSync || $addedSync->code != 200) {
 					$this->logMessage('WARNING', "PUT sync failed, attempting POST", [
-						'response_code' => $addedSync->code
+						'response_code' => $addedSync ? $addedSync->code : 'no response'
 					]);
 
 					$url = 'wp/sync/contacts';
-					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID);
+					$createdSync = $curl->post($url, $data, 'contacts', $old_user_data->ID, $headers);
 
-					if ($createdSync->code != 200) {
+					if (!$createdSync || $createdSync->code != 200) {
 						$this->logMessage('ERROR', "POST sync failed, attempting user creation", [
-							'response_code' => $createdSync->code
+							'response_code' => $createdSync ? $createdSync->code : 'no response'
 						]);
 						
 						// Attempt to create new user as fallback
@@ -554,20 +608,35 @@ class Sync
 						]);
 
 						$createdUser = $this->_createUser($params);
-
-						if ($createdUser->data && 
-                            ((isset($createdUser->data->data) && (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id)) || 
-                             (isset($createdUser->data) && (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id)))) {
-                            
-                            $bocs_contact_id = isset($createdUser->data->data) ? 
-                                             (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id) : 
-                                             (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id);
-                            
-                            $this->logMessage('INFO', "Successfully created Bocs user as fallback", [
-                                'bocs_id' => $bocs_contact_id
-                            ]);
-                            update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
-                        } else {
+						
+						if ($createdUser && isset($createdUser->data)) {
+							$bocs_contact_id = null;
+							
+							// Extract the Bocs contact ID safely
+							if (isset($createdUser->data->data) && is_array($createdUser->data->data) && !empty($createdUser->data->data) && isset($createdUser->data->data[0]->id)) {
+								$bocs_contact_id = $createdUser->data->data[0]->id;
+							}
+							else if (isset($createdUser->data->data) && is_object($createdUser->data->data) && isset($createdUser->data->data->id)) {
+								$bocs_contact_id = $createdUser->data->data->id;
+							}
+							else if (is_array($createdUser->data) && !empty($createdUser->data) && isset($createdUser->data[0]->id)) {
+								$bocs_contact_id = $createdUser->data[0]->id;
+							}
+							else if (is_object($createdUser->data) && isset($createdUser->data->id)) {
+								$bocs_contact_id = $createdUser->data->id;
+							}
+							
+							if ($bocs_contact_id) {
+								$this->logMessage('INFO', "Successfully created Bocs user as fallback", [
+									'bocs_id' => $bocs_contact_id
+								]);
+								update_user_meta($old_user_data->ID, 'bocs_contact_id', $bocs_contact_id);
+							} else {
+								$this->logMessage('ERROR', "Created Bocs user but couldn't extract ID", [
+									'response' => $createdUser
+								]);
+							}
+						} else {
 							$this->logMessage('ERROR', "All sync attempts failed", [
 								'final_response' => $createdUser
 							]);
@@ -626,23 +695,43 @@ class Sync
 				'url' => $url
 			]);
 			
-			$get_user = $curl->get($url, 'contacts', $user_id);
+			$options = get_option('bocs_settings');
+			$headers = array(
+				'Organization: ' . $options['bocs_headers']['organization'],
+				'Content-Type: application/json',
+				'Store: ' . $options['bocs_headers']['store'],
+				'Authorization: ' . $options['bocs_headers']['authorization']
+			);
+			
+			$get_user = $curl->get($url, 'contacts', $user_id, $headers);
 
-			if ($result->data && 
-				((isset($result->data->data) && (is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id)) || 
-				(isset($result->data) && (is_array($result->data) ? $result->data[0]->id : $result->data->id)))) {
+			if ($get_user && isset($get_user->data)) {
+				$bocs_contact_id = null;
 				
-				$bocs_contact_id = isset($result->data->data) ? 
-								(is_array($result->data->data) ? $result->data->data[0]->id : $result->data->data->id) : 
-								(is_array($result->data) ? $result->data[0]->id : $result->data->id);
+				// Extract the Bocs contact ID safely
+				if (isset($get_user->data->data) && is_array($get_user->data->data) && !empty($get_user->data->data) && isset($get_user->data->data[0]->id)) {
+					$bocs_contact_id = $get_user->data->data[0]->id;
+				}
+				else if (isset($get_user->data->data) && is_object($get_user->data->data) && isset($get_user->data->data->id)) {
+					$bocs_contact_id = $get_user->data->data->id;
+				}
+				else if (is_array($get_user->data) && !empty($get_user->data) && isset($get_user->data[0]->id)) {
+					$bocs_contact_id = $get_user->data[0]->id;
+				}
+				else if (is_object($get_user->data) && isset($get_user->data->id)) {
+					$bocs_contact_id = $get_user->data->id;
+				}
 				
-				$this->logMessage('INFO', "Successfully created Bocs user", [
-					'user_id' => $user->ID,
-					'bocs_id' => $bocs_contact_id
-				]);
-
-				add_user_meta($user->ID, 'bocs_contact_id', $bocs_contact_id);
-				return $bocs_contact_id;
+				if ($bocs_contact_id) {
+					$this->logMessage('INFO', "Found existing Bocs user", [
+						'bocs_contact_id' => $bocs_contact_id,
+						'user_id' => $user_id
+					]);
+					
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					$this->logMessage('DEBUG', "No valid Bocs ID found in response");
+				}
 			} else {
 				$this->logMessage('DEBUG', "No existing Bocs user found for email", [
 					'email' => $email
@@ -656,29 +745,53 @@ class Sync
 				'user_id' => $user_id
 			]);
 			
-			$params = $this->buildUserParams($email, $first_name, $last_name, $old_userdata, $user_id);
-			$data = $this->buildJsonData($params);
+			$params = [
+				'id' => $user_id,
+				'username' => $old_userdata->user_login,
+				'email' => $email,
+				'first_name' => $first_name,
+				'last_name' => $last_name
+			];
+			
+			if (!empty($old_userdata->roles[0])) {
+				$params['role'] = $old_userdata->roles[0];
+			}
 			
 			$this->logMessage('DEBUG', "Sending create user request", [
 				'params' => $params
 			]);
 			
-			$createdUser = $curl->post('contacts', $data, 'contacts', $user_id);
+			$createdUser = $this->_createUser($params);
 
-			if ($createdUser->data && 
-                ((isset($createdUser->data->data) && (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id)) || 
-                 (isset($createdUser->data) && (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id)))) {
-                
-                $bocs_contact_id = isset($createdUser->data->data) ? 
-                                 (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id) : 
-                                 (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id);
-                
-                $this->logMessage('INFO', "Successfully created Bocs user", [
-                    'bocs_contact_id' => $bocs_contact_id,
-                    'user_id' => $user_id
-                ]);
-                add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
-            } else {
+			if ($createdUser && isset($createdUser->data)) {
+				$bocs_contact_id = null;
+				
+				// Extract the Bocs contact ID safely
+				if (isset($createdUser->data->data) && is_array($createdUser->data->data) && !empty($createdUser->data->data) && isset($createdUser->data->data[0]->id)) {
+					$bocs_contact_id = $createdUser->data->data[0]->id;
+				}
+				else if (isset($createdUser->data->data) && is_object($createdUser->data->data) && isset($createdUser->data->data->id)) {
+					$bocs_contact_id = $createdUser->data->data->id;
+				}
+				else if (is_array($createdUser->data) && !empty($createdUser->data) && isset($createdUser->data[0]->id)) {
+					$bocs_contact_id = $createdUser->data[0]->id;
+				}
+				else if (is_object($createdUser->data) && isset($createdUser->data->id)) {
+					$bocs_contact_id = $createdUser->data->id;
+				}
+				
+				if ($bocs_contact_id) {
+					$this->logMessage('INFO', "Successfully created Bocs user", [
+						'bocs_contact_id' => $bocs_contact_id,
+						'user_id' => $user_id
+					]);
+					add_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					$this->logMessage('ERROR', "Created Bocs user but couldn't extract ID", [
+						'response' => $createdUser
+					]);
+				}
+			} else {
 				$this->logMessage('ERROR', "Failed to create Bocs user", [
 					'user_id' => $user_id,
 					'response' => $createdUser
@@ -695,13 +808,101 @@ class Sync
 			
 			if (!empty($params['do_sync'])) {
 				$data = $this->buildJsonData($params['data']);
+				$curl = new Curl();
 				
+				$url = 'wp/sync/contacts/' . $user_id;
 				$this->logMessage('DEBUG', "Sending sync update request", [
 					'data' => $data,
 					'user_id' => $user_id
 				]);
 				
-				$this->processSyncUpdates($user_id, $data, $old_userdata, $first_name, $last_name);
+				$options = get_option('bocs_settings');
+				$headers = array(
+					'Organization: ' . $options['bocs_headers']['organization'],
+					'Content-Type: application/json',
+					'Store: ' . $options['bocs_headers']['store'],
+					'Authorization: ' . $options['bocs_headers']['authorization']
+				);
+				
+				$addedSync = $curl->put($url, $data, 'contacts', $user_id, $headers);
+
+				if (!$addedSync || $addedSync->code != 200) {
+					$this->logMessage('WARNING', "PUT sync failed, attempting POST", [
+						'response_code' => $addedSync ? $addedSync->code : 'no response',
+						'user_id' => $user_id
+					]);
+
+					$url = 'wp/sync/contacts';
+					$postedSync = $curl->post($url, $data, 'contacts', $user_id, $headers);
+
+					if (!$postedSync || $postedSync->code != 200) {
+						$this->logMessage('WARNING', "POST sync failed, attempting user creation", [
+							'response_code' => $postedSync ? $postedSync->code : 'no response',
+							'user_id' => $user_id
+						]);
+
+						$newParams = [
+							'id' => $user_id,
+							'username' => $old_userdata->user_login,
+							'first_name' => $first_name,
+							'last_name' => $last_name,
+							'email' => $email
+						];
+
+						if (!empty($old_userdata->roles[0])) {
+							$newParams['role'] = $old_userdata->roles[0];
+						}
+
+						$this->logMessage('DEBUG', "Attempting user creation as final fallback", [
+							'params' => $newParams
+						]);
+
+						$createdUser = $this->_createUser($newParams);
+
+						if ($createdUser && isset($createdUser->data)) {
+							$bocs_contact_id = null;
+							
+							// Extract the Bocs contact ID safely
+							if (isset($createdUser->data->data) && is_array($createdUser->data->data) && !empty($createdUser->data->data) && isset($createdUser->data->data[0]->id)) {
+								$bocs_contact_id = $createdUser->data->data[0]->id;
+							}
+							else if (isset($createdUser->data->data) && is_object($createdUser->data->data) && isset($createdUser->data->data->id)) {
+								$bocs_contact_id = $createdUser->data->data->id;
+							}
+							else if (is_array($createdUser->data) && !empty($createdUser->data) && isset($createdUser->data[0]->id)) {
+								$bocs_contact_id = $createdUser->data[0]->id;
+							}
+							else if (is_object($createdUser->data) && isset($createdUser->data->id)) {
+								$bocs_contact_id = $createdUser->data->id;
+							}
+							
+							if ($bocs_contact_id) {
+								$this->logMessage('INFO', "Successfully created user after sync failures", [
+									'bocs_id' => $bocs_contact_id,
+									'user_id' => $user_id
+								]);
+								update_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+							} else {
+								$this->logMessage('ERROR', "Created Bocs user but couldn't extract ID", [
+									'response' => $createdUser
+								]);
+							}
+						} else {
+							$this->logMessage('ERROR', "All sync attempts failed", [
+								'user_id' => $user_id,
+								'final_response' => $createdUser
+							]);
+						}
+					} else {
+						$this->logMessage('INFO', "POST sync successful after failed PUT", [
+							'user_id' => $user_id
+						]);
+					}
+				} else {
+					$this->logMessage('INFO', "Sync update successful", [
+						'user_id' => $user_id
+					]);
+				}
 			} else {
 				$this->logMessage('DEBUG', "No changes detected, skipping sync", [
 					'user_id' => $user_id
@@ -801,20 +1002,35 @@ class Sync
 
 			$createdUser = $this->_createUser($params);
 
-			if ($createdUser->data && 
-                ((isset($createdUser->data->data) && (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id)) || 
-                 (isset($createdUser->data) && (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id)))) {
-                
-                $bocs_contact_id = isset($createdUser->data->data) ? 
-                                 (is_array($createdUser->data->data) ? $createdUser->data->data[0]->id : $createdUser->data->data->id) : 
-                                 (is_array($createdUser->data) ? $createdUser->data[0]->id : $createdUser->data->id);
-                
-                $this->logMessage('INFO', "Successfully created user after sync failures", [
-                    'bocs_id' => $bocs_contact_id,
-                    'user_id' => $user_id
-                ]);
-                update_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
-            } else {
+			if ($createdUser && isset($createdUser->data)) {
+				$bocs_contact_id = null;
+				
+				// Extract the Bocs contact ID safely
+				if (isset($createdUser->data->data) && is_array($createdUser->data->data) && !empty($createdUser->data->data) && isset($createdUser->data->data[0]->id)) {
+					$bocs_contact_id = $createdUser->data->data[0]->id;
+				}
+				else if (isset($createdUser->data->data) && is_object($createdUser->data->data) && isset($createdUser->data->data->id)) {
+					$bocs_contact_id = $createdUser->data->data->id;
+				}
+				else if (is_array($createdUser->data) && !empty($createdUser->data) && isset($createdUser->data[0]->id)) {
+					$bocs_contact_id = $createdUser->data[0]->id;
+				}
+				else if (is_object($createdUser->data) && isset($createdUser->data->id)) {
+					$bocs_contact_id = $createdUser->data->id;
+				}
+				
+				if ($bocs_contact_id) {
+					$this->logMessage('INFO', "Successfully created user after sync failures", [
+						'bocs_id' => $bocs_contact_id,
+						'user_id' => $user_id
+					]);
+					update_user_meta($user_id, 'bocs_contact_id', $bocs_contact_id);
+				} else {
+					$this->logMessage('ERROR', "Created Bocs user but couldn't extract ID", [
+						'response' => $createdUser
+					]);
+				}
+			} else {
 				$this->logMessage('ERROR', "All sync attempts failed", [
 					'user_id' => $user_id,
 					'final_response' => $createdUser
@@ -966,7 +1182,17 @@ class Sync
 		
 		// Construct API query with proper email escaping
 		$url = 'contacts?query=email:"' . esc_attr($user->user_email) . '"';
-		$result = $curl->get($url, 'contacts', $user->ID);
+		
+		$options = get_option('bocs_settings');
+
+		$headers = array(
+			'Organization: ' . $options['bocs_headers']['organization'],
+			'Content-Type: application/json',
+			'Store: ' . $options['bocs_headers']['store'],
+			'Authorization: ' . $options['bocs_headers']['authorization']	
+		);
+
+		$result = $curl->get($url, 'contacts', $user->ID, $headers);
 		
 		// Validate API response
 		if (!$result) {
