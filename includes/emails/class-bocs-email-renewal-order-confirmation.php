@@ -181,6 +181,9 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
 
         error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status: ' . $this->object->get_status());
 
+        // Define the email transient name
+        $email_sent_transient = 'bocs_renewal_email_sent_' . $order_id;
+
         // Explicitly check if the order status is 'processing' - only send for processing status
         if ($this->object->get_status() !== 'processing') {
             error_log('BOCS DEBUG [Renewal Order Confirmation]: Order status is not "processing", skipping email: ' . $this->object->get_status());
@@ -217,7 +220,6 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
 
         // Check if the email has already been sent
         $email_sent = $this->object->get_meta('_bocs_renewal_confirmation_email_sent');
-        $email_sent_transient = 'bocs_renewal_email_sent_' . $order_id;
         
         error_log('BOCS DEBUG [Renewal Order Confirmation]: Email sent status: ' . $email_sent);
         error_log('BOCS DEBUG [Renewal Order Confirmation]: Checking transient: ' . $email_sent_transient);
