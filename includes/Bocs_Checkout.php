@@ -124,9 +124,9 @@ class Bocs_Checkout {
             // Force account creation by setting createaccount to 1
             $_POST['createaccount'] = 1;
             
-            // Also prevent guest checkout by adding filter
-            add_filter('woocommerce_checkout_registration_enabled', '__return_true');
-            add_filter('woocommerce_checkout_registration_required', '__return_true');
+            // Also prevent guest checkout by adding filter with high priority
+            add_filter('woocommerce_checkout_registration_enabled', '__return_true', 999);
+            add_filter('woocommerce_checkout_registration_required', '__return_true', 20);
             
             // Add validation hook to ensure account creation fields are filled
             add_action('woocommerce_checkout_process', array($this, 'validate_required_account_fields'));
@@ -270,7 +270,10 @@ class Bocs_Checkout {
         // Check if this is a subscription checkout
         if ($this->cart_contains_bocs_subscription() && !is_user_logged_in()) {
             // Set to false to bypass WooCommerce's login gate, we'll handle login differently
-            add_filter('woocommerce_checkout_registration_enabled', '__return_true');
+            add_filter('woocommerce_checkout_registration_enabled', '__return_true', 999);
+            
+            // We'll still require registration, but we want the form to display
+            // so we return false to allow the form to render
             return false;
         }
         
@@ -417,11 +420,34 @@ class Bocs_Checkout {
      */
     public function disable_guest_checkout_for_subscriptions($value) {
         if ($this->cart_contains_bocs_subscription()) {
-            $value = 'no';
+            // Only set to 'no' if not a REST API request or if user is logged in
+            // This prevents 'woocommerce_rest_guest_checkout_disabled' error
+            if (!$this->is_rest_api_request() || is_user_logged_in()) {
+                $value = 'no';
+            }
         }
         return $value;
     }
     
+    /**
+     * Check if current request is a REST API request
+     * 
+     * @return bool True if it's a REST API request
+     */
+    private function is_rest_api_request() {
+        if (function_exists('WC') && is_callable(array(WC(), 'is_rest_api_request'))) {
+            return WC()->is_rest_api_request();
+        }
+        
+        // Fallback method if WC()->is_rest_api_request() is not available
+        if (empty($_SERVER['REQUEST_URI'])) {
+            return false;
+        }
+        
+        $rest_prefix = trailingslashit(rest_get_url_prefix());
+        return (strpos($_SERVER['REQUEST_URI'], $rest_prefix) !== false);
+    }
+
     /**
      * Automatically checks the save payment method checkbox during checkout
      * for Bocs subscription products
