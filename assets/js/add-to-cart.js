@@ -45,13 +45,16 @@ async function bocs_add_to_cart(params) {
 	buttonCart.prop('disabled', true);
 	buttonCart.html('Processing...');
 	
+	// Get error display container
+	const errorList = document.querySelector('.mt-2');
+	
 	try {
-		// Validate products stock before proceeding
-		const stockValid = await validateProductStock(products);
-		if (!stockValid) {
+		// Validate products stock and purchasability before proceeding
+		const productsValid = await validateProductStock(products);
+		if (!productsValid) {
 			buttonCart.prop('disabled', false);
 			buttonCart.html('Add to Cart');
-			return; // Don't proceed if stock validation fails
+			return; // Don't proceed if validation fails
 		}
 		
 		// Get frequency details
@@ -103,11 +106,44 @@ async function bocs_add_to_cart(params) {
 			
 			// Redirect to cart
 			window.location.href = escapeUrl(redirectUrl);
+		} else {
+			// Handle case where products couldn't be added
+			buttonCart.prop('disabled', false);
+			buttonCart.html('Add to Cart');
+			
+			// Display error if errorList exists
+			if (errorList) {
+				const errorMessage = `<li class="text-sm product-error text-red-600">* One or more products could not be added to the cart</li>`;
+				// Check if the error already exists
+				if (!errorList.innerHTML.includes(errorMessage)) {
+					errorList.innerHTML += errorMessage;
+				}
+			}
 		}
 	} catch (error) {
-		// Silently handle error and restore button state
+		// Handle errors that may occur during the process
 		buttonCart.prop('disabled', false);
 		buttonCart.html('Add to Cart');
+		
+		// Display error if errorList exists
+		if (errorList) {
+			let errorMessage = "";
+			
+			// Try to parse the error response for more detailed information
+			if (error.responseJSON && error.responseJSON.message) {
+				// Extract error message from API response
+				const message = error.responseJSON.message.replace(/&quot;/g, '"');
+				errorMessage = `<li class="text-sm product-error text-red-600">* ${message}</li>`;
+			} else {
+				// Generic error message as fallback
+				errorMessage = `<li class="text-sm product-error text-red-600">* There was an error processing your request. Please try again.</li>`;
+			}
+			
+			// Check if the error already exists
+			if (!errorList.innerHTML.includes(errorMessage)) {
+				errorList.innerHTML += errorMessage;
+			}
+		}
 	}
 }
 
@@ -135,6 +171,7 @@ async function clearCart() {
 async function addProductsToCart(products) {
 	let allSuccess = true;
 	const buttonCart = jQuery('div#bocs-widget button.ant-btn');
+	const errorList = document.querySelector('.mt-2');
 	
 	for (const product of products) {
 		if (!product.externalSourceId) continue;
@@ -157,11 +194,38 @@ async function addProductsToCart(products) {
 		if (stockCheckResult.success) {
 			// Add product to cart if in stock
 			const addResult = await addSingleProductToCart(wcProductId, product.quantity, product.price);
-			if (!addResult) {
+			if (!addResult.success) {
 				allSuccess = false;
+				
+				// Add error to the error list if it exists
+				if (errorList) {
+					const errorMessage = `<li class="text-sm product-error text-red-600">* ${addResult.errorMessage}</li>`;
+					// Check if error already exists
+					if (!errorList.innerHTML.includes(errorMessage)) {
+						errorList.innerHTML += errorMessage;
+					}
+				}
+				
+				// Update button text to show error temporarily
+				buttonCart.html('Error: Could not add product');
+				setTimeout(() => {
+					buttonCart.html('Add to Cart');
+					buttonCart.prop('disabled', false);
+				}, 3000);
+				return false; // Stop processing if any product fails
 			}
 		} else {
 			allSuccess = false;
+			
+			// Add error to the error list if it exists
+			if (errorList) {
+				const errorMessage = `<li class="text-sm stock-error text-red-600">* ${stockCheckResult.message}</li>`;
+				// Check if error already exists
+				if (!errorList.innerHTML.includes(errorMessage)) {
+					errorList.innerHTML += errorMessage;
+				}
+			}
+			
 			// Display error message to user
 			buttonCart.html('Error: ' + stockCheckResult.message);
 			setTimeout(() => {
@@ -291,7 +355,7 @@ async function checkProductStock(productId, requestedQuantity) {
  * @param {number} productId - WooCommerce product ID
  * @param {number} quantity - Quantity to add
  * @param {number} price - Price of the product
- * @returns {Promise<boolean>} Success status
+ * @returns {Promise<Object>} Result object with success status and error details if applicable
  */
 async function addSingleProductToCart(productId, quantity, price) {
 	// Basic cart data
@@ -304,7 +368,7 @@ async function addSingleProductToCart(productId, quantity, price) {
 	document.cookie = `__bocs_price_${productId}=${price}; path=/`;
 	
 	try {
-		await jQuery.ajax({
+		const response = await jQuery.ajax({
 			url: '/wp-json/wc/store/v1/cart/add-item',
 			method: 'POST',
 			data: data,
@@ -312,10 +376,40 @@ async function addSingleProductToCart(productId, quantity, price) {
 				xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 			}
 		});
-		return true;
+		return { success: true, response };
 	} catch (error) {
-		// Silently handle error
-		return false;
+		// Get product name for better error reporting
+		let productName = `Product #${productId}`;
+		try {
+			const productResponse = await jQuery.ajax({
+				url: `/wp-json/wc/store/v1/products/${productId}`,
+				method: 'GET',
+				beforeSend: function(xhr) {
+					if (window.bocsAjaxObject && bocsAjaxObject.cartNonce) {
+						xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
+					}
+				}
+			});
+			
+			if (productResponse && productResponse.name) {
+				productName = productResponse.name;
+			}
+		} catch (nameError) {
+			// Silently handle error getting product name
+		}
+		
+		// Parse error message if available
+		let errorMessage = `Could not add ${productName} to cart`;
+		if (error.responseJSON && error.responseJSON.message) {
+			errorMessage = error.responseJSON.message.replace(/&quot;/g, '"');
+		}
+		
+		return { 
+			success: false, 
+			error,
+			productName,
+			errorMessage
+		};
 	}
 }
 
@@ -465,12 +559,12 @@ async function validateProductStock(products) {
 	
 	if (!subscriptionButton || !errorList) return true; // If button not found, just return true
 	
-	let allProductsInStock = true;
+	let allProductsValid = true;
 	let errorMessages = [];
 	
 	// Reset error list to only show default messages
 	let defaultErrors = Array.from(errorList.querySelectorAll('li'))
-		.filter(item => !item.classList.contains('stock-error'))
+		.filter(item => !item.classList.contains('stock-error') && !item.classList.contains('product-error'))
 		.map(item => item.outerHTML);
 	errorList.innerHTML = defaultErrors.join('');
 	
@@ -489,42 +583,102 @@ async function validateProductStock(products) {
 			}
 		}
 		
-		// Check stock before enabling button
-		const stockCheckResult = await checkProductStock(wcProductId, product.quantity);
-		
-		if (!stockCheckResult.success) {
-			allProductsInStock = false;
-			
-			// Add product-specific error message
-			try {
-				// Get product name if possible
-				const productResponse = await jQuery.ajax({
-					url: `/wp-json/wc/store/v1/products/${wcProductId}`,
-					method: 'GET',
-					beforeSend: function(xhr) {
+		// Try to get product information
+		try {
+			const productResponse = await jQuery.ajax({
+				url: `/wp-json/wc/store/v1/products/${wcProductId}`,
+				method: 'GET',
+				beforeSend: function(xhr) {
+					if (window.bocsAjaxObject && bocsAjaxObject.cartNonce) {
 						xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
 					}
-				});
-				
-				const productName = productResponse.name || `Product #${wcProductId}`;
-				const errorMessage = `<li class="text-sm stock-error text-red-600">* ${productName}: ${stockCheckResult.message}</li>`;
-				
+				}
+			});
+			
+			const productName = productResponse.name || `Product #${wcProductId}`;
+			
+			// Check if product is available for purchase
+			if (!productResponse.is_purchasable) {
+				allProductsValid = false;
+				const errorMessage = `<li class="text-sm product-error text-red-600">* ${productName} is not available for purchase (may be in draft status)</li>`;
 				if (!errorMessages.includes(errorMessage)) {
 					errorMessages.push(errorMessage);
 				}
-			} catch (error) {
-				// If we can't get the product name, use a generic error
-				const errorMessage = `<li class="text-sm stock-error text-red-600">* Product #${wcProductId}: ${stockCheckResult.message}</li>`;
+				continue; // Skip stock check if product isn't purchasable
+			}
+			
+			// Check if product is in stock
+			if (!productResponse.is_in_stock) {
+				allProductsValid = false;
+				const errorMessage = `<li class="text-sm stock-error text-red-600">* ${productName} is out of stock</li>`;
 				if (!errorMessages.includes(errorMessage)) {
 					errorMessages.push(errorMessage);
 				}
+				continue;
+			}
+			
+			// Check stock quantity if available
+			if (productResponse.has_options === false) {
+				let stockQuantity = productResponse.stock_quantity;
+				
+				// If stock quantity is undefined, fetch it from product meta via AJAX
+				if (stockQuantity === undefined || stockQuantity === null) {
+					try {
+						// Get stock from product meta via AJAX
+						const metaResponse = await jQuery.ajax({
+							url: bocsAjaxObject.ajax_url,
+							method: 'POST',
+							data: {
+								action: 'get_product_stock',
+								product_id: wcProductId,
+								nonce: bocsAjaxObject.nonce
+							}
+						});
+						
+						if (metaResponse.success && metaResponse.data) {
+							stockQuantity = parseInt(metaResponse.data, 10);
+						}
+					} catch (metaError) {
+						// Silently handle error
+					}
+				}
+				
+				// Check if stock quantity is defined and there's enough stock
+				if (stockQuantity !== undefined && stockQuantity !== null) {
+					if (stockQuantity < product.quantity) {
+						allProductsValid = false;
+						const errorMessage = `<li class="text-sm stock-error text-red-600">* ${productName}: Only ${stockQuantity} available</li>`;
+						if (!errorMessages.includes(errorMessage)) {
+							errorMessages.push(errorMessage);
+						}
+					}
+				}
+			}
+			
+		} catch (error) {
+			// Handle API errors
+			allProductsValid = false;
+			let errorMessage = "";
+			
+			// Try to parse the error response for more detailed information
+			if (error.responseJSON && error.responseJSON.message) {
+				// Extract error message from API response
+				const message = error.responseJSON.message.replace(/&quot;/g, '"');
+				errorMessage = `<li class="text-sm product-error text-red-600">* ${message}</li>`;
+			} else {
+				// Generic error message as fallback
+				errorMessage = `<li class="text-sm product-error text-red-600">* Product #${wcProductId} cannot be purchased at this time</li>`;
+			}
+			
+			if (!errorMessages.includes(errorMessage)) {
+				errorMessages.push(errorMessage);
 			}
 		}
 	}
 	
-	// Update UI based on stock validation
-	if (allProductsInStock) {
-		// Enable button if all products have sufficient stock
+	// Update UI based on validation
+	if (allProductsValid) {
+		// Enable button if all products are valid
 		subscriptionButton.disabled = false;
 		subscriptionButton.classList.remove('bg-gray-400');
 		subscriptionButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
@@ -538,7 +692,7 @@ async function validateProductStock(products) {
 		errorList.innerHTML += errorMessages.join('');
 	}
 	
-	return allProductsInStock;
+	return allProductsValid;
 }
 
 /**
