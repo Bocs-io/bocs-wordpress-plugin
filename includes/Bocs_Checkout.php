@@ -65,6 +65,9 @@ class Bocs_Checkout {
         
         // Remove original recurring totals and add our own
         add_action('woocommerce_review_order_before_order_total', array($this, 'remove_original_recurring_totals'), 5);
+        
+        // Change Contact information heading to Account Creation for guests
+        add_filter('woocommerce_billing_fields', array($this, 'change_billing_section_title'), 999);
     }
 
     /**
@@ -78,6 +81,18 @@ class Bocs_Checkout {
             // Hide the createaccount checkbox but ensure account is created
             if (isset($fields['account']['createaccount'])) {
                 $fields['account']['createaccount']['class'][] = 'hidden';
+            }
+            
+            // Ensure account password field is present and required
+            if (!isset($fields['account']['account_password'])) {
+                $fields['account']['account_password'] = array(
+                    'type'              => 'password',
+                    'label'             => __('Create account password', 'woocommerce'),
+                    'required'          => true,
+                    'placeholder'       => _x('Password', 'placeholder', 'woocommerce')
+                );
+            } else {
+                $fields['account']['account_password']['required'] = true;
             }
         }
         return $fields;
@@ -304,16 +319,53 @@ class Bocs_Checkout {
                         $('<input type="hidden" name="createaccount" id="createaccount_hidden" value="1" />').insertAfter('#createaccount');
                     }
                     
-                    // Show the password field
+                    // Ensure the password field is visible - handle different WooCommerce versions
                     $('.create-account').show();
+                    $('.woocommerce-account-fields').show();
+                    $('#account_password_field').show();
                     
                     // Add note about required account
                     if (!$('.account-required-notice').length) {
                         $('<p class="account-required-notice" style="color:#3C7B7C; font-style:italic; margin-top:5px;"><?php echo esc_js(__('Account creation is required for subscription products.', 'bocs-wordpress')); ?></p>').insertAfter('.woocommerce-account-fields .form-row-wide');
                     }
+                    
+                    // Add a notice after the email field about account creation
+                    if (!$('.account-email-notice').length) {
+                        $('<div class="account-email-notice" style="margin: 15px 0; padding: 10px; background-color: #f0f7f7; border-left: 3px solid #3C7B7C;"><strong><?php echo esc_js(__('Creating Your Account:', 'bocs-wordpress')); ?></strong> <?php echo esc_js(__('Your email address will be used as your account username.', 'bocs-wordpress')); ?></div>').insertAfter('#billing_email_field');
+                    }
+                    
+                    // Make the password field more noticeable if it exists
+                    if ($('#account_password_field').length) {
+                        $('#account_password_field').css({
+                            'background-color': '#f0f7f7',
+                            'padding': '15px',
+                            'border-radius': '3px',
+                            'margin-top': '15px',
+                            'border': '1px solid #3C7B7C'
+                        });
+                        
+                        // Add a heading to the password field
+                        if (!$('#account_password_field .password-heading').length) {
+                            $('#account_password_field label').html('<span class="password-heading" style="display:block;margin-bottom:5px;font-size:1.1em;color:#3C7B7C;font-weight:bold;"><?php echo esc_js(__('Create Account Password', 'bocs-wordpress')); ?></span>' + $('#account_password_field label').html());
+                        }
+                    }
                 });
             </script>
             <?php
+            
+            // Add filter to ensure account fields are included
+            add_filter('woocommerce_checkout_registration_required', '__return_true', 9999);
+            add_filter('woocommerce_checkout_registration_enabled', '__return_true', 9999);
+            
+            // Ensure the account password field is added to the form
+            if (!empty($checkout->checkout_fields['account']) && !isset($checkout->checkout_fields['account']['account_password'])) {
+                $checkout->checkout_fields['account']['account_password'] = array(
+                    'type'              => 'password',
+                    'label'             => __('Create account password', 'woocommerce'),
+                    'required'          => true,
+                    'placeholder'       => _x('Password', 'placeholder', 'woocommerce')
+                );
+            }
         }
     }
     
@@ -406,6 +458,57 @@ class Bocs_Checkout {
             .woocommerce-form-login {
                 display: block !important;
                 margin-bottom: 30px;
+            }
+            /* Ensure account creation fields are visible */
+            .woocommerce-account-fields {
+                display: block !important;
+                margin-bottom: 20px;
+                padding: 15px;
+                background-color: #f8f8f8;
+                border-left: 4px solid #3C7B7C;
+            }
+            .woocommerce-account-fields .create-account,
+            #account_password_field {
+                display: block !important; 
+            }
+            .woocommerce-account-fields label {
+                font-weight: bold;
+            }
+            /* Highlight the password field */
+            #account_password_field {
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-left: 3px solid #3C7B7C;
+                margin-top: 10px;
+                background-color: #fff;
+            }
+            /* Highlight the account email field */
+            #billing_email_field {
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-left: 3px solid #3C7B7C;
+                margin-top: 10px !important;
+                background-color: #fff;
+            }
+            /* Add a badge to indicate required account fields */
+            #billing_email_field label::after,
+            #account_password_field label::after {
+                content: ' (Required for Account)';
+                font-size: 0.9em;
+                color: #3C7B7C;
+                font-style: italic;
+                font-weight: normal;
+            }
+            /* Improve section headers in checkout */
+            .woocommerce-billing-fields h3,
+            .woocommerce-shipping-fields h3,
+            .woocommerce-additional-fields h3,
+            #order_review_heading,
+            .bocs-account-creation-heading {
+                color: #3C7B7C;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #ddd;
+                margin-bottom: 20px;
             }
         ";
         
@@ -850,5 +953,44 @@ class Bocs_Checkout {
         
         // Static text with minimal formatting, no dynamic price calculation
         echo '<tr class="bocs-recurring-total"><th>Recurring total</th><td data-title="Recurring total">Same as order total</td></tr>';
+    }
+
+    /**
+     * Changes the billing section title from "Contact information" to "Account Creation" for guests
+     * checking out with BOCS subscriptions
+     *
+     * @param array $fields The billing fields
+     * @return array Modified billing fields
+     */
+    public function change_billing_section_title($fields) {
+        // Only change for guest checkout with BOCS subscription
+        if (!is_user_logged_in() && $this->cart_contains_bocs_subscription()) {
+            // Add a custom section heading at the top of the billing fields
+            echo '<h3 class="bocs-account-creation-heading">' . __('Account Creation', 'bocs-wordpress') . '</h3>';
+            echo '<p class="form-row bocs-account-creation-notice">' . __('Please create an account to manage your subscription.', 'bocs-wordpress') . '</p>';
+            
+            // Add CSS to hide the default "Contact information" heading
+            add_action('wp_footer', function() {
+                ?>
+                <style>
+                    .woocommerce-billing-fields > h3:first-child {
+                        display: none !important;
+                    }
+                    .bocs-account-creation-heading {
+                        margin-top: 0;
+                        font-size: 1.5em;
+                        font-weight: bold;
+                        color: #3C7B7C;
+                    }
+                    .bocs-account-creation-notice {
+                        margin-bottom: 20px;
+                        font-style: italic;
+                    }
+                </style>
+                <?php
+            });
+        }
+        
+        return $fields;
     }
 }
