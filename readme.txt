@@ -1,3 +1,10 @@
+v0.0.134 04/07/2025
+* Cart: Improved product validation and error handling in add-to-cart process
+* Checkout: Enhanced account creation workflow and fixed REST API checkout issues
+* Emails: Improved renewal order email variable declarations for better reliability
+* Version: Updated JavaScript and plugin version numbers
+* Templates: Added custom checkout form template for better subscription handling
+
 v0.0.133 04/04/2025
 * Checkout System: Enhanced subscription display with recurring totals and improved formatting
 * Cart Functionality: Improved add-to-cart flow and payment method integration
