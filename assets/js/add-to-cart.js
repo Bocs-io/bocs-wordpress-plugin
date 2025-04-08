@@ -553,16 +553,18 @@ function escapeUrl(url) {
  * @returns {Promise<boolean>} True if all products have sufficient stock
  */
 async function validateProductStock(products) {
-	// Get the subscription button
+	// Get the subscription button and error containers
 	const subscriptionButton = document.querySelector('.create-subscription-btn');
 	const errorList = document.querySelector('.mt-2');
+	const subscriptionErrorList = document.querySelector('.subscription-errors');
 	
-	if (!subscriptionButton || !errorList) return true; // If button not found, just return true
+	if (!subscriptionButton || !errorList) return true;
 	
 	let allProductsValid = true;
 	let errorMessages = [];
+	let unavailableProducts = [];
 	
-	// Reset error list to only show default messages
+	// Reset error lists
 	let defaultErrors = Array.from(errorList.querySelectorAll('li'))
 		.filter(item => !item.classList.contains('stock-error') && !item.classList.contains('product-error'))
 		.map(item => item.outerHTML);
@@ -577,11 +579,13 @@ async function validateProductStock(products) {
 		// Handle product variations if they exist
 		if (product.variations && product.variations.length > 0) {
 			const variationIds = await getVariationIds(product.variations);
-			
 			if (variationIds.length > 0) {
 				wcProductId = Math.min(...variationIds);
 			}
 		}
+		
+		// Get the product item element
+		const productItem = document.querySelector(`[data-product-id="${wcProductId}"]`)?.closest('.product-list-item');
 		
 		// Try to get product information
 		try {
@@ -601,19 +605,35 @@ async function validateProductStock(products) {
 			if (!productResponse.is_purchasable) {
 				allProductsValid = false;
 				const errorMessage = `<li class="text-sm product-error text-red-600">* ${productName} is not available for purchase (may be in draft status)</li>`;
+				unavailableProducts.push(productName);
+				
 				if (!errorMessages.includes(errorMessage)) {
 					errorMessages.push(errorMessage);
 				}
-				continue; // Skip stock check if product isn't purchasable
+				
+				// Disable product controls
+				if (productItem) {
+					disableProductControls(productItem, "Product not available");
+				}
+				
+				continue;
 			}
 			
 			// Check if product is in stock
 			if (!productResponse.is_in_stock) {
 				allProductsValid = false;
 				const errorMessage = `<li class="text-sm stock-error text-red-600">* ${productName} is out of stock</li>`;
+				unavailableProducts.push(productName);
+				
 				if (!errorMessages.includes(errorMessage)) {
 					errorMessages.push(errorMessage);
 				}
+				
+				// Disable product controls
+				if (productItem) {
+					disableProductControls(productItem, "Out of stock");
+				}
+				
 				continue;
 			}
 			
@@ -621,10 +641,9 @@ async function validateProductStock(products) {
 			if (productResponse.has_options === false) {
 				let stockQuantity = productResponse.stock_quantity;
 				
-				// If stock quantity is undefined, fetch it from product meta via AJAX
+				// If stock quantity is undefined, fetch it from product meta
 				if (stockQuantity === undefined || stockQuantity === null) {
 					try {
-						// Get stock from product meta via AJAX
 						const metaResponse = await jQuery.ajax({
 							url: bocsAjaxObject.ajax_url,
 							method: 'POST',
@@ -648,11 +667,23 @@ async function validateProductStock(products) {
 					if (stockQuantity < product.quantity) {
 						allProductsValid = false;
 						const errorMessage = `<li class="text-sm stock-error text-red-600">* ${productName}: Only ${stockQuantity} available</li>`;
+						unavailableProducts.push(`${productName} (Limited stock: ${stockQuantity})`);
+						
 						if (!errorMessages.includes(errorMessage)) {
 							errorMessages.push(errorMessage);
 						}
+						
+						// Update product controls to show limited stock
+						if (productItem) {
+							updateProductStockLimit(productItem, stockQuantity);
+						}
 					}
 				}
+			}
+			
+			// Enable product controls if everything is valid
+			if (productItem && !unavailableProducts.includes(productName)) {
+				enableProductControls(productItem);
 			}
 			
 		} catch (error) {
@@ -660,52 +691,334 @@ async function validateProductStock(products) {
 			allProductsValid = false;
 			let errorMessage = "";
 			
-			// Try to parse the error response for more detailed information
+			// Try to parse the error response
 			if (error.responseJSON && error.responseJSON.message) {
-				// Extract error message from API response
 				const message = error.responseJSON.message.replace(/&quot;/g, '"');
 				errorMessage = `<li class="text-sm product-error text-red-600">* ${message}</li>`;
+				unavailableProducts.push(`Product #${wcProductId} (Not found)`);
 			} else {
-				// Generic error message as fallback
 				errorMessage = `<li class="text-sm product-error text-red-600">* Product #${wcProductId} cannot be purchased at this time</li>`;
+				unavailableProducts.push(`Product #${wcProductId} (Unavailable)`);
 			}
 			
 			if (!errorMessages.includes(errorMessage)) {
 				errorMessages.push(errorMessage);
 			}
+			
+			// Disable product controls
+			if (productItem) {
+				disableProductControls(productItem, "Product not found");
+			}
 		}
 	}
 	
 	// Update UI based on validation
-	if (allProductsValid) {
-		// Enable button if all products are valid
-		subscriptionButton.disabled = false;
-		subscriptionButton.classList.remove('bg-gray-400');
-		subscriptionButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
-	} else {
-		// Disable button and show error messages
-		subscriptionButton.disabled = true;
-		subscriptionButton.classList.remove('bg-teal-600', 'hover:bg-teal-700');
-		subscriptionButton.classList.add('bg-gray-400');
-		
-		// Add error messages to the list
-		errorList.innerHTML += errorMessages.join('');
-	}
+	updateSubscriptionUI(allProductsValid, errorMessages, unavailableProducts);
 	
 	return allProductsValid;
 }
 
 /**
- * Initialize stock validation for subscription forms
- * This runs after the page loads to check stock of all products initially
- * and sets up mutation observers to validate stock when the form changes
+ * Disables product controls and shows error message
+ * @param {Element} productItem - Product list item element
+ * @param {string} message - Error message to display
  */
-function initializeStockValidation() {
-	// Wait for DOM to be fully loaded
-	jQuery(document).ready(function($) {
+function disableProductControls(productItem, message) {
+	// Disable quantity input
+	const quantityInput = productItem.querySelector('input[name="quantity"]');
+	if (quantityInput) {
+		quantityInput.value = "0";
+		quantityInput.disabled = true;
+	}
+	
+	// Disable plus/minus buttons
+	const buttons = productItem.querySelectorAll('button');
+	buttons.forEach(button => {
+		button.disabled = true;
+		button.classList.remove('bg-teal-600', 'hover:bg-teal-500');
+		button.classList.add('bg-gray-400');
+	});
+	
+	// Add error message
+	let errorDiv = productItem.querySelector('.product-error-message');
+	if (!errorDiv) {
+		errorDiv = document.createElement('div');
+		errorDiv.className = 'product-error-message text-sm text-red-600 mt-2';
+		productItem.querySelector('.shrink-0').appendChild(errorDiv);
+	}
+	errorDiv.textContent = message;
+}
+
+/**
+ * Enables product controls and removes error message
+ * @param {Element} productItem - Product list item element
+ */
+function enableProductControls(productItem) {
+	// Enable quantity input
+	const quantityInput = productItem.querySelector('input[name="quantity"]');
+	if (quantityInput) {
+		quantityInput.disabled = false;
+	}
+	
+	// Enable buttons
+	const buttons = productItem.querySelectorAll('button');
+	buttons.forEach(button => {
+		button.disabled = false;
+		button.classList.remove('bg-gray-400');
+		if (button.classList.contains('rounded-full')) {
+			button.classList.add('bg-teal-600', 'hover:bg-teal-500');
+		}
+	});
+	
+	// Remove error message
+	const errorDiv = productItem.querySelector('.product-error-message');
+	if (errorDiv) {
+		errorDiv.remove();
+	}
+}
+
+/**
+ * Updates product controls to show stock limit
+ * @param {Element} productItem - Product list item element
+ * @param {number} stockLimit - Maximum available stock
+ */
+function updateProductStockLimit(productItem, stockLimit) {
+	const quantityInput = productItem.querySelector('input[name="quantity"]');
+	if (quantityInput) {
+		quantityInput.max = stockLimit;
+		if (parseInt(quantityInput.value) > stockLimit) {
+			quantityInput.value = stockLimit;
+		}
+	}
+	
+	// Add stock limit message
+	let errorDiv = productItem.querySelector('.product-error-message');
+	if (!errorDiv) {
+		errorDiv = document.createElement('div');
+		errorDiv.className = 'product-error-message text-sm text-orange-600 mt-2';
+		productItem.querySelector('.shrink-0').appendChild(errorDiv);
+	}
+	errorDiv.textContent = `Limited stock: ${stockLimit} available`;
+}
+
+/**
+ * Updates subscription UI based on validation results
+ * @param {boolean} isValid - Whether all products are valid
+ * @param {Array} errorMessages - List of error messages
+ * @param {Array} unavailableProducts - List of unavailable products
+ */
+function updateSubscriptionUI(isValid, errorMessages, unavailableProducts) {
+	const subscriptionButton = document.querySelector('.create-subscription-btn');
+	const errorList = document.querySelector('.mt-2');
+	
+	// Update button state
+	if (subscriptionButton) {
+		if (isValid) {
+			subscriptionButton.disabled = false;
+			subscriptionButton.classList.remove('bg-gray-400');
+			subscriptionButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
+		} else {
+			subscriptionButton.disabled = true;
+			subscriptionButton.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+			subscriptionButton.classList.add('bg-gray-400');
+		}
+	}
+	
+	// Update error messages
+	if (errorList) {
+		// Add product availability errors
+		errorList.innerHTML += errorMessages.join('');
+		
+		// Add subscription-specific errors
+		if (unavailableProducts.length > 0) {
+			errorList.innerHTML += `<li class="text-sm text-red-600">*Cannot proceed: Some products are unavailable</li>`;
+		}
+	}
+}
+
+/**
+ * Initializes each product in the list
+ * @param {Element} widget - The BOCS widget element
+ */
+async function initializeProducts(widget) {
+	const productItems = widget.querySelectorAll('.product-list-item');
+	const productChecks = [];
+
+	for (const item of productItems) {
+		productChecks.push(validateProductItem(item));
+	}
+
+	// Wait for all product validations to complete
+	await Promise.all(productChecks);
+}
+
+/**
+ * Validates a single product item
+ * @param {Element} productItem - The product list item element
+ */
+async function validateProductItem(productItem) {
+	try {
+		// Get product ID from the item
+		const productId = productItem.querySelector('[data-product-id]')?.dataset.productId;
+		if (!productId) return;
+
+		// Get product name
+		const productName = productItem.querySelector('h3')?.textContent?.trim() || `Product #${productId}`;
+
+		// Check product status
+		const response = await jQuery.ajax({
+			url: `/wp-json/wc/store/v1/products/${productId}`,
+			method: 'GET',
+			beforeSend: function(xhr) {
+				if (window.bocsAjaxObject && bocsAjaxObject.cartNonce) {
+					xhr.setRequestHeader('Nonce', bocsAjaxObject.cartNonce);
+				}
+			}
+		});
+
+		// Handle different product states
+		if (!response.is_purchasable) {
+			disableProductControls(productItem, "Product not available");
+			addProductError(productItem, `${productName} is not available for purchase`);
+			return;
+		}
+
+		if (!response.is_in_stock) {
+			disableProductControls(productItem, "Out of stock");
+			addProductError(productItem, `${productName} is out of stock`);
+			return;
+		}
+
+		// Check stock quantity if available
+		if (response.has_options === false && response.stock_quantity !== null) {
+			if (response.stock_quantity <= 0) {
+				disableProductControls(productItem, "Out of stock");
+				addProductError(productItem, `${productName} is out of stock`);
+				return;
+			}
+
+			if (response.stock_quantity < 10) { // Example threshold
+				updateProductStockLimit(productItem, response.stock_quantity);
+				addProductWarning(productItem, `Only ${response.stock_quantity} available`);
+				return;
+			}
+		}
+
+		// If we get here, product is available
+		enableProductControls(productItem);
+		
+	} catch (error) {
+		// Handle product not found or API error
+		disableProductControls(productItem, "Product not found");
+		addProductError(productItem, "This product is not available");
+	}
+}
+
+/**
+ * Adds an error message to the product item
+ * @param {Element} productItem - The product list item element
+ * @param {string} message - Error message to display
+ */
+function addProductError(productItem, message) {
+	const errorContainer = getOrCreateMessageContainer(productItem, 'product-error');
+	errorContainer.innerHTML = `<p class="text-sm text-red-600">${message}</p>`;
+	errorContainer.classList.add('mt-2', 'text-center');
+}
+
+/**
+ * Adds a warning message to the product item
+ * @param {Element} productItem - The product list item element
+ * @param {string} message - Warning message to display
+ */
+function addProductWarning(productItem, message) {
+	const warningContainer = getOrCreateMessageContainer(productItem, 'product-warning');
+	warningContainer.innerHTML = `<p class="text-sm text-orange-600">${message}</p>`;
+	warningContainer.classList.add('mt-2', 'text-center');
+}
+
+/**
+ * Gets or creates a message container in the product item
+ * @param {Element} productItem - The product list item element
+ * @param {string} className - Class name for the container
+ * @returns {Element} The message container element
+ */
+function getOrCreateMessageContainer(productItem, className) {
+	let container = productItem.querySelector(`.${className}`);
+	if (!container) {
+		container = document.createElement('div');
+		container.className = className;
+		// Insert after the quantity controls
+		const quantityControls = productItem.querySelector('.shrink-0');
+		quantityControls.parentNode.insertBefore(container, quantityControls.nextSibling);
+	}
+	return container;
+}
+
+/**
+ * Waits for the BOCS widget to be fully loaded
+ * @returns {Promise} Resolves when widget is loaded
+ */
+function waitForBocsWidget() {
+	return new Promise((resolve) => {
+		// Check if widget already exists and is fully loaded
+		const checkWidget = () => {
+			const widget = document.querySelector('div#bocs-widget');
+			if (widget) {
+				// Check for essential child elements
+				const hasProducts = widget.querySelector('.product-list');
+				const hasSubscriptionButton = widget.querySelector('.create-subscription-btn');
+				const hasQuantityInputs = widget.querySelectorAll('input[name="quantity"]').length > 0;
+				
+				if (hasProducts && hasSubscriptionButton && hasQuantityInputs) {
+					resolve(widget);
+					return true;
+				}
+			}
+			return false;
+		};
+		
+		// If widget is not ready, set up observer
+		if (!checkWidget()) {
+			const observer = new MutationObserver((mutations, obs) => {
+				if (checkWidget()) {
+					obs.disconnect(); // Stop observing once widget is ready
+				}
+			});
+			
+			// Start observing document for widget load
+			observer.observe(document.body, {
+				childList: true,
+				subtree: true
+			});
+			
+			// Fallback timeout after 10 seconds
+			setTimeout(() => {
+				observer.disconnect();
+				resolve(null); // Resolve with null if widget doesn't load
+			}, 10000);
+		}
+	});
+}
+
+/**
+ * Initialize stock validation for subscription forms
+ */
+async function initializeStockValidation() {
+	try {
+		// Wait for widget to be loaded
+		const widget = await waitForBocsWidget();
+		
+		if (!widget) {
+			console.warn('BOCS widget did not load within timeout period');
+			return;
+		}
+
+		// Initialize all products first
+		await initializeProducts(widget);
+		
 		// Find the subscription form and button
-		const subscriptionForm = document.querySelector('.create-subscription-btn')?.closest('form');
-		const subscriptionButton = document.querySelector('.create-subscription-btn');
+		const subscriptionForm = widget.querySelector('.create-subscription-btn')?.closest('form');
+		const subscriptionButton = widget.querySelector('.create-subscription-btn');
 		
 		if (!subscriptionForm || !subscriptionButton) {
 			return;
@@ -713,26 +1026,23 @@ function initializeStockValidation() {
 		
 		// Temporarily disable the button until validation completes
 		subscriptionButton.disabled = true;
-		
+
 		// Function to get selected products from the form
 		const getSelectedProducts = () => {
-			// This needs to be customized based on how your form structure works
-			// This is just a placeholder - replace with actual logic to get products
-			
-			// Example pattern - replace with actual form parsing logic:
 			const products = [];
 			
-			// Find all product inputs in the form (this is just an example)
-			const productInputs = subscriptionForm.querySelectorAll('[data-product-id]');
+			// Find all product inputs in the form
+			const productItems = widget.querySelectorAll('.product-list-item');
 			
-			productInputs.forEach(input => {
-				const productId = input.getAttribute('data-product-id');
-				const quantity = parseInt(input.value || "1");
+			productItems.forEach(item => {
+				const productId = item.querySelector('[data-product-id]')?.dataset.productId;
+				const quantityInput = item.querySelector('input[name="quantity"]');
+				const quantity = quantityInput ? parseInt(quantityInput.value || "0") : 0;
 				
-				if (productId) {
+				if (productId && quantity > 0) {
 					products.push({
 						externalSourceId: productId,
-						quantity: quantity || 1
+						quantity: quantity
 					});
 				}
 			});
@@ -756,10 +1066,33 @@ function initializeStockValidation() {
 			}
 		});
 		
+		// Set up mutation observer for dynamic changes
+		const observer = new MutationObserver(async (mutations) => {
+			const products = getSelectedProducts();
+			if (products.length > 0) {
+				await validateProductStock(products);
+			}
+		});
+		
+		// Observe changes to quantity inputs and product list
+		observer.observe(widget.querySelector('.product-list'), {
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['value', 'disabled'],
+			childList: true
+		});
+		
 		// Run initial validation
-		validateInitialStock();
-	});
+		await validateInitialStock();
+		
+	} catch (error) {
+		console.error('Error initializing stock validation:', error);
+	}
 }
 
-// Run stock validation initialization
-initializeStockValidation();
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initializeStockValidation);
+} else {
+	initializeStockValidation();
+}
