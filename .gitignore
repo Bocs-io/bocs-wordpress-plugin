@@ -224,3 +224,6 @@ languages/*.mo
 languages/*.po
 # Don't ignore the template
 !languages/*.pot
+
+# Bocs WordPress Plugin Zip
+bocs-wordpress.zip
