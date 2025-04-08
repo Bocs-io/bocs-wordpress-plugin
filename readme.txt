@@ -1,3 +1,12 @@
+v0.0.135 04/08/2025
+* Cart: Enhanced stock validation with improved UI feedback and controls
+* Cart: Added comprehensive product availability checks and status updates
+* Cart: Implemented dynamic widget loading and initialization
+* Checkout: Improved account creation and registration UX
+* Checkout: Enhanced registration settings handling and descriptions
+* Core: Improved plugin structure and hook organization
+* Core: Optimized admin instance handling for better performance
+
 v0.0.134 04/07/2025
 * Cart: Improved product validation and error handling in add-to-cart process
 * Checkout: Enhanced account creation workflow with improved UI and user guidance
