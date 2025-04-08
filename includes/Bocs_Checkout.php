@@ -197,12 +197,13 @@ class Bocs_Checkout {
             return $registration_enabled;
         }
 
-        // Check if BOCS registration setting is enabled
-        if ($this->is_bocs_registration_enabled()) {
-            $registration_enabled = true;
+        // For BOCS subscriptions, we respect the global WooCommerce setting first
+        if ('yes' === get_option('woocommerce_enable_signup_and_login_from_checkout')) {
+            return true;
         }
 
-        return $registration_enabled;
+        // Then check our specific BOCS setting
+        return 'yes' === get_option('woocommerce_enable_signup_from_checkout_for_bocs_subscriptions', 'yes');
     }
     
     /**
@@ -239,6 +240,12 @@ class Bocs_Checkout {
      * @return bool
      */
     private function is_bocs_registration_enabled() {
+        // First check if WooCommerce allows registration at checkout
+        if ('yes' === get_option('woocommerce_enable_signup_and_login_from_checkout')) {
+            return true;
+        }
+
+        // Then check our specific BOCS setting
         return 'yes' === get_option('woocommerce_enable_signup_from_checkout_for_bocs_subscriptions', 'yes');
     }
 
@@ -304,14 +311,11 @@ class Bocs_Checkout {
     public function add_registration_fields_to_checkout($checkout) {
         // Only add fields if user is not logged in and cart contains BOCS subscription
         if (!is_user_logged_in() && $this->cart_contains_bocs_subscription()) {
-            // Ensure account fields are shown by setting createaccount field
             ?>
             <script type="text/javascript">
                 jQuery(document).ready(function($) {
                     // Check the createaccount checkbox and make it checked by default
                     $('#createaccount').prop('checked', true);
-                    
-                    // Make the checkbox disabled so user can't uncheck it
                     $('#createaccount').prop('disabled', true);
                     
                     // Add a hidden input to ensure the value is passed even when disabled
@@ -319,22 +323,12 @@ class Bocs_Checkout {
                         $('<input type="hidden" name="createaccount" id="createaccount_hidden" value="1" />').insertAfter('#createaccount');
                     }
                     
-                    // Ensure the password field is visible - handle different WooCommerce versions
+                    // Ensure account fields are visible
                     $('.create-account').show();
                     $('.woocommerce-account-fields').show();
                     $('#account_password_field').show();
                     
-                    // Add note about required account
-                    if (!$('.account-required-notice').length) {
-                        $('<p class="account-required-notice" style="color:#3C7B7C; font-style:italic; margin-top:5px;"><?php echo esc_js(__('Account creation is required for subscription products.', 'bocs-wordpress')); ?></p>').insertAfter('.woocommerce-account-fields .form-row-wide');
-                    }
-                    
-                    // Add a notice after the email field about account creation
-                    if (!$('.account-email-notice').length) {
-                        $('<div class="account-email-notice" style="margin: 15px 0; padding: 10px; background-color: #f0f7f7; border-left: 3px solid #3C7B7C;"><strong><?php echo esc_js(__('Creating Your Account:', 'bocs-wordpress')); ?></strong> <?php echo esc_js(__('Your email address will be used as your account username.', 'bocs-wordpress')); ?></div>').insertAfter('#billing_email_field');
-                    }
-                    
-                    // Make the password field more noticeable if it exists
+                    // Style the password field
                     if ($('#account_password_field').length) {
                         $('#account_password_field').css({
                             'background-color': '#f0f7f7',
@@ -343,11 +337,6 @@ class Bocs_Checkout {
                             'margin-top': '15px',
                             'border': '1px solid #3C7B7C'
                         });
-                        
-                        // Add a heading to the password field
-                        if (!$('#account_password_field .password-heading').length) {
-                            $('#account_password_field label').html('<span class="password-heading" style="display:block;margin-bottom:5px;font-size:1.1em;color:#3C7B7C;font-weight:bold;"><?php echo esc_js(__('Create Account Password', 'bocs-wordpress')); ?></span>' + $('#account_password_field label').html());
-                        }
                     }
                 });
             </script>
@@ -399,33 +388,31 @@ class Bocs_Checkout {
     public function maybe_add_subscription_login_notice() {
         // Only show if cart has subscription products and user is not logged in
         if (!is_user_logged_in() && $this->cart_contains_bocs_subscription()) {
-            wc_print_notice(
-                sprintf(
-                    '<strong>%s</strong> %s<br><br>%s %s',
-                    __('Account Required:', 'bocs-wordpress'),
-                    __('You are purchasing a subscription product.', 'bocs-wordpress'),
-                    __('Please', 'bocs-wordpress'),
-                    sprintf(
-                        '%1$s%3$s%2$s %4$s',
-                        '<a href="#" class="showlogin"><strong>',
-                        '</strong></a>',
-                        __('log in', 'bocs-wordpress'),
-                        __('if you have an account, or complete the registration fields below.', 'bocs-wordpress')
-                    )
-                ),
-                'notice'
-            );
+            // Add a comprehensive account creation notice
+            echo '<div class="bocs-account-creation-section" style="margin-bottom: 30px; padding: 20px; background-color: #f8f8f8; border-left: 4px solid #3C7B7C;">';
+            echo '<h3 class="bocs-account-creation-heading" style="margin-top: 0; color: #3C7B7C; font-size: 1.5em; font-weight: bold;">Account Creation</h3>';
+            echo '<p class="bocs-account-creation-notice" style="margin-bottom: 15px;">' . __('Please create an account to manage your subscription.', 'bocs-wordpress') . '</p>';
             
-            // Add an additional highlighted message about account requirements
-            echo '<div class="bocs-account-required-notice" style="margin-bottom: 20px; padding: 15px; background-color: #f8f8f8; border-left: 4px solid #3C7B7C; font-size: 14px;">';
-            echo '<h3 style="margin-top: 0; color: #3C7B7C;">' . __('Why is an account required?', 'bocs-wordpress') . '</h3>';
-            echo '<p>' . __('An account is necessary to:', 'bocs-wordpress') . '</p>';
-            echo '<ul style="list-style-type: disc; margin-left: 20px;">';
+            echo '<div class="bocs-account-benefits" style="margin-top: 15px;">';
+            echo '<p style="font-weight: 600; color: #3C7B7C; margin-bottom: 10px;">' . __('Your account allows you to:', 'bocs-wordpress') . '</p>';
+            echo '<ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 15px;">';
             echo '<li>' . __('Manage your subscription', 'bocs-wordpress') . '</li>';
             echo '<li>' . __('Access your subscription details', 'bocs-wordpress') . '</li>';
             echo '<li>' . __('Update payment methods', 'bocs-wordpress') . '</li>';
             echo '<li>' . __('Control delivery preferences', 'bocs-wordpress') . '</li>';
             echo '</ul>';
+            echo '</div>';
+
+            // Add login option
+            echo '<div class="bocs-login-option" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e5e5;">';
+            echo '<p>' . sprintf(
+                '%s <a href="#" class="showlogin"><strong>%s</strong></a> %s',
+                __('Already have an account?', 'bocs-wordpress'),
+                __('Click here to log in', 'bocs-wordpress'),
+                __('before continuing.', 'bocs-wordpress')
+            ) . '</p>';
+            echo '</div>';
+            
             echo '</div>';
         }
     }
@@ -965,26 +952,12 @@ class Bocs_Checkout {
     public function change_billing_section_title($fields) {
         // Only change for guest checkout with BOCS subscription
         if (!is_user_logged_in() && $this->cart_contains_bocs_subscription()) {
-            // Add a custom section heading at the top of the billing fields
-            echo '<h3 class="bocs-account-creation-heading">' . __('Account Creation', 'bocs-wordpress') . '</h3>';
-            echo '<p class="form-row bocs-account-creation-notice">' . __('Please create an account to manage your subscription.', 'bocs-wordpress') . '</p>';
-            
             // Add CSS to hide the default "Contact information" heading
             add_action('wp_footer', function() {
                 ?>
                 <style>
                     .woocommerce-billing-fields > h3:first-child {
                         display: none !important;
-                    }
-                    .bocs-account-creation-heading {
-                        margin-top: 0;
-                        font-size: 1.5em;
-                        font-weight: bold;
-                        color: #3C7B7C;
-                    }
-                    .bocs-account-creation-notice {
-                        margin-bottom: 20px;
-                        font-style: italic;
                     }
                 </style>
                 <?php

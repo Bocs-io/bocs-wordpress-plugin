@@ -455,7 +455,7 @@ class Admin
                 'jquery',
                 'bocs-widget-script'
             ),
-            '2025.04.07.1',  // Updated version number to March 17
+            '2025.04.08.1',  // Updated version number to April 7
             true
         );
 
@@ -3964,9 +3964,22 @@ class Admin
      * @return array Modified settings array
      */
     public function add_bocs_registration_setting($settings) {
+        // Check if our setting already exists
+        $setting_exists = false;
+        foreach ($settings as $setting) {
+            if (isset($setting['id']) && $setting['id'] === 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions') {
+                $setting_exists = true;
+                break;
+            }
+        }
+        
+        // If setting already exists, return unmodified settings
+        if ($setting_exists) {
+            return $settings;
+        }
+        
         // Find the position after the main signup/login setting
         $insert_after = false;
-        
         foreach ($settings as $key => $setting) {
             if (isset($setting['id']) && 'woocommerce_enable_signup_and_login_from_checkout' === $setting['id']) {
                 $insert_after = $key;
@@ -3978,8 +3991,9 @@ class Admin
         if ($insert_after !== false) {
             $bocs_setting = array(
                 'id'            => 'woocommerce_enable_signup_from_checkout_for_bocs_subscriptions',
-                'name'          => __('Allow BOCS subscription customers to create an account during checkout', 'bocs-wordpress'),
-                'desc'          => __('Allow BOCS subscription customers to create an account during checkout', 'bocs-wordpress'),
+                'name'          => __('BOCS Subscription Account Creation', 'bocs-wordpress'),
+                'desc'          => __('Allow BOCS subscription customers to create an account during checkout even when general checkout registration is disabled', 'bocs-wordpress'),
+                'desc_tip'      => __('This setting only applies when the general "Allow customers to create an account during checkout" setting is disabled. BOCS subscription customers will always be able to create accounts if general checkout registration is enabled.', 'bocs-wordpress'),
                 'default'       => 'yes',
                 'type'          => 'checkbox',
                 'checkboxgroup' => '',
