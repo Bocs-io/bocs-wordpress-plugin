@@ -19,6 +19,11 @@ class Bocs
     protected $version;
 
     /**
+     * The admin instance for the plugin.
+     */
+    protected $admin;
+
+    /**
      * Initialize the plugin.
      */
     public function __construct()
@@ -27,6 +32,7 @@ class Bocs
         $this->plugin_name = BOCS_NAME;
 
         $this->load_dependencies();
+        $this->admin = new Admin();
         $this->define_updater_hooks();
         $this->define_admin_hooks();
         $this->define_public_hooks();
@@ -178,72 +184,56 @@ class Bocs
      */
     private function define_admin_hooks()
     {
-        $plugin_admin = new Admin();
-
-        $this->loader->add_action('enqueue_block_editor_assets', $plugin_admin, 'bocs_widget_script_register');
-        // $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
-        $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'admin_enqueue_scripts');
-
-        $this->loader->add_action('admin_menu', $plugin_admin, 'bocs_add_settings_page');
-        
-        // Add wp_login action hook for user ID check
-        $this->loader->add_action('wp_login', $plugin_admin, 'bocs_user_id_check', 10, 2);
-
-        // @todo - add bocs product type
-        // $this->loader->add_action('init', $plugin_admin, 'register_bocs_product_type');
-
-        $this->loader->add_action('init', $plugin_admin, 'update_widgets_collections');
-
-        $this->loader->add_filter('woocommerce_product_data_tabs', $plugin_admin, 'bocs_product_tab');
-        $this->loader->add_action('woocommerce_product_data_panels', $plugin_admin, 'bocs_product_panel');
-        $this->loader->add_action('admin_footer', $plugin_admin, 'bocs_admin_custom_js');
-        $this->loader->add_action('woocommerce_process_product_meta', $plugin_admin, 'bocs_process_product_meta');
+        $this->loader->add_action('enqueue_block_editor_assets', $this->admin, 'bocs_widget_script_register');
+        $this->loader->add_action('admin_enqueue_scripts', $this->admin, 'admin_enqueue_scripts');
+        $this->loader->add_action('admin_menu', $this->admin, 'bocs_add_settings_page');
+        $this->loader->add_action('wp_login', $this->admin, 'bocs_user_id_check', 10, 2);
+        $this->loader->add_action('init', $this->admin, 'update_widgets_collections');
+        $this->loader->add_filter('woocommerce_product_data_tabs', $this->admin, 'bocs_product_tab');
+        $this->loader->add_action('woocommerce_product_data_panels', $this->admin, 'bocs_product_panel');
+        $this->loader->add_action('admin_footer', $this->admin, 'bocs_admin_custom_js');
+        $this->loader->add_action('woocommerce_process_product_meta', $this->admin, 'bocs_process_product_meta');
 
         // add product
-        $this->loader->add_action('wp_ajax_create_product', $plugin_admin, 'create_product_ajax_callback');
-        $this->loader->add_action('wp_ajax_nopriv_create_product', $plugin_admin, 'create_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_create_product', $this->admin, 'create_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_create_product', $this->admin, 'create_product_ajax_callback');
 
         // create coupon
-        $this->loader->add_action('wp_ajax_create_coupon', $plugin_admin, 'create_coupon_ajax_callback');
-        $this->loader->add_action('wp_ajax_nopriv_create_coupon', $plugin_admin, 'create_coupon_ajax_callback');
+        $this->loader->add_action('wp_ajax_create_coupon', $this->admin, 'create_coupon_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_create_coupon', $this->admin, 'create_coupon_ajax_callback');
 
         // update product
-        $this->loader->add_action('wp_ajax_update_product', $plugin_admin, 'update_product_ajax_callback');
-        $this->loader->add_action('wp_ajax_nopriv_update_product', $plugin_admin, 'update_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_update_product', $this->admin, 'update_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_update_product', $this->admin, 'update_product_ajax_callback');
 
         // search product
-        $this->loader->add_action('wp_ajax_search_product', $plugin_admin, 'search_product_ajax_callback');
-        $this->loader->add_action('wp_ajax_nopriv_search_product', $plugin_admin, 'search_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_search_product', $this->admin, 'search_product_ajax_callback');
+        $this->loader->add_action('wp_ajax_nopriv_search_product', $this->admin, 'search_product_ajax_callback');
 
         // create bocs subscription and order if the order is in processing
-        // $this->loader->add_filter('woocommerce_store_api_add_to_cart_data', $plugin_admin, 'add_custom_to_cart_data', 10, 2);
-        // $this->loader->add_action('woocommerce_add_cart_item_data', $plugin_admin, 'add_custom_cart_item_data', 10, 3);
-        $this->loader->add_action('woocommerce_order_status_processing', $plugin_admin, 'bocs_order_status_processing');
+        $this->loader->add_action('woocommerce_order_status_processing', $this->admin, 'bocs_order_status_processing');
 
         // this is for the saving of the bocs and collections list
-        // so that it will show the default and/or the selected option
-        // with the ones listed
-        $this->loader->add_action('wp_ajax_save_widget_options', $plugin_admin, 'save_widget_options_callback');
-        $this->loader->add_action('wp_ajax_nopriv_save_widget_options', $plugin_admin, 'save_widget_options_callback');
+        $this->loader->add_action('wp_ajax_save_widget_options', $this->admin, 'save_widget_options_callback');
+        $this->loader->add_action('wp_ajax_nopriv_save_widget_options', $this->admin, 'save_widget_options_callback');
 
         // adding icons on the list of users
-        // to determine which one is from WordPress or Bocs
-        $this->loader->add_action('admin_head-users.php', $plugin_admin, 'custom_user_admin_icon_css');
-        $this->loader->add_filter('manage_users_columns', $plugin_admin, 'custom_add_user_column');
-        $this->loader->add_filter('manage_users_custom_column', $plugin_admin, 'custom_admin_user_icon', 15, 3);
+        $this->loader->add_action('admin_head-users.php', $this->admin, 'custom_user_admin_icon_css');
+        $this->loader->add_filter('manage_users_columns', $this->admin, 'custom_add_user_column');
+        $this->loader->add_filter('manage_users_custom_column', $this->admin, 'custom_admin_user_icon', 15, 3);
 
         // adds filter to the list of users
-        $this->loader->add_action('restrict_manage_users', $plugin_admin, 'custom_add_source_filter');
-        $this->loader->add_action('pre_get_users', $plugin_admin, 'custom_filter_users_by_source');
+        $this->loader->add_action('restrict_manage_users', $this->admin, 'custom_add_source_filter');
+        $this->loader->add_action('pre_get_users', $this->admin, 'custom_filter_users_by_source');
 
         // adding metabox on the right side of the page
-        $this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_bocs_widget_metabox');
+        $this->loader->add_action('add_meta_boxes', $this->admin, 'add_bocs_widget_metabox');
 
         // adding meta box on the product page
-        $this->loader->add_action('add_meta_boxes', $plugin_admin, 'add_product_sidebar_to_woocommerce_admin');
+        $this->loader->add_action('add_meta_boxes', $this->admin, 'add_product_sidebar_to_woocommerce_admin');
 
         // adding meta box for the related orders
-        $this->loader->add_action('add_meta_boxes', $plugin_admin, 'show_related_orders');
+        $this->loader->add_action('add_meta_boxes', $this->admin, 'show_related_orders');
     }
 
     /**
@@ -272,14 +262,13 @@ class Bocs
         $this->loader->add_action('woocommerce_review_order_before_order_total', $bocs_cart, 'bocs_review_order_before_order_total');
         $this->loader->add_action('woocommerce_cart_totals_before_order_total', $bocs_cart, 'bocs_cart_totals_before_order_total');
 
-        $plugin_admin = new Admin();
-        $this->loader->add_action('wp_enqueue_scripts', $plugin_admin, 'enqueue_scripts');
-        $this->loader->add_action('template_redirect', $plugin_admin, 'capture_bocs_parameter', 5);
-        $this->loader->add_action('woocommerce_before_checkout_form', $plugin_admin, 'debug_dump_bocs_data', 1);
-        $this->loader->add_action('woocommerce_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
-        $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $plugin_admin, 'custom_order_created_action', 5, 3);
-
-        $this->loader->add_filter('login_message', $plugin_admin, 'modify_login_message_for_bocs_users');
+        // Add public-facing hooks that use the admin instance
+        $this->loader->add_action('wp_enqueue_scripts', $this->admin, 'enqueue_scripts');
+        $this->loader->add_action('template_redirect', $this->admin, 'capture_bocs_parameter', 5);
+        $this->loader->add_action('woocommerce_before_checkout_form', $this->admin, 'debug_dump_bocs_data', 1);
+        $this->loader->add_action('woocommerce_checkout_order_processed', $this->admin, 'custom_order_created_action', 5, 3);
+        $this->loader->add_action('woocommerce_store_api_checkout_order_processed', $this->admin, 'custom_order_created_action', 5, 3);
+        $this->loader->add_filter('login_message', $this->admin, 'modify_login_message_for_bocs_users');
     }
 
     public function define_email_hooks()
