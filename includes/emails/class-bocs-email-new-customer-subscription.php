@@ -192,6 +192,23 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             return;
         }
         
+        // Check if existing customer email was already sent - don't send both
+        $existing_customer_email_sent = $order_obj->get_meta('_bocs_existing_customer_subscription_email_sent');
+        if ($existing_customer_email_sent === 'yes') {
+            $this->log_debug("Existing customer email already sent for order #{$order_id}, skipping new customer email");
+            // Mark as sent to avoid repeated checks
+            update_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', 'skipped');
+            $this->restore_locale();
+            return;
+        }
+        
+        // Make sure customer meets eligibility criteria
+        if (!$this->is_customer_eligible_for_email($order_obj)) {
+            $this->log_debug("Customer not eligible for new customer email for order #{$order_id}");
+            $this->restore_locale();
+            return;
+        }
+        
         // Always send for Bocs subscription orders with valid email
         if ($this->is_enabled() && $this->get_recipient()) {
             try {
@@ -387,8 +404,12 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                     $prev_order = wc_get_order($prev_order_id);
                     if (!$prev_order) continue;
                     
-                    // Check if order has Bocs meta
-                    if ($prev_order->get_meta('__bocs_subscription_id')) {
+                    // Check if order has any Bocs meta
+                    $has_bocs_id = $prev_order->get_meta('__bocs_id');
+                    $has_subscription_id = $prev_order->get_meta('__bocs_subscription_id');
+                    $has_frequency_id = $prev_order->get_meta('__bocs_frequency_id');
+                    
+                    if ($has_bocs_id || $has_subscription_id || $has_frequency_id) {
                         $had_bocs_products = true;
                         break;
                     }
@@ -398,8 +419,13 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             }
         }
         
-        // Only eligible if this is a new customer with a Bocs subscription ID
-        return $is_new_customer && !empty($order->get_meta('__bocs_subscription_id'));
+        // Check if current order has a Bocs ID
+        $has_current_bocs_id = $order->get_meta('__bocs_id') || 
+                              $order->get_meta('__bocs_subscription_id') || 
+                              $order->get_meta('__bocs_frequency_id');
+        
+        // Only eligible if this is a new customer with a Bocs ID in current order
+        return $is_new_customer && $has_current_bocs_id;
     }
 
     /**
