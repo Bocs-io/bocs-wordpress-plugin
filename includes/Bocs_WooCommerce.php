@@ -45,14 +45,12 @@ class Bocs_WooCommerce {
         if (!class_exists('WC_Bocs_Email_New_Customer_Subscription', false)) {
             if (file_exists(plugin_dir_path(__FILE__) . 'emails/class-bocs-email-new-customer-subscription.php')) {
                 include_once plugin_dir_path(__FILE__) . 'emails/class-bocs-email-new-customer-subscription.php';
-                error_log('BOCS DEBUG [WooCommerce]: Loaded new customer subscription email class');
             }
         }
         
         if (!class_exists('WC_Bocs_Email_Existing_Customer_Subscription', false)) {
             if (file_exists(plugin_dir_path(__FILE__) . 'emails/class-bocs-email-existing-customer-subscription.php')) {
                 include_once plugin_dir_path(__FILE__) . 'emails/class-bocs-email-existing-customer-subscription.php';
-                error_log('BOCS DEBUG [WooCommerce]: Loaded existing customer subscription email class');
             }
         }
         
@@ -74,37 +72,30 @@ class Bocs_WooCommerce {
      * @param int $order_id
      */
     public function ensure_subscription_email_sent($order_id) {
-        error_log("BOCS DEBUG [WooCommerce]: Checking order #$order_id for subscription email eligibility");
         
         if (!$order_id) {
-            error_log("BOCS DEBUG [WooCommerce]: No order ID provided");
             return;
         }
         
         $order = wc_get_order($order_id);
         if (!$order) {
-            error_log("BOCS DEBUG [WooCommerce]: Order not found for ID: $order_id");
             return;
         }
         
         $status = $order->get_status();
         if (!in_array($status, array('processing', 'completed'))) {
-            error_log("BOCS DEBUG [WooCommerce]: Order status not eligible: $status");
             return;
         }
         
-        error_log("BOCS DEBUG [WooCommerce]: Order status is eligible: $status");
         
         // Check if this is a Bocs subscription order
         $bocs_id = $order->get_meta('__bocs_id');
         $subscription_id = $order->get_meta('__bocs_subscription_id');
         $frequency_id = $order->get_meta('__bocs_frequency_id');
         
-        error_log("BOCS DEBUG [WooCommerce]: Checking Bocs IDs - bocs_id: $bocs_id, subscription_id: $subscription_id, frequency_id: $frequency_id");
         
         // Skip if not a Bocs order
         if (empty($bocs_id) && empty($subscription_id) && empty($frequency_id)) {
-            error_log("BOCS DEBUG [WooCommerce]: Not a Bocs order, skipping");
             return;
         }
         
@@ -112,26 +103,20 @@ class Bocs_WooCommerce {
         $new_customer_email_sent = $order->get_meta('_bocs_new_customer_subscription_email_sent');
         $existing_customer_email_sent = $order->get_meta('_bocs_existing_customer_subscription_email_sent');
         
-        error_log("BOCS DEBUG [WooCommerce]: Email status - new customer: " . ($new_customer_email_sent ? $new_customer_email_sent : 'not sent') . 
-                 ", existing customer: " . ($existing_customer_email_sent ? $existing_customer_email_sent : 'not sent'));
         
         if ($new_customer_email_sent === 'yes' || $existing_customer_email_sent === 'yes') {
-            error_log("BOCS DEBUG [WooCommerce]: Email already sent, skipping");
             return;
         }
         
         // Get customer info
         $customer_id = $order->get_customer_id();
         if (!$customer_id) {
-            error_log("BOCS DEBUG [WooCommerce]: No customer ID, skipping");
             return;
         }
         
-        error_log("BOCS DEBUG [WooCommerce]: Found customer ID: $customer_id");
         
         // Check if this is an existing customer
         $order_count = wc_get_customer_order_count($customer_id);
-        error_log("BOCS DEBUG [WooCommerce]: Customer order count: $order_count");
         
         // Get the email classes
         $mailer = WC()->mailer();
@@ -139,7 +124,6 @@ class Bocs_WooCommerce {
         
         // For existing customers (with more than 1 order), trigger the existing customer email
         if ($order_count > 1) {
-            error_log("BOCS DEBUG [WooCommerce]: Triggering existing customer subscription email for order #$order_id");
             if (isset($emails['bocs_existing_customer_subscription'])) {
                 $emails['bocs_existing_customer_subscription']->trigger($order_id);
             } else {
@@ -147,7 +131,6 @@ class Bocs_WooCommerce {
             }
         } else {
             // For new customers, trigger the new customer email
-            error_log("BOCS DEBUG [WooCommerce]: Triggering new customer subscription email for order #$order_id");
             if (isset($emails['bocs_new_customer_subscription'])) {
                 $emails['bocs_new_customer_subscription']->trigger($order_id);
             } else {
