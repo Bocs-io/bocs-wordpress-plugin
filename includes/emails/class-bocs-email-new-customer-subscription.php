@@ -171,6 +171,19 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         // Debug log
         $this->log_debug("Processing email for order #{$order_id} with recipient: {$this->recipient}");
         
+        // Double check order count before proceeding - we only want this email for first-time customers
+        $customer_id = $order_obj->get_customer_id();
+        if ($customer_id > 0) {
+            $order_count = wc_get_customer_order_count($customer_id);
+            error_log("BOCS DEBUG [New Customer Email]: Customer order count: {$order_count}");
+            
+            if ($order_count !== 1) {
+                error_log("BOCS DEBUG [New Customer Email]: Skipping email - customer order count is {$order_count}, not 1");
+                $this->restore_locale();
+                return;
+            }
+        }
+        
         // Check if this is a Bocs subscription order
         $bocs_subscription_id = $order_obj->get_meta('__bocs_subscription_id');
         $bocs_frequency_id = $order_obj->get_meta('__bocs_frequency_id');
@@ -478,8 +491,21 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         $this->log_debug("Checking customer eligibility for NEW customer email for order #{$order->get_id()}");
         $this->log_debug("Customer ID: {$customer_id}");
         
+        // Get total order count first - this is more reliable than counting previous orders
+        $order_count = 0;
         if ($customer_id > 0) {
-            // Get customer's previous orders with Bocs products
+            $order_count = wc_get_customer_order_count($customer_id);
+            $this->log_debug("Customer total order count: {$order_count}");
+            
+            // IMPORTANT: For new customer email, we only want to send if total order count is EXACTLY 1
+            if ($order_count > 1) {
+                $this->log_debug("Customer has more than one order (count: {$order_count}), not eligible for NEW customer email");
+                return false;
+            }
+        }
+        
+        if ($customer_id > 0) {
+            // Get customer's previous orders with Bocs products (this is just to check for previous Bocs orders)
             $previous_orders = wc_get_orders(array(
                 'customer_id' => $customer_id,
                 'status' => array('wc-completed', 'wc-processing'),
@@ -520,6 +546,12 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                 
                 $this->log_debug("Found {$bocs_order_count} previous Bocs orders");
                 $is_new_customer = !$had_bocs_products;
+                
+                // If they had previous Bocs orders, they're not eligible for new customer email
+                if ($had_bocs_products) {
+                    $this->log_debug("Customer has previous Bocs orders, not eligible for NEW customer email");
+                    return false;
+                }
             } else {
                 $this->log_debug("No previous orders found, customer is new");
             }
@@ -538,11 +570,14 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                         ", subscription_id: " . ($has_subscription_id ? 'yes' : 'no') . 
                         ", frequency_id: " . ($has_frequency_id ? 'yes' : 'no'));
         
-        // Only eligible if this is a new customer with a Bocs ID in current order
-        $is_eligible = $is_new_customer && $has_current_bocs_id;
+        // FINAL ELIGIBILITY CHECK:
+        // 1. Must be their first order (order count = 1)
+        // 2. Must have a Bocs ID in current order
+        // 3. Must not have previous Bocs orders
+        $is_eligible = ($order_count === 1) && $is_new_customer && $has_current_bocs_id;
         
         $this->log_debug("Customer is " . ($is_eligible ? 'eligible' : 'not eligible') . 
-                      " for new customer email (is new customer: " . ($is_new_customer ? 'yes' : 'no') . 
+                      " for new customer email (order count: {$order_count}, is new customer: " . ($is_new_customer ? 'yes' : 'no') . 
                       ", has current Bocs ID: " . ($has_current_bocs_id ? 'yes' : 'no') . ")");
                       
         return $is_eligible;
