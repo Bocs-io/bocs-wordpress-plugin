@@ -74,21 +74,30 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             return 'yes'; // Always enable this email
         }, 999, 1);
         
-        // Prevent default WooCommerce emails for Bocs subscription orders
-        add_filter('woocommerce_email_enabled_new_order', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_processing_order', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_completed_order', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_new_account', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_on_hold_order', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_invoice', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_note', array($this, 'maybe_disable_wc_email'), 10, 2);
-        add_filter('woocommerce_email_enabled_customer_refunded_order', array($this, 'maybe_disable_wc_email'), 10, 2);
+        // Prevent ALL default WooCommerce emails for Bocs subscription orders with highest priority (999)
+        // For admin emails
+        add_filter('woocommerce_email_enabled_new_order', array($this, 'maybe_disable_wc_email'), 999, 2);
         
-        // Add a more aggressive filter to catch all emails
-        add_filter('woocommerce_mail_callback', array($this, 'maybe_disable_all_wc_emails'), 10, 1);
+        // For customer emails
+        add_filter('woocommerce_email_enabled_customer_processing_order', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_completed_order', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_new_account', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_on_hold_order', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_invoice', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_note', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_refunded_order', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_customer_reset_password', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_failed_order', array($this, 'maybe_disable_wc_email'), 999, 2);
+        add_filter('woocommerce_email_enabled_cancelled_order', array($this, 'maybe_disable_wc_email'), 999, 2);
         
-        // Also hook earlier in the process to disable emails
-        add_action('woocommerce_before_template_part', array($this, 'maybe_disable_email_template'), 10, 4);
+        // Add a more aggressive filter to catch all emails at mail sending level
+        add_filter('woocommerce_mail_callback', array($this, 'maybe_disable_all_wc_emails'), 999, 1);
+        
+        // Also hook earlier in the process to disable email templates
+        add_action('woocommerce_before_template_part', array($this, 'maybe_disable_email_template'), 5, 4);
+        
+        // Highest level interception - WordPress mail filter - only use if needed
+        add_filter('pre_wp_mail', array($this, 'maybe_block_wp_mail'), 999, 2);
     }
 
     /**
@@ -459,18 +468,35 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             return $enabled;
         }
         
-        // Check if this is a Bocs subscription order
-        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        error_log("BOCS DEBUG [New Customer Email]: Checking if WooCommerce email should be disabled for order #{$order->get_id()}");
         
-        // If this is a Bocs subscription order, disable the default email
-        if (!empty($bocs_subscription_id)) {
+        // Check if this is a Bocs subscription order by looking for any Bocs identifiers
+        $bocs_id = $order->get_meta('__bocs_id');
+        $subscription_id = $order->get_meta('__bocs_subscription_id');
+        $frequency_id = $order->get_meta('__bocs_frequency_id');
+        
+        // If this has any Bocs identifiers, let's disable standard WooCommerce emails
+        if (!empty($bocs_id) || !empty($subscription_id) || !empty($frequency_id)) {
+            error_log("BOCS DEBUG [New Customer Email]: Found Bocs identifiers, disabling WooCommerce email");
+            
             // Check if we've already sent our custom email for this order
             $order_id = $order->get_id();
             $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
             
             // If our email has been sent or will be sent, disable the default email
             if ($already_sent === 'yes' || $this->is_customer_eligible_for_email($order)) {
+                error_log("BOCS DEBUG [New Customer Email]: Email already sent or customer eligible, disabling WooCommerce email");
                 return false;
+            }
+            
+            // Also check if this is a new customer with exactly 1 order - if so, we'll handle it, disable WC emails
+            $customer_id = $order->get_customer_id();
+            if ($customer_id > 0) {
+                $order_count = wc_get_customer_order_count($customer_id);
+                if ($order_count === 1) {
+                    error_log("BOCS DEBUG [New Customer Email]: New customer (order count: 1), disabling WooCommerce email");
+                    return false;
+                }
             }
         }
         
@@ -584,7 +610,8 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
     }
 
     /**
-     * Maybe disable all WooCommerce emails for Bocs subscription orders
+     * Maybe disable all WooCommerce emails for Bocs subscription orders - this is a more aggressive approach
+     * that intercepts the mail callback
      *
      * @param callable $callback The original email callback
      * @return callable|bool
@@ -604,12 +631,31 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         
         // If we have an order, check if it's a Bocs subscription
         if ($order && is_a($order, 'WC_Order')) {
-            // Check if this is a Bocs subscription order
-            $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+            // Check if this is a Bocs subscription order by looking for any Bocs identifiers
+            $bocs_id = $order->get_meta('__bocs_id');
+            $subscription_id = $order->get_meta('__bocs_subscription_id');
+            $frequency_id = $order->get_meta('__bocs_frequency_id');
             
-            // If this is a Bocs subscription order, disable the default email
-            if (!empty($bocs_subscription_id)) {
-                return false; // Disable the email entirely
+            // If this has any Bocs identifiers, let's disable standard WooCommerce emails
+            if (!empty($bocs_id) || !empty($subscription_id) || !empty($frequency_id)) {
+                // Get order details
+                $order_id = $order->get_id();
+                $customer_id = $order->get_customer_id();
+                
+                // Check if this is a first-time customer
+                if ($customer_id > 0) {
+                    $order_count = wc_get_customer_order_count($customer_id);
+                    if ($order_count === 1) {
+                        error_log("BOCS DEBUG [New Customer Email]: Intercepting mail callback for new customer order #{$order_id}");
+                        return false; // Disable the email entirely
+                    }
+                }
+                
+                // Also check if our email would apply to this order
+                if ($this->is_customer_eligible_for_email($order)) {
+                    error_log("BOCS DEBUG [New Customer Email]: Intercepting mail callback for eligible order #{$order_id}");
+                    return false; // Disable the email entirely
+                }
             }
         }
         
@@ -618,6 +664,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
 
     /**
      * Maybe disable WooCommerce email templates for Bocs subscription orders
+     * This is the earliest hook we can use to prevent template rendering
      *
      * @param string $template_name Template name
      * @param string $template_path Template path
@@ -630,26 +677,147 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             // Check if we have access to the order
             if (isset($args['order']) && is_a($args['order'], 'WC_Order')) {
                 $order = $args['order'];
+                $order_id = $order->get_id();
                 
-                // Check if this is a Bocs subscription order
-                $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+                // Check if this is a Bocs subscription order by looking for any Bocs identifiers
+                $bocs_id = $order->get_meta('__bocs_id');
+                $subscription_id = $order->get_meta('__bocs_subscription_id');
+                $frequency_id = $order->get_meta('__bocs_frequency_id');
                 
-                // If this is a Bocs subscription order, prevent the template from loading
-                if (!empty($bocs_subscription_id)) {
-                    // For admin notifications, use a filter to prevent rendering
-                    if (strpos($template_name, 'emails/admin-new-order.php') !== false || 
-                        strpos($template_name, 'emails/admin-') !== false) {
-                        // Add a filter that will return an empty string for this template
+                // If this has any Bocs identifiers
+                if (!empty($bocs_id) || !empty($subscription_id) || !empty($frequency_id)) {
+                    // Check if this is a first-time customer
+                    $customer_id = $order->get_customer_id();
+                    if ($customer_id > 0) {
+                        $order_count = wc_get_customer_order_count($customer_id);
+                        
+                        // For first-time customers, we'll use our own email
+                        if ($order_count === 1) {
+                            error_log("BOCS DEBUG [New Customer Email]: Blocking template {$template_name} for new customer order #{$order_id}");
+                            
+                            // Use the empty template for all email templates
+                            add_filter('wc_get_template', function($template, $template_name_filter) use ($template_name) {
+                                if ($template_name_filter === $template_name) {
+                                    // Return empty template
+                                    return plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/emails/empty-template.php';
+                                }
+                                return $template;
+                            }, 999, 2);
+                        }
+                    }
+                    
+                    // Also check if our email would apply to this order
+                    if ($this->is_customer_eligible_for_email($order)) {
+                        error_log("BOCS DEBUG [New Customer Email]: Blocking template {$template_name} for order #{$order_id}");
+                        
+                        // Use the empty template for all email templates
                         add_filter('wc_get_template', function($template, $template_name_filter) use ($template_name) {
                             if ($template_name_filter === $template_name) {
+                                // Return empty template
                                 return plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/emails/empty-template.php';
                             }
                             return $template;
-                        }, 90, 2);
+                        }, 999, 2);
                     }
                 }
             }
         }
+    }
+    
+    /**
+     * Final fallback - intercept WordPress mail function
+     * This is a last resort to block any emails that might slip through
+     *
+     * @param null|bool $return Whether to preempt wp_mail().
+     * @param array $atts Array of the `wp_mail()` arguments.
+     * @return null|bool
+     */
+    public function maybe_block_wp_mail($return, $atts) {
+        // Skip if already preempted or no order metadata
+        if (null !== $return) {
+            return $return;
+        }
+        
+        // Check if this is a WooCommerce email (check subject & headers)
+        $is_wc_email = false;
+        
+        if (isset($atts['subject']) && isset($atts['headers'])) {
+            // Check subject for common WooCommerce patterns
+            $subject = $atts['subject'];
+            if (strpos($subject, 'Order') !== false || 
+                strpos($subject, 'order') !== false || 
+                strpos($subject, 'Purchase') !== false) {
+                $is_wc_email = true;
+            }
+            
+            // Look for WooCommerce in headers
+            if (is_array($atts['headers'])) {
+                foreach ($atts['headers'] as $header) {
+                    if (strpos($header, 'WooCommerce') !== false) {
+                        $is_wc_email = true;
+                        break;
+                    }
+                }
+            } else if (is_string($atts['headers']) && strpos($atts['headers'], 'WooCommerce') !== false) {
+                $is_wc_email = true;
+            }
+            
+            // Check message body for order information
+            if (isset($atts['message']) && 
+                (strpos($atts['message'], 'Order #') !== false || 
+                 strpos($atts['message'], 'order #') !== false)) {
+                $is_wc_email = true;
+            }
+            
+            // If this looks like a WooCommerce email, check if we need to block it
+            if ($is_wc_email) {
+                // Looking for order ID in subject or message
+                $order_id = null;
+                
+                // Try to extract order ID from subject or message
+                preg_match('/order #?(\d+)/i', $subject, $matches);
+                if (!empty($matches[1])) {
+                    $order_id = $matches[1];
+                } else if (isset($atts['message'])) {
+                    preg_match('/order #?(\d+)/i', $atts['message'], $matches);
+                    if (!empty($matches[1])) {
+                        $order_id = $matches[1];
+                    }
+                }
+                
+                // If we found an order ID, check if it's a Bocs order
+                if ($order_id) {
+                    $order = wc_get_order($order_id);
+                    if ($order) {
+                        // Check if this is a Bocs subscription order
+                        $bocs_id = $order->get_meta('__bocs_id');
+                        $subscription_id = $order->get_meta('__bocs_subscription_id');
+                        $frequency_id = $order->get_meta('__bocs_frequency_id');
+                        
+                        // If this has any Bocs identifiers and is for a new customer, block the email
+                        if (!empty($bocs_id) || !empty($subscription_id) || !empty($frequency_id)) {
+                            $customer_id = $order->get_customer_id();
+                            if ($customer_id > 0) {
+                                $order_count = wc_get_customer_order_count($customer_id);
+                                if ($order_count === 1) {
+                                    error_log("BOCS DEBUG [New Customer Email]: Blocking WordPress mail for order #{$order_id} - " . $subject);
+                                    return false; // Block the email
+                                }
+                            }
+                            
+                            // Also check if our email would apply to this order
+                            if ($this->is_customer_eligible_for_email($order)) {
+                                error_log("BOCS DEBUG [New Customer Email]: Blocking WordPress mail for order #{$order_id} - " . $subject);
+                                return false; // Block the email
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Let the email through if no reason to block
+        return $return;
     }
 
     /**
