@@ -1,3 +1,9 @@
+v0.0.136 04/09/2025
+* Core: Reduced verbose debug logging in Bocs_WooCommerce class
+* Emails: Improved email handling for new customers with better targeting
+* Performance: Optimized API communication and reduced redundant logging
+* UX: Simplified checkout process with cleaner console output
+
 v0.0.135 04/08/2025
 * Cart: Enhanced stock validation with improved UI feedback and controls
 * Cart: Added comprehensive product availability checks and status updates
