@@ -384,6 +384,9 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         $customer_id = $order->get_customer_id();
         $is_new_customer = true;
         
+        $this->log_debug("Checking customer eligibility for NEW customer email for order #{$order->get_id()}");
+        $this->log_debug("Customer ID: {$customer_id}");
+        
         if ($customer_id > 0) {
             // Get customer's previous orders with Bocs products
             $previous_orders = wc_get_orders(array(
@@ -393,12 +396,17 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                 'return' => 'ids',
             ));
             
+            $this->log_debug("Found " . count($previous_orders) . " previous orders");
+            
             // Exclude current order
+            $this->log_debug("Current order ID: " . $order->get_id());
             $previous_orders = array_diff($previous_orders, array($order->get_id()));
+            $this->log_debug("After filtering current order, " . count($previous_orders) . " orders remain");
             
             // If customer has previous orders, check if any of them had Bocs products
             if (!empty($previous_orders)) {
                 $had_bocs_products = false;
+                $bocs_order_count = 0;
                 
                 foreach ($previous_orders as $prev_order_id) {
                     $prev_order = wc_get_order($prev_order_id);
@@ -409,23 +417,44 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                     $has_subscription_id = $prev_order->get_meta('__bocs_subscription_id');
                     $has_frequency_id = $prev_order->get_meta('__bocs_frequency_id');
                     
+                    $this->log_debug("Checking previous order #{$prev_order_id} - bocs_id: " . ($has_bocs_id ? 'yes' : 'no') . 
+                                    ", subscription_id: " . ($has_subscription_id ? 'yes' : 'no') . 
+                                    ", frequency_id: " . ($has_frequency_id ? 'yes' : 'no'));
+                    
                     if ($has_bocs_id || $has_subscription_id || $has_frequency_id) {
                         $had_bocs_products = true;
-                        break;
+                        $bocs_order_count++;
                     }
                 }
                 
+                $this->log_debug("Found {$bocs_order_count} previous Bocs orders");
                 $is_new_customer = !$had_bocs_products;
+            } else {
+                $this->log_debug("No previous orders found, customer is new");
             }
+        } else {
+            $this->log_debug("No customer ID found, treating as new customer");
         }
         
         // Check if current order has a Bocs ID
-        $has_current_bocs_id = $order->get_meta('__bocs_id') || 
-                              $order->get_meta('__bocs_subscription_id') || 
-                              $order->get_meta('__bocs_frequency_id');
+        $has_bocs_id = $order->get_meta('__bocs_id');
+        $has_subscription_id = $order->get_meta('__bocs_subscription_id');
+        $has_frequency_id = $order->get_meta('__bocs_frequency_id');
+        
+        $has_current_bocs_id = !empty($has_bocs_id) || !empty($has_subscription_id) || !empty($has_frequency_id);
+        
+        $this->log_debug("Current order Bocs data - bocs_id: " . ($has_bocs_id ? 'yes' : 'no') . 
+                        ", subscription_id: " . ($has_subscription_id ? 'yes' : 'no') . 
+                        ", frequency_id: " . ($has_frequency_id ? 'yes' : 'no'));
         
         // Only eligible if this is a new customer with a Bocs ID in current order
-        return $is_new_customer && $has_current_bocs_id;
+        $is_eligible = $is_new_customer && $has_current_bocs_id;
+        
+        $this->log_debug("Customer is " . ($is_eligible ? 'eligible' : 'not eligible') . 
+                      " for new customer email (is new customer: " . ($is_new_customer ? 'yes' : 'no') . 
+                      ", has current Bocs ID: " . ($has_current_bocs_id ? 'yes' : 'no') . ")");
+                      
+        return $is_eligible;
     }
 
     /**
