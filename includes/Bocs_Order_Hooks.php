@@ -18,6 +18,9 @@ class Bocs_Order_Hooks {
         add_action('woocommerce_rest_insert_shop_order_object', array($this, 'process_api_order'), 10, 3);
         add_action('woocommerce_rest_update_shop_order_object', array($this, 'process_api_order_update'), 10, 3);
         
+        // Hook to set Bocs IDs from URL parameters at checkout
+        add_action('woocommerce_checkout_create_order', array($this, 'set_bocs_ids_from_url'), 10, 2);
+        
         // Hook into order status changes for renewal orders
         add_action('woocommerce_order_status_changed', array($this, 'process_renewal_order_confirmation'), 10, 1);
         
@@ -78,9 +81,9 @@ class Bocs_Order_Hooks {
         // Mark this as a Bocs order to help with identification
         update_post_meta($order_id, '__bocs_source_type', 'app');
         
+        
         // Send the renewal invoice email
         if (class_exists('WC_Bocs_Email_Customer_Renewal_Invoice')) {
-            // error_log("Bocs - Sending renewal invoice email for API-created order #$order_id");
             $email = new WC_Bocs_Email_Customer_Renewal_Invoice();
             $email->trigger($order_id);
         }
@@ -101,17 +104,14 @@ class Bocs_Order_Hooks {
 
         // Make sure we have a valid order object
         if (!is_object($order) || !method_exists($order, 'get_id')) {
-            error_log('BOCS DEBUG [Order Hooks]: Invalid order object in API update');
             return;
         }
 
         $order_id = $order->get_id();
-        error_log('BOCS DEBUG [Order Hooks]: Processing API order update for order ID: ' . $order_id);
         
         // Check if this order has Bocs subscription ID
         $bocs_subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
         if (empty($bocs_subscription_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: API update - No subscription ID found for order ' . $order_id);
             return;
         }
         
@@ -119,31 +119,25 @@ class Bocs_Order_Hooks {
         $order_status = $order->get_status();
         $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
         
-        error_log('BOCS DEBUG [Order Hooks]: API update - Order status: ' . $order_status . ', Bocs status: ' . $bocs_order_status);
-        
         // If current status is processing, check and reset email sent status if needed
         if ($order_status === 'processing') {
             $email_sent = get_post_meta($order_id, '_bocs_renewal_confirmation_email_sent', true);
-            error_log('BOCS DEBUG [Order Hooks]: API update - Email sent meta: ' . $email_sent);
             
             // If the email is marked as sent, but order just transitioned to processing,
             // reset it to ensure the confirmation email gets sent
             if ($email_sent === 'yes' && $bocs_order_status !== 'processing') {
                 delete_post_meta($order_id, '_bocs_renewal_confirmation_email_sent');
-                error_log('BOCS DEBUG [Order Hooks]: API update - Reset email sent meta to allow email sending');
             }
         }
         
         // If Bocs status is empty but we have subscription ID, initialize it to match WC status
         if (empty($bocs_order_status) && !empty($bocs_subscription_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: API update - Initializing Bocs status to: ' . $order_status);
             update_post_meta($order_id, '__bocs_order_status', $order_status);
             $bocs_order_status = $order_status;
         }
         
         // If WooCommerce status is processing but Bocs status isn't, update it
         if ($order_status === 'processing' && $bocs_order_status !== 'processing') {
-            error_log('BOCS DEBUG [Order Hooks]: API update - Updating Bocs status to processing');
             update_post_meta($order_id, '__bocs_order_status', 'processing');
             
             // Update the order in the BOCS API
@@ -157,93 +151,51 @@ class Bocs_Order_Hooks {
      * @param int $order_id The order ID
      */
     public function process_renewal_order_confirmation($order_id) {
-        error_log('BOCS DEBUG [Order Hooks]: Processing renewal order confirmation for order ID: ' . $order_id);
-
-        // Ensure we have a valid order ID
-        if (!$order_id || !is_numeric($order_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: Invalid order ID, skipping');
+        
+        if (!$order_id) {
             return;
         }
 
-        // Get the order object
         $order = wc_get_order($order_id);
         if (!$order) {
-            error_log('BOCS DEBUG [Order Hooks]: Could not find order object, skipping');
             return;
         }
 
-        // Verify the order status is 'processing' before proceeding
-        if ($order->get_status() !== 'processing') {
-            error_log('BOCS DEBUG [Order Hooks]: Order status is not "processing", skipping: ' . $order->get_status());
+        // Check if this is a Bocs order by checking both IDs
+        $bocs_id = $order->get_meta('__bocs_id');
+        $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+        $frequency_id = $order->get_meta('__bocs_frequency_id');
+        
+        if (empty($bocs_id) && empty($bocs_subscription_id) && empty($frequency_id)) {
             return;
         }
 
-        // Check if we have a subscription ID - required for renewal orders
-        $subscription_id = get_post_meta($order_id, '__bocs_subscription_id', true);
-        if (empty($subscription_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: No subscription ID found, skipping renewal confirmation');
-            return;
-        }
-
-        // Reset the email sent meta to ensure it's not accidentally marked as sent
-        // This ensures the email will be sent properly when the order changes to processing
-        $email_sent = get_post_meta($order_id, '_bocs_renewal_confirmation_email_sent', true);
-        error_log('BOCS DEBUG [Order Hooks]: Email sent meta: ' . $email_sent);
-        if ($email_sent === 'yes') {
-            // Reset this meta so the email will be sent
-            delete_post_meta($order_id, '_bocs_renewal_confirmation_email_sent');
-            error_log('BOCS DEBUG [Order Hooks]: Reset _bocs_renewal_confirmation_email_sent meta to allow email sending');
-        }
-
-        // Check if the order has the required __bocs_order_status meta
-        $bocs_order_status = get_post_meta($order_id, '__bocs_order_status', true);
-        
-        // If status is empty but we have a subscription ID, default to "upcoming" for backward compatibility
-        if (empty($bocs_order_status) && !empty($subscription_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: Setting default status "upcoming" for subscription ' . $subscription_id);
-            update_post_meta($order_id, '__bocs_order_status', 'upcoming');
-            $bocs_order_status = 'upcoming';
-        } else if (empty($bocs_order_status)) {
-            error_log('BOCS DEBUG [Order Hooks]: Bocs order status is empty, skipping renewal confirmation');
-            return;
-        }
-        
-        error_log('BOCS DEBUG [Order Hooks]: Bocs order status: ' . $bocs_order_status);
-        
-        if ($bocs_order_status !== 'upcoming') {
-            error_log('BOCS DEBUG [Order Hooks]: Order status is not "upcoming", skipping renewal confirmation');
-            return;
-        }
-        
+        // Log which ID we're using
         // Check if email has already been sent
-        $email_sent = get_post_meta($order_id, '_bocs_renewal_confirmation_email_sent', true);
-        $email_sent_transient = 'bocs_renewal_email_sent_' . $order_id;
+        $email_sent = $order->get_meta('_bocs_existing_customer_subscription_email_sent');
         
-        error_log('BOCS DEBUG [Order Hooks]: Email sent meta: ' . $email_sent);
-        
-        if ($email_sent === 'yes' || get_transient($email_sent_transient)) {
-            // Email already sent, just update meta but don't trigger email again
-            error_log('BOCS DEBUG [Order Hooks]: Email already sent, updating order status only');
-            update_post_meta($order_id, '__bocs_order_status', 'processing');
+        if ($email_sent) {
+            return;
+        }
+        // Update order status to processing if it's pending
+        if ($order->get_status() === 'pending') {
+            $order->update_status('processing', __('Order processed by Bocs', 'bocs'));
+        }
+
+        // Check if this is a customer's first order
+        $customer_id = $order->get_customer_id();
+        if (!$customer_id) {
             return;
         }
         
-        // Set a temporary transient to prevent duplicate emails during concurrent processing
-        // This will be replaced by the permanent meta field when the email is actually sent
-        set_transient($email_sent_transient, 'processing', 60);
-        error_log('BOCS DEBUG [Order Hooks]: Set temporary transient to prevent duplicate emails');
+        // Count previous orders
+        $previous_order_count = wc_get_customer_order_count($customer_id);
         
-        // Update the order status in the meta
-        update_post_meta($order_id, '__bocs_order_status', 'processing');
-        error_log('BOCS DEBUG [Order Hooks]: Updated order status meta to processing');
+        // Trigger the existing customer subscription email
+        do_action('bocs_existing_customer_subscription_email', $order_id);
         
-        // Update the order status in the BOCS API
-        $api_updated = $this->update_order_in_bocs_api($order_id);
-        error_log('BOCS DEBUG [Order Hooks]: API update ' . ($api_updated ? 'successful' : 'failed'));
-        
-        // The actual email sending is handled by the email class triggered from the WooCommerce hooks
-        // The email class is responsible for setting _bocs_renewal_confirmation_email_sent to 'yes'
-        error_log('BOCS DEBUG [Order Hooks]: Email handling delegated to WooCommerce email hooks');
+        // Check if email was sent after triggering
+        $email_sent_after = $order->get_meta('_bocs_existing_customer_subscription_email_sent');
     }
     
     /**
@@ -397,7 +349,6 @@ class Bocs_Order_Hooks {
         // If this has a Bocs subscription ID, disable the default processing email
         // as we'll handle it with our custom Bocs email
         if (!empty($subscription_id)) {
-            error_log('BOCS DEBUG [Order Hooks]: Disabling default WooCommerce processing email for order #' . $order->get_id());
             add_filter('woocommerce_email_enabled_customer_processing_order', '__return_false', 999);
         }
     }
@@ -618,13 +569,40 @@ class Bocs_Order_Hooks {
             return;
         }
         
-        error_log('BOCS DEBUG [Order Hooks]: Syncing status change for order #' . $order_id . ' from ' . $status_from . ' to ' . $status_to);
-        
         // Update Bocs order status meta
         update_post_meta($order_id, '__bocs_order_status', $status_to);
         
         // Update the order in the BOCS API
         $api_updated = $this->update_order_in_bocs_api($order_id);
-        error_log('BOCS DEBUG [Order Hooks]: API status update ' . ($api_updated ? 'successful' : 'failed'));
+    }
+
+    /**
+     * Set Bocs IDs from URL parameters at checkout
+     * 
+     * @param WC_Order $order The order object
+     * @param array $data The order data from the checkout form
+     */
+    public function set_bocs_ids_from_url($order, $data) {
+        // Check if we have URL parameters for Bocs IDs
+        $bocs_id = isset($_GET['bocs']) ? sanitize_text_field($_GET['bocs']) : '';
+        $frequency_id = isset($_GET['frequency']) ? sanitize_text_field($_GET['frequency']) : '';
+        
+        if (!empty($bocs_id)) {
+            // Set Bocs ID on the order
+            $order->update_meta_data('__bocs_id', $bocs_id);
+            
+            // Also set as subscription ID if not already set
+            if (empty($order->get_meta('__bocs_subscription_id'))) {
+                $order->update_meta_data('__bocs_subscription_id', $bocs_id);
+            }
+        }
+        
+        if (!empty($frequency_id)) {
+            // Set frequency ID on the order
+            $order->update_meta_data('__bocs_frequency_id', $frequency_id);
+        }
+        
+        // Mark this as a Bocs order from the website
+        $order->update_meta_data('__bocs_source_type', 'website');
     }
 }
