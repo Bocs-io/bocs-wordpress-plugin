@@ -49,6 +49,9 @@ class Bocs_Payment_Method {
         // Add hook to handle direct payment method loading via AJAX 
         add_action('wp_ajax_get_subscription_payment_method_direct', array($this, 'get_subscription_payment_method_direct'));
         
+        // Add AJAX handler for getting user billing details
+        add_action('wp_ajax_get_user_billing_details', array($this, 'get_user_billing_details'));
+        
         // Add direct debug for payment method retrieval
         add_action('wp_ajax_debug_payment_method', array($this, 'debug_payment_method'));
         
@@ -140,16 +143,49 @@ class Bocs_Payment_Method {
 
             // Initialize Stripe with secret key
             $stripe = new \Stripe\StripeClient($secret_key);
+            
+            // Get current user's customer ID
+            $user_id = get_current_user_id();
+            $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            
+            // If no customer ID exists, check if we need to create one
+            if (empty($customer_id)) {
+                // Try to create a new customer
+                try {
+                    $customer = $stripe->customers->create([
+                        'email' => wp_get_current_user()->user_email,
+                        'metadata' => [
+                            'wordpress_user_id' => $user_id,
+                            'source' => 'bocs_wordpress'
+                        ]
+                    ]);
+                    $customer_id = $customer->id;
+                    update_user_meta($user_id, '_stripe_customer_id', $customer_id);
+                    error_log("Created new Stripe customer: {$customer_id}");
+                } catch (Exception $e) {
+                    error_log("Error creating Stripe customer: " . $e->getMessage());
+                    // Continue without customer ID if creation fails
+                }
+            } else {
+                error_log("Found existing Stripe customer ID: {$customer_id}");
+            }
 
-            // Create a SetupIntent
-            $setup_intent = $stripe->setupIntents->create([
+            // Create a SetupIntent with customer ID if available
+            $setup_params = [
                 'payment_method_types' => ['card'],
                 'usage' => 'off_session', // This allows the payment method to be used for future payments
                 'metadata' => [
                     'subscription_id' => $subscription_id,
                     'source' => 'bocs_wordpress'
                 ]
-            ]);
+            ];
+            
+            // Associate with customer if we have an ID
+            if (!empty($customer_id)) {
+                $setup_params['customer'] = $customer_id;
+            }
+            
+            $setup_intent = $stripe->setupIntents->create($setup_params);
 
             // Log the setup intent creation
             error_log("Created setup intent for subscription ID: {$subscription_id}");
@@ -249,7 +285,7 @@ class Bocs_Payment_Method {
                 'bocs-payment-methods',
                 plugins_url('assets/js/payment-methods.js', dirname(__FILE__)),
                 ['jquery', 'stripe-js'],
-                '20250331.3', // Updated version to force browser refresh
+                '20250409.12', // Updated version to force browser refresh
                 true
             );
 
@@ -288,6 +324,9 @@ class Bocs_Payment_Method {
         }
 
         try {
+            // Log request parameters for debugging
+            error_log('Setup completion triggered with parameters: ' . json_encode($_GET));
+            
             // Get Stripe settings
             $stripe_settings = get_option('woocommerce_stripe_settings', []);
             $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
@@ -302,9 +341,25 @@ class Bocs_Payment_Method {
 
             // Retrieve the SetupIntent
             $setup_intent = $stripe->setupIntents->retrieve($_GET['setup_intent']);
+            
+            // Log setup intent details
+            error_log('Retrieved setup intent: ' . json_encode([
+                'id' => $setup_intent->id,
+                'status' => $setup_intent->status,
+                'payment_method' => $setup_intent->payment_method,
+                'client_secret' => substr($setup_intent->client_secret, 0, 10) . '...'
+            ]));
 
-            if ($setup_intent->status !== 'succeeded') {
-                throw new Exception('Setup was not completed successfully');
+            // Check status - change to a more inclusive check (requires_action might be in progress)
+            if ($setup_intent->status !== 'succeeded' && $setup_intent->status !== 'processing') {
+                error_log('Setup intent status is not succeeded or processing: ' . $setup_intent->status);
+                // Add potential status check for requires_action
+                if ($setup_intent->status === 'requires_action') {
+                    error_log('Setup requires additional action. Redirecting back to payment page.');
+                    wp_redirect(add_query_arg(['payment_updated' => 'pending'], wc_get_account_endpoint_url('bocs-subscriptions')));
+                    exit;
+                }
+                throw new Exception('Setup was not completed successfully. Status: ' . $setup_intent->status);
             }
 
             // Get current user
@@ -585,12 +640,23 @@ class Bocs_Payment_Method {
                 throw new Exception('Invalid metadata format - not an array');
             }
             
+            // Filter out any invalid metadata items and fix empty values
+            $validated_metadata = [];
             foreach ($updated_metadata as $index => $meta_item) {
-                if (!is_array($meta_item) || !isset($meta_item['key']) || !isset($meta_item['value'])) {
-                    error_log("BOCS DEBUG - Invalid metadata item at index {$index}: " . json_encode($meta_item));
-                    throw new Exception('Invalid metadata format - item missing key or value');
+                // Check if it's an array with 'key' property
+                if (is_array($meta_item) && isset($meta_item['key'])) {
+                    // Make sure value is set, even if it's empty
+                    if (!isset($meta_item['value'])) {
+                        $meta_item['value'] = '';
+                    }
+                    $validated_metadata[] = $meta_item;
+                } else {
+                    error_log("BOCS DEBUG - Skipping invalid metadata item at index {$index}: " . json_encode($meta_item));
                 }
             }
+            
+            // Update the metadata array with validated items
+            $updated_metadata = $validated_metadata;
             
             // Check if BOCS_API_URL is defined
             if (!defined('BOCS_API_URL')) {
@@ -704,44 +770,21 @@ class Bocs_Payment_Method {
             // Set this payment method as the default for the user
             $this->set_default_payment_method($user_id, $token->get_id());
 
-            // Redirect back to the subscriptions page with success message
-            wp_redirect(add_query_arg('payment_updated', 'success', wc_get_account_endpoint_url('bocs-subscriptions')));
+            // Redirect to the subscriptions page with success message
+            wp_redirect(add_query_arg(['payment_updated' => 'success'], wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
 
         } catch (Exception $e) {
-            // Log the full error details
-            $error_message = $e->getMessage();
-            error_log('Payment update failed: ' . $error_message);
+            // Improve error handling with detailed logging
+            error_log('Error in handle_setup_completion: ' . $e->getMessage());
+            error_log('Error trace: ' . $e->getTraceAsString());
             
-            // Determine if this is a server error or client error
-            $is_server_error = (strpos($error_message, 'API server error (500)') !== false);
-            $error_type = $is_server_error ? 'server' : 'client';
-            
-            // Add the error message to the URL if it's safe to display
-            $redirect_args = array(
+            // Redirect to the subscriptions page with error
+            wp_redirect(add_query_arg([
                 'payment_updated' => 'error',
-                'error_type' => $error_type
-            );
-            
-            // Add simplified error message for user
-            if ($is_server_error) {
-                $redirect_args['error_message'] = 'The payment service is temporarily unavailable. Please try again later.';
-            } else {
-                // Simplified error message for clients
-                $simple_message = 'There was a problem updating your payment method. Please try again.';
-                
-                // Only add specific error details if it seems safe/useful for the user
-                if (strpos($error_message, 'card') !== false || 
-                    strpos($error_message, 'payment') !== false ||
-                    strpos($error_message, 'subscription') !== false) {
-                    $simple_message = preg_replace('/API returned status \d+ - /', '', $error_message);
-                    $simple_message = preg_replace('/Failed to update subscription: /', '', $simple_message);
-                }
-                
-                $redirect_args['error_message'] = urlencode($simple_message);
-            }
-            
-            wp_redirect(add_query_arg($redirect_args, wc_get_account_endpoint_url('bocs-subscriptions')));
+                'error_type' => 'server',
+                'error_message' => urlencode($e->getMessage())
+            ], wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
         }
     }
@@ -821,10 +864,29 @@ class Bocs_Payment_Method {
      */
     public function display_payment_update_notices() {
         if (isset($_GET['payment_updated'])) {
-            if ($_GET['payment_updated'] === 'success') {
+            $status = $_GET['payment_updated'];
+            
+            if ($status === 'success') {
                 wc_add_notice(__('Payment method successfully updated.', 'bocs-wordpress'), 'success');
-            } else if ($_GET['payment_updated'] === 'error') {
-                wc_add_notice(__('Failed to update payment method. Please try again.', 'bocs-wordpress'), 'error');
+            } 
+            else if ($status === 'pending') {
+                wc_add_notice(__('Your payment verification is in progress. Please complete any additional steps required by your bank.', 'bocs-wordpress'), 'notice');
+            }
+            else if ($status === 'error') {
+                $error_message = isset($_GET['error_message']) ? urldecode($_GET['error_message']) : __('Failed to update payment method. Please try again.', 'bocs-wordpress');
+                
+                // Sanitize error message for security
+                $error_message = wp_kses($error_message, [
+                    'a' => ['href' => [], 'title' => []],
+                    'br' => [],
+                    'em' => [],
+                    'strong' => [],
+                ]);
+                
+                wc_add_notice($error_message, 'error');
+                
+                // Log the error for debugging
+                error_log('Payment update error displayed: ' . $error_message);
             }
         }
     }
@@ -882,11 +944,59 @@ class Bocs_Payment_Method {
             
             // Get customer ID from token meta or user meta
             $customer_id = get_metadata('payment_token', $token->get_id(), '_stripe_customer_id', true);
+            
             if (empty($customer_id)) {
                 $customer_id = get_user_meta(get_current_user_id(), '_stripe_customer_id', true);
                 
                 if (empty($customer_id)) {
-                    throw new Exception('Unable to determine Stripe customer ID');
+                    // Try to get customer ID from subscription data
+                    // First get existing subscription data
+                    $options = get_option('bocs_plugin_options');
+                    $options['bocs_headers'] = $options['bocs_headers'] ?? array();
+
+                    $api_url = BOCS_API_URL . "subscriptions/{$subscription_id}";
+                    $get_response = wp_remote_get(
+                        $api_url,
+                        array(
+                            'headers' => array(
+                                'Content-Type' => 'application/json',
+                                'Organization' => $options['bocs_headers']['organization'],
+                                'Store' => $options['bocs_headers']['store'],
+                                'Authorization' => $options['bocs_headers']['authorization'],
+                            ),
+                            'timeout' => 30
+                        )
+                    );
+
+                    if (!is_wp_error($get_response)) {
+                        $response_code = wp_remote_retrieve_response_code($get_response);
+                        $response_body = wp_remote_retrieve_body($get_response);
+                        
+                        if ($response_code === 200) {
+                            $subscription_data = json_decode($response_body, true);
+                            
+                            if (isset($subscription_data['data']) && isset($subscription_data['data']['metaData'])) {
+                                $metadata = $subscription_data['data']['metaData'];
+                                
+                                // Look for _stripe_customer_id in metadata
+                                foreach ($metadata as $meta) {
+                                    if ($meta['key'] === '_stripe_customer_id') {
+                                        $customer_id = $meta['value'];
+                                        
+                                        // Save the customer ID to token and user meta for future use
+                                        update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
+                                        update_user_meta(get_current_user_id(), '_stripe_customer_id', $customer_id);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If still empty, throw exception
+                    if (empty($customer_id)) {
+                        throw new Exception('Unable to determine Stripe customer ID');
+                    }
                 }
                 
                 // Save the customer ID to token meta for future use
@@ -984,13 +1094,11 @@ class Bocs_Payment_Method {
             while ($retry_count < $max_retries && !$success) {
                 // If this is a retry, add delay and log
                 if ($retry_count > 0) {
-                    error_log("BOCS DEBUG - Retry attempt {$retry_count} after {$retry_delay} seconds");
                     sleep($retry_delay);
                     $retry_delay *= 2; // Exponential backoff
                 }
                 
                 // Update the subscription with merged metadata
-                error_log("BOCS DEBUG - Sending API request now for subscription ID: {$subscription_id}");
                 $api_response = wp_remote_request(
                     $api_url,
                     array(
@@ -1008,7 +1116,6 @@ class Bocs_Payment_Method {
     
                 if (is_wp_error($api_response)) {
                     $error_message = $api_response->get_error_message();
-                    error_log("BOCS DEBUG - WP Error in API response: " . $error_message);
                     $last_error = 'Failed to update subscription payment details: ' . $error_message;
                     $retry_count++;
                     continue;
@@ -1017,19 +1124,8 @@ class Bocs_Payment_Method {
                 $response_code = wp_remote_retrieve_response_code($api_response);
                 $response_body = wp_remote_retrieve_body($api_response);
                 
-                error_log("BOCS DEBUG - API response code: {$response_code}");
-                error_log("BOCS DEBUG - API response body: {$response_body}");
-                
                 // Try to parse response body as JSON for more detailed debugging
                 $parsed_body = json_decode($response_body, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($parsed_body)) {
-                    error_log("BOCS DEBUG - Parsed API response: " . json_encode($parsed_body));
-                    
-                    // Check for specific error messages in the response
-                    if (isset($parsed_body['message'])) {
-                        error_log("BOCS DEBUG - API error message: " . $parsed_body['message']);
-                    }
-                }
                 
                 // Check if successful (2xx status code)
                 if ($response_code >= 200 && $response_code < 300) {
@@ -1039,7 +1135,6 @@ class Bocs_Payment_Method {
                 
                 // If we got a 500 error, retry
                 if ($response_code == 500) {
-                    error_log("BOCS DEBUG - Server error (500), will retry");
                     $last_error = "API server error (500) - please try again";
                     $retry_count++;
                     continue;
@@ -1054,7 +1149,6 @@ class Bocs_Payment_Method {
             
             // If not successful after all retries, throw exception
             if (!$success) {
-                error_log("BOCS DEBUG - API call failed after {$retry_count} retries");
                 throw new Exception($last_error);
             }
             
@@ -1091,7 +1185,6 @@ class Bocs_Payment_Method {
         } catch (Throwable $t) {
             // Catch all types of errors, including fatal ones
             $error_message = $t->getMessage();
-            error_log('Error updating payment method: ' . $error_message);
             
             // Clean output buffer and ensure JSON response
             ob_clean();
@@ -2664,5 +2757,78 @@ class Bocs_Payment_Method {
             // Delete the transient so the message is only shown once
             delete_transient('bocs_payment_method_updated_' . get_current_user_id());
         }
+    }
+
+    /**
+     * Get user billing details for Stripe
+     */
+    public function get_user_billing_details() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+
+        // Get current user
+        $user_id = get_current_user_id();
+        if (!$user_id) {
+            wp_send_json_error(['message' => 'User not logged in']);
+            return;
+        }
+
+        // Try to get existing Stripe customer ID from WooCommerce
+        $stripe_customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+        if (empty($stripe_customer_id)) {
+            // If test mode is enabled, try the test mode customer ID
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            if ($test_mode) {
+                $stripe_customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            }
+        }
+
+        // Get billing information
+        $billing_details = [
+            'name' => get_user_meta($user_id, 'billing_first_name', true) . ' ' . get_user_meta($user_id, 'billing_last_name', true),
+            'email' => get_user_meta($user_id, 'billing_email', true),
+            'phone' => get_user_meta($user_id, 'billing_phone', true),
+            'address' => [
+                'line1' => get_user_meta($user_id, 'billing_address_1', true),
+                'line2' => get_user_meta($user_id, 'billing_address_2', true), // Line2 is required, even if empty
+                'city' => get_user_meta($user_id, 'billing_city', true),
+                'state' => get_user_meta($user_id, 'billing_state', true),
+                'postal_code' => get_user_meta($user_id, 'billing_postcode', true),
+                'country' => get_user_meta($user_id, 'billing_country', true)
+            ]
+        ];
+
+        // Validate and provide defaults for required fields
+        if (empty(trim($billing_details['name']))) {
+            $billing_details['name'] = 'Customer';
+        }
+
+        if (empty($billing_details['address']['country'])) {
+            $billing_details['address']['country'] = 'AU'; // Default to Australia if empty
+        }
+
+        if (empty($billing_details['address']['postal_code'])) {
+            $billing_details['address']['postal_code'] = '2000'; // Default to a valid postal code if empty
+        }
+        
+        // Ensure line2 is set, even if empty
+        if (!isset($billing_details['address']['line2'])) {
+            $billing_details['address']['line2'] = '';
+        }
+
+        $response_data = [
+            'billing_details' => $billing_details
+        ];
+        
+        // Include Stripe customer ID if it exists
+        if (!empty($stripe_customer_id)) {
+            $response_data['stripe_customer_id'] = $stripe_customer_id;
+        }
+
+        wp_send_json_success($response_data);
     }
 }

@@ -28,6 +28,62 @@ function ensureStripeLoaded(callback) {
     document.head.appendChild(script);
 }
 
+// Helper function to get user billing details
+async function getUserBillingDetails() {
+    try {
+        const response = await jQuery.ajax({
+            url: bocsPaymentData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'get_user_billing_details',
+                nonce: bocsPaymentData.nonce
+            }
+        });
+        
+        if (response.success) {
+            console.log('Fetched user billing details:', response.data);
+            // Store the Stripe customer ID globally if it exists
+            if (response.data.stripe_customer_id) {
+                window.stripeCustomerId = response.data.stripe_customer_id;
+                console.log('Found existing Stripe customer ID:', window.stripeCustomerId);
+            }
+            return response.data.billing_details;
+        } else {
+            console.error('Error fetching user billing details:', response.data?.message);
+            // Return default billing details
+            return {
+                name: 'Customer',
+                email: '',
+                phone: '',
+                address: {
+                    country: 'AU',
+                    postal_code: '2000',
+                    line1: '',
+                    line2: '', // Make sure line2 is included
+                    city: '',
+                    state: ''
+                }
+            };
+        }
+    } catch (error) {
+        console.error('AJAX Error fetching user billing details:', error);
+        // Return default billing details
+        return {
+            name: 'Customer',
+            email: '',
+            phone: '',
+            address: {
+                country: 'AU',
+                postal_code: '2000',
+                line1: '',
+                line2: '', // Make sure line2 is included
+                city: '',
+                state: ''
+            }
+        };
+    }
+}
+
 const bocsPaymentMethods = {
     init: function() {
         console.log('Initializing payment methods...'); // Debug log
@@ -54,15 +110,39 @@ const bocsPaymentMethods = {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('setup_intent') && urlParams.has('setup_intent_client_secret')) {
             console.log('Detected return from Stripe redirect');
-            // The server-side code will handle the completion, we just need to clean up
-            // Clear session storage after redirect is handled
+            
+            // Find and close any open modals
+            jQuery('#payment-method-modal, #edit-payment-method-modal').hide();
+            
+            // Show a success toast/message at the top of the page
+            const successMessage = jQuery(`<div class="bocs-success-toast" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; background-color: #d4edda; color: #155724; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 90%; width: 400px; text-align: center; animation: fadeIn 0.3s ease-in-out;">
+                <p style="margin: 0; font-weight: 500;"><span style="margin-right: 8px;">✅</span> Payment method updated successfully</p>
+            </div>`);
+            
+            // Add to body and fade out after a few seconds
+            jQuery('body').append(successMessage);
+            
+            // Fade out and remove after 5 seconds
+            setTimeout(() => {
+                successMessage.fadeOut(300, function() {
+                    successMessage.remove();
+                });
+            }, 5000);
+            
+            // Clean up URL parameters without refreshing the page
+            if (window.history && window.history.replaceState) {
+                const newUrl = window.location.href.split('?')[0];
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            // Clean up the session storage
             setTimeout(() => {
                 if (sessionStorage.getItem('bocs_subscription_id')) {
                     console.log('Cleaning up stored subscription ID');
                     sessionStorage.removeItem('bocs_subscription_id');
                     this.removeCookie('bocs_subscription_id');
                 }
-            }, 2000);
+            }, 500);
         }
     },
     
@@ -248,23 +328,115 @@ const bocsPaymentMethods = {
                                 
                                 // Confirm the setup with error handling
                                 try {
-                                    const { error } = await stripe.confirmSetup({
+                                    // Clear any existing errors first
+                                    errorElement.text('').hide();
+                                    
+                                    // Verify we have all the required components
+                                    if (!stripe) {
+                                        throw new Error('Stripe is not initialized properly.');
+                                    }
+                                    
+                                    if (!elements) {
+                                        throw new Error('Stripe Elements is not initialized properly.');
+                                    }
+                                    
+                                    // Before continuing, ensure we've submitted a complete payment form
+                                    const element = elements.getElement('payment');
+                                    if (!element) {
+                                        throw new Error('Payment element not found. Please refresh and try again.');
+                                    }
+                                    
+                                    // We can't check if the form is complete using getValue() as it's not supported
+                                    // Instead, we'll just proceed and let Stripe validation handle any issues
+                                    
+                                    // First we need to fetch the user's billing details
+                                    const billingDetails = await getUserBillingDetails();
+                                    
+                                    // Add extra params to confirmParams
+                                    const confirmParams = {
                                         elements,
                                         confirmParams: {
                                             return_url: window.location.href,
+                                            payment_method_data: {
+                                                billing_details: billingDetails
+                                            },
+                                            expand: ['payment_method']
                                         }
-                                    });
+                                    };
                                     
-                                    if (error) {
-                                        console.error('Stripe confirmation error:', error);
-                                        throw error;
+                                    // Log the complete confirmParams for debugging
+                                    console.log('BOCS DEBUG - Full confirmSetup parameters:', JSON.stringify(confirmParams, null, 2));
+                                    
+                                    // Clear previous error messages
+                                    errorElement.hide().empty();
+                                    
+                                    try {
+                                        console.log('Sending confirmSetup request to Stripe...');
+                                        const { error, setupIntent } = await stripe.confirmSetup(confirmParams);
+                                        
+                                        if (error) {
+                                            console.error('Stripe confirmation error:', error);
+                                            throw error;
+                                        }
+                                        
+                                        console.log('Stripe confirmation response:', setupIntent);
+                                        
+                                        // Check if additional actions are required (like 3D Secure)
+                                        if (setupIntent && setupIntent.status === 'requires_action') {
+                                            console.log('Setup requires additional action. Redirecting...');
+                                            // The confirmSetup will handle the redirect automatically
+                                            return;
+                                        }
+                                        
+                                        // If we got here without a redirect, the setup was successful
+                                        if (setupIntent && setupIntent.status === 'succeeded') {
+                                            console.log('Setup successful!');
+                                            // You can handle success here if not redirected
+                                            window.location.href = window.location.href.split('?')[0] + '?payment_updated=success';
+                                            return;
+                                        }
+                                        
+                                        console.log('Stripe confirmation successful, waiting for redirect...');
+                                    } catch (error) {
+                                        console.error('Error confirming Stripe setup:', error);
+                                        
+                                        // Display detailed error nicely
+                                        let errorMessage = error.message || 'Payment verification failed. Please try again.';
+                                        
+                                        // Add more context if it's a specific Stripe error
+                                        if (error.type) {
+                                            errorMessage += ` (Error type: ${error.type})`;
+                                        }
+                                        
+                                        // Display the error nicely
+                                        errorElement.html(`
+                                            <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 10px; margin: 10px 0;">
+                                                <strong>Error:</strong> ${errorMessage}
+                                            </div>
+                                        `).show();
+                                        
+                                        // Re-enable the button and reset text
+                                        submitButton.prop('disabled', false).text('Update Payment Method');
+                                    }
+                                } catch (error) {
+                                    console.error('Error confirming Stripe setup:', error);
+                                    
+                                    // Detailed error display
+                                    let errorMessage = error.message || 'Payment verification failed. Please try again.';
+                                    
+                                    // Add more context if it's a specific Stripe error
+                                    if (error.type) {
+                                        errorMessage += ` (Error type: ${error.type})`;
                                     }
                                     
-                                    console.log('Stripe confirmation successful, redirecting...');
-                                    // The page will redirect to the return_url
-                                } catch (stripeError) {
-                                    console.error('Error confirming Stripe setup:', stripeError);
-                                    errorElement.text(stripeError.message || 'Payment verification failed. Please try again.').show();
+                                    // Display the error nicely
+                                    errorElement.html(`
+                                        <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 10px; margin: 10px 0;">
+                                            <strong>Error:</strong> ${errorMessage}
+                                        </div>
+                                    `).show();
+                                    
+                                    // Re-enable the button and reset text
                                     submitButton.prop('disabled', false).text('Update Payment Method');
                                 }
                             } else {
@@ -300,15 +472,26 @@ const bocsPaymentMethods = {
                                                     paymentElement.destroy();
                                                     paymentElement = null;
                                                 }
-                                                // Reload page after closing
-                                                setTimeout(() => {
-                                                    window.location.reload();
-                                                }, 500);
                                             });
                                             
-                                            // Auto reload after 2 seconds
+                                            // Auto close modal after 2 seconds
                                             setTimeout(() => {
-                                                window.location.reload();
+                                                $modal.hide();
+                                                
+                                                // Show a success toast at the top of the page
+                                                const successToast = jQuery(`<div class="bocs-success-toast" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; background-color: #d4edda; color: #155724; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 90%; width: 400px; text-align: center; animation: fadeIn 0.3s ease-in-out;">
+                                                        <p style="margin: 0; font-weight: 500;"><span style="margin-right: 8px;">✅</span> Payment method updated successfully</p>
+                                                    </div>`);
+                                                    
+                                                    // Add to body and fade out after a few seconds
+                                                    jQuery('body').append(successToast);
+                                                    
+                                                    // Fade out and remove after 5 seconds
+                                                    setTimeout(() => {
+                                                        successToast.fadeOut(300, function() {
+                                                            successToast.remove();
+                                                        });
+                                                    }, 5000);
                                             }, 2000);
                                         } else {
                                             console.error('Error updating payment method:', response.data?.message);
@@ -517,7 +700,24 @@ const bocsPaymentMethods = {
                                             
                                             console.log('Creating and mounting payment element');
                                             try {
-                                                paymentElement = elements.create('payment');
+                                                // Create a more robust payment element with necessary options
+                                                paymentElement = elements.create('payment', {
+                                                    fields: {
+                                                        billingDetails: 'never'
+                                                    },
+                                                    terms: {
+                                                        card: 'never'
+                                                    },
+                                                    wallets: {
+                                                        applePay: 'auto',
+                                                        googlePay: 'auto'
+                                                    },
+                                                    layout: {
+                                                        type: 'tabs',
+                                                        defaultCollapsed: false
+                                                    }
+                                                });
+                                                
                                                 const paymentElementContainer = document.getElementById('payment-element');
                                                 if (paymentElementContainer) {
                                                     // Clear any existing content
@@ -526,12 +726,19 @@ const bocsPaymentMethods = {
                                                     paymentElement.mount('#payment-element');
                                                     console.log('Payment element mounted successfully');
                                                     
-                                                    // Move the form buttons below the payment element after it's mounted
-                                                    try {
-                                                        bocsPaymentMethods.moveButtonsBelowForm();
-                                                    } catch (error) {
-                                                        console.error('Error moving buttons:', error);
-                                                    }
+                                                    // Add event listener for change events
+                                                    paymentElement.on('change', (event) => {
+                                                        const errorElement = document.getElementById('payment-element-errors');
+                                                        if (errorElement) {
+                                                            if (event.error) {
+                                                                errorElement.textContent = event.error.message;
+                                                                errorElement.style.display = 'block';
+                                                            } else {
+                                                                errorElement.textContent = '';
+                                                                errorElement.style.display = 'none';
+                                                            }
+                                                        }
+                                                    });
                                                 } else {
                                                     console.error('Payment element container not found in DOM');
                                                     // Try to solve by re-creating the container
@@ -828,15 +1035,70 @@ const bocsPaymentMethods = {
                     console.log('Stored subscription ID for redirect:', setupData.subscription_id);
                 }
                 
-                const { error } = await stripe.confirmSetup({
+                // First we need to fetch the user's billing details
+                const billingDetails = await getUserBillingDetails();
+
+                const confirmParams = {
                     elements,
                     confirmParams: {
                         return_url: window.location.href,
+                        payment_method_data: {
+                            billing_details: billingDetails
+                        },
+                        expand: ['payment_method']
                     }
-                });
+                };
+                
+                // Log the complete confirmParams for debugging
+                console.log('BOCS DEBUG - Full confirmSetup parameters:', JSON.stringify(confirmParams, null, 2));
 
-                if (error) {
-                    throw error;
+                try {
+                    console.log('Sending confirmSetup request to Stripe...');
+                    const { error, setupIntent } = await stripe.confirmSetup(confirmParams);
+                    
+                    if (error) {
+                        console.error('Stripe confirmation error:', error);
+                        throw error;
+                    }
+                    
+                    console.log('Stripe confirmation response:', setupIntent);
+                    
+                    // Check if additional actions are required (like 3D Secure)
+                    if (setupIntent && setupIntent.status === 'requires_action') {
+                        console.log('Setup requires additional action. Redirecting...');
+                        // The confirmSetup will handle the redirect automatically
+                        return;
+                    }
+                    
+                    // If we got here without a redirect, the setup was successful
+                    if (setupIntent && setupIntent.status === 'succeeded') {
+                        console.log('Setup successful!');
+                        // You can handle success here if not redirected
+                        window.location.href = window.location.href.split('?')[0] + '?payment_updated=success';
+                        return;
+                    }
+                    
+                    console.log('Stripe confirmation successful, waiting for redirect...');
+                } catch (error) {
+                    console.error('Error confirming Stripe setup:', error);
+                    
+                    // Display detailed error nicely
+                    let errorMessage = error.message || 'Payment verification failed. Please try again.';
+                    
+                    // Add more context if it's a specific Stripe error
+                    if (error.type) {
+                        errorMessage += ` (Error type: ${error.type})`;
+                    }
+                    
+                    // Display the error nicely
+                    errorElement.html(`
+                        <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 10px; margin: 10px 0;">
+                            <strong>Error:</strong> ${errorMessage}
+                        </div>
+                    `).show();
+                    
+                    // Re-enable the button and reset text
+                    submitButton.prop('disabled', false).text('Update Payment Method');
                 }
             } else {
                 console.log('Using existing payment method:', selectedMethod);
@@ -1074,6 +1336,16 @@ jQuery(document).ready(function($) {
                 background-color: rgba(0,0,0,0.4);
                 justify-content: center;
                 align-items: center;
+            }
+            
+            /* Success Toast Animation */
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translate(-50%, -20px); }
+                to { opacity: 1; transform: translate(-50%, 0); }
+            }
+            
+            .bocs-success-toast {
+                animation: fadeIn 0.3s ease-out;
             }
             
             .bocs-modal-content {
@@ -1584,23 +1856,115 @@ jQuery(document).ready(function($) {
                                 
                                 // Confirm the setup with error handling
                                 try {
-                                    const { error } = await stripe.confirmSetup({
+                                    // Clear any existing errors first
+                                    errorElement.text('').hide();
+                                    
+                                    // Verify we have all the required components
+                                    if (!stripe) {
+                                        throw new Error('Stripe is not initialized properly.');
+                                    }
+                                    
+                                    if (!elements) {
+                                        throw new Error('Stripe Elements is not initialized properly.');
+                                    }
+                                    
+                                    // Before continuing, ensure we've submitted a complete payment form
+                                    const element = elements.getElement('payment');
+                                    if (!element) {
+                                        throw new Error('Payment element not found. Please refresh and try again.');
+                                    }
+                                    
+                                    // We can't check if the form is complete using getValue() as it's not supported
+                                    // Instead, we'll just proceed and let Stripe validation handle any issues
+                                    
+                                    // First we need to fetch the user's billing details
+                                    const billingDetails = await getUserBillingDetails();
+                                    
+                                    // Add extra params to confirmParams
+                                    const confirmParams = {
                                         elements,
                                         confirmParams: {
                                             return_url: window.location.href,
+                                            payment_method_data: {
+                                                billing_details: billingDetails
+                                            },
+                                            expand: ['payment_method']
                                         }
-                                    });
+                                    };
                                     
-                                    if (error) {
-                                        console.error('Stripe confirmation error:', error);
-                                        throw error;
+                                    // Log the complete confirmParams for debugging
+                                    console.log('BOCS DEBUG - Full confirmSetup parameters:', JSON.stringify(confirmParams, null, 2));
+                                    
+                                    // Clear previous error messages
+                                    errorElement.hide().empty();
+                                    
+                                    try {
+                                        console.log('Sending confirmSetup request to Stripe...');
+                                        const { error, setupIntent } = await stripe.confirmSetup(confirmParams);
+                                        
+                                        if (error) {
+                                            console.error('Stripe confirmation error:', error);
+                                            throw error;
+                                        }
+                                        
+                                        console.log('Stripe confirmation response:', setupIntent);
+                                        
+                                        // Check if additional actions are required (like 3D Secure)
+                                        if (setupIntent && setupIntent.status === 'requires_action') {
+                                            console.log('Setup requires additional action. Redirecting...');
+                                            // The confirmSetup will handle the redirect automatically
+                                            return;
+                                        }
+                                        
+                                        // If we got here without a redirect, the setup was successful
+                                        if (setupIntent && setupIntent.status === 'succeeded') {
+                                            console.log('Setup successful!');
+                                            // You can handle success here if not redirected
+                                            window.location.href = window.location.href.split('?')[0] + '?payment_updated=success';
+                                            return;
+                                        }
+                                        
+                                        console.log('Stripe confirmation successful, waiting for redirect...');
+                                    } catch (error) {
+                                        console.error('Error confirming Stripe setup:', error);
+                                        
+                                        // Display detailed error nicely
+                                        let errorMessage = error.message || 'Payment verification failed. Please try again.';
+                                        
+                                        // Add more context if it's a specific Stripe error
+                                        if (error.type) {
+                                            errorMessage += ` (Error type: ${error.type})`;
+                                        }
+                                        
+                                        // Display the error nicely
+                                        errorElement.html(`
+                                            <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 10px; margin: 10px 0;">
+                                                <strong>Error:</strong> ${errorMessage}
+                                            </div>
+                                        `).show();
+                                        
+                                        // Re-enable the button and reset text
+                                        submitButton.prop('disabled', false).text('Update Payment Method');
+                                    }
+                                } catch (error) {
+                                    console.error('Error confirming Stripe setup:', error);
+                                    
+                                    // Detailed error display
+                                    let errorMessage = error.message || 'Payment verification failed. Please try again.';
+                                    
+                                    // Add more context if it's a specific Stripe error
+                                    if (error.type) {
+                                        errorMessage += ` (Error type: ${error.type})`;
                                     }
                                     
-                                    console.log('Stripe confirmation successful, redirecting...');
-                                    // The page will redirect to the return_url
-                                } catch (stripeError) {
-                                    console.error('Error confirming Stripe setup:', stripeError);
-                                    errorElement.text(stripeError.message || 'Payment verification failed. Please try again.').show();
+                                    // Display the error nicely
+                                    errorElement.html(`
+                                        <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 10px; margin: 10px 0;">
+                                            <strong>Error:</strong> ${errorMessage}
+                                        </div>
+                                    `).show();
+                                    
+                                    // Re-enable the button and reset text
                                     submitButton.prop('disabled', false).text('Update Payment Method');
                                 }
                             } else {
@@ -1636,15 +2000,26 @@ jQuery(document).ready(function($) {
                                                     paymentElement.destroy();
                                                     paymentElement = null;
                                                 }
-                                                // Reload page after closing
-                                                setTimeout(() => {
-                                                    window.location.reload();
-                                                }, 500);
                                             });
                                             
-                                            // Auto reload after 2 seconds
+                                            // Auto close modal after 2 seconds
                                             setTimeout(() => {
-                                                window.location.reload();
+                                                $modal.hide();
+                                                
+                                                // Show a success toast at the top of the page
+                                                const successToast = jQuery(`<div class="bocs-success-toast" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; background-color: #d4edda; color: #155724; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 90%; width: 400px; text-align: center; animation: fadeIn 0.3s ease-in-out;">
+                                                        <p style="margin: 0; font-weight: 500;"><span style="margin-right: 8px;">✅</span> Payment method updated successfully</p>
+                                                    </div>`);
+                                                    
+                                                    // Add to body and fade out after a few seconds
+                                                    jQuery('body').append(successToast);
+                                                    
+                                                    // Fade out and remove after 5 seconds
+                                                    setTimeout(() => {
+                                                        successToast.fadeOut(300, function() {
+                                                            successToast.remove();
+                                                        });
+                                                    }, 5000);
                                             }, 2000);
                                         } else {
                                             console.error('Error updating payment method:', response.data?.message);
@@ -1853,7 +2228,24 @@ jQuery(document).ready(function($) {
                                             
                                             console.log('Creating and mounting payment element');
                                             try {
-                                                paymentElement = elements.create('payment');
+                                                // Create a more robust payment element with necessary options
+                                                paymentElement = elements.create('payment', {
+                                                    fields: {
+                                                        billingDetails: 'never'
+                                                    },
+                                                    terms: {
+                                                        card: 'never'
+                                                    },
+                                                    wallets: {
+                                                        applePay: 'auto',
+                                                        googlePay: 'auto'
+                                                    },
+                                                    layout: {
+                                                        type: 'tabs',
+                                                        defaultCollapsed: false
+                                                    }
+                                                });
+                                                
                                                 const paymentElementContainer = document.getElementById('payment-element');
                                                 if (paymentElementContainer) {
                                                     // Clear any existing content
@@ -1862,12 +2254,19 @@ jQuery(document).ready(function($) {
                                                     paymentElement.mount('#payment-element');
                                                     console.log('Payment element mounted successfully');
                                                     
-                                                    // Move the form buttons below the payment element after it's mounted
-                                                    try {
-                                                        bocsPaymentMethods.moveButtonsBelowForm();
-                                                    } catch (error) {
-                                                        console.error('Error moving buttons:', error);
-                                                    }
+                                                    // Add event listener for change events
+                                                    paymentElement.on('change', (event) => {
+                                                        const errorElement = document.getElementById('payment-element-errors');
+                                                        if (errorElement) {
+                                                            if (event.error) {
+                                                                errorElement.textContent = event.error.message;
+                                                                errorElement.style.display = 'block';
+                                                            } else {
+                                                                errorElement.textContent = '';
+                                                                errorElement.style.display = 'none';
+                                                            }
+                                                        }
+                                                    });
                                                 } else {
                                                     console.error('Payment element container not found in DOM');
                                                     // Try to solve by re-creating the container
