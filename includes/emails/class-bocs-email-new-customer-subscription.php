@@ -143,10 +143,13 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         // Setup localization
         $this->setup_locale();
         
+        error_log("BOCS DEBUG [New Customer Email]: Starting trigger for order #{$order_id}");
+        
         // Handle case where order is passed as object instead of ID
         if (is_object($order_id) && is_a($order_id, 'WC_Order')) {
             $order = $order_id;
             $order_id = $order->get_id();
+            error_log("BOCS DEBUG [New Customer Email]: Order passed as object, ID: {$order_id}");
         }
         
         // Get the order
@@ -159,6 +162,8 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             return;
         }
         
+        error_log("BOCS DEBUG [New Customer Email]: Order status: " . $order_obj->get_status());
+        
         // Set object and email recipient
         $this->object = $order_obj;
         $this->recipient = $order_obj->get_billing_email();
@@ -168,10 +173,19 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         
         // Check if this is a Bocs subscription order
         $bocs_subscription_id = $order_obj->get_meta('__bocs_subscription_id');
+        $bocs_frequency_id = $order_obj->get_meta('__bocs_frequency_id');
         
-        // If no Bocs subscription ID, bail
+        error_log("BOCS DEBUG [New Customer Email]: Subscription ID: {$bocs_subscription_id}, Frequency ID: {$bocs_frequency_id}");
+        
+        // If no Bocs subscription ID, check for frequency ID as a fallback
+        if (empty($bocs_subscription_id) && !empty($bocs_frequency_id)) {
+            $bocs_subscription_id = $bocs_frequency_id;
+            error_log("BOCS DEBUG [New Customer Email]: Using frequency ID as subscription ID");
+        }
+        
+        // If still no Bocs subscription ID, bail
         if (empty($bocs_subscription_id)) {
-            $this->log_debug("No __bocs_subscription_id found for order #{$order_id}, skipping email.");
+            $this->log_debug("No Bocs subscription ID found for order #{$order_id}, skipping email.");
             $this->restore_locale();
             return;
         }
@@ -186,6 +200,8 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
         
         // Check if we've already sent this email 
         $already_sent = get_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', true);
+        error_log("BOCS DEBUG [New Customer Email]: Email already sent status: " . ($already_sent ? $already_sent : 'not set'));
+        
         if ($already_sent === 'yes') {
             $this->log_debug("Email already sent for order #{$order_id}, skipping duplicate.");
             $this->restore_locale();
@@ -209,29 +225,57 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
             return;
         }
         
+        error_log("BOCS DEBUG [New Customer Email]: Customer is eligible, preparing to send email");
+        
         // Always send for Bocs subscription orders with valid email
         if ($this->is_enabled() && $this->get_recipient()) {
             try {
+                error_log("BOCS DEBUG [New Customer Email]: Email enabled: " . ($this->is_enabled() ? 'yes' : 'no'));
+                error_log("BOCS DEBUG [New Customer Email]: Email recipient: " . $this->get_recipient());
+                error_log("BOCS DEBUG [New Customer Email]: Email subject: " . $this->get_subject());
+                
+                // Verify content is being generated
+                $html_content = $this->get_content_html();
+                $plain_content = $this->get_content_plain();
+                error_log("BOCS DEBUG [New Customer Email]: HTML content generated: " . (empty($html_content) ? 'no' : 'yes'));
+                error_log("BOCS DEBUG [New Customer Email]: Plain content generated: " . (empty($plain_content) ? 'no' : 'yes'));
+                
+                // Debug checking headers and attachments
+                $headers = $this->get_headers();
+                $attachments = $this->get_attachments();
+                error_log("BOCS DEBUG [New Customer Email]: Headers: " . print_r($headers, true));
+                error_log("BOCS DEBUG [New Customer Email]: Attachments: " . (empty($attachments) ? 'none' : count($attachments)));
+                
                 // Send the email with a generous timeout
-                add_filter('wp_mail_timeout', function() { return 15; }); // 15 second timeout
+                add_filter('wp_mail_timeout', function() { return 30; }); // 30 second timeout
                 
                 // Send the email
+                error_log("BOCS DEBUG [New Customer Email]: Attempting to send email now...");
                 $sent = $this->send($this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments());
                 
                 // Debug log
                 $this->log_debug("Email send attempted for order #{$order_id}: " . ($sent ? 'SUCCESS' : 'FAILED'));
+                error_log("BOCS DEBUG [New Customer Email]: Email send attempt result: " . ($sent ? 'SUCCESS' : 'FAILED'));
                 
                 // Mark as sent to prevent duplicates
                 if ($sent) {
                     update_post_meta($order_id, '_bocs_new_customer_subscription_email_sent', 'yes');
+                    error_log("BOCS DEBUG [New Customer Email]: Marked email as sent for order #{$order_id}");
                 } else {
                     $this->log_error("Failed to send email for order #{$order_id}");
+                    $mail_error = error_get_last();
+                    if ($mail_error) {
+                        error_log("BOCS DEBUG [New Customer Email]: Mail error: " . print_r($mail_error, true));
+                    }
                 }
             } catch (Exception $e) {
                 $this->log_error("Exception when sending email for order #{$order_id}: " . $e->getMessage());
+                error_log("BOCS DEBUG [New Customer Email]: Exception: " . $e->getMessage());
             }
         } else {
             $this->log_debug("Email not sent - email disabled or no recipient for order #{$order_id}");
+            error_log("BOCS DEBUG [New Customer Email]: Email not sent - email disabled: " . (!$this->is_enabled() ? 'yes' : 'no') . 
+                    ", no recipient: " . (!$this->get_recipient() ? 'yes' : 'no'));
         }
         
         // Restore localization
@@ -245,19 +289,66 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
      * @return string Email HTML content
      */
     public function get_content_html() {
-        return wc_get_template_html(
-            $this->template_html,
-            array(
-                'order'              => $this->object,
-                'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
-                'sent_to_admin'      => false,
-                'plain_text'         => false,
-                'email'              => $this,
-            ),
-            '',
-            $this->template_base
-        );
+        error_log("BOCS DEBUG [New Customer Email]: Generating HTML content");
+        error_log("BOCS DEBUG [New Customer Email]: Template file: " . $this->template_html);
+        error_log("BOCS DEBUG [New Customer Email]: Template base path: " . $this->template_base);
+        
+        // Check if template exists before trying to load it
+        $template_file = $this->template_base . $this->template_html;
+        if (!file_exists($template_file)) {
+            error_log("BOCS DEBUG [New Customer Email]: Template file not found at: " . $template_file);
+            
+            // Try alternate locations
+            $alternate_locations = [
+                plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/' . $this->template_html,
+                get_stylesheet_directory() . '/woocommerce/' . $this->template_html,
+                get_stylesheet_directory() . '/bocs-wordpress/' . $this->template_html,
+            ];
+            
+            foreach ($alternate_locations as $location) {
+                error_log("BOCS DEBUG [New Customer Email]: Checking alternate location: " . $location);
+                if (file_exists($location)) {
+                    error_log("BOCS DEBUG [New Customer Email]: Found template at alternate location: " . $location);
+                    break;
+                }
+            }
+        } else {
+            error_log("BOCS DEBUG [New Customer Email]: Template file exists at: " . $template_file);
+        }
+        
+        $args = [
+            'order'              => $this->object,
+            'email_heading'      => $this->get_heading(),
+            'additional_content' => $this->get_additional_content(),
+            'sent_to_admin'      => false,
+            'plain_text'         => false,
+            'email'              => $this,
+        ];
+        
+        error_log("BOCS DEBUG [New Customer Email]: Calling wc_get_template_html with args: " . 
+                 "order_id: " . ($this->object ? $this->object->get_id() : 'null') . ", " .
+                 "email_heading: " . $this->get_heading());
+        
+        try {
+            $content = wc_get_template_html(
+                $this->template_html,
+                $args,
+                '',
+                $this->template_base
+            );
+            
+            $content_length = strlen($content);
+            error_log("BOCS DEBUG [New Customer Email]: Content generation successful, length: " . $content_length);
+            
+            if ($content_length < 100 && $content_length > 0) {
+                error_log("BOCS DEBUG [New Customer Email]: WARNING - Content seems too short: " . $content);
+            }
+            
+            return $content;
+        } catch (Exception $e) {
+            error_log("BOCS DEBUG [New Customer Email]: Exception generating content: " . $e->getMessage());
+            return '<p>Error loading email template.</p>';
+        }
     }
 
     /**
