@@ -163,6 +163,11 @@ class Bocs
         $this->loader->add_action('template_redirect', $bocs_payment_method, 'show_status_messages');
         // Add scripts and styles
         $this->loader->add_action('wp_enqueue_scripts', $bocs_payment_method, 'enqueue_scripts');
+        
+        // Payment method direct endpoints from class-bocs-wordpress.php
+        $this->loader->add_action('wp_ajax_get_subscription_payment_method_direct', $bocs_payment_method, 'get_payment_methods_direct');
+        $this->loader->add_action('wp_ajax_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
+        $this->loader->add_action('wp_ajax_get_user_billing_details', $bocs_payment_method, 'get_user_billing_details');
     }
 
     /**
