@@ -623,54 +623,126 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
 </div>
 
 <style>
+:root {
+    --bocs-primary: #0065A9;
+    --bocs-primary-dark: #004C80;
+    --bocs-secondary: #B85C00;
+    --bocs-secondary-dark: #8C4600;
+    
+    /* Status Colors */
+    --bocs-success: #38A169;
+    --bocs-success-light: #C6E6C9;
+    --bocs-warning: #F6AD55;
+    --bocs-warning-light: #FEEBC8;
+    --bocs-error: #E53E3E;
+    --bocs-error-light: #FED7D7;
+    
+    /* Neutral Colors */
+    --bocs-text: #1A202C;
+    --bocs-text-light: #4A5568;
+    --bocs-border: #E2E8F0;
+    --bocs-background: #F7FAFC;
+    --bocs-white: #FFFFFF;
+    
+    /* Effects */
+    --bocs-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --bocs-radius: 8px;
+    --bocs-transition: all 0.2s ease-in-out;
+}
+
 .bocs-edit-details-container {
-    background: #fff;
-    padding: 2em;
-    margin-bottom: 2em;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: var(--bocs-text);
+    line-height: 1.6;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
 }
 
 .bocs-back-link {
-    display: inline-block;
-    margin-bottom: 1em;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 24px;
     text-decoration: none;
-    color: #3c7b7c;
+    color: var(--bocs-primary);
+    font-weight: 500;
+    transition: var(--bocs-transition);
 }
 
 .bocs-back-link:hover {
-    text-decoration: underline;
+    color: var(--bocs-primary-dark);
+}
+
+.bocs-back-link:before {
+    content: "←";
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+h2, h3, h4 {
+    color: var(--bocs-primary);
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 28px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+h2:after {
+    content: "";
+    display: block;
+    height: 4px;
+    width: 60px;
+    background: var(--bocs-secondary);
+    margin-top: 12px;
+    border-radius: 2px;
+}
+
+h3 {
+    font-size: 20px;
+    margin-top: 0;
+    margin-bottom: 16px;
 }
 
 .bocs-subscription-overview {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 2em;
-    padding-bottom: 1em;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 32px;
+    padding: 24px;
+    background-color: var(--bocs-background);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    border-left: 4px solid var(--bocs-primary);
 }
 
 .subscription-status {
-    background: #f0f0f0;
-    padding: 0.5em 1em;
-    border-radius: 4px;
+    padding: 8px 16px;
+    border-radius: var(--bocs-radius);
     font-weight: 600;
     display: inline-block;
+    transition: var(--bocs-transition);
 }
 
 .status-active {
-    background: #c6e1c6;
-    color: #5b8a5b;
+    background: var(--bocs-success-light);
+    color: var(--bocs-success);
 }
 
 .status-paused,
 .status-pending {
-    background: #f8dda7;
-    color: #94660c;
+    background: var(--bocs-warning-light);
+    color: var(--bocs-warning);
 }
 
 .status-cancelled,
 .status-expired {
-    background: #eba3a3;
-    color: #761919;
+    background: var(--bocs-error-light);
+    color: var(--bocs-error);
 }
 
 .subscription-dates {
@@ -684,39 +756,48 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
 }
 
 .date-label {
-    color: #6d6d6d;
+    color: var(--bocs-text-light);
     font-size: 0.9em;
 }
 
 .date-value {
     font-weight: 600;
+    color: var(--bocs-text);
 }
 
 .bocs-edit-sections {
     display: flex;
     flex-direction: column;
-    gap: 2em;
+    gap: 24px;
 }
 
 .edit-section {
-    background: #f9f9f9;
-    border-radius: 4px;
-    padding: 1.5em;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    padding: 24px;
+    box-shadow: var(--bocs-shadow);
+    border: 1px solid var(--bocs-border);
+    transition: var(--bocs-transition);
+}
+
+.edit-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5em;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--bocs-border);
+    padding-bottom: 12px;
 }
 
 .section-header h3 {
     margin: 0;
     font-size: 1.2em;
+    color: var(--bocs-primary);
 }
 
 .section-content {
@@ -728,7 +809,11 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
 .current-payment-display {
     display: flex;
     align-items: center;
-    gap: 1em;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bocs-background);
+    border-radius: var(--bocs-radius);
+    border: 1px solid var(--bocs-border);
 }
 
 .current-address-display {
@@ -739,38 +824,43 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
     flex: 1;
     font-style: normal;
     margin: 0;
+    line-height: 1.6;
 }
 
 .edit-button {
     background: none;
     border: none;
-    color: #3c7b7c;
+    color: var(--bocs-primary);
     cursor: pointer;
-    text-decoration: underline;
-    padding: 0;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--bocs-radius);
+    transition: var(--bocs-transition);
 }
 
 .edit-button:hover {
-    color: #2a5758;
+    background: var(--bocs-background);
+    color: var(--bocs-primary-dark);
 }
 
 .address-editor,
 .frequency-editor {
-    margin-top: 1em;
-    padding: 1em;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    margin-top: 20px;
+    padding: 24px;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    border: 1px solid var(--bocs-border);
 }
 
 .edit-address-form {
     display: flex;
     flex-wrap: wrap;
-    gap: 1em;
+    gap: 16px;
 }
 
 .form-row {
-    flex: 1 0 calc(50% - 0.5em);
+    flex: 1 0 calc(50% - 8px);
     display: flex;
     flex-direction: column;
 }
@@ -780,104 +870,191 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
 }
 
 .form-row label {
-    margin-bottom: 0.5em;
+    margin-bottom: 8px;
     font-size: 0.9em;
-    color: #555;
+    color: var(--bocs-text);
+    font-weight: 500;
 }
 
 .form-row input {
-    padding: 0.7em;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 12px;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    transition: var(--bocs-transition);
+}
+
+.form-row input:focus {
+    outline: none;
+    border-color: var(--bocs-primary);
+    box-shadow: 0 0 0 3px rgba(0, 101, 169, 0.1);
 }
 
 .button-group {
     display: flex;
     justify-content: flex-end;
-    gap: 1em;
-    margin-top: 1em;
+    gap: 12px;
+    margin-top: 24px;
     width: 100%;
+}
+
+.button {
+    padding: 12px 24px;
+    border-radius: var(--bocs-radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--bocs-transition);
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button.alt {
+    background: var(--bocs-primary);
+    color: var(--bocs-white);
+}
+
+.button.alt:hover {
+    background: var(--bocs-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button:not(.alt) {
+    background: var(--bocs-white);
+    border: 1px solid var(--bocs-border);
+    color: var(--bocs-text);
+}
+
+.button:not(.alt):hover {
+    background: var(--bocs-background);
+    border-color: var(--bocs-primary);
 }
 
 .loading-spinner {
     display: inline-block;
-    width: 1.5em;
-    height: 1.5em;
-    border: 2px solid rgba(0, 0, 0, 0.1);
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
     border-radius: 50%;
-    border-top-color: #3c7b7c;
-    animation: spin 1s ease-in-out infinite;
+    border-top-color: var(--bocs-white);
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
     vertical-align: middle;
-    margin-right: 0.5em;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.frequency-options-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5em;
-}
-
-.frequency-option {
-    display: flex;
-    align-items: center;
-    padding: 0.5em;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.frequency-option:hover {
-    background: #f5f5f5;
-}
-
-.frequency-option input {
-    margin-right: 1em;
+    to { transform: rotate(360deg); }
 }
 
 #bocs-notification {
     position: fixed;
-    top: 30px;
-    right: 30px;
-    background: #fff;
-    border-radius: 4px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-    padding: 1em 1.5em;
+    top: 24px;
+    right: 24px;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    padding: 16px 24px;
     z-index: 9999;
-    display: none;
+    max-width: 400px;
+    border-left: 4px solid var(--bocs-primary);
 }
 
 #bocs-notification.success {
-    border-left: 4px solid #46b450;
+    border-left-color: var(--bocs-success);
 }
 
 #bocs-notification.error {
-    border-left: 4px solid #dc3232;
+    border-left-color: var(--bocs-error);
 }
 
 #bocs-notification.loading {
-    border-left: 4px solid #3c7b7c;
+    border-left-color: var(--bocs-primary);
 }
 
 .notification-content {
     display: flex;
     align-items: center;
+    gap: 12px;
 }
 
+/* Line Items Section */
+.line-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    overflow: hidden;
+}
+
+.line-items-table th,
+.line-items-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--bocs-border);
+}
+
+.line-items-table th {
+    background: var(--bocs-background);
+    font-weight: 600;
+    color: var(--bocs-primary);
+}
+
+.line-items-table tbody tr:hover {
+    background: var(--bocs-background);
+}
+
+.line-items-table tfoot {
+    background: var(--bocs-background);
+    font-weight: 600;
+}
+
+.line-items-table tfoot td {
+    color: var(--bocs-primary);
+}
+
+/* Subscription Management Section */
+.subscription-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pause-action,
+.resume-action,
+.cancel-action {
+    padding: 24px;
+    border-radius: var(--bocs-radius);
+    background: var(--bocs-white);
+    border: 1px solid var(--bocs-border);
+}
+
+.pause-action,
+.resume-action {
+    border-left: 4px solid var(--bocs-primary);
+}
+
+.cancel-action {
+    border-left: 4px solid var(--bocs-error);
+}
+
+.action-description,
+.cancel-description {
+    margin-bottom: 20px;
+    color: var(--bocs-text);
+    line-height: 1.6;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .bocs-subscription-overview {
         flex-direction: column;
-        gap: 1em;
+        gap: 20px;
     }
     
     .subscription-dates {
         flex-direction: column;
-        gap: 0.5em;
+        gap: 12px;
     }
     
     .current-frequency-display,
@@ -894,196 +1071,13 @@ $return_url = wc_get_account_endpoint_url('bocs-subscriptions');
     .form-row {
         flex: 1 0 100%;
     }
-}
-
-/* Line Items Section Styles */
-.line-items-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1em;
-}
-
-.line-items-table th,
-.line-items-table td {
-    padding: 0.75em;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-.line-items-table th {
-    background-color: #f5f5f5;
-    font-weight: 600;
-}
-
-.line-items-table tbody tr:hover {
-    background-color: #f9f9f9;
-}
-
-.product-name {
-    width: 40%;
-}
-
-.product-quantity,
-.product-price,
-.product-total {
-    width: 20%;
-    text-align: right;
-}
-
-.product-meta {
-    font-size: 0.85em;
-    color: #6d6d6d;
-    margin-top: 0.5em;
-}
-
-.meta-item {
-    margin-bottom: 0.25em;
-}
-
-.meta-key {
-    font-weight: 600;
-    margin-right: 0.5em;
-}
-
-.line-items-table tfoot {
-    font-weight: 600;
-}
-
-.line-items-table tfoot td {
-    text-align: right;
-}
-
-/* Styling for different totals rows */
-.line-items-table .subtotal-row {
-    border-top: 1px solid #e5e5e5;
-}
-
-.line-items-table .discount-row td {
-    color: #4caf50;
-}
-
-.line-items-table .total-row {
-    font-size: 1.1em;
-    font-weight: 700;
-    border-top: 2px solid #e5e5e5;
-}
-
-.line-items-table .total-row th,
-.line-items-table .total-row td {
-    padding-top: 1em;
-}
-
-/* Preview price styles */
-.preview-price {
-    background-color: #f9f9e0;
-    transition: background-color 0.3s ease;
-}
-
-/* Manage Subscription styles */
-.cancel-section {
-    background-color: #f9f9f9;
-    border-left: 4px solid #3c7b7c;
-}
-
-.subscription-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5em;
-}
-
-.pause-action, 
-.resume-action,
-.cancel-action {
-    padding: 1em;
-    border-radius: 4px;
-}
-
-.pause-action, 
-.resume-action {
-    background-color: #f0f7f7;
-    border: 1px solid #d5e5e5;
-}
-
-.cancel-action {
-    background-color: #fff8f8;
-    border: 1px solid #eba3a3;
-}
-
-.action-description, 
-.cancel-description {
-    margin-bottom: 1em;
-}
-
-.pause-subscription-button,
-.resume-subscription-button {
-    background-color: #3c7b7c !important;
-    color: #fff !important;
-    border: none !important;
-}
-
-.pause-subscription-button:hover,
-.resume-subscription-button:hover {
-    background-color: #2a5758 !important;
-}
-
-.cancel-subscription-button {
-    background-color: #dc3232 !important;
-    color: #fff !important;
-    border: none !important;
-}
-
-.cancel-subscription-button:hover {
-    background-color: #c62828 !important;
-}
-
-.pause-confirm-dialog,
-.resume-confirm-dialog,
-.cancel-confirm-dialog {
-    margin-top: 1em;
-    padding: 1.5em;
-    background: #fff;
-    border-radius: 4px;
-}
-
-.pause-confirm-dialog,
-.resume-confirm-dialog {
-    border: 1px solid #d5e5e5;
-}
-
-.cancel-confirm-dialog {
-    border: 1px solid #eba3a3;
-}
-
-.pause-reason-field,
-.cancel-reason-field,
-.other-reason-field {
-    margin-bottom: 1em;
-}
-
-.pause-reason-field label,
-.cancel-reason-field label,
-.other-reason-field label {
-    display: block;
-    margin-bottom: 0.5em;
-    font-weight: 600;
-}
-
-.pause-reason-field select,
-.cancel-reason-field select,
-.other-reason-field textarea {
-    width: 100%;
-    padding: 0.5em;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-}
-
-.other-reason-field textarea {
-    resize: vertical;
-}
-
-@media (max-width: 768px) {
-    .subscription-actions {
+    
+    .button-group {
         flex-direction: column;
+    }
+    
+    .button {
+        width: 100%;
     }
 }
 </style>

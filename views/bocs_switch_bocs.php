@@ -366,67 +366,97 @@ wp_enqueue_script('jquery-ui-dialog');
 
 <style>
 :root {
-    --bocs-primary: #3c7b7c;
-    --bocs-primary-light: #e9f7f7;
-    --bocs-primary-dark: #2a5a5b;
-    --bocs-secondary: #d26e4b;
-    --bocs-secondary-light: #f8ece7;
-    --bocs-gray-light: #f7f7f7;
-    --bocs-gray-medium: #e0e0e0;
-    --bocs-gray-dark: #666;
-    --bocs-border-radius: 8px;
-    --bocs-box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-    --bocs-transition: all 0.3s ease;
+    /* Primary Colors */
+    --bocs-primary: #0065A9;
+    --bocs-primary-dark: #004C80;
+    --bocs-primary-light: #E1F0FA;
+    --bocs-secondary: #B85C00;
+    --bocs-secondary-dark: #8C4600;
+    --bocs-secondary-light: #FFF1E5;
+    
+    /* Status Colors */
+    --bocs-success: #38A169;
+    --bocs-success-light: #C6E6C9;
+    --bocs-warning: #F6AD55;
+    --bocs-warning-light: #FEEBC8;
+    --bocs-error: #E53E3E;
+    --bocs-error-light: #FED7D7;
+    
+    /* Neutral Colors */
+    --bocs-text: #1A202C;
+    --bocs-text-light: #4A5568;
+    --bocs-border: #E2E8F0;
+    --bocs-background: #F7FAFC;
+    --bocs-white: #FFFFFF;
+    
+    /* Effects */
+    --bocs-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --bocs-radius: 8px;
+    --bocs-transition: all 0.2s ease-in-out;
 }
 
 .bocs-switch-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 30px 20px;
-    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
-    color: #333;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: var(--bocs-text);
+    line-height: 1.6;
 }
 
-.bocs-switch-container h2 {
-    font-weight: 600;
-    margin-bottom: 25px;
-    color: var(--bocs-primary-dark);
-    font-size: 1.8em;
-}
-
-.bocs-switch-container h3 {
-    font-weight: 600;
-    margin: 30px 0 15px;
-    color: var(--bocs-primary-dark);
-    font-size: 1.5em;
-    position: relative;
-    padding-bottom: 10px;
-}
-
-.bocs-switch-container h3:after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 60px;
-    height: 3px;
-    background-color: var(--bocs-secondary);
-    border-radius: 3px;
-}
-
-.bocs-switch-container h4 {
-    font-weight: 600;
-    margin-bottom: 8px;
+.bocs-back-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 24px;
+    text-decoration: none;
     color: var(--bocs-primary);
-    font-size: 1.15em;
+    font-weight: 500;
+    transition: var(--bocs-transition);
+}
+
+.bocs-back-link:hover {
+    color: var(--bocs-primary-dark);
+}
+
+.bocs-back-link:before {
+    content: "←";
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+h2, h3, h4 {
+    color: var(--bocs-primary);
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 28px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+h2:after {
+    content: "";
+    display: block;
+    height: 4px;
+    width: 60px;
+    background: var(--bocs-secondary);
+    margin-top: 12px;
+    border-radius: 2px;
+}
+
+h3 {
+    font-size: 20px;
+    margin-top: 0;
+    margin-bottom: 16px;
 }
 
 .bocs-switch-intro {
     margin-bottom: 30px;
     padding: 20px;
     background: var(--bocs-primary-light);
-    border-radius: var(--bocs-border-radius);
-    box-shadow: var(--bocs-box-shadow);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
 }
 
 .bocs-current-options {
@@ -437,40 +467,40 @@ wp_enqueue_script('jquery-ui-dialog');
     display: flex;
     flex-wrap: wrap;
     gap: 20px;
-    background: #fff;
-    border-radius: var(--bocs-border-radius);
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
     padding: 20px;
-    box-shadow: var(--bocs-box-shadow);
-    border: 1px solid var(--bocs-gray-medium);
+    box-shadow: var(--bocs-shadow);
+    border: 1px solid var(--bocs-border);
 }
 
 .bocs-update-section {
     flex: 1;
     min-width: 250px;
     padding: 15px;
-    background: var(--bocs-gray-light);
-    border-radius: var(--bocs-border-radius);
+    background: var(--bocs-background);
+    border-radius: var(--bocs-radius);
     transition: var(--bocs-transition);
 }
 
 .bocs-update-section:hover {
-    background: #fff;
+    background: var(--bocs-white);
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transform: translateY(-2px);
 }
 
 .bocs-update-section p {
     margin-bottom: 15px;
-    color: var(--bocs-gray-dark);
+    color: var(--bocs-text-light);
 }
 
 .update-frequency-button,
 .update-products-button {
     background-color: var(--bocs-primary) !important;
-    color: white !important;
+    color: var(--bocs-white) !important;
     border: none !important;
     padding: 10px 15px !important;
-    border-radius: 4px !important;
+    border-radius: var(--bocs-radius) !important;
     font-weight: 500 !important;
     transition: var(--bocs-transition) !important;
     cursor: pointer !important;
@@ -488,8 +518,8 @@ wp_enqueue_script('jquery-ui-dialog');
 
 /* Disabled button for fixed box */
 .bocs-fixed-products button.disabled {
-    background-color: #e0e0e0 !important;
-    color: #9e9e9e !important;
+    background-color: var(--bocs-text-light) !important;
+    color: var(--bocs-white) !important;
     cursor: not-allowed !important;
     box-shadow: none !important;
     transform: none !important;
@@ -497,7 +527,7 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-fixed-products button.disabled:hover {
-    background-color: #e0e0e0 !important;
+    background-color: var(--bocs-text-light) !important;
     transform: none !important;
     box-shadow: none !important;
 }
@@ -505,10 +535,10 @@ wp_enqueue_script('jquery-ui-dialog');
 .bocs-fixed-note {
     margin-top: 15px;
     padding: 10px 12px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
+    background-color: var(--bocs-background);
+    border-radius: var(--bocs-radius);
     font-size: 0.9em;
-    color: #666;
+    color: var(--bocs-text-light);
     display: flex;
     align-items: center;
     border-left: 3px solid var(--bocs-secondary);
@@ -532,6 +562,18 @@ wp_enqueue_script('jquery-ui-dialog');
     text-transform: uppercase;
 }
 
+.fixed-type {
+    background-color: var(--bocs-primary-light);
+    color: var(--bocs-primary);
+    border: 1px solid var(--bocs-primary);
+}
+
+.custom-type {
+    background-color: var(--bocs-secondary-light);
+    color: var(--bocs-secondary);
+    border: 1px solid var(--bocs-secondary);
+}
+
 .bocs-switch-intro p {
     margin-bottom: 12px;
     line-height: 1.6;
@@ -551,15 +593,15 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-option {
-    border: 1px solid var(--bocs-gray-medium);
-    border-radius: var(--bocs-border-radius);
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
     overflow: hidden;
     transition: var(--bocs-transition);
-    background: #fff;
+    background: var(--bocs-white);
     height: 100%;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--bocs-box-shadow);
+    box-shadow: var(--bocs-shadow);
 }
 
 .bocs-option:hover {
@@ -600,7 +642,7 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-option-description {
-    color: var(--bocs-gray-dark);
+    color: var(--bocs-text-light);
     margin-bottom: 15px;
     line-height: 1.5;
 }
@@ -618,9 +660,9 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-option-products {
-    background: var(--bocs-gray-light);
+    background: var(--bocs-background);
     padding: 15px;
-    border-radius: var(--bocs-border-radius);
+    border-radius: var(--bocs-radius);
     margin-top: 15px;
 }
 
@@ -638,15 +680,15 @@ wp_enqueue_script('jquery-ui-dialog');
 .bocs-option-products li {
     margin-bottom: 5px;
     font-size: 0.95em;
-    color: var(--bocs-gray-dark);
+    color: var(--bocs-text-light);
 }
 
 .select-bocs-button {
     background: var(--bocs-primary) !important;
-    color: white !important;
+    color: var(--bocs-white) !important;
     padding: 12px 20px !important;
     border: none !important;
-    border-radius: var(--bocs-border-radius) !important;
+    border-radius: var(--bocs-radius) !important;
     font-weight: 600 !important;
     font-size: 1em !important;
     cursor: pointer !important;
@@ -654,7 +696,7 @@ wp_enqueue_script('jquery-ui-dialog');
     text-align: center !important;
     display: inline-block !important;
     width: 100% !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    box-shadow: var(--bocs-shadow) !important;
 }
 
 .select-bocs-button:hover {
@@ -666,32 +708,38 @@ wp_enqueue_script('jquery-ui-dialog');
 /* Frequency Selection Styles */
 .frequency-options {
     margin: 20px 0;
+    background: var(--bocs-white) !important;
 }
 
 .frequency-option {
-    padding: 15px;
+    padding: 16px;
     margin-bottom: 12px;
-    border: 2px solid var(--bocs-gray-medium);
-    border-radius: var(--bocs-border-radius);
+    border: 2px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
     cursor: pointer;
     transition: var(--bocs-transition);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: white;
+    background: var(--bocs-white);
 }
 
 .frequency-option:hover {
-    background-color: var(--bocs-primary-light);
+    background-color: var(--bocs-background);
     border-color: var(--bocs-primary);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    box-shadow: var(--bocs-shadow);
 }
 
 .frequency-option.selected {
     background-color: var(--bocs-primary-light);
     border-color: var(--bocs-primary);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--bocs-shadow);
+}
+
+.frequency-option.current {
+    border: 2px dashed var(--bocs-primary);
+    background-color: var(--bocs-primary-light);
 }
 
 .frequency-details {
@@ -701,7 +749,7 @@ wp_enqueue_script('jquery-ui-dialog');
 
 .frequency-name {
     font-weight: 600;
-    color: var(--bocs-primary-dark);
+    color: var(--bocs-text);
     font-size: 1.1em;
 }
 
@@ -712,442 +760,146 @@ wp_enqueue_script('jquery-ui-dialog');
     font-weight: 500;
 }
 
-.frequency-select .dashicons {
+.current-tag {
+    display: inline-block;
+    background: var(--bocs-primary);
+    color: var(--bocs-white);
+    font-size: 0.7em;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.frequency-option .dashicons-yes-alt {
     color: var(--bocs-primary);
-    font-size: 24px;
 }
 
-.bocs-switch-actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 30px;
-}
-
-.bocs-switch-actions .button {
-    padding: 12px 24px !important;
-    border-radius: var(--bocs-border-radius) !important;
-    font-weight: 500 !important;
-    transition: var(--bocs-transition) !important;
-}
-
-.bocs-switch-actions .cancel {
-    background: transparent !important;
-    border: 1px solid var(--bocs-gray-medium) !important;
-    color: var(--bocs-gray-dark) !important;
-}
-
-.bocs-switch-actions .cancel:hover {
-    background: var(--bocs-gray-light) !important;
-    border-color: var(--bocs-gray-dark) !important;
-}
-
-.ui-dialog {
-    border-radius: var(--bocs-border-radius) !important;
-    padding: 0 !important;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.2) !important;
-    border: none !important;
-}
-
-.ui-dialog .ui-dialog-titlebar {
-    background: var(--bocs-primary) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: var(--bocs-border-radius) var(--bocs-border-radius) 0 0 !important;
-    padding: 15px 20px !important;
-    font-weight: 500 !important;
-}
-
-.ui-dialog .ui-dialog-titlebar-close {
-    background: transparent !important;
-    border: none !important;
-    color: white !important;
-}
-
-.ui-dialog .ui-dialog-content {
-    padding: 20px !important;
-}
-
-.ui-dialog .ui-dialog-content p {
-    font-size: 1.05em !important;
-    line-height: 1.6 !important;
-    margin-bottom: 15px !important;
-}
-
-.ui-dialog .ui-dialog-content strong {
-    color: var(--bocs-primary-dark) !important;
-    font-weight: 600 !important;
-}
-
+/* Dialog Buttons */
 .ui-dialog .ui-dialog-buttonpane {
-    border-top: 1px solid var(--bocs-gray-medium) !important;
-    margin-top: 0 !important;
-    padding: 15px !important;
+    border-top: 1px solid var(--bocs-border) !important;
+    background: var(--bocs-background) !important;
+    margin: 0 !important;
+    padding: 16px 24px !important;
 }
 
 .ui-dialog .ui-dialog-buttonpane button {
-    border-radius: var(--bocs-border-radius) !important;
-    padding: 10px 20px !important;
+    border-radius: var(--bocs-radius) !important;
+    padding: 12px 24px !important;
     transition: var(--bocs-transition) !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
+    font-size: 1em !important;
+    cursor: pointer !important;
+    margin: 0 8px !important;
 }
 
 .ui-dialog .ui-button:first-child {
     background: var(--bocs-primary) !important;
-    color: white !important;
+    color: var(--bocs-white) !important;
     border: none !important;
 }
 
 .ui-dialog .ui-button:first-child:hover {
     background: var(--bocs-primary-dark) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--bocs-shadow);
 }
 
 .ui-dialog .ui-button:last-child {
-    background: transparent !important;
-    border: 1px solid var(--bocs-gray-medium) !important;
-    color: var(--bocs-gray-dark) !important;
+    background: var(--bocs-white) !important;
+    border: 1px solid var(--bocs-border) !important;
+    color: var(--bocs-text) !important;
 }
 
 .ui-dialog .ui-button:last-child:hover {
-    background: var(--bocs-gray-light) !important;
-    border-color: var(--bocs-gray-dark) !important;
+    background: var(--bocs-background) !important;
+    border-color: var(--bocs-primary) !important;
+    color: var(--bocs-primary) !important;
 }
 
+/* Dialog Close Button */
+.ui-dialog .ui-dialog-titlebar-close {
+    background: transparent !important;
+    border: none !important;
+    color: var(--bocs-white) !important;
+    opacity: 0.8;
+    transition: var(--bocs-transition);
+    cursor: pointer;
+    padding: 4px !important;
+    margin: -4px !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Dialog Title */
+.ui-dialog .ui-dialog-title {
+    font-size: 1.2em !important;
+    font-weight: 600 !important;
+}
+
+/* Dialog Content Links */
+.ui-dialog .ui-dialog-content a {
+    color: var(--bocs-primary) !important;
+    text-decoration: none !important;
+    transition: var(--bocs-transition);
+}
+
+.ui-dialog .ui-dialog-content a:hover {
+    color: var(--bocs-primary-dark) !important;
+    text-decoration: underline !important;
+}
+
+/* Fix for the black background in dialogs */
+.ui-dialog {
+    background: var(--bocs-white) !important;
+    border-radius: var(--bocs-radius) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    padding: 0 !important;
+    border: none !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif !important;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+    background: var(--bocs-primary) !important;
+    color: var(--bocs-white) !important;
+    border: none !important;
+    border-radius: var(--bocs-radius) var(--bocs-radius) 0 0 !important;
+    padding: 16px 24px !important;
+    font-weight: 600 !important;
+}
+
+.ui-dialog .ui-dialog-content {
+    background: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+    padding: 24px !important;
+    border: none !important;
+    font-size: 1em !important;
+    line-height: 1.6 !important;
+}
+
+.ui-widget-overlay {
+    background: rgba(0, 0, 0, 0.5) !important;
+    opacity: 1 !important;
+}
+
+/* Make sure the dialog elements use our color scheme */
+#frequency-selection-dialog,
+#product-selection-dialog,
 #switch-confirmation-dialog {
-    text-align: center;
-    line-height: 1.6;
+    background: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
 }
 
-.bocs-loading {
-    background: var(--bocs-primary-light);
-    padding: 15px;
-    border-radius: var(--bocs-border-radius);
-    margin-bottom: 20px;
-    text-align: center;
-    font-weight: 600;
-    color: var(--bocs-primary-dark);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.bocs-loading:before {
-    content: '';
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--bocs-primary-light);
-    border-top: 2px solid var(--bocs-primary);
-    border-radius: 50%;
-    margin-right: 10px;
-    animation: bocs-spinner 1s linear infinite;
-}
-
-@keyframes bocs-spinner {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Product Selection Styles */
-.bocs-product-selection-info {
-    background: var(--bocs-primary-light);
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: var(--bocs-border-radius);
-    font-size: 0.95em;
-}
-
-.bocs-product-selection {
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid var(--bocs-gray-medium);
-    border-radius: var(--bocs-border-radius);
-    padding: 15px;
-}
-
-.bocs-product-item {
-    padding: 15px;
-    margin-bottom: 12px;
-    border: 1px solid var(--bocs-gray-medium);
-    border-radius: var(--bocs-border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: var(--bocs-transition);
-}
-
-.bocs-product-item:hover {
-    border-color: var(--bocs-primary);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-
-.bocs-product-details {
-    display: flex;
-    flex: 1;
-    align-items: center;
-}
-
-.bocs-product-image {
-    width: 70px;
-    height: 70px;
-    margin-right: 15px;
-    border-radius: var(--bocs-border-radius);
-    overflow: hidden;
-}
-
-.bocs-product-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.bocs-product-info {
-    flex: 1;
-}
-
-.bocs-product-name {
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: var(--bocs-primary-dark);
-}
-
-.bocs-product-price {
-    color: var(--bocs-gray-dark);
-    font-size: 0.95em;
-}
-
-.bocs-product-quantity {
-    display: flex;
-    align-items: center;
-}
-
-.quantity-btn {
-    border: 1px solid var(--bocs-gray-medium);
-    background: white;
-    width: 30px;
-    height: 30px;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-    border-radius: 4px;
-    transition: var(--bocs-transition);
-}
-
-.quantity-btn:hover {
-    background: var(--bocs-primary-light);
-    border-color: var(--bocs-primary);
-}
-
-.quantity-input {
-    width: 45px;
-    text-align: center;
-    margin: 0 8px;
-    border: 1px solid var(--bocs-gray-medium);
-    border-radius: 4px;
-    padding: 5px;
-    font-weight: 500;
-}
-
-#total-selected-quantity {
-    color: var(--bocs-primary);
-    font-weight: 600;
-}
-
-.bocs-type-badge {
-    display: inline-block;
-    padding: 6px 10px;
-    font-size: 0.8em;
-    border-radius: 20px;
-    margin-bottom: 15px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.fixed-type {
-    background-color: var(--bocs-primary-light);
-    color: var(--bocs-primary);
-    border: 1px solid var(--bocs-primary);
-}
-
-.custom-type {
-    background-color: var(--bocs-secondary-light);
-    color: var(--bocs-secondary);
-    border: 1px solid var(--bocs-secondary);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .bocs-options-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .ui-dialog {
-        width: 90% !important;
-        max-width: 90% !important;
-    }
-}
-
-/* Product selection dialog */
-.product-selection-info {
-    margin-bottom: 20px;
-    padding: 10px 15px;
-    background-color: var(--bocs-primary-light);
-    border-radius: var(--bocs-border-radius);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.product-current-badge {
-    display: inline-block;
-    background-color: var(--bocs-primary-light);
-    color: var(--bocs-primary);
-    font-size: 0.75em;
-    padding: 3px 8px;
-    border-radius: 20px;
-    margin-top: 5px;
-    border: 1px solid var(--bocs-primary);
-    font-weight: 500;
-}
-
-.product-option.in-subscription {
-    border-color: var(--bocs-primary);
-    background-color: rgba(60, 123, 124, 0.05);
-}
-
+.frequency-options,
 .product-options {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: 5px;
+    background: var(--bocs-white) !important;
 }
 
-.product-option {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    margin-bottom: 10px;
-    border: 1px solid var(--bocs-gray-medium);
-    border-radius: var(--bocs-border-radius);
-    background: #fff;
-    transition: var(--bocs-transition);
-}
-
-.product-option:hover {
-    border-color: var(--bocs-primary);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.product-info {
-    display: flex;
-    align-items: center;
-    flex: 1;
-}
-
-.product-image {
-    width: 50px;
-    height: 50px;
-    margin-right: 15px;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.product-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.product-details {
-    flex: 1;
-}
-
-.product-name {
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: #333;
-}
-
-.product-price {
-    color: var(--bocs-secondary);
-    font-weight: 500;
-    font-size: 0.9em;
-}
-
-.product-description {
-    font-size: 0.85em;
-    color: var(--bocs-gray-dark);
-    margin-top: 5px;
-}
-
-.product-quantity {
-    display: flex;
-    align-items: center;
-}
-
-.quantity-btn {
-    width: 28px;
-    height: 28px;
-    background: var(--bocs-gray-light);
-    border: 1px solid var(--bocs-gray-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-weight: bold;
-    border-radius: 4px;
-    transition: var(--bocs-transition);
-}
-
-.quantity-btn:hover {
-    background: var(--bocs-primary-light);
-    border-color: var(--bocs-primary);
-}
-
-.quantity-input {
-    width: 40px;
-    height: 28px;
-    text-align: center;
-    border: 1px solid var(--bocs-gray-medium);
-    margin: 0 5px;
-    border-radius: 4px;
-}
-
-/* Current frequency badge */
-.current-tag {
-    display: inline-block;
-    background: var(--bocs-primary);
-    color: white;
-    font-size: 0.7em;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: 6px;
-    text-transform: uppercase;
-    font-weight: 600;
-}
-
-.frequency-option.current {
-    border: 1px dashed var(--bocs-primary);
-    background-color: var(--bocs-primary-light);
-}
-
-/* Current products note */
-.current-products-note {
-    margin: 0 0 15px 0;
-    padding: 10px 12px;
-    background-color: var(--bocs-primary-light);
-    border-radius: 4px;
-    font-size: 0.9em;
-    color: var(--bocs-primary-dark);
-    display: flex;
-    align-items: center;
-    border-left: 3px solid var(--bocs-primary);
-}
-
-/* Add loading overlay styles */
+/* Loading Overlay */
 .bocs-loading-overlay {
     position: fixed;
     top: 0;
@@ -1162,10 +914,10 @@ wp_enqueue_script('jquery-ui-dialog');
 }
 
 .bocs-loading-content {
-    background: white;
+    background: var(--bocs-white);
     padding: 30px 40px;
-    border-radius: var(--bocs-border-radius);
-    box-shadow: var(--bocs-box-shadow);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
     text-align: center;
 }
 
@@ -1189,10 +941,350 @@ wp_enqueue_script('jquery-ui-dialog');
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .bocs-options-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .bocs-update-card {
+        flex-direction: column;
+    }
+    
+    .bocs-update-section {
+        width: 100%;
+    }
+    
+    .ui-dialog {
+        width: 90% !important;
+        max-width: 90% !important;
+    }
+    
+    .bocs-switch-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .bocs-switch-actions .button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .bocs-switch-container {
+        padding: 16px;
+    }
+    
+    .bocs-option-image {
+        height: 180px;
+    }
+    
+    .bocs-option-content {
+        padding: 15px;
+    }
+    
+    .frequency-option {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .frequency-details {
+        margin-bottom: 10px;
+    }
+}
+
+/* Make sure the dialog elements use our color scheme */
+#frequency-selection-dialog,
+#product-selection-dialog,
+#switch-confirmation-dialog {
+    background: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+}
+
+.frequency-options,
+.product-options {
+    background: var(--bocs-white) !important;
+}
+
+/* Fix for the frequency option that appears with black background */
+.frequency-option {
+    background: var(--bocs-white) !important;
+    border: 2px solid var(--bocs-border) !important;
+}
+
+.frequency-option:hover {
+    background: var(--bocs-background) !important;
+    border-color: var(--bocs-primary) !important;
+}
+
+.frequency-option.selected {
+    background: var(--bocs-primary-light) !important;
+    border-color: var(--bocs-primary) !important;
+}
+
+.frequency-option.current {
+    border: 2px dashed var(--bocs-primary) !important;
+    background: var(--bocs-primary-light) !important;
+}
+
+.frequency-details {
+    color: var(--bocs-text) !important;
+}
+
+.frequency-name {
+    color: var(--bocs-text) !important;
+}
+
+.frequency-discount {
+    color: var(--bocs-secondary) !important;
+}
+
+.frequency-option .dashicons-yes-alt {
+    color: var(--bocs-primary) !important;
+}
+
+.current-tag {
+    background: var(--bocs-primary) !important;
+    color: var(--bocs-white) !important;
+}
+
+/* Loading Overlay */
+
+/* Emergency fixes for dialog background issues */
+.ui-dialog { 
+    background-color: var(--bocs-white) !important; 
+}
+
+.ui-dialog .ui-dialog-content { 
+    background-color: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+}
+
+.ui-dialog .ui-widget-content {
+    background-color: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+    border-color: var(--bocs-border) !important;
+}
+
+.ui-dialog .ui-widget-header {
+    background-color: var(--bocs-primary) !important;
+    color: var(--bocs-white) !important;
+    border-color: var(--bocs-primary) !important;
+}
+
+/* Direct fix for dialog black background */
+#frequency-selection-dialog,
+#product-selection-dialog,
+#switch-confirmation-dialog {
+    background-color: var(--bocs-white) !important;
+}
+
+/* Ensure proper text colors in all dialog content */
+.ui-dialog p,
+.ui-dialog span,
+.ui-dialog div,
+.ui-dialog h1,
+.ui-dialog h2,
+.ui-dialog h3,
+.ui-dialog h4 {
+    color: var(--bocs-text) !important;
+}
+
+/* Override WP Admin jQuery UI styles that might be affecting us */
+.ui-widget-content {
+    background-color: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+}
+
+/* Ensure jQuery UI dialog backdrop has correct z-index */
+.ui-widget-overlay {
+    z-index: 100000 !important;
+}
+
+.ui-dialog {
+    z-index: 100001 !important;
+}
+
+/* Custom class for our modals */
+.bocs-modal-dialog {
+    background-color: var(--bocs-white) !important;
+}
+
+.bocs-modal-dialog .ui-dialog-titlebar {
+    background-color: var(--bocs-primary) !important;
+    color: var(--bocs-white) !important;
+    border: none !important;
+}
+
+.bocs-modal-dialog .ui-dialog-content {
+    background-color: var(--bocs-white) !important;
+    color: var(--bocs-text) !important;
+    border: none !important;
+    padding: 20px !important;
+}
+
+.bocs-modal-dialog .ui-dialog-titlebar-close {
+    color: var(--bocs-white) !important;
+}
+
+/* Ensure content inside dialogs uses our colors */
+#frequency-selection-dialog p,
+#frequency-selection-dialog strong,
+#product-selection-dialog p,
+#product-selection-dialog strong,
+#switch-confirmation-dialog p,
+#switch-confirmation-dialog strong {
+    color: var(--bocs-text) !important;
+}
+
+/* Custom class for fullscreen modal */
+.bocs-fullscreen-modal {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+}
+
+.bocs-fullscreen-modal.ui-dialog {
+    padding: 0 !important;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25) !important;
+}
+
+.bocs-fullscreen-modal .ui-dialog-titlebar {
+    padding: 20px 30px !important;
+    font-size: 1.3em !important;
+}
+
+.bocs-fullscreen-modal .ui-dialog-content {
+    padding: 25px 30px !important;
+    overflow: auto !important;
+}
+
+.bocs-fullscreen-modal .ui-dialog-buttonpane {
+    padding: 20px 30px !important;
+}
+
+/* Improve product options list for fullscreen */
+.bocs-fullscreen-modal .product-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    max-height: calc(90vh - 250px);
+    overflow-y: auto;
+    padding: 15px;
+    margin: -15px;
+}
+
+.bocs-fullscreen-modal .product-option {
+    flex-direction: column;
+    height: 100%;
+    margin-bottom: 0;
+}
+
+.bocs-fullscreen-modal .product-info {
+    flex-direction: column;
+    width: 100%;
+}
+
+.bocs-fullscreen-modal .product-image {
+    width: 100%;
+    height: 200px;
+    margin-right: 0;
+    margin-bottom: 15px;
+}
+
+.bocs-fullscreen-modal .product-details {
+    padding: 10px;
+}
+
+.bocs-fullscreen-modal .product-quantity {
+    margin: 15px auto 10px;
+}
+
+.bocs-fullscreen-modal .product-current-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    font-size: 0.8em;
+}
+
+@media (max-width: 768px) {
+    .bocs-fullscreen-modal .product-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .bocs-fullscreen-modal .product-image {
+        height: 150px;
+    }
+}
+
+/* Ensure jQuery UI dialog backdrop has correct z-index */
+.ui-widget-overlay {
+    z-index: 100000 !important;
+}
+
+/* Highlighted product state */
+.product-highlight {
+    border-color: var(--bocs-primary) !important;
+    background-color: var(--bocs-primary-light) !important;
+    box-shadow: 0 8px 16px rgba(0, 101, 169, 0.15) !important;
+    transform: translateY(-5px) !important;
+}
+
+.product-highlight .product-name {
+    color: var(--bocs-primary-dark) !important;
+}
+
+/* Custom class for fullscreen modal */
 </style>
 
 <script type="text/javascript">
 jQuery(document).ready(function($) {
+    // Force dialog styling fix for jQuery UI dialogs
+    // This directly targets the issue with black backgrounds
+    $(document).on("dialogopen", ".ui-dialog", function(event, ui) {
+        // Fix dialog background
+        $(this).css({
+            "background-color": "var(--bocs-white)",
+            "color": "var(--bocs-text)"
+        });
+        
+        // Fix dialog content
+        $(this).find(".ui-dialog-content").css({
+            "background-color": "var(--bocs-white)",
+            "color": "var(--bocs-text)"
+        });
+        
+        // Fix dialog title bar
+        $(this).find(".ui-dialog-titlebar").css({
+            "background-color": "var(--bocs-primary)",
+            "color": "var(--bocs-white)",
+            "border": "none"
+        });
+        
+        // Fix all text inside dialog
+        $(this).find("p, span, div, h1, h2, h3, h4").css({
+            "color": "var(--bocs-text)"
+        });
+        
+        // Fix buttons
+        $(this).find(".ui-dialog-buttonpane button").each(function(index) {
+            if (index === 0) {
+                $(this).css({
+                    "background-color": "var(--bocs-primary)",
+                    "color": "var(--bocs-white)",
+                    "border": "none"
+                });
+            } else {
+                $(this).css({
+                    "background-color": "var(--bocs-white)",
+                    "color": "var(--bocs-text)",
+                    "border": "1px solid var(--bocs-border)"
+                });
+            }
+        });
+    });
+    
     // Store data about available Bocs
     const bocsData = <?php echo json_encode($bocs_items ?? []); ?>;
     
@@ -1216,6 +1308,7 @@ jQuery(document).ready(function($) {
         autoOpen: false,
         modal: true,
         width: 500,
+        dialogClass: 'bocs-modal-dialog',
         buttons: {
             "Continue": function() {
                 const selectedFrequency = $('.frequency-option.selected').data('frequency-id');
@@ -1256,8 +1349,10 @@ jQuery(document).ready(function($) {
     $("#product-selection-dialog").dialog({
         autoOpen: false,
         modal: true,
-        width: 600,
-        height: 500,
+        width: Math.min($(window).width() * 0.95, 1400),
+        height: Math.min($(window).height() * 0.9, 800),
+        dialogClass: 'bocs-modal-dialog bocs-fullscreen-modal',
+        position: { my: "center", at: "center", of: window },
         buttons: {
             "Continue": function() {
                 const selectedCount = selectedProducts.reduce((total, product) => total + product.quantity, 0);
@@ -1282,6 +1377,21 @@ jQuery(document).ready(function($) {
             "Cancel": function() {
                 $(this).dialog("close");
             }
+        },
+        create: function(event, ui) {
+            // Force the dialog to use our color scheme
+            $(this).closest('.ui-dialog').css({
+                'background-color': 'var(--bocs-white)',
+                'color': 'var(--bocs-text)'
+            });
+            $(this).css({
+                'background-color': 'var(--bocs-white)',
+                'color': 'var(--bocs-text)'
+            });
+        },
+        // Resize dialog when window is resized
+        resizeStop: function(event, ui) {
+            $(this).dialog("option", "position", { my: "center", at: "center", of: window });
         }
     });
     
@@ -1650,6 +1760,9 @@ jQuery(document).ready(function($) {
             
             updateProductQuantity(productId, value);
         });
+        
+        // Apply enhanced styling to product options
+        enhanceProductOptionStyling();
     }
     
     // Update product quantity in our tracking array
@@ -2397,6 +2510,39 @@ jQuery(document).ready(function($) {
         successEl.hide().fadeIn(300);
         
         return successEl;
+    }
+
+    // Add window resize handler for the product dialog
+    $(window).resize(function() {
+        if ($("#product-selection-dialog").dialog("isOpen")) {
+            $("#product-selection-dialog").dialog("option", "width", Math.min($(window).width() * 0.95, 1400));
+            $("#product-selection-dialog").dialog("option", "height", Math.min($(window).height() * 0.9, 800));
+            $("#product-selection-dialog").dialog("option", "position", { my: "center", at: "center", of: window });
+        }
+    });
+    
+    // Update product quantity styling for the fullscreen layout
+    function enhanceProductOptionStyling() {
+        // Add hover effects
+        $('.product-option').hover(
+            function() {
+                $(this).css('transform', 'translateY(-5px)');
+                $(this).css('box-shadow', '0 10px 20px rgba(0,0,0,0.1)');
+            },
+            function() {
+                $(this).css('transform', 'translateY(0)');
+                $(this).css('box-shadow', 'var(--bocs-shadow)');
+            }
+        );
+        
+        // Make product options in fullscreen more interactive
+        $('.bocs-fullscreen-modal .product-option').on('click', function(e) {
+            // Don't trigger if clicking on buttons or inputs
+            if (!$(e.target).closest('.product-quantity').length) {
+                // Toggle a selected state
+                $(this).toggleClass('product-highlight');
+            }
+        });
     }
 });
 </script> 
