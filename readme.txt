@@ -1,3 +1,12 @@
+v0.0.137 04/10/2025
+* Payments: Improved payment method handling with better empty state support
+* Payments: Enhanced error feedback for Stripe integration
+* UI/UX: Standardized color scheme and improved responsive design
+* UI/UX: Added common CSS file with consistent variables across templates
+* UI/UX: Enhanced product dialog layout with improved interactivity
+* UI/UX: Improved modal sizing and positioning for better usability
+* Performance: Added debug logging for payment processing to improve troubleshooting
+
 v0.0.136 04/09/2025
 * Core: Reduced verbose debug logging in Bocs_WooCommerce class
 * Emails: Improved email handling for new customers with better targeting
