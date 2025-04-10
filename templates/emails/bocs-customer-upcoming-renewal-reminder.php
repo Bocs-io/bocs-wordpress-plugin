@@ -78,13 +78,100 @@ do_action('woocommerce_email_header', $email_heading, $email);
 </h2>
 
 <?php
-/*
- * @hooked WC_Emails::order_details() Shows the order details table.
- * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
- * @hooked WC_Structured_Data::output_structured_data() Outputs structured data.
- */
-do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
+// Check if this is a "placeholder" order for upcoming renewals
+$items = $order->get_items();
+$order_for_display = $order;
 
+// If this is a placeholder order with no items, find the original order
+if (empty($items) && method_exists($order, 'get_meta')) {
+    $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
+    if (!empty($bocs_subscription_id)) {
+        // Query for the most recent completed order with this subscription ID
+        $args = array(
+            'status' => array('completed', 'processing'),
+            'limit' => 1,
+            'meta_key' => '__bocs_subscription_id',
+            'meta_value' => $bocs_subscription_id,
+            'return' => 'ids',
+        );
+        
+        $original_orders = wc_get_orders($args);
+        
+        if (!empty($original_orders)) {
+            $original_order_id = $original_orders[0];
+            $original_order = wc_get_order($original_order_id);
+            
+            if ($original_order && $original_order->get_items()) {
+                $order_for_display = $original_order;
+                $items = $original_order->get_items();
+            }
+        }
+    }
+}
+?>
+
+<!-- Order Items Table -->
+<div style="margin-bottom: 40px;">
+    <table class="td" cellspacing="0" cellpadding="6" style="width: 100%; border: 1px solid #e5e5e5; border-collapse: collapse; color: #636363; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
+        <thead>
+            <tr>
+                <th class="td" scope="col" style="text-align: left; color: #636363; border: 1px solid #e5e5e5; padding: 12px; font-weight: bold;"><?php esc_html_e('Product', 'woocommerce'); ?></th>
+                <th class="td" scope="col" style="text-align: left; color: #636363; border: 1px solid #e5e5e5; padding: 12px; font-weight: bold;"><?php esc_html_e('Quantity', 'woocommerce'); ?></th>
+                <th class="td" scope="col" style="text-align: left; color: #636363; border: 1px solid #e5e5e5; padding: 12px; font-weight: bold;"><?php esc_html_e('Price', 'woocommerce'); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($items)) : ?>
+                <?php foreach ($items as $item_id => $item) : 
+                    $product = $item->get_product();
+                    $sku = $product ? $product->get_sku() : '';
+                    $name = $item->get_name();
+                ?>
+                <tr class="<?php echo esc_attr(apply_filters('woocommerce_order_item_class', 'order_item', $item, $order_for_display)); ?>">
+                    <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; word-wrap: break-word;">
+                        <?php echo wp_kses_post($name); ?>
+                        <?php if ($sku) : ?>
+                            <small><?php echo esc_html__('SKU:', 'woocommerce') . ' ' . esc_html($sku); ?></small>
+                        <?php endif; ?>
+                    </td>
+                    <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
+                        <?php echo wp_kses_post($item->get_quantity()); ?>
+                    </td>
+                    <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
+                        <?php echo wp_kses_post($order_for_display->get_formatted_line_subtotal($item)); ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 12px; color: #636363; border: 1px solid #e5e5e5;">
+                        <?php esc_html_e('No items found in this order.', 'woocommerce'); ?>
+                    </td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+        <tfoot>
+            <?php
+            $totals = $order_for_display->get_order_item_totals();
+            if ($totals) :
+                $i = 0;
+                foreach ($totals as $total) :
+                    $i++;
+                    ?>
+                    <tr>
+                        <th class="td" scope="row" colspan="2" style="text-align: right; border: 1px solid #e5e5e5; padding: 12px; font-weight: bold;"><?php echo wp_kses_post($total['label']); ?></th>
+                        <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px;"><?php echo wp_kses_post($total['value']); ?></td>
+                    </tr>
+                    <?php
+                endforeach;
+            endif;
+            ?>
+        </tfoot>
+    </table>
+</div>
+
+<?php
+// Skip the customer details hooks since we're handling the order details manually
 /*
  * @hooked WC_Emails::order_meta() Shows order meta data.
  */
