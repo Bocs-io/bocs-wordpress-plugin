@@ -1,0 +1,415 @@
+/* BOCS Common Styles
+ * This file contains shared styles for all BOCS templates
+ * to maintain consistency across the plugin.
+ */
+
+:root {
+    /* Primary Colors */
+    --bocs-primary: #0065A9;
+    --bocs-primary-dark: #004C80;
+    --bocs-secondary: #B85C00;
+    --bocs-secondary-dark: #8C4600;
+    
+    /* Status Colors */
+    --bocs-success: #38A169;
+    --bocs-success-light: #C6E6C9;
+    --bocs-warning: #F6AD55;
+    --bocs-warning-light: #FEEBC8;
+    --bocs-error: #E53E3E;
+    --bocs-error-light: #FED7D7;
+    
+    /* Neutral Colors */
+    --bocs-text: #1A202C;
+    --bocs-text-light: #4A5568;
+    --bocs-border: #E2E8F0;
+    --bocs-background: #F7FAFC;
+    --bocs-white: #FFFFFF;
+    
+    /* Effects */
+    --bocs-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --bocs-radius: 8px;
+    --bocs-transition: all 0.2s ease-in-out;
+}
+
+/* Base Container Styles */
+.bocs-container,
+.bocs-edit-details-container,
+.bocs-subscription-details,
+.woocommerce-subscriptions-wrapper {
+    background: var(--bocs-white);
+    padding: 2em;
+    margin-bottom: 2em;
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+}
+
+/* Navigation Links */
+.bocs-back-link,
+.bocs-nav-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 1em;
+    text-decoration: none;
+    color: var(--bocs-primary);
+    font-weight: 500;
+    transition: var(--bocs-transition);
+}
+
+.bocs-back-link:hover,
+.bocs-nav-link:hover {
+    color: var(--bocs-primary-dark);
+}
+
+.bocs-back-link:before {
+    content: "←";
+    margin-right: 8px;
+}
+
+/* Section Headers */
+.bocs-section-header,
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+    border-bottom: 1px solid var(--bocs-border);
+    padding-bottom: 1em;
+}
+
+.bocs-section-header h2,
+.bocs-section-header h3,
+.section-header h2,
+.section-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: var(--bocs-text);
+    font-weight: 600;
+}
+
+/* Status Indicators */
+.subscription-status {
+    padding: 0.5em 1em;
+    border-radius: var(--bocs-radius);
+    font-weight: 600;
+    display: inline-block;
+    transition: var(--bocs-transition);
+}
+
+.status-active {
+    background: var(--bocs-success-light);
+    color: var(--bocs-success);
+}
+
+.status-paused,
+.status-pending {
+    background: var(--bocs-warning-light);
+    color: var(--bocs-secondary);
+}
+
+.status-cancelled,
+.status-expired {
+    background: var(--bocs-error-light);
+    color: var(--bocs-error);
+}
+
+/* Date Display */
+.subscription-dates,
+.date-group {
+    display: flex;
+    gap: 2em;
+}
+
+.date-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-label {
+    color: #6d6d6d;
+    font-size: 0.9em;
+}
+
+.date-value {
+    font-weight: 600;
+}
+
+/* Buttons and Actions */
+.bocs-button,
+.woocommerce-button.button,
+.edit-button,
+.save-button,
+.cancel-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.9em 1.8em;
+    border-radius: var(--bocs-radius);
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--bocs-transition);
+    cursor: pointer;
+    border: 2px solid transparent;
+    min-height: 44px;
+    font-size: 15px;
+    line-height: 1.4;
+    letter-spacing: 0.3px;
+    background-color: var(--bocs-primary);
+    color: var(--bocs-white);
+}
+
+.bocs-button:hover,
+.woocommerce-button.button:hover,
+.edit-button:hover,
+.save-button:hover {
+    background-color: var(--bocs-primary-dark);
+    color: var(--bocs-white);
+    transform: translateY(-1px);
+    box-shadow: var(--bocs-shadow);
+}
+
+.bocs-button.secondary,
+.cancel-button {
+    background-color: var(--bocs-background);
+    color: var(--bocs-text);
+    border-color: var(--bocs-border);
+}
+
+.bocs-button.secondary:hover,
+.cancel-button:hover {
+    background-color: var(--bocs-white);
+    border-color: var(--bocs-primary);
+    color: var(--bocs-primary);
+}
+
+.bocs-button.danger {
+    background-color: var(--bocs-error);
+    color: var(--bocs-white);
+}
+
+.bocs-button.danger:hover {
+    background-color: var(--bocs-error-light);
+    color: var(--bocs-error);
+}
+
+/* Form Elements */
+.bocs-form-row {
+    margin-bottom: 1em;
+}
+
+.bocs-form-row label {
+    display: block;
+    margin-bottom: 0.5em;
+    font-weight: 500;
+    color: var(--bocs-text);
+}
+
+.bocs-form-row input[type="text"],
+.bocs-form-row input[type="email"],
+.bocs-form-row input[type="tel"],
+.bocs-form-row select,
+.bocs-form-row textarea {
+    width: 100%;
+    padding: 0.7em;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    font-size: 15px;
+    line-height: 1.4;
+    transition: var(--bocs-transition);
+}
+
+.bocs-form-row input:focus,
+.bocs-form-row select:focus,
+.bocs-form-row textarea:focus {
+    border-color: var(--bocs-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 101, 169, 0.1);
+}
+
+/* Tables */
+.bocs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    overflow: hidden;
+}
+
+.bocs-table th,
+.bocs-table td {
+    padding: 1em;
+    text-align: left;
+    border-bottom: 1px solid var(--bocs-border);
+}
+
+.bocs-table th {
+    background-color: var(--bocs-background);
+    font-weight: 600;
+    color: var(--bocs-text);
+}
+
+.bocs-table tbody tr:hover {
+    background-color: var(--bocs-background);
+}
+
+/* Notifications */
+.bocs-notification {
+    padding: 1em 1.5em;
+    border-radius: var(--bocs-radius);
+    margin-bottom: 1em;
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    background: var(--bocs-white);
+    box-shadow: var(--bocs-shadow);
+}
+
+.bocs-notification.success {
+    border-left: 4px solid var(--bocs-success);
+}
+
+.bocs-notification.error {
+    border-left: 4px solid var(--bocs-error);
+}
+
+.bocs-notification.info {
+    border-left: 4px solid var(--bocs-primary);
+}
+
+/* Loading States */
+.bocs-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--bocs-primary);
+    animation: bocs-spin 0.8s linear infinite;
+}
+
+@keyframes bocs-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .bocs-container,
+    .bocs-edit-details-container,
+    .bocs-subscription-details {
+        padding: 1em;
+    }
+
+    .subscription-dates,
+    .date-group {
+        flex-direction: column;
+        gap: 1em;
+    }
+
+    .bocs-button,
+    .woocommerce-button.button {
+        width: 100%;
+        margin-bottom: 0.5em;
+    }
+
+    .bocs-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Accordion Styles */
+.bocs-accordion {
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    overflow: hidden;
+    background: var(--bocs-white);
+}
+
+.accordion-header {
+    background-color: var(--bocs-white);
+    padding: 1em;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--bocs-transition);
+    border-bottom: 1px solid var(--bocs-border);
+}
+
+.accordion-header:hover {
+    background-color: var(--bocs-background);
+}
+
+.accordion-content {
+    padding: 1.5em;
+    background-color: var(--bocs-white);
+}
+
+.accordion-arrow {
+    font-size: 0.8em;
+    transition: transform 0.3s ease;
+}
+
+/* Price and Discount Styles */
+.price-display {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--bocs-primary);
+}
+
+.discount-badge {
+    display: inline-block;
+    padding: 0.3em 0.6em;
+    background-color: var(--bocs-success);
+    color: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    font-size: 0.9em;
+    margin-left: 0.5em;
+}
+
+/* Grid Layout */
+.bocs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5em;
+    margin: 1.5em 0;
+}
+
+.bocs-grid-item {
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    padding: 1.5em;
+    box-shadow: var(--bocs-shadow);
+    transition: var(--bocs-transition);
+}
+
+.bocs-grid-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Header Styles */
+.bocs-header {
+    background: var(--bocs-secondary);
+    color: var(--bocs-white);
+    padding: 1.5em;
+    border-radius: var(--bocs-radius) var(--bocs-radius) 0 0;
+    margin: -2em -2em 2em -2em;
+}
+
+.bocs-header h1 {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+/* Utility Classes */
+.bocs-text-center { text-align: center; }
+.bocs-text-right { text-align: right; }
+.bocs-mt-1 { margin-top: 1em; }
+.bocs-mb-1 { margin-bottom: 1em; }
+.bocs-flex { display: flex; }
+.bocs-flex-between { justify-content: space-between; }
+.bocs-flex-center { align-items: center; }
+.bocs-gap-1 { gap: 1em; } 
