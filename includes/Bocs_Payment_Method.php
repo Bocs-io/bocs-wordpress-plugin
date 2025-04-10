@@ -278,7 +278,7 @@ class Bocs_Payment_Method {
                 'bocs-payment-methods',
                 plugins_url('assets/js/payment-methods.js', dirname(__FILE__)),
                 ['jquery', 'stripe-js'],
-                '20250409.13', // Updated version to force browser refresh
+                '20250410.2', // Updated version to force browser refresh
                 true
             );
 
@@ -1345,7 +1345,79 @@ class Bocs_Payment_Method {
             }
             
             if (empty($stripe_source_id)) {
-                throw new Exception('No payment method found for this subscription');
+                error_log("No Stripe source ID found in metadata");
+                // Modified to show "Add new payment method" option instead of exception
+                ob_start();
+                echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
+                echo '<div class="saved-payment-methods">';
+                echo '<h4>' . __('Saved Payment Methods', 'bocs-wordpress') . '</h4>';
+                echo '<p>' . __('No payment method found for this subscription', 'bocs-wordpress') . '</p>';
+                
+                echo '<form class="payment-methods-form">';
+                
+                // Add new payment method option
+                echo '<label class="payment-method-option">';
+                echo '<input type="radio" name="payment_method" value="new" />';
+                echo ' ' . __('Add new payment method', 'bocs-wordpress');
+                echo '</label>';
+                
+                // Footer buttons (Cancel / Update)
+                echo '<div class="modal-buttons">';
+                echo '<button type="button" class="button cancel-update">' . __('Cancel', 'bocs-wordpress') . '</button>';
+                echo '<button type="button" class="button primary update-payment-method">' . __('Add Payment Method', 'bocs-wordpress') . '</button>';
+                echo '</div>';
+                
+                echo '</form>';
+                echo '</div>';
+                
+                // Add JavaScript for form handling
+                ?>
+                <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        $('.cancel-update').on('click', function() {
+                            $('#payment-method-modal').hide();
+                            // Clear modal content except for loading message
+                            $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
+                        });
+                        
+                        $('.update-payment-method').on('click', function() {
+                            // Redirect to add new payment method
+                            window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
+                        });
+                    });
+                </script>
+                <style>
+                    .saved-payment-methods {
+                        margin-top: 20px;
+                    }
+                    .payment-method-option {
+                        display: block;
+                        margin-bottom: 10px;
+                    }
+                    .modal-buttons {
+                        margin-top: 20px;
+                        text-align: right;
+                    }
+                    .modal-buttons .button {
+                        margin-left: 10px;
+                    }
+                    .button.primary {
+                        background-color: #7b68ee;
+                        color: white;
+                    }
+                </style>
+                <?php
+                $html = ob_get_clean();
+                
+                wp_send_json_success([
+                    'html' => $html,
+                    'subscription_id' => $subscription_id,
+                    'debug_info' => [
+                        'source_id' => 'none',
+                        'has_payment_method' => false
+                    ]
+                ]);
+                return;
             }
             
             // Get Stripe payment method details
@@ -1757,7 +1829,78 @@ class Bocs_Payment_Method {
             }
             
             if (empty($stripe_source_id)) {
-                echo '<p>' . __('No payment method information available', 'bocs-wordpress') . '</p>';
+                error_log("No Stripe source ID found in metadata");
+                // Modified to show "Add new payment method" option instead of exception
+                ob_start();
+                echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
+                echo '<div class="saved-payment-methods">';
+                echo '<h4>' . __('Saved Payment Methods', 'bocs-wordpress') . '</h4>';
+                echo '<p>' . __('No payment method found for this subscription', 'bocs-wordpress') . '</p>';
+                
+                echo '<form class="payment-methods-form">';
+                
+                // Add new payment method option
+                echo '<label class="payment-method-option">';
+                echo '<input type="radio" name="payment_method" value="new" />';
+                echo ' ' . __('Add new payment method', 'bocs-wordpress');
+                echo '</label>';
+                
+                // Footer buttons (Cancel / Update)
+                echo '<div class="modal-buttons">';
+                echo '<button type="button" class="button cancel-update">' . __('Cancel', 'bocs-wordpress') . '</button>';
+                echo '<button type="button" class="button primary update-payment-method">' . __('Add Payment Method', 'bocs-wordpress') . '</button>';
+                echo '</div>';
+                
+                echo '</form>';
+                echo '</div>';
+                
+                // Add JavaScript for form handling
+                ?>
+                <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        $('.cancel-update').on('click', function() {
+                            $('#payment-method-modal').hide();
+                            // Clear modal content except for loading message
+                            $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
+                        });
+                        
+                        $('.update-payment-method').on('click', function() {
+                            // Redirect to add new payment method
+                            window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
+                        });
+                    });
+                </script>
+                <style>
+                    .saved-payment-methods {
+                        margin-top: 20px;
+                    }
+                    .payment-method-option {
+                        display: block;
+                        margin-bottom: 10px;
+                    }
+                    .modal-buttons {
+                        margin-top: 20px;
+                        text-align: right;
+                    }
+                    .modal-buttons .button {
+                        margin-left: 10px;
+                    }
+                    .button.primary {
+                        background-color: #7b68ee;
+                        color: white;
+                    }
+                </style>
+                <?php
+                $html = ob_get_clean();
+                
+                wp_send_json_success([
+                    'html' => $html,
+                    'subscription_id' => $subscription_id,
+                    'debug_info' => [
+                        'source_id' => 'none',
+                        'has_payment_method' => false
+                    ]
+                ]);
                 return;
             }
             
@@ -2066,6 +2209,12 @@ class Bocs_Payment_Method {
                     background-color: #7b68ee;
                     color: white;
                 }
+                .payment-method-error {
+                    padding: 10px;
+                    background: #fef8f8;
+                    border-left: 4px solid #d63638;
+                    margin-bottom: 15px;
+                }
             </style>
             <?php
             
@@ -2076,8 +2225,12 @@ class Bocs_Payment_Method {
                 'subscription_id' => $subscription_id,
                 'debug_info' => [
                     'source_id' => $stripe_source_id,
+                    'customer_id' => $stripe_customer_id,
                     'has_payment_method' => !empty($payment_method),
-                    'has_card_details' => !empty($payment_method) && isset($payment_method->card)
+                    'has_card_details' => !empty($payment_method) && isset($payment_method->card),
+                    'retrieval_attempts' => $debug_info['attempts'],
+                    'test_mode' => $test_mode,
+                    'error' => $retrieval_error
                 ]
             ]);
         } catch (Exception $e) {
@@ -2285,7 +2438,78 @@ class Bocs_Payment_Method {
             
             if (empty($stripe_source_id)) {
                 error_log("No Stripe source ID found in metadata");
-                throw new Exception('No payment method found for this subscription');
+                // Modified to show "Add new payment method" option instead of exception
+                ob_start();
+                echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
+                echo '<div class="saved-payment-methods">';
+                echo '<h4>' . __('Saved Payment Methods', 'bocs-wordpress') . '</h4>';
+                echo '<p>' . __('No payment method found for this subscription', 'bocs-wordpress') . '</p>';
+                
+                echo '<form class="payment-methods-form">';
+                
+                // Add new payment method option
+                echo '<label class="payment-method-option">';
+                echo '<input type="radio" name="payment_method" value="new" />';
+                echo ' ' . __('Add new payment method', 'bocs-wordpress');
+                echo '</label>';
+                
+                // Footer buttons (Cancel / Update)
+                echo '<div class="modal-buttons">';
+                echo '<button type="button" class="button cancel-update">' . __('Cancel', 'bocs-wordpress') . '</button>';
+                echo '<button type="button" class="button primary update-payment-method">' . __('Add Payment Method', 'bocs-wordpress') . '</button>';
+                echo '</div>';
+                
+                echo '</form>';
+                echo '</div>';
+                
+                // Add JavaScript for form handling
+                ?>
+                <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        $('.cancel-update').on('click', function() {
+                            $('#payment-method-modal').hide();
+                            // Clear modal content except for loading message
+                            $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
+                        });
+                        
+                        $('.update-payment-method').on('click', function() {
+                            // Redirect to add new payment method
+                            window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
+                        });
+                    });
+                </script>
+                <style>
+                    .saved-payment-methods {
+                        margin-top: 20px;
+                    }
+                    .payment-method-option {
+                        display: block;
+                        margin-bottom: 10px;
+                    }
+                    .modal-buttons {
+                        margin-top: 20px;
+                        text-align: right;
+                    }
+                    .modal-buttons .button {
+                        margin-left: 10px;
+                    }
+                    .button.primary {
+                        background-color: #7b68ee;
+                        color: white;
+                    }
+                </style>
+                <?php
+                $html = ob_get_clean();
+                
+                wp_send_json_success([
+                    'html' => $html,
+                    'subscription_id' => $subscription_id,
+                    'debug_info' => [
+                        'source_id' => 'none',
+                        'has_payment_method' => false
+                    ]
+                ]);
+                return;
             }
             
             // Get Stripe payment method details
@@ -2470,7 +2694,6 @@ class Bocs_Payment_Method {
                 echo '<br>';
             } else {
                 error_log("Payment method doesn't have card details");
-                echo '<div class="payment-method-error">';
                 echo '<p>' . __('Unable to display current payment method details. The payment information may need to be updated.', 'bocs-wordpress') . '</p>';
                 
                 if ($retrieval_error) {
@@ -2519,7 +2742,7 @@ class Bocs_Payment_Method {
             
             // Add new payment method option
             echo '<label class="payment-method-option">';
-            echo '<input type="radio" name="payment_method" value="new" ' . (!$payment_method && !$has_tokens ? 'checked' : '') . ' />';
+            echo '<input type="radio" name="payment_method" value="new" />';
             echo ' ' . __('Add new payment method', 'bocs-wordpress');
             echo '</label>';
             
