@@ -1,0 +1,747 @@
+/**
+ * BOCS Subscriptions CSS
+ * 
+ * Styles for the BOCS subscription list and management interface.
+ */
+
+/* === Base Styles === */
+:root {
+    --bocs-primary: #0065A9;
+    --bocs-secondary: #00A5B5;
+    --bocs-accent: #FFCC00;
+    --bocs-text: #333333;
+    --bocs-text-light: #666666;
+    --bocs-light-bg: #F9FAFB;
+    --bocs-border: #E5E7EB;
+    --bocs-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --bocs-radius: 8px;
+    --bocs-transition: all 0.3s ease;
+    
+    /* Status Colors */
+    --bocs-active: #38A169;
+    --bocs-paused: #ECC94B;
+    --bocs-cancelled: #E53E3E;
+    --bocs-upcoming: #3182CE;
+    
+    /* Font Settings */
+    --bocs-font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --bocs-font-secondary: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --bocs-font-mono: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* Force default font and spacing settings */
+.bocs-subscriptions-container * {
+    box-sizing: border-box;
+}
+
+.bocs-subscriptions-container {
+    font-family: var(--bocs-font-primary);
+    color: var(--bocs-text);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    background-color: #fff;
+    clear: both;
+}
+
+/* === Subscription List === */
+#bocs-subscriptions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.bocs-subscription-item {
+    border-radius: var(--bocs-radius);
+    border: 1px solid var(--bocs-border);
+    overflow: hidden;
+    transition: var(--bocs-transition);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.bocs-subscription-item.active {
+    box-shadow: var(--bocs-shadow);
+}
+
+/* === Subscription Header === */
+.bocs-subscription-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f7fafc;
+    border-radius: 0.375rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+}
+
+.bocs-subscription-toggle {
+    flex-shrink: 0;
+    margin-right: 1rem;
+}
+
+.bocs-toggle-icon {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-style: solid;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    transition: transform 0.2s;
+}
+
+.bocs-subscription-item.active .bocs-toggle-icon {
+    transform: rotate(-135deg);
+}
+
+.bocs-subscription-info {
+    flex-grow: 1;
+    margin-right: 1rem;
+}
+
+.bocs-subscription-id-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bocs-subscription-id {
+    font-weight: 600;
+    font-size: 1.125rem;
+    color: #2d3748;
+}
+
+.bocs-subscription-status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.bocs-subscription-status.status-active {
+    background-color: #e6f7ec;
+    color: #0d9f6e;
+}
+
+.bocs-subscription-status.status-upcoming {
+    background-color: #feebc8;
+    color: #dd6b20;
+}
+
+.bocs-subscription-status.status-paused {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.bocs-subscription-status.status-cancelled {
+    background-color: #fed7d7;
+    color: #e53e3e;
+}
+
+.bocs-subscription-price {
+    color: #38b2ac;
+    font-weight: 600;
+    font-size: 1.125rem;
+    margin-right: 1rem;
+    white-space: nowrap;
+}
+
+.bocs-subscription-billing {
+    font-size: 0.875rem;
+    color: var(--bocs-text-light);
+    min-width: 200px;
+}
+
+.bocs-billing-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* === Subscription Details === */
+.bocs-subscription-details {
+    padding: 2rem;
+    border-top: 1px solid var(--bocs-border);
+    display: none; /* Hide by default, even before JS loads */
+}
+
+.bocs-subscription-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.bocs-subscription-name {
+    margin-bottom: 2rem;
+}
+
+.bocs-subscription-name h3 {
+    font-family: var(--bocs-font-secondary);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--bocs-text);
+    margin: 0;
+}
+
+.bocs-subscription-sections {
+    margin-bottom: 2rem;
+    padding: 0 10rem;
+}
+
+.bocs-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.bocs-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.bocs-section h4 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.bocs-section-content {
+    display: flex;
+    justify-content: space-between;
+}
+
+.bocs-section-lines {
+    flex-grow: 1;
+}
+
+.bocs-section-line {
+    display: block;
+    line-height: 1.6;
+    margin-bottom: 0.25rem;
+}
+
+.bocs-edit-button {
+    flex-shrink: 0;
+    margin-left: 1rem;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1;
+    font-weight: 500;
+    color: #374151;
+    align-self: flex-start;
+}
+
+.bocs-edit-button:hover {
+    background-color: #e5e7eb;
+}
+
+/* === Order Details === */
+.bocs-order-details {
+    margin-top: 2rem;
+}
+
+.bocs-order-details h4 {
+    font-family: var(--bocs-font-secondary);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--bocs-text);
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--bocs-border);
+}
+
+.bocs-order-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+/* Add styles for product metadata display */
+.bocs-order-table .product-meta {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+.bocs-order-table .meta-item {
+    margin-bottom: 0.15rem;
+}
+
+.bocs-order-table .meta-key {
+    font-weight: 500;
+    margin-right: 0.25rem;
+}
+
+/* Table headers */
+.bocs-order-table th {
+    text-align: left;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--bocs-border);
+    font-weight: 600;
+    color: var(--bocs-text);
+}
+
+/* Table cells */
+.bocs-order-table td {
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--bocs-border-light, #e5e7eb);
+}
+
+/* Table rows */
+.bocs-order-table tbody tr:last-child td {
+    border-bottom: 1px solid var(--bocs-border);
+}
+
+/* Total row styling */
+.bocs-order-table tfoot tr th {
+    text-align: right;
+    font-weight: 500;
+    border-bottom: none;
+}
+
+.bocs-order-table tfoot tr:last-child th,
+.bocs-order-table tfoot tr:last-child td {
+    border-top: 1px solid var(--bocs-border);
+    border-bottom: none;
+    font-weight: 600;
+    padding-top: 1rem;
+}
+
+/* Specific row styling */
+.bocs-order-table .bocs-subtotal-row th,
+.bocs-order-table .bocs-subtotal-row td,
+.bocs-order-table .bocs-discount-row th,
+.bocs-order-table .bocs-discount-row td,
+.bocs-order-table .bocs-shipping-row th,
+.bocs-order-table .bocs-shipping-row td,
+.bocs-order-table .bocs-tax-row th,
+.bocs-order-table .bocs-tax-row td {
+    border-bottom: none;
+    padding: 0.5rem;
+}
+
+/* Discount row styling */
+.bocs-order-table .bocs-discount-row td {
+    color: #2e7d32; /* Green color for discounts */
+}
+
+/* Responsive table for smaller screens */
+@media (max-width: 768px) {
+    .bocs-order-table thead {
+        display: none;
+    }
+    
+    .bocs-order-table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid var(--bocs-border);
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+    }
+    
+    .bocs-order-table td {
+        display: flex;
+        justify-content: space-between;
+        text-align: right;
+        border-bottom: none;
+        padding: 0.5rem 0;
+    }
+    
+    .bocs-order-table td:before {
+        content: attr(data-title);
+        font-weight: 600;
+        float: left;
+    }
+    
+    .bocs-order-table tfoot {
+        display: block;
+    }
+    
+    .bocs-order-table tfoot tr {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+    
+    .bocs-order-table tfoot th {
+        flex: 1;
+        text-align: left;
+    }
+    
+    .bocs-order-table tfoot td {
+        text-align: right;
+    }
+}
+
+.bocs-shipping-row {
+    background-color: #f9f9f9;
+}
+
+.bocs-total-row {
+    font-weight: 600;
+    background-color: var(--bocs-light-bg);
+}
+
+.bocs-pay-now-container {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+/* === Buttons === */
+.bocs-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--bocs-radius);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--bocs-transition);
+    text-decoration: none;
+    border: 1px solid transparent;
+    background-color: #ffffff;
+    color: var(--bocs-primary);
+    border-color: var(--bocs-primary);
+}
+
+.bocs-button:hover {
+    background-color: rgba(0, 101, 169, 0.05);
+}
+
+.bocs-button.primary {
+    background-color: var(--bocs-primary);
+    color: #ffffff;
+}
+
+.bocs-button.primary:hover {
+    background-color: #005490;
+}
+
+.bocs-button.early-renewal {
+    background-color: #ffffff;
+    color: var(--bocs-primary);
+    border-color: var(--bocs-primary);
+}
+
+.bocs-button.early-renewal:hover {
+    background-color: rgba(0, 101, 169, 0.05);
+}
+
+.bocs-button.pay-now {
+    background-color: var(--bocs-active);
+    color: #ffffff;
+    border-color: var(--bocs-active);
+}
+
+.bocs-button.pay-now:hover {
+    background-color: #2f8c5a;
+}
+
+.bocs-button.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.bocs-button.loading .loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: bocs-spinner 0.8s linear infinite;
+}
+
+/* === Modals === */
+.bocs-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.bocs-modal-content {
+    background-color: #fff;
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    padding: 2rem;
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+}
+
+.bocs-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.bocs-modal-close:hover {
+    color: var(--bocs-text);
+}
+
+.bocs-modal h3 {
+    font-family: var(--bocs-font-secondary);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--bocs-primary);
+    margin: 0 0 1.5rem 0;
+}
+
+.bocs-form-row {
+    margin-bottom: 1.5rem;
+}
+
+.bocs-form-row label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--bocs-text-light);
+    margin-bottom: 0.5rem;
+}
+
+.bocs-form-row input[type="text"],
+.bocs-form-row input[type="date"],
+.bocs-form-row select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    font-size: 1rem;
+    transition: var(--bocs-transition);
+}
+
+.bocs-form-row input[type="text"]:focus,
+.bocs-form-row input[type="date"]:focus,
+.bocs-form-row select:focus {
+    border-color: var(--bocs-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 101, 169, 0.1);
+}
+
+.bocs-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.bocs-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+/* === Notifications === */
+.bocs-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: var(--bocs-radius);
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 400px;
+    z-index: 1100;
+    transform: translateY(150%);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.bocs-notification.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.notification-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notification-success .notification-icon {
+    background-color: var(--bocs-active);
+    color: #fff;
+}
+
+.notification-error .notification-icon {
+    background-color: var(--bocs-cancelled);
+    color: #fff;
+}
+
+.notification-info .notification-icon {
+    background-color: var(--bocs-primary);
+    color: #fff;
+}
+
+.notification-loading .notification-icon {
+    position: relative;
+    width: 24px;
+    height: 24px;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 101, 169, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--bocs-primary);
+    animation: bocs-spinner 0.8s linear infinite;
+}
+
+@keyframes bocs-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.notification-message {
+    font-size: 0.9375rem;
+    color: var(--bocs-text);
+    line-height: 1.4;
+}
+
+/* === No Subscriptions === */
+.bocs-no-subscriptions {
+    text-align: center;
+    padding: 3rem 1rem;
+    border: 1px dashed var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    background-color: var(--bocs-light-bg);
+}
+
+.bocs-no-subscriptions p {
+    font-size: 1.125rem;
+    color: var(--bocs-text-light);
+    margin-bottom: 1.5rem;
+}
+
+/* === Responsive Adjustments === */
+@media screen and (max-width: 768px) {
+    .bocs-subscription-header {
+        flex-wrap: wrap;
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+    
+    .bocs-subscription-toggle {
+        order: 1;
+    }
+    
+    .bocs-subscription-info {
+        order: 2;
+        flex: 1 1 calc(100% - 50px);
+    }
+    
+    .bocs-subscription-price {
+        order: 3;
+        flex: 0 0 100%;
+        margin: 0.5rem 0 0 2rem;
+    }
+    
+    .bocs-subscription-billing {
+        order: 4;
+        flex: 0 0 100%;
+        margin-left: 2rem;
+    }
+    
+    .bocs-subscription-details {
+        padding: 1.5rem;
+    }
+    
+    .bocs-subscription-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .bocs-order-table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+.bocs-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.bocs-order-header h4 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.bocs-order-header .pay-now {
+    background-color: #4CAF50;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+#card-element {
+    background-color: white;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    min-height: 40px;
+}
+
+#card-errors {
+    color: #fa755a;
+    font-size: 14px;
+    margin-top: 8px;
+    min-height: 20px;
+}
+
+.StripeElement--focus {
+    box-shadow: 0 1px 3px 0 #cfd7df;
+}
+
+.StripeElement--invalid {
+    border-color: #fa755a;
+}
+
+.StripeElement--webkit-autofill {
+    background-color: #fefde5 !important;
+} 

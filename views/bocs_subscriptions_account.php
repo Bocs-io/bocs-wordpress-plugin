@@ -1595,7 +1595,7 @@ jQuery(document).ready(function($) {
     
     // Track currently active subscription for state management
     let activeSubscriptionId = null;
-
+    
     // Add click handler for Edit Details link
     $(document).on('click', 'a.view-details', function(e) {
         e.preventDefault();
@@ -1619,6 +1619,7 @@ jQuery(document).ready(function($) {
 
     // Add click handler for the Update Box button
     $('.update-box-link').on('click', function(e) {
+        console.log('Update Box button clicked');
         e.preventDefault();
         e.stopPropagation(); // Prevent the event from bubbling up to parent elements
         
@@ -1631,15 +1632,18 @@ jQuery(document).ready(function($) {
         }
         
         console.log('Redirecting to update box with subscription ID:', subscriptionId);
+        const redirectUrl = '<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-update-box'), '/')); ?>/' + subscriptionId + '/';
+        console.log('Redirect URL:', redirectUrl);
         
         if (subscriptionId) {
             // Immediate redirect without affecting the UI
-            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-update-box')); ?>' + subscriptionId + '/';
+            console.log('About to redirect to:', redirectUrl); window.location.href = redirectUrl;
         }
     });
 
     // Add click handler for the Switch Bocs button
     $('.switch-bocs').on('click', function(e) {
+        console.log('Switch Bocs button clicked');
         e.preventDefault();
         e.stopPropagation(); // Prevent the event from bubbling up to parent elements
         
@@ -1652,10 +1656,12 @@ jQuery(document).ready(function($) {
         }
         
         console.log('Redirecting to switch bocs with subscription ID:', subscriptionId);
+        const redirectUrl = '<?php echo esc_url(rtrim(wc_get_account_endpoint_url('bocs-switch-bocs'), '/')); ?>/' + subscriptionId + '/';
+        console.log('Redirect URL:', redirectUrl);
         
         if (subscriptionId) {
             // Immediate redirect without affecting the UI
-            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-switch-bocs')); ?>' + subscriptionId + '/';
+            console.log('About to redirect to:', redirectUrl); window.location.href = redirectUrl;
         }
     });
 
@@ -4758,22 +4764,29 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Close modal when clicking outside
-    $('.bocs-modal').on('click', function(e) {
-        if (e.target === this) {
-            $(this).fadeOut(200);
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
         }
-    });
+    };
 
     /**
-     * Activate Subscription Handler
+     * Early Renewal Handler
      */
-    $(document).off('click', '.subscription_activate');
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
     
-    $(document).on('click', '.subscription_activate', function(e) {
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
         e.preventDefault();
         const button = $(this);
-        const subscriptionId = button.data('subscription-id');
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
 
         if (!subscriptionId) {
             console.error('No subscription ID found');
@@ -4782,18 +4795,18 @@ jQuery(document).ready(function($) {
         }
 
         // Show confirmation modal
-        modalHelpers.show('activate-subscription-modal');
+        modalHelpers.show('early-renewal-modal');
 
         // Remove any existing handlers from modal buttons
-        $('#activate-subscription-modal .modal-cancel, #activate-subscription-modal .modal-confirm').off('click');
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
 
         // Handle modal actions
-        $('#activate-subscription-modal .modal-cancel').one('click', function() {
-            modalHelpers.hide('activate-subscription-modal');
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
         });
 
-        $('#activate-subscription-modal .modal-confirm').one('click', async function() {
-            modalHelpers.hide('activate-subscription-modal');
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
             const originalButtonText = button.html();
             let response = null;
 
@@ -4801,17 +4814,103 @@ jQuery(document).ready(function($) {
                 // Show loading state
                 button.prop('disabled', true)
                       .addClass('button-loading')
-                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Activating...', 'bocs-wordpress')); ?>');
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
 
-                helpers.showNotification('Activating subscription...', 'loading');
-
-                // Send activation request
+                // Send early renewal request
                 response = await $.ajax({
-                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}`,
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
                     method: 'PUT',
-                    data: JSON.stringify({
-                        subscriptionStatus: 'active'
-                    }),
                     contentType: 'application/json',
                     beforeSend: function(xhr) {
                         xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
@@ -4821,27 +4920,30 @@ jQuery(document).ready(function($) {
                 });
 
                 if (response.code === 200) {
-                    // Update UI to reflect activated status
-                    const subscriptionInList = $(`#bocs-subscriptions-accordion #activate_${subscriptionId}`)
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
                         .closest('.wc-subscription');
                     
                     if (subscriptionInList.length) {
-                        // Update status in the list view
+                        // Update status text
                         subscriptionInList.find('.subscription-status')
-                            .removeClass('status-cancelled status-paused')
-                            .addClass('status-active')
-                            .text('Active');
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
 
-                        // Replace activate button with early renewal button
-                        button.replaceWith(`
-                            <button 
-                                class="woocommerce-button button bocs-button subscription_renewal_early" 
-                                id="renewal_${subscriptionId}"
-                                data-subscription-id="${subscriptionId}"
-                            >
-                                <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
-                            </button>
-                        `);
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
                     }
 
                     // Update the detail view if it exists
@@ -4849,35 +4951,145 @@ jQuery(document).ready(function($) {
                     if (detailView.length) {
                         // Update status
                         detailView.find('.subscription-status')
-                            .removeClass('status-cancelled status-paused')
-                            .addClass('status-active')
-                            .text('Active');
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
 
-                        // Replace activate button with early renewal button in detail view
-                        const detailActivateButton = detailView.find('.subscription_activate');
-                        if (detailActivateButton.length) {
-                            detailActivateButton.replaceWith(`
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
                                 <button 
-                                    class="woocommerce-button button bocs-button subscription_renewal_early" 
-                                    id="renewal_${subscriptionId}"
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
                                     data-subscription-id="${subscriptionId}"
                                 >
-                                    <?php esc_html_e('Early Renewal', 'bocs-wordpress'); ?>
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
                                 </button>
                             `);
                         }
                     }
 
-                    helpers.showNotification('Subscription activated successfully', 'success');
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
                 } else {
-                    throw new Error(response.message || 'Failed to activate subscription');
+                    throw new Error(response.message || 'Failed to cancel subscription');
                 }
             } catch (error) {
-                console.error('Error activating subscription:', error);
-                helpers.showNotification('Failed to activate subscription. Please try again.', 'error');
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
             } finally {
-                if (!response?.code === 200) {
-                    // Only reset button if activation failed
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
                     button.prop('disabled', false)
                           .removeClass('button-loading')
                           .html(originalButtonText);
@@ -4886,811 +5098,2368 @@ jQuery(document).ready(function($) {
         });
     });
 
-    // Update Box Handler
-    $(document).on('click', '.update-box', function(e) {
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
         e.preventDefault();
-        const subscriptionId = $(this).data('subscription-id');
-        if (subscriptionId) {
-            window.location.href = `<?php echo esc_url(wc_get_endpoint_url('bocs-update-box', '')); ?>${subscriptionId}`;
-        }
-    });
-
-    // Remove all product selection related handlers
-    $(document).off('click', '.back-to-subscriptions, .cancel-product-selection');
-    
-    // Rest of your existing code...
-
-    // Add click handler for Edit Payment Method button
-    $('.edit-payment-method').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
         
         const button = $(this);
-        const subscriptionId = button.data('subscription-id');
-        
+        const subscriptionId = activeSubscriptionId;
+
         if (!subscriptionId) {
-            console.error('No subscription ID found for payment method edit');
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
             return;
         }
-        
-        console.log('Opening payment method modal for subscription ID:', subscriptionId);
-        
-        // Create payment method modal if it doesn't exist
-        if ($('#payment-method-modal').length === 0) {
-            $('body').append(`
-                <div id="payment-method-modal" class="bocs-modal">
-                    <div class="bocs-modal-content">
-                        <h3><?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?></h3>
-                        <p><?php esc_html_e('Select a payment method to use for this subscription:', 'bocs-wordpress'); ?></p>
-                        <div class="payment-methods-container">
-                            <div class="loading-state">
-                                <div class="bocs-loading-spinner"></div>
-                                <p><?php esc_html_e('Loading payment methods...', 'bocs-wordpress'); ?></p>
-                            </div>
-                            <div class="payment-methods-list" style="display:none;"></div>
-                        </div>
-                        <div class="bocs-modal-actions">
-                            <button class="woocommerce-button button cancel-payment-edit"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-                            <button class="woocommerce-button button update-payment-method"><?php esc_html_e('Update', 'bocs-wordpress'); ?></button>
-                        </div>
-                    </div>
-                </div>
-            `);
-            
-            // Add event handlers for the modal
-            $('.cancel-payment-edit').on('click', function() {
-                $('#payment-method-modal').removeClass('show');
-            });
-        }
-        
-        // Show modal
-        $('#payment-method-modal').addClass('show');
-        
-        // Load payment methods
-        loadPaymentMethods(subscriptionId);
-    });
-    
-    // Function to load payment methods
-    function loadPaymentMethods(subscriptionId) {
-        const container = $('.payment-methods-list');
-        const loadingElement = $('.payment-methods-container .loading-state');
-        
-        container.hide();
-        loadingElement.show();
-        
-        // Ajax call to fetch payment methods
-        $.ajax({
-            url: wc_add_to_cart_params.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'bocs_get_payment_methods',
-                subscription_id: subscriptionId,
-                nonce: '<?php echo wp_create_nonce("bocs_get_payment_methods"); ?>'
-            },
-            success: function(response) {
-                loadingElement.hide();
-                
-                if (response.success && response.data && response.data.length > 0) {
-                    // Display payment methods
-                    container.empty();
-                    
-                    response.data.forEach(function(method) {
-                        container.append(`
-                            <div class="payment-method-item">
-                                <label class="payment-method-option">
-                                    <input type="radio" name="payment_method" 
-                                        value="${method.id}" 
-                                        data-last4="${method.last4 || ''}"
-                                        data-brand="${method.brand || ''}">
-                                    <span class="payment-method-details">
-                                        ${method.brand || ''} ${method.last4 ? '•••• ' + method.last4 : ''}
-                                        ${method.expiry ? ' (Expires: ' + method.expiry + ')' : ''}
-                                    </span>
-                                </label>
-                            </div>
-                        `);
-                    });
-                    
-                    // Add option to add a new payment method
-                    container.append(`
-                        <div class="payment-method-item add-new">
-                            <label class="payment-method-option">
-                                <input type="radio" name="payment_method" value="new">
-                                <span class="payment-method-details">
-                                    <i class="add-icon">+</i> <?php esc_html_e('Add a new payment method', 'bocs-wordpress'); ?>
-                                </span>
-                            </label>
-                        </div>
-                    `);
-                    
-                    container.show();
-                } else {
-                    // Show message if no payment methods
-                    container.html(`
-                        <div class="payment-method-message">
-                            <p><?php esc_html_e('No payment methods found. Please add a new payment method.', 'bocs-wordpress'); ?></p>
-                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('payment-methods')); ?>" class="woocommerce-button button">
-                                <?php esc_html_e('Add Payment Method', 'bocs-wordpress'); ?>
-                            </a>
-                        </div>
-                    `);
-                    container.show();
-                }
-            },
-            error: function() {
-                loadingElement.hide();
-                container.html(`
-                    <div class="payment-method-message error">
-                        <p><?php esc_html_e('Failed to load payment methods. Please try again.', 'bocs-wordpress'); ?></p>
-                    </div>
-                `);
-                container.show();
-            }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
         });
-    }
-    
-    // Handle payment method update
-    $(document).on('click', '.update-payment-method', function() {
-        const button = $(this);
-        const selectedMethod = $('input[name="payment_method"]:checked');
-        
-        if (!selectedMethod.length) {
-            alert('<?php esc_html_e("Please select a payment method", "bocs-wordpress"); ?>');
-            return;
-        }
-        
-        const methodId = selectedMethod.val();
-        const subscriptionId = $('.edit-payment-method').data('subscription-id');
-        
-        if (methodId === 'new') {
-            // Redirect to add payment method page
-            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('payment-methods')); ?>';
-            return;
-        }
-        
-        // Show loading state
-        button.prop('disabled', true)
-              .addClass('button-loading')
-              .html('<span class="loading-spinner"></span> Updating...');
-        
-        // Update payment method
-        $.ajax({
-            url: wc_add_to_cart_params.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'bocs_update_payment_method',
-                subscription_id: subscriptionId,
-                payment_method_id: methodId,
-                nonce: '<?php echo wp_create_nonce("bocs_update_payment_method"); ?>'
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Show success message
-                    helpers.showNotification('Payment method updated successfully', 'success');
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
                     
-                    // Close modal
-                    $('#payment-method-modal').removeClass('show');
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
                 } else {
-                    // Show error message
-                    alert(response.data || '<?php esc_html_e("Failed to update payment method", "bocs-wordpress"); ?>');
+                    throw new Error(response.message || 'Failed to cancel subscription');
                 }
-                
-                // Reset button
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
                 button.prop('disabled', false)
                       .removeClass('button-loading')
-                      .html('<?php esc_html_e("Update", "bocs-wordpress"); ?>');
-            },
-            error: function() {
-                // Show error message
-                alert('<?php esc_html_e("Failed to update payment method. Please try again.", "bocs-wordpress"); ?>');
-                
-                // Reset button
-                button.prop('disabled', false)
-                      .removeClass('button-loading')
-                      .html('<?php esc_html_e("Update", "bocs-wordpress"); ?>');
+                      .html(originalButtonText);
             }
         });
     });
 
-    // Debug and fix for Edit Payment Method modal
-    $(document).on('click', '.edit-payment-method', function(e) {
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-        
-        // Get the subscription ID
-        const subscriptionId = $(this).data('subscription-id');
-        console.log('Edit Payment Method clicked for subscription ID:', subscriptionId);
-        
-        // Check if payment-method-modal exists and create it if not
-        if ($('#payment-method-modal').length === 0) {
-            console.log('Creating payment method modal - it was missing');
-            
-            // Create the modal with proper z-index and styling
-            $('body').append(`
-                <div id="payment-method-modal" class="bocs-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:99999;">
-                    <div class="bocs-modal-content" style="background:#ffffff; padding:35px; max-width:550px; width:90%; margin:5% auto; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,0.4);">
-                        <h3 style="font-size:22px; margin-top:0; margin-bottom:20px; color:#333; border-bottom:2px solid #6c5ce7; padding-bottom:8px;"><?php esc_html_e('Edit Payment Method', 'bocs-wordpress'); ?></h3>
-                        <p style="font-size:16px; color:#444; margin-bottom:20px;"><?php esc_html_e('Select a payment method for this subscription:', 'bocs-wordpress'); ?></p>
-                        <div class="payment-methods-container">
-                            <div class="loading-spinner" style="text-align:center; padding:20px;">
-                                <div style="display:inline-block; width:30px; height:30px; border:3px solid #f3f3f3; border-top:3px solid #6c5ce7; border-radius:50%; animation:spin 1s linear infinite;"></div>
-                                <p style="color:#444; margin-top:10px;"><?php esc_html_e('Loading payment methods...', 'bocs-wordpress'); ?></p>
-                            </div>
-                            <div class="payment-methods-list" style="display:none;"></div>
-                        </div>
-                        <div style="margin-top:25px; text-align:right;">
-                            <button class="button cancel-payment-edit" style="background:#f1f1f1; color:#555; border:1px solid #ddd; padding:10px 20px; border-radius:5px; font-size:15px; cursor:pointer; font-weight:500; margin-right:10px;"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-                            <button class="button update-payment" style="background:#6c5ce7; color:white; border:1px solid #6c5ce7; padding:10px 20px; border-radius:5px; font-size:15px; cursor:pointer; font-weight:500;"><?php esc_html_e('Update', 'bocs-wordpress'); ?></button>
-                        </div>
-                    </div>
-                </div>
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                    .bocs-modal {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0,0,0,0.7);
-                        z-index: 99999;
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .bocs-modal.show {
-                        display: flex !important;
-                    }
-                    .bocs-modal-content {
-                        background: #ffffff;
-                        padding: 35px;
-                        max-width: 550px;
-                        width: 90%;
-                        margin: 5% auto;
-                        border-radius: 10px;
-                        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-                        position: relative;
-                    }
-                    .bocs-modal-content h3 {
-                        font-size: 22px;
-                        margin-top: 0;
-                        margin-bottom: 20px;
-                        color: #333;
-                        border-bottom: 2px solid #6c5ce7;
-                        padding-bottom: 8px;
-                    }
-                    .bocs-modal-content p {
-                        font-size: 16px;
-                        color: #444;
-                        margin-bottom: 20px;
-                    }
-                    .payment-methods-list {
-                        margin: 15px 0;
-                    }
-                    .payment-methods-list div {
-                        padding: 15px;
-                        margin-bottom: 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 8px;
-                        background: #f9f9f9;
-                        transition: all 0.2s ease;
-                    }
-                    .payment-methods-list div:hover {
-                        background: #f0f0f0;
-                        border-color: #bbb;
-                    }
-                    .payment-methods-list label {
-                        display: flex;
-                        align-items: center;
-                        cursor: pointer;
-                        font-size: 16px;
-                        color: #333;
-                    }
-                    .payment-methods-list input[type="radio"] {
-                        margin-right: 12px;
-                        transform: scale(1.2);
-                    }
-                    .payment-methods-list span {
-                        flex: 1;
-                    }
-                    .bocs-modal-content .button {
-                        padding: 10px 20px;
-                        border-radius: 5px;
-                        font-size: 15px;
-                        cursor: pointer;
-                        font-weight: 500;
-                        transition: all 0.2s ease;
-                    }
-                    .bocs-modal-content .cancel-payment-edit {
-                        background: #f1f1f1;
-                        color: #555;
-                        border: 1px solid #ddd;
-                        margin-right: 10px;
-                    }
-                    .bocs-modal-content .cancel-payment-edit:hover {
-                        background: #e5e5e5;
-                        color: #333;
-                    }
-                    .bocs-modal-content .update-payment {
-                        background: #6c5ce7;
-                        color: white;
-                        border: 1px solid #6c5ce7;
-                    }
-                    .bocs-modal-content .update-payment:hover {
-                        background: #5d4ed6;
-                    }
-                    .loading-spinner div {
-                        border-color: #f3f3f3;
-                        border-top-color: #6c5ce7;
-                    }
-                </style>
-            `);
-            
-            // Add event handlers for the modal
-            $(document).on('click', '.cancel-payment-edit', function() {
-                $('#payment-method-modal').removeClass('show').hide();
-            });
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
         }
-        
-        // Force show the modal with both methods
-        $('#payment-method-modal').addClass('show').show();
-        
-        // For testing - populate with dummy data
-        setTimeout(function() {
-            $('.payment-methods-container .loading-spinner').hide();
-            
-            // AJAX call to fetch both BOCS payment methods and WooCommerce payment methods
-            $.ajax({
-                url: wc_add_to_cart_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'bocs_get_payment_methods',
-                    subscription_id: subscriptionId,
-                    nonce: '<?php echo wp_create_nonce("bocs_get_payment_methods"); ?>'
-                },
-                success: function(response) {
-                    if (response.success && response.data) {
-                        let html = '';
-                        let hasPaymentMethods = false;
-                        
-                        // If BOCS payment methods exist
-                        if (response.data.bocs_methods && response.data.bocs_methods.length > 0) {
-                            response.data.bocs_methods.forEach(function(method, index) {
-                                hasPaymentMethods = true;
-                                html += `
-                                    <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                        <label>
-                                            <input type="radio" name="payment_method" value="${method.id}" ${index === 0 ? 'checked' : ''}> 
-                                            <span style="font-size:16px; color:#333;">${method.card_type} •••• ${method.last4} (expires ${method.exp_month}/${method.exp_year})</span>
-                                        </label>
-                                    </div>
-                                `;
-                            });
-                        }
-                        
-                        // If WooCommerce payment methods exist
-                        if (response.data.wc_methods && response.data.wc_methods.length > 0) {
-                            if (hasPaymentMethods) {
-                                html += `<h4 style="margin-top:20px; font-size:16px; color:#333;">Other Payment Methods</h4>`;
-                            }
-                            
-                            response.data.wc_methods.forEach(function(method) {
-                                hasPaymentMethods = true;
-                                html += `
-                                    <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                        <label>
-                                            <input type="radio" name="payment_method" value="wc_${method.token}" ${!html ? 'checked' : ''}> 
-                                            <span style="font-size:16px; color:#333;">${method.method.brand} •••• ${method.method.last4} (expires ${method.method.exp_month}/${method.method.exp_year})</span>
-                                        </label>
-                                    </div>
-                                `;
-                            });
-                        }
-                        
-                        // Add "add new payment method" option
-                        html += `
-                            <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                <label>
-                                    <input type="radio" name="payment_method" value="new" ${!hasPaymentMethods ? 'checked' : ''}> 
-                                    <span style="font-size:16px; color:#333;">+ Add new payment method</span>
-                                </label>
-                            </div>
-                        `;
-                        
-                        // If no payment methods were found, show a message
-                        if (!hasPaymentMethods) {
-                            html = `
-                                <div style="padding:15px; margin-bottom:20px; border:1px solid #f5c6cb; border-radius:8px; background:#f8d7da; color:#721c24;">
-                                    <p style="margin:0; font-size:16px;">No payment methods found for this subscription.</p>
-                                    <p style="margin:5px 0 0; font-size:14px;">Please add a new payment method below.</p>
-                                </div>
-                                <div style="padding:20px; margin-bottom:12px; border:2px solid #6c5ce7; border-radius:8px; background:#f9f9f9;">
-                                    <label style="display:flex; align-items:center;">
-                                        <input type="radio" name="payment_method" value="new" style="transform:scale(1.3); margin-right:15px;"> 
-                                        <span style="font-size:18px; color:#333; font-weight:600;">
-                                            <span style="color:#6c5ce7; margin-right:5px;">+</span> Add new payment method
-                                        </span>
-                                    </label>
-                                    <p style="margin:10px 0 0 30px; font-size:14px; color:#666;">
-                                        You will be redirected to the payment methods page to add a new card.
-                                    </p>
-                                </div>
-                            `;
-                        } else {
-                            // Add "add new payment method" option as normal
-                            html += `
-                                <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                    <label>
-                                        <input type="radio" name="payment_method" value="new"> 
-                                        <span style="font-size:16px; color:#333;">+ Add new payment method</span>
-                                    </label>
-                                </div>
-                            `;
-                        }
-                        
-                        // If no payment methods were found, show a message
-                        if (!hasPaymentMethods) {
-                            html = `
-                                <div style="padding:15px; margin-bottom:20px; border:1px solid #f5c6cb; border-radius:8px; background:#f8d7da; color:#721c24;">
-                                    <p style="margin:0; font-size:16px;">No payment methods found for this subscription.</p>
-                                    <p style="margin:5px 0 0; font-size:14px;">Please add a new payment method below.</p>
-                                </div>
-                                <div style="padding:20px; margin-bottom:12px; border:2px solid #6c5ce7; border-radius:8px; background:#f9f9f9;">
-                                    <label style="display:flex; align-items:center;">
-                                        <input type="radio" name="payment_method" value="new" style="transform:scale(1.3); margin-right:15px;"> 
-                                        <span style="font-size:18px; color:#333; font-weight:600;">
-                                            <span style="color:#6c5ce7; margin-right:5px;">+</span> Add new payment method
-                                        </span>
-                                    </label>
-                                    <p style="margin:10px 0 0 30px; font-size:14px; color:#666;">
-                                        You will be redirected to the payment methods page to add a new card.
-                                    </p>
-                                </div>
-                            `;
-                        } else {
-                            // Add "add new payment method" option as normal
-                            html += `
-                                <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                    <label>
-                                        <input type="radio" name="payment_method" value="new"> 
-                                        <span style="font-size:16px; color:#333;">+ Add new payment method</span>
-                                    </label>
-                                </div>
-                            `;
-                        }
-                        
-                        $('.payment-methods-list').html(html).show();
-                    } else {
-                        // Error handling
-                        $('.payment-methods-list').html(`
-                            <div style="padding:15px; margin-bottom:12px; border:1px solid #f5c6cb; border-radius:8px; background:#f8d7da; color:#721c24;">
-                                <p style="margin:0;">Error loading payment methods.</p>
-                            </div>
-                            <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                                <label>
-                                    <input type="radio" name="payment_method" value="new"> 
-                                    <span style="font-size:16px; color:#333;">+ Add new payment method</span>
-                                </label>
-                            </div>
-                        `).show();
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
                     }
-                },
-                error: function() {
-                    // Fallback to just showing the add new option
-                    $('.payment-methods-list').html(`
-                        <div style="padding:15px; margin-bottom:12px; border:1px solid #f5c6cb; border-radius:8px; background:#f8d7da; color:#721c24;">
-                            <p style="margin:0;">Could not connect to the server. Please try again.</p>
-                        </div>
-                        <div style="padding:15px; margin-bottom:12px; border:1px solid #ddd; border-radius:8px; background:#f9f9f9;">
-                            <label>
-                                <input type="radio" name="payment_method" value="new"> 
-                                <span style="font-size:16px; color:#333;">+ Add new payment method</span>
-                            </label>
-                        </div>
-                    `).show();
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
                 }
-            });
-        }, 500);
-    });
-    
-    // Add update payment handler
-    $(document).on('click', '.update-payment', function() {
-        const selectedMethod = $('input[name="payment_method"]:checked').val();
-        
-        if (selectedMethod === 'new') {
-            // Show payment form in the modal instead of redirecting
-            const subscriptionId = $('.edit-payment-method').data('subscription-id');
-            
-            // Hide the payment methods list and show a form
-            $('.payment-methods-list').hide();
-            
-            // If the form doesn't exist yet, create it
-            if ($('.payment-form-container').length === 0) {
-                $('.payment-methods-container').append(`
-                    <div class="payment-form-container" style="padding:20px; border:1px solid #ddd; border-radius:8px; background:white;">
-                        <h4 style="margin-top:0; font-size:18px; color:#333; margin-bottom:15px;">Add Payment Method</h4>
-                        <form id="add-payment-method-form">
-                            <div style="margin-bottom:15px;">
-                                <label style="display:block; margin-bottom:5px; font-weight:500; color:#555;">Card Number</label>
-                                <input type="text" id="card_number" placeholder="1234 5678 9012 3456" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;" required>
-                            </div>
-                            <div style="display:flex; gap:15px; margin-bottom:15px;">
-                                <div style="flex:1;">
-                                    <label style="display:block; margin-bottom:5px; font-weight:500; color:#555;">Expiry Date</label>
-                                    <input type="text" id="card_expiry" placeholder="MM/YY" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;" required>
-                                </div>
-                                <div style="flex:1;">
-                                    <label style="display:block; margin-bottom:5px; font-weight:500; color:#555;">CVV</label>
-                                    <input type="text" id="card_cvc" placeholder="123" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;" required>
-                                </div>
-                            </div>
-                            <div style="margin-bottom:20px;">
-                                <label style="display:block; margin-bottom:5px; font-weight:500; color:#555;">Name on Card</label>
-                                <input type="text" id="card_name" placeholder="John Doe" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:4px;" required>
-                            </div>
-                            <div style="text-align:right;">
-                                <button type="button" class="back-to-methods" style="background:#f1f1f1; color:#555; border:1px solid #ddd; padding:10px 15px; border-radius:5px; font-size:14px; cursor:pointer; margin-right:10px;">Back</button>
-                                <button type="submit" style="background:#6c5ce7; color:white; border:1px solid #6c5ce7; padding:10px 15px; border-radius:5px; font-size:14px; cursor:pointer;">Save Payment Method</button>
-                            </div>
-                        </form>
-                    </div>
-                `);
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
                 
-                // Add event handler for back button
-                $(document).on('click', '.back-to-methods', function() {
-                    $('.payment-form-container').hide();
-                    $('.payment-methods-list').show();
-                });
-                
-                // Add event handler for the form submission
-                $('#add-payment-method-form').on('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // Show loading state
-                    const submitButton = $(this).find('button[type="submit"]');
-                    const originalButtonText = submitButton.text();
-                    submitButton.prop('disabled', true).text('Processing...');
-                    
-                    // Create payment method via AJAX
-                    $.ajax({
-                        url: wc_add_to_cart_params.ajax_url,
-                        type: 'POST',
-                        data: {
-                            action: 'bocs_add_payment_method',
-                            subscription_id: subscriptionId,
-                            card_number: $('#card_number').val(),
-                            card_expiry: $('#card_expiry').val(),
-                            card_cvc: $('#card_cvc').val(),
-                            card_name: $('#card_name').val(),
-                            nonce: '<?php echo wp_create_nonce("bocs_add_payment_method"); ?>'
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                // Show success message
-                                alert('Payment method added successfully.');
-                                $('#payment-method-modal').removeClass('show').hide();
-                                
-                                // Optionally refresh the page to show the new payment method
-                                window.location.reload();
-                            } else {
-                                // Show error message
-                                alert(response.data.message || 'Failed to add payment method. Please try again.');
-                                
-                                // Reset button state
-                                submitButton.prop('disabled', false).text(originalButtonText);
-                            }
-                        },
-                        error: function() {
-                            alert('Could not connect to the server. Please try again.');
-                            
-                            // Reset button state
-                            submitButton.prop('disabled', false).text(originalButtonText);
-                        }
-                    });
-                });
-            } else {
-                // Just show the existing form
-                $('.payment-form-container').show();
-            }
-            
-            // Update the action of the modal's update button
-            $('.update-payment').hide();
-        } else if (selectedMethod) {
-            // Show loading state
-            $(this).prop('disabled', true).html('<span style="display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 1s linear infinite;margin-right:5px;"></span> Updating...');
-            
-            // Determine if it's a WooCommerce payment method
-            const isWooCommerceMethod = selectedMethod.startsWith('wc_');
-            const methodId = isWooCommerceMethod ? selectedMethod.substring(3) : selectedMethod;
-            const subscriptionId = $('.edit-payment-method').data('subscription-id');
-            
-            // AJAX call to update payment method
-            $.ajax({
-                url: wc_add_to_cart_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'bocs_update_payment_method',
-                    subscription_id: subscriptionId,
-                    payment_method: methodId,
-                    is_wc_method: isWooCommerceMethod ? 1 : 0,
-                    nonce: '<?php echo wp_create_nonce("bocs_update_payment_method"); ?>'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Show success message
-                        alert('Payment method updated successfully.');
-                        $('#payment-method-modal').removeClass('show').hide();
-                    } else {
-                        // Show error message
-                        alert(response.data.message || 'Failed to update payment method. Please try again.');
-                    }
-                },
-                error: function() {
-                    alert('Could not connect to the server. Please try again.');
-                },
-                complete: function() {
-                    // Reset button state
-                    $('.update-payment').prop('disabled', false).html('<?php esc_html_e('Update', 'bocs-wordpress'); ?>');
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
                 }
-            });
-        } else {
-            alert('Please select a payment method.');
-        }
+            }
+        });
     });
 
-    // Force show the modal with both methods
-    $('#payment-method-modal').addClass('show').show();
-    
-    // Handle changes to the payment method radio buttons
-    $(document).on('change', 'input[name="payment_method"]', function() {
-        if ($(this).val() === 'new') {
-            // Show Stripe form for new payment method
-            showStripeForm();
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
         }
-    });
-    
-    // Function to show Stripe form
-    function showStripeForm() {
-        // Create form container if it doesn't exist
-        if ($('#stripe-form-container').length === 0) {
-            $('.payment-methods-list').after(`
-                <div id="stripe-form-container" style="padding:20px; border:1px solid #ddd; border-radius:8px; background:white; margin-top:15px;">
-                    <h4 style="margin-top:0; font-size:18px; color:#333; margin-bottom:15px;">Add Payment Method</h4>
-                    <div id="card-element" style="padding:15px; border:1px solid #ddd; border-radius:4px; background:#f9f9f9; min-height:40px;">
-                        <!-- Stripe Elements will be inserted here -->
-                    </div>
-                    <div id="card-errors" role="alert" style="color:#E53E3E; margin:10px 0; font-size:14px;"></div>
-                </div>
-            `);
-            
-            // Initialize Stripe if available
-            if (typeof Stripe !== 'undefined') {
-                const stripe = Stripe('<?php echo esc_js(get_option("bocs_stripe_publishable_key", "")); ?>');
-                const elements = stripe.elements();
-                const card = elements.create('card');
-                card.mount('#card-element');
-                
-                // Handle validation errors
-                card.addEventListener('change', function(event) {
-                    const displayError = document.getElementById('card-errors');
-                    if (event.error) {
-                        displayError.textContent = event.error.message;
-                    } else {
-                        displayError.textContent = '';
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
                     }
                 });
-            } else {
-                $('#card-element').html('<p style="text-align:center;">Stripe payment form is not available</p>');
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
             }
-        } else {
-            // Just show the existing form
-            $('#stripe-form-container').show();
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
         }
-    }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
     
-    // Show form immediately if "new" is selected
-    if ($('input[name="payment_method"]:checked').val() === 'new') {
-        showStripeForm();
-    }
-});
-</script>
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
 
-<!-- Add this HTML for the modals at the bottom of your file -->
-<div id="early-renewal-modal" class="bocs-modal" style="display: none;">
-    <div class="bocs-modal-content">
-        <h3><?php esc_html_e('Confirm Early Renewal', 'bocs-wordpress'); ?></h3>
-        <p><?php esc_html_e('Are you sure you want to process an early renewal for this subscription? This will generate a new order immediately.', 'bocs-wordpress'); ?></p>
-        <div class="bocs-modal-actions">
-            <button class="button button-secondary modal-cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-            <button class="button button-primary modal-confirm"><?php esc_html_e('Confirm Renewal', 'bocs-wordpress'); ?></button>
-        </div>
-    </div>
-</div>
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
 
-<div id="cancel-subscription-modal" class="bocs-modal" style="display: none;">
-    <div class="bocs-modal-content">
-        <h3><?php esc_html_e('Cancel Subscription', 'bocs-wordpress'); ?></h3>
-        <p><?php esc_html_e('Are you sure you want to cancel this subscription? This action cannot be undone.', 'bocs-wordpress'); ?></p>
-        <div class="bocs-modal-actions">
-            <button class="button button-secondary modal-cancel"><?php esc_html_e('Keep Subscription', 'bocs-wordpress'); ?></button>
-            <button class="button button-primary modal-confirm"><?php esc_html_e('Yes, Cancel Subscription', 'bocs-wordpress'); ?></button>
-        </div>
-    </div>
-</div>
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
 
-<!-- Add this modal HTML alongside the other modals -->
-<div id="activate-subscription-modal" class="bocs-modal" style="display: none;">
-    <div class="bocs-modal-content">
-        <h3><?php esc_html_e('Activate Subscription', 'bocs-wordpress'); ?></h3>
-        <p><?php esc_html_e('Are you sure you want to activate this subscription? This will resume your regular billing cycle.', 'bocs-wordpress'); ?></p>
-        <div class="bocs-modal-actions">
-            <button class="button button-secondary modal-cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-            <button class="button button-primary modal-confirm"><?php esc_html_e('Yes, Activate Subscription', 'bocs-wordpress'); ?></button>
-        </div>
-    </div>
-</div>
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
 
-<!-- Add this modal HTML alongside the other modals -->
-<div id="update-box-modal" class="bocs-modal" style="display: none;">
-    <div class="bocs-modal-content update-box-modal">
-        <div class="modal-header">
-            <h3><?php esc_html_e('Update Your Box', 'bocs-wordpress'); ?></h3>
-            <button class="modal-close">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="subscription-info">
-                <h4><?php esc_html_e('Subscription Details', 'bocs-wordpress'); ?></h4>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="label"><?php esc_html_e('Next Payment:', 'bocs-wordpress'); ?></span>
-                        <span class="value next-payment-date"></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="label"><?php esc_html_e('Frequency:', 'bocs-wordpress'); ?></span>
-                        <span class="value frequency-text"></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="products-section">
-                <h4><?php esc_html_e('Available Products', 'bocs-wordpress'); ?></h4>
-                <div class="products-grid">
-                    <div class="products-loading">
-                        <div class="loading-spinner"></div>
-                        <p><?php esc_html_e('Loading products...', 'bocs-wordpress'); ?></p>
-                    </div>
-                    <div class="products-list"></div>
-                </div>
-            </div>
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
 
-            <div class="box-summary">
-                <h4><?php esc_html_e('Box Summary', 'bocs-wordpress'); ?></h4>
-                <div class="summary-items"></div>
-                <div class="summary-totals">
-                    <div class="total-row">
-                        <span><?php esc_html_e('Subtotal:', 'bocs-wordpress'); ?></span>
-                        <span class="subtotal-amount"></span>
-                    </div>
-                    <div class="total-row">
-                        <span><?php esc_html_e('Discount:', 'bocs-wordpress'); ?></span>
-                        <span class="discount-amount"></span>
-                    </div>
-                    <div class="total-row total">
-                        <span><?php esc_html_e('Total:', 'bocs-wordpress'); ?></span>
-                        <span class="total-amount"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="button button-secondary modal-cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></button>
-            <button class="button button-primary save-box-changes">
-                <span class="button-text"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></span>
-                <span class="loading-spinner" style="display: none;"></span>
-            </button>
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
+            $(`#${modalId}`).fadeOut(200);
+        }
+    };
+
+    /**
+     * Early Renewal Handler
+     */
+    // Remove any existing handlers first
+    $(document).off('click', '.subscription_renewal_early, .pay-now');
+    
+    // Bind new handler
+    $(document).on('click', '.subscription_renewal_early, .pay-now', function(e) {
+        e.preventDefault();
+        const button = $(this);
+        const subscriptionId = button.data('subscription-id') || activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('early-renewal-modal');
+
+        // Remove any existing handlers from modal buttons
+        $('#early-renewal-modal .modal-cancel, #early-renewal-modal .modal-confirm').off('click');
+
+        // Handle modal actions
+        $('#early-renewal-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('early-renewal-modal');
+        });
+
+        $('#early-renewal-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('early-renewal-modal');
+            const originalButtonText = button.html();
+            let response = null;
+
+            try {
+                // Show loading state
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> Processing...');
+                
+                helpers.showNotification('Processing early renewal...', 'loading');
+
+                // Send early renewal request
+                response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/renew`,
+                    method: 'POST',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200 && response.data) {
+                    if (response.data.paymentUrl) {
+                        // Update UI to show success
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // If there's a payment URL, create a payment button
+                        const paymentButton = $(`
+                            <a href="${response.data.paymentUrl}" 
+                               class="woocommerce-button button bocs-button pay-now"
+                               target="_blank">
+                                <?php esc_html_e('Complete Payment', 'bocs-wordpress'); ?>
+                            </a>
+                        `);
+                        
+                        // Replace the early renewal button with the payment button
+                        button.replaceWith(paymentButton);
+                    } else {
+                        helpers.showNotification('Early renewal processed successfully', 'success');
+                        
+                        // Update any relevant UI elements without refresh
+                        if (response.data.nextPaymentDate) {
+                            $('.next-payment-date').text(response.data.nextPaymentDate);
+                        }
+                    }
+                } else {
+                    throw new Error(response?.message || 'Failed to process early renewal');
+                }
+            } catch (error) {
+                console.error('Error processing early renewal:', error);
+                helpers.showNotification('Failed to process early renewal. Please try again.', 'error');
+            } finally {
+                // Check if we have a successful response with payment URL
+                const hasPaymentUrl = response?.code === 200 && response?.data?.paymentUrl;
+                
+                if (!hasPaymentUrl) {
+                    // Only reset button if we didn't replace it with a payment button
+                    button.prop('disabled', false)
+                          .removeClass('button-loading')
+                          .html(originalButtonText);
+                }
+            }
+        });
+    });
+
+    /**
+     * Cancel Subscription Handler
+     */
+    $('.cancel-button').on('click', function(e) {
+        e.preventDefault();
+        
+        const button = $(this);
+        const subscriptionId = activeSubscriptionId;
+
+        if (!subscriptionId) {
+            console.error('No subscription ID found');
+            helpers.showNotification('Could not identify subscription', 'error');
+            return;
+        }
+
+        // Show confirmation modal
+        modalHelpers.show('cancel-subscription-modal');
+
+        // Handle modal actions
+        $('#cancel-subscription-modal .modal-cancel').one('click', function() {
+            modalHelpers.hide('cancel-subscription-modal');
+        });
+
+        $('#cancel-subscription-modal .modal-confirm').one('click', async function() {
+            modalHelpers.hide('cancel-subscription-modal');
+            const originalButtonText = button.html();
+
+            try {
+                button.prop('disabled', true)
+                      .addClass('button-loading')
+                      .html('<span class="loading-spinner"></span> <?php esc_js(_e('Canceling...', 'bocs-wordpress')); ?>');
+
+                helpers.showNotification('Canceling subscription...', 'loading');
+
+                const response = await $.ajax({
+                    url: `<?php echo BOCS_API_URL; ?>subscriptions/${subscriptionId}/cancel`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Store', '<?php echo esc_js($options['bocs_headers']['store']); ?>');
+                        xhr.setRequestHeader('Organization', '<?php echo esc_js($options['bocs_headers']['organization']); ?>');
+                        xhr.setRequestHeader('Authorization', '<?php echo esc_js($options['bocs_headers']['authorization']); ?>');
+                    }
+                });
+
+                if (response.code === 200) {
+                    // Update status in both list and detail views
+                    const subscriptionInList = $(`#bocs-subscriptions-accordion .view-details[data-subscription-id="${subscriptionId}"]`)
+                        .closest('.wc-subscription');
+                    
+                    if (subscriptionInList.length) {
+                        // Update status text
+                        subscriptionInList.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const renewalButton = subscriptionInList.find('.subscription_renewal_early');
+                        if (renewalButton.length) {
+                            renewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    // Update the detail view if it exists
+                    const detailView = $('.subscription-details');
+                    if (detailView.length) {
+                        // Update status
+                        detailView.find('.subscription-status')
+                            .removeClass('status-active')
+                            .addClass('status-cancelled')
+                            .text('Cancelled');
+
+                        // Replace Early Renewal button with Activate button
+                        const detailRenewalButton = detailView.find('.subscription_renewal_early');
+                        if (detailRenewalButton.length) {
+                            detailRenewalButton.replaceWith(`
+                                <button 
+                                    class="woocommerce-button button bocs-button subscription_activate" 
+                                    id="activate_${subscriptionId}"
+                                    data-subscription-id="${subscriptionId}"
+                                >
+                                    <?php esc_html_e('Reactivate', 'bocs-wordpress'); ?>
+                                </button>
+                            `);
+                        }
+                    }
+
+                    helpers.showNotification('Subscription cancelled successfully', 'success');
+                    setTimeout(() => {
+                        $('.back-to-subscription').trigger('click');
+                    }, 1500);
+                } else {
+                    throw new Error(response.message || 'Failed to cancel subscription');
+                }
+            } catch (error) {
+                console.error('Error canceling subscription:', error);
+                helpers.showNotification('Failed to cancel subscription. Please try again.', 'error');
+            } finally {
+                button.prop('disabled', false)
+                      .removeClass('button-loading')
+                      .html(originalButtonText);
+            }
+        });
+    });
+
+    /**
+     * Modal Helper Functions
+     */
+    const modalHelpers = {
+        show: function(modalId) {
+            $(`#${modalId}`).css('display', 'flex').hide().fadeIn(200);
+        },
+        hide: function(modalId) {
         </div>
     </div>
 </div>
