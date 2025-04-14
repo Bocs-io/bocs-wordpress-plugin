@@ -6,6 +6,11 @@ smart-git-agent.md
 smart-git-agent.sh
 smart-git-agent-readme.md
 
+### BOCS API Responses ###
+api-responses/
+/api-responses/
+api-responses/*
+
 ### macOS ###
 # General
 .DS_Store
@@ -227,3 +232,7 @@ languages/*.po
 
 # Bocs WordPress Plugin Zip
 bocs-wordpress.zip
+
+### Backup files ###
+*.bak
+*.backup
