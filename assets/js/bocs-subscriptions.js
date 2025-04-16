@@ -96,7 +96,7 @@
             // Action buttons
             $('.early-renewal').on('click', this.handlers.earlyRenewal);
             $('.edit-contents').on('click', this.handlers.editContents);
-            $('.change-box').on('click', this.handlers.changeBox);
+            // $('.change-box').on('click', this.handlers.changeBox);
             
             // Form submissions
             $('#edit-schedule-form').on('submit', this.handlers.saveSchedule);
@@ -933,13 +933,11 @@
             
             // Change box handler (placeholder)
             changeBox: function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
+                // We no longer need to prevent default since we're using links now
+                // The link will navigate to the switch-bocs page
+                // This handler is kept for backward compatibility
                 const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
-                
-                // This would typically redirect to a box selection page or open a modal
-                BocsSubscriptions.helpers.showNotification('Change box functionality coming soon', 'info');
+                console.log('Navigating to change box page for subscription: ' + subscriptionId);
             }
         },
 

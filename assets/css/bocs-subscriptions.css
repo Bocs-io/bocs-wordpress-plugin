@@ -488,7 +488,7 @@
     box-shadow: var(--bocs-shadow);
     padding: 2rem;
     width: 100%;
-    max-width: 500px;
+    max-width: 90%;
     position: relative;
 }
 
