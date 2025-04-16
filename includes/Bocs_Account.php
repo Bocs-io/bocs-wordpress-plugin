@@ -39,6 +39,8 @@ class Bocs_Account
         add_action('wp_ajax_bocs_update_payment_method', array($this, 'ajax_update_payment_method'));
         add_action('wp_ajax_bocs_get_stripe_setup', array($this, 'ajax_get_stripe_setup'));
         add_action('wp_ajax_bocs_get_user_billing_details', array($this, 'ajax_get_user_billing_details'));
+        add_action('wp_ajax_bocs_update_subscription', array($this, 'ajax_update_subscription'));
+        add_action('wp_ajax_bocs_get_box_products', array($this, 'ajax_get_box_products'));
     }
 
     /**
@@ -740,13 +742,24 @@ class Bocs_Account
             return;
         }
 
-        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_switch_bocs.php';
+        $template_path = $this->get_template_path('myaccount/switch-bocs.php');
 
         if (file_exists($template_path)) {
             include $template_path;
         } else {
             echo esc_html__('Switch bocs template not found.', 'bocs-wordpress');
         }
+    }
+
+    /**
+     * Get the path to a template file
+     * 
+     * @param string $template_name The name of the template file
+     * @return string The full path to the template file
+     */
+    public function get_template_path($template_name) {
+        // Use the templates directory in the plugin
+        return plugin_dir_path(dirname(__FILE__)) . 'templates/' . $template_name;
     }
 
     /**
@@ -1089,5 +1102,201 @@ class Bocs_Account
         } catch (Exception $e) {
             wp_send_json_error(array('message' => 'Error creating Stripe setup: ' . $e->getMessage()));
         }
+    }
+
+    /**
+     * AJAX handler for updating subscription details (including box switching)
+     */
+    public function ajax_update_subscription() {
+        check_ajax_referer('bocs-switch-nonce', 'nonce');
+        
+        // Get parameters from request
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+        $bocs_id = isset($_POST['bocs_id']) ? sanitize_text_field($_POST['bocs_id']) : '';
+        $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
+        $products_json = isset($_POST['products']) ? sanitize_text_field($_POST['products']) : '';
+        
+        if (empty($subscription_id) || empty($bocs_id) || empty($frequency_id)) {
+            wp_send_json_error(array(
+                'message' => 'Missing required parameters'
+            ));
+            return;
+        }
+        
+        // Load helper
+        $helper = new Bocs_Helper();
+        
+        // First, get the current subscription details
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $subscription = $helper->curl_request($url, 'GET', [], $this->headers);
+        
+        if (is_wp_error($subscription)) {
+            wp_send_json_error(array(
+                'message' => $subscription->get_error_message()
+            ));
+            return;
+        }
+        
+        // Get the BOCS details to get the frequency information
+        $url = BOCS_API_URL . 'bocs/' . $bocs_id;
+        $bocs_details = $helper->curl_request($url, 'GET', [], $this->headers);
+        
+        if (is_wp_error($bocs_details)) {
+            wp_send_json_error(array(
+                'message' => $bocs_details->get_error_message()
+            ));
+            return;
+        }
+        
+        // Get the frequency details from the BOCS adjustments
+        $frequency_details = null;
+        if (isset($bocs_details['data']['priceAdjustment']['adjustments'])) {
+            foreach ($bocs_details['data']['priceAdjustment']['adjustments'] as $adjustment) {
+                if (isset($adjustment['id']) && $adjustment['id'] === $frequency_id) {
+                    $frequency_details = $adjustment;
+                    break;
+                }
+            }
+        }
+        
+        if (!$frequency_details) {
+            wp_send_json_error(array(
+                'message' => 'Frequency details not found'
+            ));
+            return;
+        }
+        
+        // Prepare request data
+        $request_data = array(
+            'bocs' => array(
+                'id' => $bocs_id
+            ),
+            'frequency' => array(
+                'id' => $frequency_id,
+                'frequency' => $frequency_details['frequency'],
+                'timeUnit' => $frequency_details['timeUnit'],
+                'discount' => isset($frequency_details['discount']) ? $frequency_details['discount'] : 0,
+                'discountType' => isset($frequency_details['discountType']) ? $frequency_details['discountType'] : 'PERCENT'
+            )
+        );
+        
+        // Add line items if this is a custom box with selected products
+        if (!empty($products_json)) {
+            $selected_products = json_decode($products_json, true);
+            
+            if (is_array($selected_products)) {
+                // Filter out products with quantity 0
+                $line_items = array();
+                foreach ($selected_products as $product) {
+                    if (isset($product['quantity']) && $product['quantity'] > 0) {
+                        // Format line item as required by the API
+                        $line_items[] = array(
+                            'productId' => $product['id'],
+                            'name' => $product['name'],
+                            'quantity' => $product['quantity'],
+                            'price' => $product['price'],
+                            'total' => $product['price'] * $product['quantity'],
+                            'metaData' => array()
+                        );
+                    }
+                }
+                
+                // Add line items to request data
+                if (!empty($line_items)) {
+                    $request_data['lineItems'] = $line_items;
+                }
+            }
+        }
+        
+        // Include existing data that should be preserved
+        if (isset($subscription['data'])) {
+            // Copy these fields from the current subscription if they exist
+            $fields_to_preserve = ['taxLines', 'nextPaymentDateGmt', 'couponLines', 'discountTotal', 
+                                  'shippingTotal', 'shipping', 'billingInterval', 'discountTax'];
+            
+            foreach ($fields_to_preserve as $field) {
+                if (isset($subscription['data'][$field])) {
+                    $request_data[$field] = $subscription['data'][$field];
+                }
+            }
+        }
+        
+        // Make the API request to update the subscription
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $response = $helper->curl_request($url, 'PUT', $request_data, $this->headers);
+        
+        if (is_wp_error($response)) {
+            wp_send_json_error(array(
+                'message' => $response->get_error_message()
+            ));
+            return;
+        }
+        
+        wp_send_json_success(array(
+            'message' => 'Subscription updated successfully',
+            'data' => $response
+        ));
+    }
+
+    /**
+     * AJAX handler for getting products for a box
+     */
+    public function ajax_get_box_products() {
+        check_ajax_referer('bocs-switch-nonce', 'nonce');
+        
+        // Get box ID from request
+        $bocs_id = isset($_POST['bocs_id']) ? sanitize_text_field($_POST['bocs_id']) : '';
+        
+        if (empty($bocs_id)) {
+            wp_send_json_error(array(
+                'message' => 'Box ID not provided'
+            ));
+            return;
+        }
+        
+        // Load helper
+        $helper = new Bocs_Helper();
+        
+        // Make API request to get box details with products
+        $url = BOCS_API_URL . 'bocs/' . $bocs_id . '/products';
+        $response = $helper->curl_request($url, 'GET', [], $this->headers);
+        
+        if (is_wp_error($response)) {
+            wp_send_json_error(array(
+                'message' => $response->get_error_message()
+            ));
+            return;
+        }
+        
+        if (!isset($response['data']) || empty($response['data'])) {
+            // If no products returned, try to get products from box details
+            $url = BOCS_API_URL . 'bocs/' . $bocs_id;
+            $box_details = $helper->curl_request($url, 'GET', [], $this->headers);
+            
+            if (is_wp_error($box_details)) {
+                wp_send_json_error(array(
+                    'message' => $box_details->get_error_message()
+                ));
+                return;
+            }
+            
+            // Extract products from box details
+            $products = [];
+            if (isset($box_details['data']['products']) && is_array($box_details['data']['products'])) {
+                $products = $box_details['data']['products'];
+            } elseif (isset($box_details['data']['availableProducts']) && is_array($box_details['data']['availableProducts'])) {
+                $products = $box_details['data']['availableProducts'];
+            }
+            
+            wp_send_json_success(array(
+                'products' => $products
+            ));
+            return;
+        }
+        
+        // Return products
+        wp_send_json_success(array(
+            'products' => $response['data']
+        ));
     }
 }
