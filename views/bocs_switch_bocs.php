@@ -103,60 +103,7 @@ wp_enqueue_script('jquery-ui-dialog');
         </p>
     <?php else : ?>
     
-    <div class="bocs-switch-intro">
-        <p>
-            <?php esc_html_e('You are currently subscribed to:', 'bocs-wordpress'); ?>
-            <strong>
-                <?php 
-                // Get the current bocs name by matching IDs
-                $current_bocs_name = '';
-                $current_bocs_type = '';
-                if (!empty($current_bocs_id) && isset($bocs_items) && is_array($bocs_items)) {
-                    foreach ($bocs_items as $bocs) {
-                        if (isset($bocs['id']) && $bocs['id'] === $current_bocs_id) {
-                            $current_bocs_name = $bocs['name'];
-                            $current_bocs_type = $bocs['type'] ?? '';
-                            $current_bocs = $bocs; // Store full current bocs object
-                            break;
-                        }
-                    }
-                }
-                echo esc_html($current_bocs_name);
-                ?>
-            </strong>
-            <?php if (!empty($current_bocs_type)): ?>
-                <span class="bocs-type-badge <?php echo esc_attr(strtolower($current_bocs_type)); ?>-type">
-                    <?php echo esc_html(ucfirst(strtolower($current_bocs_type))); ?> <?php esc_html_e('Box', 'bocs-wordpress'); ?>
-                </span>
-            <?php endif; ?>
-        </p>
-        <?php if (isset($subscription['data']['frequency'])) : ?>
-        <p>
-            <?php esc_html_e('Current frequency:', 'bocs-wordpress'); ?>
-            <strong>
-                <?php 
-                $frequency = $subscription['data']['frequency'];
-                echo esc_html($frequency['frequency'] . ' ' . $frequency['timeUnit']);
-                ?>
-            </strong>
-            <?php if ($frequency['discount'] > 0) : ?>
-                (<?php echo esc_html($frequency['discountType'] === 'DOLLAR' ? '$' . $frequency['discount'] : $frequency['discount'] . '%'); ?> <?php esc_html_e('discount', 'bocs-wordpress'); ?>)
-            <?php endif; ?>
-        </p>
-        <?php endif; ?>
-        <p>
-            <?php esc_html_e('Next payment date:', 'bocs-wordpress'); ?>
-            <strong>
-                <?php 
-                if (isset($subscription['data']['nextPaymentDateGmt'])) {
-                    $next_date = new DateTime($subscription['data']['nextPaymentDateGmt']);
-                    echo esc_html($next_date->format('F j, Y'));
-                } else {
-                    esc_html_e('Not scheduled', 'bocs-wordpress');
-                }
-                ?>
-            </strong>
-        </p>
+    <div class="bocs-intro">
         <p>
             <?php esc_html_e('Select a new Bocs below to switch your subscription:', 'bocs-wordpress'); ?>
         </p>
