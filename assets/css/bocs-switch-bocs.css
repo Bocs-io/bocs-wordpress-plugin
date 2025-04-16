@@ -1,0 +1,400 @@
+/**
+ * BOCS Switch Box CSS
+ * 
+ * Styles for the BOCS box switching interface.
+ * These styles are based on the subscription list styling for consistency.
+ */
+
+/* === Specific styles for Switch Box page === */
+.bocs-switch-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: var(--bocs-font-primary);
+    color: var(--bocs-text);
+    background-color: #fff;
+    clear: both;
+}
+
+.bocs-switch-intro {
+    background-color: var(--bocs-light-bg);
+    border-radius: var(--bocs-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--bocs-border);
+}
+
+.bocs-switch-intro p {
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.bocs-switch-intro p:last-child {
+    margin-bottom: 0;
+}
+
+/* Box type badge */
+.bocs-type-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+}
+
+.bocs-type-badge.custom-type {
+    background-color: #E6F7EC;
+    color: #0D9F6E;
+}
+
+.bocs-type-badge.fixed-type {
+    background-color: #E2E8F0;
+    color: #4A5568;
+}
+
+/* Box options grid */
+.bocs-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.bocs-option {
+    background-color: #fff;
+    border-radius: var(--bocs-radius);
+    border: 1px solid var(--bocs-border);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: var(--bocs-shadow);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.bocs-option:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.bocs-option-image {
+    height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bocs-option-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.bocs-option:hover .bocs-option-image img {
+    transform: scale(1.05);
+}
+
+.bocs-option-content {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.bocs-option-content h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--bocs-text);
+}
+
+.bocs-option-description {
+    font-size: 0.9rem;
+    color: var(--bocs-text-light);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.bocs-option-details {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bocs-border);
+}
+
+.bocs-option-price {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--bocs-primary);
+    margin-bottom: 0.75rem;
+}
+
+.bocs-option-products {
+    margin-top: 1rem;
+}
+
+.bocs-products-title {
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.bocs-option-products ul {
+    padding-left: 1.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+}
+
+.bocs-option-products li {
+    margin-bottom: 0.25rem;
+    color: var(--bocs-text-light);
+}
+
+.bocs-switch-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+/* Loading overlay */
+.bocs-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.bocs-loading-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: var(--bocs-radius);
+    text-align: center;
+    box-shadow: var(--bocs-shadow);
+}
+
+.bocs-loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 101, 169, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--bocs-primary);
+    animation: bocs-spinner 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.bocs-loading-text {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--bocs-text);
+}
+
+/* Product options in modals */
+.product-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 1rem 0;
+    padding: 0.5rem;
+}
+
+.product-option {
+    background-color: #fff;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-option.product-highlight {
+    border-color: var(--bocs-primary);
+    box-shadow: 0 0 0 2px rgba(0, 101, 169, 0.2);
+}
+
+.product-option-image {
+    height: 120px;
+    overflow: hidden;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+
+.product-option-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-option h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.product-option-price {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--bocs-primary);
+    margin-bottom: 0.75rem;
+}
+
+.product-quantity {
+    display: flex;
+    align-items: center;
+    margin-top: auto;
+}
+
+.quantity-btn {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.25rem;
+    transition: all 0.2s;
+}
+
+.quantity-btn:hover {
+    background-color: #e5e7eb;
+}
+
+.quantity-input {
+    width: 40px;
+    height: 30px;
+    text-align: center;
+    margin: 0 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+}
+
+/* Frequency options */
+.frequency-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+}
+
+.frequency-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.frequency-option:hover {
+    background-color: #f9fafb;
+}
+
+.frequency-option.selected {
+    border-color: var(--bocs-primary);
+    background-color: rgba(0, 101, 169, 0.05);
+}
+
+.frequency-option .dashicons {
+    color: var(--bocs-primary);
+    display: none;
+}
+
+.frequency-option.selected .dashicons {
+    display: block;
+}
+
+.frequency-text {
+    font-weight: 500;
+}
+
+.frequency-discount {
+    color: #2e7d32;
+    font-size: 0.875rem;
+}
+
+/* Product selection info */
+.product-selection-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9fafb;
+    padding: 1rem;
+    border-radius: var(--bocs-radius);
+    margin-bottom: 1.5rem;
+}
+
+.range-info {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.total-selected {
+    margin: 0;
+    font-weight: 600;
+    color: var(--bocs-primary);
+}
+
+.current-products-note {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: #feebc8;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: #9c4221;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .bocs-update-section {
+        flex: 1 1 100%;
+    }
+    
+    .bocs-options-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .product-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .product-selection-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
+/* Added to hide the second heading that was showing up on the page */
+.bocs-switch-options {
+    display: none; /* Hide this section */
+}
+
+/* Section heading */
+.bocs-section-heading {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 2rem 0 1rem;
+    color: var(--bocs-text);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--bocs-border);
+} 
