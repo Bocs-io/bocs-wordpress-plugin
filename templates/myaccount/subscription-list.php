@@ -13,8 +13,8 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250411.29', true);
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250411.29');
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250415.1', true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250416.1');
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -165,7 +165,7 @@ if (function_exists('bocs_log')) {
                 <div class="bocs-subscription-details">
                     <div class="bocs-subscription-actions">
                         <button class="bocs-button edit-contents">Edit contents</button>
-                        <button class="bocs-button change-box">Change box</button>
+                        <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-switch-bocs') . $subscription_id); ?>" class="bocs-button change-box">Change box</a>
                         <button class="bocs-button early-renewal">Early Renewal</button>
                     </div>
                     

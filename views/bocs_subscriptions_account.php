@@ -501,8 +501,8 @@ add_action('wp_footer', function() {
             background: #ffffff;
             border-radius: 12px;
             padding: 24px;
-            width: 90%;
-            max-width: 480px;
+            width: 100%;
+            max-width: 90%;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
@@ -1193,8 +1193,8 @@ add_action('wp_footer', function() {
             background: #ffffff;
             border-radius: var(--bocs-radius);
             padding: 30px;
-            max-width: 500px;
-            width: 90%;
+            max-width: 90%;
+            width: 100%;
             box-shadow: var(--bocs-shadow);
             transform: translateY(20px);
             opacity: 0;
