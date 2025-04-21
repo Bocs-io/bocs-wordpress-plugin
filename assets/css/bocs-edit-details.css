@@ -1,0 +1,922 @@
+/**
+ * BOCS Edit Details CSS
+ * 
+ * Styles for the subscription edit details interface.
+ */
+
+:root {
+    --bocs-primary: #0065A9;
+    --bocs-primary-dark: #004C80;
+    --bocs-secondary: #B85C00;
+    --bocs-secondary-dark: #8C4600;
+    
+    /* Status Colors */
+    --bocs-success: #38A169;
+    --bocs-success-light: #C6E6C9;
+    --bocs-warning: #F6AD55;
+    --bocs-warning-light: #FEEBC8;
+    --bocs-error: #E53E3E;
+    --bocs-error-light: #FED7D7;
+    
+    /* Neutral Colors */
+    --bocs-text: #1A202C;
+    --bocs-text-light: #4A5568;
+    --bocs-border: #E2E8F0;
+    --bocs-background: #F7FAFC;
+    --bocs-white: #FFFFFF;
+    
+    /* Effects */
+    --bocs-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --bocs-radius: 8px;
+    --bocs-transition: all 0.2s ease-in-out;
+}
+
+/* =========== Base Layout =========== */
+.bocs-edit-details-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: var(--bocs-text);
+    line-height: 1.6;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+}
+
+.bocs-back-link {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 24px;
+    text-decoration: none;
+    color: var(--bocs-primary);
+    font-weight: 500;
+    transition: var(--bocs-transition);
+}
+
+.bocs-back-link:hover {
+    color: var(--bocs-primary-dark);
+}
+
+/* =========== Typography =========== */
+h2, h3, h4 {
+    color: var(--bocs-primary);
+    font-weight: 600;
+}
+
+h2 {
+    font-size: 28px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+h2:after {
+    content: "";
+    display: block;
+    height: 4px;
+    width: 60px;
+    background: var(--bocs-secondary);
+    margin-top: 12px;
+    border-radius: 2px;
+}
+
+h3 {
+    font-size: 20px;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+/* =========== Subscription Overview =========== */
+.bocs-subscription-overview {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding: 24px;
+    background-color: var(--bocs-background);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    border-left: 4px solid var(--bocs-primary);
+}
+
+.subscription-status {
+    padding: 8px 16px;
+    border-radius: var(--bocs-radius);
+    font-weight: 600;
+    display: inline-block;
+    transition: var(--bocs-transition);
+}
+
+.status-active {
+    background: var(--bocs-success-light);
+    color: var(--bocs-success);
+}
+
+.status-paused,
+.status-pending {
+    background: var(--bocs-warning-light);
+    color: var(--bocs-warning);
+}
+
+.status-cancelled,
+.status-expired {
+    background: var(--bocs-error-light);
+    color: var(--bocs-error);
+}
+
+.subscription-dates {
+    display: flex;
+    gap: 2em;
+}
+
+.date-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.date-label {
+    color: var(--bocs-text-light);
+    font-size: 0.9em;
+}
+
+.date-value {
+    font-weight: 600;
+    color: var(--bocs-text);
+}
+
+/* =========== Edit Sections =========== */
+.bocs-edit-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.edit-section {
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    padding: 24px;
+    box-shadow: var(--bocs-shadow);
+    border: 1px solid var(--bocs-border);
+    transition: var(--bocs-transition);
+}
+
+.edit-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--bocs-border);
+    padding-bottom: 12px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: var(--bocs-primary);
+}
+
+.section-content {
+    position: relative;
+}
+
+/* =========== Current Display =========== */
+.current-frequency-display,
+.current-address-display,
+.current-payment-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bocs-background);
+    border-radius: var(--bocs-radius);
+    border: 1px solid var(--bocs-border);
+}
+
+.current-address-display {
+    align-items: flex-start;
+}
+
+.current-address-display address {
+    flex: 1;
+    font-style: normal;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* =========== Edit Buttons =========== */
+.edit-button {
+    background: none;
+    border: none;
+    color: var(--bocs-primary);
+    cursor: pointer;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--bocs-radius);
+    transition: var(--bocs-transition);
+}
+
+.edit-button:hover {
+    background: var(--bocs-background);
+    color: var(--bocs-primary-dark);
+}
+
+/* =========== Form Elements =========== */
+.address-editor,
+.frequency-editor {
+    margin-top: 20px;
+    padding: 24px;
+    background: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: var(--bocs-shadow);
+    border: 1px solid var(--bocs-border);
+}
+
+.edit-address-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.form-row {
+    flex: 1 0 calc(50% - 8px);
+    display: flex;
+    flex-direction: column;
+}
+
+.form-row.full-width {
+    flex: 1 0 100%;
+}
+
+.form-row label {
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    color: var(--bocs-text);
+    font-weight: 500;
+}
+
+.form-row input {
+    padding: 12px;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    transition: var(--bocs-transition);
+}
+
+.form-row input:focus {
+    outline: none;
+    border-color: var(--bocs-primary);
+    box-shadow: 0 0 0 3px rgba(0, 101, 169, 0.1);
+}
+
+/* =========== Buttons =========== */
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    width: 100%;
+}
+
+.bocs-button, .button {
+    padding: 12px 24px;
+    border-radius: var(--bocs-radius);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--bocs-transition);
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bocs-button.primary, .button.alt {
+    background: var(--bocs-primary);
+    color: var(--bocs-white);
+}
+
+.bocs-button.primary:hover, .button.alt:hover {
+    background: var(--bocs-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.bocs-button.secondary, .button:not(.alt) {
+    background: var(--bocs-white);
+    border: 1px solid var(--bocs-border);
+    color: var(--bocs-text);
+}
+
+.bocs-button.secondary:hover, .button:not(.alt):hover {
+    background: var(--bocs-background);
+    border-color: var(--bocs-primary);
+}
+
+/* =========== Frequency Options =========== */
+.frequency-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    transition: var(--bocs-transition);
+    cursor: pointer;
+}
+
+.frequency-option:hover {
+    background-color: var(--bocs-background);
+    border-color: var(--bocs-primary);
+}
+
+.frequency-option input[type="radio"] {
+    margin-right: 12px;
+}
+
+/* =========== Loading Animation =========== */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.spinner {
+    animation: rotate 2s linear infinite;
+    width: 20px;
+    height: 20px;
+}
+
+.path {
+    stroke: currentColor;
+    stroke-linecap: round;
+    animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+
+/* =========== Notifications =========== */
+.bocs-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 5px;
+    font-weight: 500;
+    z-index: 100000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 300px;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.bocs-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.bocs-notification.success {
+    background-color: var(--bocs-success);
+    color: white;
+}
+
+.bocs-notification.error {
+    background-color: var(--bocs-error);
+    color: white;
+}
+
+.bocs-notification.loading {
+    background-color: var(--bocs-primary);
+    color: white;
+}
+
+.bocs-notification.info {
+    background-color: var(--bocs-text-light);
+    color: white;
+}
+
+/* =========== Product List Styles =========== */
+.bocs-order-details {
+    margin-bottom: 24px;
+}
+
+.bocs-order-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.bocs-order-table th,
+.bocs-order-table td {
+    padding: 12px;
+    /* border-bottom: 1px solid var(--bocs-border); */
+    vertical-align: middle;
+    line-height: 1.2;
+}
+
+/* Align column headers */
+.bocs-order-table thead th:first-child {
+    text-align: left;
+}
+
+.bocs-order-table thead th {
+    text-align: center;
+    background-color: var(--bocs-background);
+    font-weight: 600;
+    color: var(--bocs-text);
+}
+
+/* Column widths */
+.bocs-order-table th:nth-child(1),
+.bocs-order-table td:nth-child(1) {
+    text-align: left;
+}
+
+.bocs-order-table th:nth-child(2),
+.bocs-order-table td:nth-child(2) {
+    width: 15%;
+    text-align: center;
+}
+
+.bocs-order-table th:nth-child(3),
+.bocs-order-table td:nth-child(3),
+.bocs-order-table th:nth-child(4),
+.bocs-order-table td:nth-child(4) {
+    width: 17.5%;
+    text-align: center;
+}
+
+/* Fix quantities to be properly centered */
+.quantity-value {
+    display: inline-block;
+    line-height: 1;
+    text-align: center;
+    width: 100%;
+}
+
+/* Ensure prices and totals are centered */
+.product-price,
+.product-total {
+    text-align: center !important;
+}
+
+.woocommerce-Price-amount {
+    white-space: nowrap;
+    display: inline-block;
+    text-align: center;
+    font-weight: 500;
+    width: 100%;
+}
+
+/* Footer row styling */
+.bocs-order-table tfoot tr {
+    background-color: var(--bocs-background);
+}
+
+.bocs-order-table tfoot th {
+    text-align: right;
+    padding-right: 20px;
+    font-weight: 600;
+}
+
+.bocs-order-table tfoot td {
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Product images and names */
+.product-thumbnail {
+    max-width: 50px;
+    max-height: 50px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin-right: 12px;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.product-name {
+    display: flex;
+    align-items: center;
+}
+
+/* Fix for specific footer rows */
+.bocs-subtotal-row th,
+.bocs-discount-row th,
+.bocs-shipping-row th,
+.bocs-total-row th {
+    text-align: right !important;
+    padding-right: 20px;
+}
+
+/* Ensure rows have consistent height */
+.bocs-order-table tbody tr {
+    height: 80px;
+}
+
+/* Make discount row stand out */
+.bocs-discount-row td {
+    color: var(--bocs-secondary);
+    font-weight: bold;
+}
+
+/* Highlight total row */
+.bocs-total-row {
+    border-top: 2px solid var(--bocs-border);
+}
+
+.bocs-total-row th,
+.bocs-total-row td {
+    font-weight: 700 !important;
+    font-size: 1.1em;
+}
+
+/* =========== Modal Styles =========== */
+.bocs-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.bocs-modal.show {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+}
+
+.bocs-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.bocs-modal-container {
+    position: relative;
+    max-width: 90%;
+    width: 100%;
+    margin: 40px auto;
+    background-color: var(--bocs-white);
+    border-radius: var(--bocs-radius);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
+    transition: transform 0.3s;
+}
+
+.bocs-modal.show .bocs-modal-container {
+    transform: translateY(0);
+}
+
+.bocs-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--bocs-border);
+    background-color: var(--bocs-background);
+    border-radius: var(--bocs-radius) var(--bocs-radius) 0 0;
+}
+
+.bocs-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--bocs-primary);
+}
+
+.bocs-modal-header h2:after {
+    display: none;
+}
+
+.product-selection-info {
+    font-size: 14px;
+    color: var(--bocs-text-light);
+    margin-left: 16px;
+    margin-right: 35px;
+}
+
+.bocs-modal-close {
+    background: none;
+    border: none;
+    color: var(--bocs-text-light);
+    font-size: 24px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--bocs-transition);
+}
+
+.bocs-modal-close:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--bocs-text);
+}
+
+.bocs-modal-content {
+    padding: 20px;
+    max-height: 100%;
+    overflow-y: auto;
+    max-width: 90% !important;
+    width: 90% !important;
+}
+
+.bocs-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--bocs-border);
+    background-color: var(--bocs-background);
+    border-radius: 0 0 var(--bocs-radius) var(--bocs-radius);
+}
+
+/* =========== Product Selection Modal =========== */
+#bocs-product-modal .product-list,
+.product-selection-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.product-item {
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    padding: 16px;
+    background-color: var(--bocs-white);
+    transition: var(--bocs-transition);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.product-item:hover {
+    box-shadow: var(--bocs-shadow);
+    transform: translateY(-2px);
+}
+
+.product-image {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.product-image img {
+    max-height: 130px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.product-details {
+    flex: 1;
+    margin-bottom: 16px;
+}
+
+.product-details h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: var(--bocs-text);
+    height: 40px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.product-price {
+    color: var(--bocs-primary);
+    font-weight: 600;
+    margin: 0;
+}
+
+.product-quantity {
+    /* display: flex; */
+    align-items: center;
+    margin-top: auto;
+}
+
+.quantity-btn {
+    cursor: pointer;
+    padding: 5px 12px;
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.quantity-btn:hover:not(.disabled) {
+    background: #e9e9e9;
+}
+
+.quantity-input {
+    width: 50px;
+    text-align: center;
+    margin: 0 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+/* Disabled button styling */
+.quantity-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Validation message styling */
+.product-selection-validation {
+    margin-top: 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.product-min-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.product-max-warning {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Product selection styling */
+.product-selection-info {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Product item styling in modal */
+.product-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
+}
+
+.product-item:hover {
+    background-color: #f9f9f9;
+}
+
+.product-image {
+    width: 60px;
+    margin-right: 15px;
+}
+
+.product-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.product-details {
+    flex: 1;
+}
+
+.product-details h4 {
+    margin: 0 0 5px;
+    font-size: 16px;
+}
+
+.product-price {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
+
+.product-quantity {
+    /* display: flex; */
+    align-items: center;
+    margin-left: 15px;
+}
+
+/* =========== Pause Subscription Modal =========== */
+#bocs-pause-modal .bocs-modal-content {
+    padding: 25px;
+}
+
+.bocs-form-row {
+    margin-bottom: 20px;
+}
+
+.bocs-form-row label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--bocs-text);
+}
+
+.bocs-form-row input[type="date"],
+.bocs-form-row textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--bocs-border);
+    border-radius: var(--bocs-radius);
+    font-size: 16px;
+}
+
+.field-description {
+    margin-top: 5px;
+    color: var(--bocs-text-light);
+    font-size: 14px;
+    font-style: italic;
+}
+
+.bocs-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* =========== Responsive Design =========== */
+@media (max-width: 768px) {
+    .bocs-subscription-overview {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .subscription-dates {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .current-frequency-display,
+    .current-address-display,
+    .current-payment-display {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .edit-address-form {
+        flex-direction: column;
+    }
+    
+    .form-row {
+        flex: 1 0 100%;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button {
+        width: 100%;
+    }
+    
+    .bocs-modal-container {
+        width: 95%;
+        margin: 20px auto;
+    }
+    
+    .product-list,
+    .product-selection-list {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
