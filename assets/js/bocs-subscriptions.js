@@ -95,7 +95,7 @@
             
             // Action buttons
             $('.early-renewal').on('click', this.handlers.earlyRenewal);
-            $('.edit-contents').on('click', this.handlers.editContents);
+            // $('.edit-contents').on('click', this.handlers.editContents);
             // $('.change-box').on('click', this.handlers.changeBox);
             
             // Form submissions
