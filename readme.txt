@@ -1,3 +1,15 @@
+v0.0.138 04/22/2025
+* Feature: Add subscription details editing interface with custom product selection
+* Feature: Enhance subscription management with improved UI and API handling
+* Feature: Implement box switching functionality with full account system integration
+* Feature: Add edit details page with product modification capabilities for custom boxes
+* UX: Improve subscription accordion interface with better layout and interactions
+* UX: Enhance button event handling with improved documentation
+* Refactor: Improve account management system with optimized class structure
+* UI: Update subscription styles for a more intuitive user experience
+* Performance: Optimize API request handling for subscription management
+* Integration: Fully integrate subscription details editing with account system
+
 v0.0.137 04/10/2025
 * Payments: Improved payment method handling with better empty state support
 * Payments: Enhanced error feedback for Stripe integration
