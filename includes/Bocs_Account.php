@@ -11,6 +11,40 @@
 
 class Bocs_Account
 {
+    /**
+     * Class instance.
+     *
+     * @var Bocs_Account
+     */
+    private static $instance = null;
+
+    /**
+     * The API base URL.
+     *
+     * @var string
+     */
+    private static $api_base_url = '';
+
+    /**
+     * The WP endpoint name.
+     *
+     * @var string
+     */
+    private static $endpoint = '';
+
+    /**
+     * Logger instance
+     * 
+     * @var WC_Logger
+     */
+    private static $logger = null;
+
+    /**
+     * Error messages array
+     *
+     * @var array
+     */
+    public static $error_messages = [];
 
     /** @var array API headers for Bocs authentication */
     private $headers;
@@ -41,6 +75,7 @@ class Bocs_Account
         add_action('wp_ajax_bocs_get_user_billing_details', array($this, 'ajax_get_user_billing_details'));
         add_action('wp_ajax_bocs_update_subscription', array($this, 'ajax_update_subscription'));
         add_action('wp_ajax_bocs_get_box_products', array($this, 'ajax_get_box_products'));
+        add_action('wp_ajax_bocs_update_subscription_products', array($this, 'ajax_update_subscription_products'));
     }
 
     /**
@@ -611,6 +646,21 @@ class Bocs_Account
     public function register_bocs_edit_details_endpoint()
     {
         add_rewrite_endpoint('bocs-edit-details', EP_PAGES);
+        
+        // Force flush rewrite rules on this specific endpoint
+        $this->maybe_flush_rewrite_rules();
+    }
+
+    /**
+     * Flush rewrite rules if needed
+     */
+    private function maybe_flush_rewrite_rules() 
+    {
+        // Only flush once per session
+        if (!get_transient('bocs_flushed_rewrite_rules')) {
+            flush_rewrite_rules(true);
+            set_transient('bocs_flushed_rewrite_rules', 1, HOUR_IN_SECONDS);
+        }
     }
 
     /**
@@ -717,7 +767,13 @@ class Bocs_Account
             return;
         }
 
-        $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_edit_details.php';
+        // Use the new template from myaccount directory
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'templates/myaccount/edit-details.php';
+
+        // Fallback to old template if new one doesn't exist
+        if (!file_exists($template_path)) {
+            $template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_edit_details.php';
+        }
 
         if (file_exists($template_path)) {
             include $template_path;
@@ -1108,121 +1164,112 @@ class Bocs_Account
      * AJAX handler for updating subscription details (including box switching)
      */
     public function ajax_update_subscription() {
-        check_ajax_referer('bocs-switch-nonce', 'nonce');
+        // Check nonce - accept either bocs-switch-nonce or bocs_edit_details_nonce
+        $nonce_verified = false;
+        
+        if (isset($_POST['nonce'])) {
+            if (wp_verify_nonce($_POST['nonce'], 'bocs-switch-nonce')) {
+                $nonce_verified = true;
+            } elseif (wp_verify_nonce($_POST['nonce'], 'bocs_edit_details_nonce')) {
+                $nonce_verified = true;
+            }
+        }
+        
+        if (!$nonce_verified) {
+            wp_send_json_error(array(
+                'message' => 'Security verification failed'
+            ));
+            return;
+        }
         
         // Get parameters from request
         $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
-        $bocs_id = isset($_POST['bocs_id']) ? sanitize_text_field($_POST['bocs_id']) : '';
-        $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
-        $products_json = isset($_POST['products']) ? sanitize_text_field($_POST['products']) : '';
+        $update_type = isset($_POST['update_type']) ? sanitize_text_field($_POST['update_type']) : '';
         
-        if (empty($subscription_id) || empty($bocs_id) || empty($frequency_id)) {
-            wp_send_json_error(array(
-                'message' => 'Missing required parameters'
-            ));
-            return;
-        }
-        
-        // Load helper
-        $helper = new Bocs_Helper();
-        
-        // First, get the current subscription details
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-        $subscription = $helper->curl_request($url, 'GET', [], $this->headers);
-        
-        if (is_wp_error($subscription)) {
-            wp_send_json_error(array(
-                'message' => $subscription->get_error_message()
-            ));
-            return;
-        }
-        
-        // Get the BOCS details to get the frequency information
-        $url = BOCS_API_URL . 'bocs/' . $bocs_id;
-        $bocs_details = $helper->curl_request($url, 'GET', [], $this->headers);
-        
-        if (is_wp_error($bocs_details)) {
-            wp_send_json_error(array(
-                'message' => $bocs_details->get_error_message()
-            ));
-            return;
-        }
-        
-        // Get the frequency details from the BOCS adjustments
-        $frequency_details = null;
-        if (isset($bocs_details['data']['priceAdjustment']['adjustments'])) {
-            foreach ($bocs_details['data']['priceAdjustment']['adjustments'] as $adjustment) {
-                if (isset($adjustment['id']) && $adjustment['id'] === $frequency_id) {
-                    $frequency_details = $adjustment;
-                    break;
-                }
-            }
-        }
-        
-        if (!$frequency_details) {
-            wp_send_json_error(array(
-                'message' => 'Frequency details not found'
-            ));
-            return;
-        }
-        
-        // Prepare request data
-        $request_data = array(
-            'bocs' => array(
-                'id' => $bocs_id
-            ),
-            'frequency' => array(
-                'id' => $frequency_id,
-                'frequency' => $frequency_details['frequency'],
-                'timeUnit' => $frequency_details['timeUnit'],
-                'discount' => isset($frequency_details['discount']) ? $frequency_details['discount'] : 0,
-                'discountType' => isset($frequency_details['discountType']) ? $frequency_details['discountType'] : 'PERCENT'
-            )
-        );
-        
-        // Add line items if this is a custom box with selected products
-        if (!empty($products_json)) {
-            $selected_products = json_decode($products_json, true);
-            
-            if (is_array($selected_products)) {
-                // Filter out products with quantity 0
-                $line_items = array();
-                foreach ($selected_products as $product) {
-                    if (isset($product['quantity']) && $product['quantity'] > 0) {
-                        // Format line item as required by the API
-                        $line_items[] = array(
-                            'productId' => $product['id'],
-                            'name' => $product['name'],
-                            'quantity' => $product['quantity'],
-                            'price' => $product['price'],
-                            'total' => $product['price'] * $product['quantity'],
-                            'metaData' => array()
-                        );
-                    }
+        // Handle different update types
+        switch ($update_type) {
+            case 'schedule':
+                // Handle schedule update
+                $next_payment_date = isset($_POST['next_payment_date']) ? sanitize_text_field($_POST['next_payment_date']) : '';
+                $reason = isset($_POST['reason']) ? sanitize_textarea_field($_POST['reason']) : '';
+                
+                if (empty($next_payment_date)) {
+                    wp_send_json_error(array('message' => __('Next payment date is required', 'bocs-wordpress')));
+                    return;
                 }
                 
-                // Add line items to request data
-                if (!empty($line_items)) {
-                    $request_data['lineItems'] = $line_items;
+                // Format date for API
+                $next_payment_date_gmt = date('Y-m-d\TH:i:s\Z', strtotime($next_payment_date));
+                
+                // Prepare data for API
+                $data = array(
+                    'nextPaymentDateGmt' => $next_payment_date_gmt
+                );
+                
+                if (!empty($reason)) {
+                    $data['metaData'] = array(
+                        array(
+                            'key' => 'schedule_change_reason',
+                            'value' => $reason
+                        )
+                    );
                 }
-            }
-        }
-        
-        // Include existing data that should be preserved
-        if (isset($subscription['data'])) {
-            // Copy these fields from the current subscription if they exist
-            $fields_to_preserve = ['taxLines', 'nextPaymentDateGmt', 'couponLines', 'discountTotal', 
-                                  'shippingTotal', 'shipping', 'billingInterval', 'discountTax'];
+                
+                // Make API request
+                $result = $this->update_subscription($data);
+                
+                if ($result['success']) {
+                    wp_send_json_success(array('message' => __('Schedule updated successfully', 'bocs-wordpress')));
+                } else {
+                    wp_send_json_error(array('message' => $result['message']));
+                }
+                break;
             
-            foreach ($fields_to_preserve as $field) {
-                if (isset($subscription['data'][$field])) {
-                    $request_data[$field] = $subscription['data'][$field];
-                }
-            }
+            // Existing cases...
+        }
+    }
+    
+    /**
+     * Handle pause and resume subscription requests
+     * 
+     * @param string $subscription_id The subscription ID
+     * @param string $action Either 'pause' or 'resume'
+     */
+    private function handle_pause_resume_subscription($subscription_id, $action) {
+        if (empty($subscription_id)) {
+            wp_send_json_error(array('message' => 'Missing subscription ID'));
+            return;
         }
         
-        // Make the API request to update the subscription
+        if (!in_array($action, array('pause', 'resume'))) {
+            wp_send_json_error(array('message' => 'Invalid action'));
+            return;
+        }
+        
+        // Get reason for pause if provided
+        $reason = '';
+        if ($action === 'pause' && isset($_POST['reason'])) {
+            $reason = sanitize_textarea_field($_POST['reason']);
+        }
+        
+        $helper = new Bocs_Helper();
+        
+        // Prepare request data based on action type
+        $request_data = array(
+            'subscriptionStatus' => $action === 'pause' ? 'PAUSED' : 'ACTIVE'
+        );
+        
+        // Add reason for pause if provided
+        if ($action === 'pause' && !empty($reason)) {
+            $request_data['pauseReason'] = $reason;
+        }
+        
+        // Make API request
         $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        
+        // Log the request for debugging
+        error_log('Pause/Resume Request: ' . json_encode($request_data));
+        
         $response = $helper->curl_request($url, 'PUT', $request_data, $this->headers);
         
         if (is_wp_error($response)) {
@@ -1232,8 +1279,10 @@ class Bocs_Account
             return;
         }
         
+        $message = $action === 'pause' ? 'Subscription paused successfully' : 'Subscription resumed successfully';
+        
         wp_send_json_success(array(
-            'message' => 'Subscription updated successfully',
+            'message' => $message,
             'data' => $response
         ));
     }
@@ -1298,5 +1347,356 @@ class Bocs_Account
         wp_send_json_success(array(
             'products' => $response['data']
         ));
+    }
+
+    /**
+     * AJAX handler for updating subscription products
+     */
+    public function ajax_update_subscription_products() {
+        // More reliable nonce verification method
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_ajax_nonce')) {
+            wp_send_json_error(array(
+                'success' => false,
+                'message' => 'Security verification failed. Please refresh the page and try again.'
+            ));
+            return;
+        }
+        
+        $response = array('success' => false);
+        
+        // Check subscription ID
+        if (empty($_POST['subscription_id'])) {
+            $response['message'] = 'Subscription ID is required';
+            wp_send_json_error($response);
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        
+        // Check products
+        if (empty($_POST['products'])) {
+            $response['message'] = 'No products selected';
+            wp_send_json_error($response);
+            return;
+        }
+        
+        // Process products data
+        $products_data = $_POST['products'];
+        
+        // Handle string or direct array
+        if (is_string($products_data)) {
+            $products = json_decode(stripslashes($products_data), true);
+        } else {
+            $products = $products_data;
+        }
+        
+        // Validate products
+        if (!is_array($products) || empty($products)) {
+            $response['message'] = 'Invalid products data';
+            wp_send_json_error($response);
+            return;
+        }
+        
+        // Log the raw incoming product data
+        error_log('DETAILED DEBUG - Received product data: ' . json_encode($products));
+        
+        try {
+            // Check if products already have complete data
+            $has_complete_data = false;
+            if (!empty($products) && isset($products[0])) {
+                $required_fields = ['productId', 'quantity', 'total', 'subtotal', 'price', 'taxClass', 'taxes', 'parentName', 'variationId', 'sku'];
+                $has_complete_data = true;
+                foreach ($required_fields as $field) {
+                    if (!isset($products[0][$field])) {
+                        error_log('DEBUG - Missing required field in product data: ' . $field);
+                        $has_complete_data = false;
+                    }
+                }
+            }
+            
+            error_log('DEBUG - Products have complete data: ' . ($has_complete_data ? 'Yes' : 'No'));
+            
+            // If we already have complete data, use it directly
+            if ($has_complete_data) {
+                error_log('Using complete product data from frontend');
+                
+                // Format lineItems from complete data
+                $formatted_line_items = [];
+                foreach ($products as $product) {
+                    // Ensure productId is available - use id as fallback
+                    if (!isset($product['productId']) && isset($product['id'])) {
+                        $product['productId'] = $product['id'];
+                    }
+                    
+                    // Skip invalid products
+                    if (!isset($product['productId']) || !isset($product['quantity']) || (int)$product['quantity'] <= 0) {
+                        continue;
+                    }
+                    
+                    // Add to formatted line items - pass all fields without modification
+                    $formatted_line_items[] = $product;
+                }
+                
+                $request_data = [
+                    'lineItems' => $formatted_line_items
+                ];
+            } else {
+                // Otherwise get current subscription to maintain necessary data
+                $helper = new Bocs_Helper();
+                $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+                $current_subscription = $helper->curl_request($url, 'GET', [], $this->headers);
+                
+                if (is_wp_error($current_subscription)) {
+                    error_log('Error fetching current subscription: ' . $current_subscription->get_error_message());
+                    $response['message'] = 'Error retrieving current subscription data';
+                    wp_send_json_error($response);
+                    return;
+                }
+                
+                if (!isset($current_subscription['data'])) {
+                    error_log('Current subscription data is missing');
+                    $response['message'] = 'Current subscription data is invalid';
+                    wp_send_json_error($response);
+                    return;
+                }
+                
+                $bocs_id = $current_subscription['data']['bocs']['id'];
+                error_log('DEBUG - Bocs ID: ' . $bocs_id);
+                
+                // get the bocs details
+                $bocs_details = $helper->curl_request(BOCS_API_URL . 'bocs/' . $bocs_id, 'GET', [], $this->headers);
+                if (is_wp_error($bocs_details)) {
+                    error_log('Error fetching bocs details: ' . $bocs_details->get_error_message());
+                    $response['message'] = 'Error retrieving bocs details';
+                    wp_send_json_error($response);
+                    return;
+                }
+
+                // Create a lookup table for bocs products
+                $bocs_products = [];
+                if (isset($bocs_details['data']['products']) && is_array($bocs_details['data']['products'])) {
+                    foreach ($bocs_details['data']['products'] as $bocs_product) {
+                        if (isset($bocs_product['id'])) {
+                            $bocs_products[$bocs_product['id']] = $bocs_product;
+                            error_log('DEBUG - Added product to lookup: ' . $bocs_product['id'] . ' - ' . $bocs_product['name']);
+                        }
+                    }
+                }
+
+                // Log how many products we found in the bocs
+                error_log('Found ' . count($bocs_products) . ' products in bocs details');
+                
+                // Prepare line items for API request based on the format from the API
+                $line_items = [];
+                foreach ($products as $product) {
+                    if (isset($product['id']) && isset($product['quantity']) && $product['quantity'] > 0) {
+                        $product_id = $product['id'];
+                        $quantity = (int) $product['quantity'];
+                        
+                        error_log('DEBUG - Processing product: ' . $product_id . ' with quantity ' . $quantity);
+                        
+                        // Start with a base line item
+                        $line_item = [
+                            'productId' => $product_id,
+                            'quantity' => $quantity,
+                            'taxClass' => '',
+                            'taxes' => [],
+                            'metaData' => []
+                        ];
+                        
+                        // First check if we have this product in the bocs details
+                        if (isset($bocs_products[$product_id])) {
+                            $bocs_product = $bocs_products[$product_id];
+                            
+                            // Copy all required fields from bocs product
+                            $line_item['taxClass'] = $bocs_product['taxClass'] ?? '';
+                            $line_item['taxes'] = $bocs_product['taxes'] ?? [];
+                            $line_item['parentName'] = $bocs_product['parentName'] ?? '';
+                            $line_item['variationId'] = $bocs_product['variationId'] ?? '0';
+                            $line_item['sku'] = $bocs_product['sku'] ?? '';
+                            $line_item['price'] = (float) ($bocs_product['price'] ?? 45);
+                            $line_item['name'] = $bocs_product['name'] ?? $product['name'] ?? 'Product';
+                            
+                            // Copy any other fields that might be useful
+                            if (isset($bocs_product['externalSourceId'])) {
+                                $line_item['externalSourceId'] = $bocs_product['externalSourceId'];
+                            }
+                            
+                            error_log('Found product in bocs details: ' . $product_id);
+                        } else {
+                            // Fallback to subscription or user-provided data
+                            error_log('Product not found in bocs details, using fallback data: ' . $product_id);
+                            
+                            // Add name if available
+                            if (isset($product['name'])) {
+                                $line_item['name'] = $product['name'];
+                            }
+                            
+                            // Add price if available
+                            if (isset($product['price'])) {
+                                $line_item['price'] = (float) $product['price'];
+                            } else {
+                                // Try to find the product price from current subscription
+                                if (isset($current_subscription['data']['lineItems'])) {
+                                    foreach ($current_subscription['data']['lineItems'] as $current_item) {
+                                        if ($current_item['productId'] === $product_id) {
+                                            $line_item['price'] = (float) $current_item['price'];
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // Default price if not found
+                                if (!isset($line_item['price'])) {
+                                    $line_item['price'] = 45.00;
+                                }
+                            }
+                            
+                            // Set default values for required fields
+                            $line_item['variationId'] = "0";
+                            $line_item['sku'] = "";
+                            $line_item['parentName'] = "";
+                            
+                            // Look for external source ID in current subscription
+                            if (isset($current_subscription['data']['lineItems'])) {
+                                foreach ($current_subscription['data']['lineItems'] as $current_item) {
+                                    if ($current_item['productId'] === $product_id && isset($current_item['externalSourceId'])) {
+                                        $line_item['externalSourceId'] = $current_item['externalSourceId'];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Calculate totals based on discount
+                        $discount_percent = 0;
+                        if (isset($current_subscription['data']['frequency']) && 
+                            isset($current_subscription['data']['frequency']['discount'])) {
+                            $discount_percent = (float) $current_subscription['data']['frequency']['discount'];
+                        }
+                        
+                        $discount_factor = 1 - ($discount_percent / 100);
+                        $subtotal = $line_item['price'] * $quantity;
+                        $total = $subtotal * $discount_factor;
+                        
+                        $line_item['subtotal'] = $subtotal;
+                        $line_item['total'] = $total;
+                        
+                        // Calculate tax - typically 10% in AU
+                        $tax_rate = 0.1;
+                        $line_item['subtotalTax'] = $subtotal * $tax_rate;
+                        $line_item['totalTax'] = $total * $tax_rate;
+                        
+                        // Log the complete line item to check if all fields are present
+                        error_log('DEBUG - Final line item for product ' . $product_id . ': ' . json_encode($line_item));
+                        
+                        // Verify all required fields are present
+                        $required_fields = ['productId', 'quantity', 'total', 'subtotal', 'price', 'taxClass', 'taxes', 'parentName', 'variationId', 'sku'];
+                        foreach ($required_fields as $field) {
+                            if (!isset($line_item[$field])) {
+                                error_log('DEBUG - MISSING REQUIRED FIELD in final line item: ' . $field);
+                            }
+                        }
+                        
+                        $line_items[] = $line_item;
+                    }
+                }
+                
+                if (empty($line_items)) {
+                    $response['message'] = 'No valid products selected';
+                    wp_send_json_error($response);
+                    return;
+                }
+                
+                // Prepare request data - using the format the API expects
+                $request_data = [
+                    'lineItems' => $line_items
+                ];
+            }
+            
+            // Log the complete request data for debugging
+            error_log('DEBUG - Complete update request data: ' . json_encode($request_data));
+            
+            // API request to update subscription products
+            $api = new Bocs_API();
+            
+            // IMPORTANT: Pass the request data directly to avoid format conversion issues
+            // The data already has the 'lineItems' key, so pass it as is
+            $api_response = $api->update_subscription_products($subscription_id, $request_data);
+            
+            if (is_wp_error($api_response)) {
+                error_log('API Error: ' . $api_response->get_error_message());
+                $response['message'] = $api_response->get_error_message();
+                wp_send_json_error($response);
+                return;
+            }
+            
+            // Log successful response
+            error_log('Subscription products updated successfully for ID: ' . $subscription_id);
+            
+            // Success response
+            $response = [
+                'success' => true,
+                'message' => 'Products updated successfully',
+                'data' => $api_response
+            ];
+            
+            wp_send_json_success($response);
+        } catch (Exception $e) {
+            error_log('Exception during API update: ' . $e->getMessage());
+            $response['message'] = $e->getMessage();
+            wp_send_json_error($response);
+        }
+    }
+
+    // Helper function to update subscription with API
+    private function update_subscription($data) {
+        // Get subscription ID
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+        
+        if (empty($subscription_id)) {
+            return array(
+                'success' => false,
+                'message' => __('Subscription ID is required', 'bocs-wordpress')
+            );
+        }
+        
+        // Get plugin options
+        $options = get_option('bocs_plugin_options');
+        
+        // Setup headers
+        $headers = array(
+            'Organization' => isset($options['bocs_headers']['organization']) ? $options['bocs_headers']['organization'] : '',
+            'Store' => isset($options['bocs_headers']['store']) ? $options['bocs_headers']['store'] : '',
+            'Authorization' => isset($options['bocs_headers']['authorization']) ? $options['bocs_headers']['authorization'] : '',
+            'Content-Type' => 'application/json'
+        );
+        
+        // Make API request
+        $helper = new Bocs_Helper();
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $response = $helper->curl_request($url, 'PUT', $data, $headers);
+        
+        if (is_wp_error($response)) {
+            return array(
+                'success' => false,
+                'message' => $response->get_error_message()
+            );
+        }
+        
+        // Log the response
+        if (class_exists('Bocs_Log_Handler')) {
+            $logger = new Bocs_Log_Handler();
+            $logger->insert_log('info', 'Subscription update response', array(
+                'subscription_id' => $subscription_id,
+                'response' => $response
+            ));
+        }
+        
+        return array(
+            'success' => true,
+            'message' => __('Subscription updated successfully', 'bocs-wordpress'),
+            'data' => $response
+        );
     }
 }
