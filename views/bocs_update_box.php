@@ -498,7 +498,7 @@ if (!empty($billing_period)) {
 
 <style>
 :root {
-    --bocs-primary: #0065A9;
+    --bocs-primary: #0f766e;
     --bocs-primary-dark: #004C80;
     --bocs-secondary: #B85C00;
     --bocs-secondary-dark: #8C4600;

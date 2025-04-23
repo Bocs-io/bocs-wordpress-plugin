@@ -71,8 +71,8 @@ add_action('wp_footer', function() {
             --bocs-font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --bocs-font-secondary: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             --bocs-font-mono: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
-            --bocs-primary: #0065A9;
-            --bocs-secondary: #00A5B5;
+            --bocs-primary: #0f766e;
+            --bocs-secondary: #0d9f6e;
             --bocs-accent: #FFCC00;
             --bocs-text: #333333;
             --bocs-text-light: #666666;
@@ -238,8 +238,8 @@ add_action('wp_footer', function() {
         }
 
         :root {
-            --bocs-primary: #0065A9;
-            --bocs-secondary: #00A5B5;
+            --bocs-primary: #0f766e;
+            --bocs-secondary: #0d9f6e;
             --bocs-accent: #FFCC00;
             --bocs-text: #333333;
             --bocs-light-bg: #F9FAFB;
@@ -298,7 +298,7 @@ add_action('wp_footer', function() {
         .subscription-amount {
             font-size: 1.1rem;
             font-weight: 600;
-            color: #0065A9;
+            color: #0f766e;
             white-space: nowrap;
         }
 
@@ -402,7 +402,7 @@ add_action('wp_footer', function() {
         }
 
         .update-box-link {
-            background: #0065A9 !important;
+            background: #0f766e !important;
             color: white !important;
         }
 
@@ -411,7 +411,7 @@ add_action('wp_footer', function() {
         }
 
         .switch-bocs {
-            background: #00A5B5 !important;
+            background: #0d9f6e !important;
             color: white !important;
         }
 
@@ -501,8 +501,8 @@ add_action('wp_footer', function() {
             background: #ffffff;
             border-radius: 12px;
             padding: 24px;
-            width: 100%;
-            max-width: 90%;
+            width: 90%;
+            max-width: 500px;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
 
@@ -557,7 +557,7 @@ add_action('wp_footer', function() {
         }
 
         .bocs-notification.loading {
-            border-left: 4px solid #0065A9;
+            border-left: 4px solid #0f766e;
         }
 
         /* Accessibility Improvements */
@@ -971,7 +971,7 @@ add_action('wp_footer', function() {
         }
 
         .woocommerce-button.button.update-box-link {
-            background: #0065A9;
+            background: #0f766e;
         }
 
         .woocommerce-button.button.update-box-link:hover {
@@ -979,7 +979,7 @@ add_action('wp_footer', function() {
         }
 
         .woocommerce-button.button.switch-bocs {
-            background: #00A5B5;
+            background: #0d9f6e;
         }
 
         .woocommerce-button.button.switch-bocs:hover {
@@ -1014,7 +1014,7 @@ add_action('wp_footer', function() {
         }
 
         .woocommerce-button.button.subscription_activate {
-            background: #0065A9;
+            background: #0f766e;
         }
 
         .woocommerce-button.button.subscription_activate:hover {
@@ -1193,8 +1193,8 @@ add_action('wp_footer', function() {
             background: #ffffff;
             border-radius: var(--bocs-radius);
             padding: 30px;
-            max-width: 90%;
-            width: 100%;
+            width: 90%;
+            max-width: 500px;
             box-shadow: var(--bocs-shadow);
             transform: translateY(20px);
             opacity: 0;

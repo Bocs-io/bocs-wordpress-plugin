@@ -5,7 +5,7 @@
  */
 
 :root {
-    --bocs-primary: #0065A9;
+    --bocs-primary: #0f766e;
     --bocs-primary-dark: #004C80;
     --bocs-secondary: #B85C00;
     --bocs-secondary-dark: #8C4600;
@@ -650,8 +650,8 @@ h3 {
     padding: 20px;
     max-height: 100%;
     overflow-y: auto;
-    max-width: 90% !important;
-    width: 90% !important;
+    width: 90%;
+    max-width: 500px;
 }
 
 .bocs-modal-footer {

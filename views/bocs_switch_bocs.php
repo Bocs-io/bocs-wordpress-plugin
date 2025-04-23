@@ -314,7 +314,7 @@ wp_enqueue_script('jquery-ui-dialog');
 <style>
 :root {
     /* Primary Colors */
-    --bocs-primary: #0065A9;
+    --bocs-primary: #0f766e;
     --bocs-primary-dark: #004C80;
     --bocs-primary-light: #E1F0FA;
     --bocs-secondary: #B85C00;

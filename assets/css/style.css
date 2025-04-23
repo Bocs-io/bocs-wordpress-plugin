@@ -14,8 +14,8 @@
     background: #ffffff;
     padding: 20px;
     border-radius: 4px;
-    max-width: 90%;
     width: 90%;
+    max-width: 500px;
     margin: 50px auto;
     position: relative;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -70,4 +70,33 @@
 .stripe-error {
     color: #dc3232;
     margin: 10px 0;
-} 
+}
+
+/* Account Navigation Icon Styling - Follow WooCommerce style */
+.woocommerce-MyAccount-navigation ul li.woocommerce-MyAccount-navigation-link--bocs-subscriptions a::before {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    line-height: 1;
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    line-height: inherit;
+    vertical-align: baseline;
+    content: "\f1b8"; /* Font Awesome recycle icon */
+    margin-left: 0.5407911001em;
+    width: 1.41575em;
+    text-align: right;
+    float: right;
+    opacity: .25;
+}
+
+/* Make icon fully visible when active */
+.woocommerce-MyAccount-navigation ul li.woocommerce-MyAccount-navigation-link--bocs-subscriptions.is-active a::before,
+.woocommerce-MyAccount-navigation ul li.woocommerce-MyAccount-navigation-link--bocs-subscriptions a:hover::before {
+    opacity: 1;
+}
+
+/* Other styles will be added below as needed */ 
