@@ -1,3 +1,15 @@
+v0.0.139 05/14/2025
+* Feature: Added frequency discount display and improved data handling
+* Fix: Implemented API request loop detection and error handling
+* Style: Improved button loading states and subscription display 
+* Style: Updated color scheme and button styling
+* Refactor: Removed temporary button fix scripts and updated subscription display
+* Feature: Added admin email preview functionality and improved email templates
+* Feature: Added Sentry integration for error tracking
+* Fix: Improved myaccount page templates
+* Chore: Updated license information
+* Chore: Removed unused files
+
 v0.0.138 04/22/2025
 * Feature: Add subscription details editing interface with custom product selection
 * Feature: Enhance subscription management with improved UI and API handling
