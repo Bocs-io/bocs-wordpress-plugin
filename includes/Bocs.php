@@ -253,6 +253,12 @@ class Bocs
         $api_class = new Api();
         $this->loader->add_action('rest_api_init', $api_class, 'custom_api_routes');
 
+        // Initialize Frontend class for public styles and scripts
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Frontend.php';
+        $frontend = new Frontend();
+        $this->loader->add_action('wp_enqueue_scripts', $frontend, 'enqueue_styles');
+        $this->loader->add_action('wp_enqueue_scripts', $frontend, 'enqueue_scripts');
+
         // Initialize payment API endpoints
         $payment_api = new Bocs_Payment_API();
         $this->loader->add_action('rest_api_init', $payment_api, 'register_routes');
