@@ -144,14 +144,37 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         $this->setup_locale();
         
         error_log('BOCS EMAIL CANCELLED: Starting trigger method');
-        error_log('BOCS EMAIL CANCELLED: Subscription data structure: ' . json_encode(array_keys($subscription_data)));
         
         // Check if we have valid subscription data
-        if (empty($subscription_data) || !is_array($subscription_data)) {
-            error_log('BOCS EMAIL CANCELLED: Invalid subscription data');
+        if (empty($subscription_data)) {
+            error_log('BOCS EMAIL CANCELLED: Empty subscription data');
             $this->restore_locale();
             return false;
         }
+        
+        // Handle case where subscription_data is an integer (likely subscription ID during preview)
+        if (is_numeric($subscription_data)) {
+            error_log('BOCS EMAIL CANCELLED: Received numeric subscription ID instead of data array: ' . $subscription_data);
+            // Create a minimal valid subscription data array
+            $subscription_data = array(
+                'id' => $subscription_data,
+                'customer' => array(
+                    'email' => get_option('admin_email') // Fallback to admin email for previews
+                )
+            );
+        } else if (!is_array($subscription_data)) {
+            // Try to convert to array if it's an object
+            if (is_object($subscription_data)) {
+                error_log('BOCS EMAIL CANCELLED: Converting object to array');
+                $subscription_data = (array) $subscription_data;
+            } else {
+                error_log('BOCS EMAIL CANCELLED: Invalid subscription data type: ' . gettype($subscription_data));
+                $this->restore_locale();
+                return false;
+            }
+        }
+        
+        error_log('BOCS EMAIL CANCELLED: Subscription data structure: ' . json_encode(array_keys($subscription_data)));
         
         // Set object and email recipient
         $this->object = $subscription_data;
@@ -209,10 +232,10 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         
         // Dump the subscription data structure for debugging
         error_log('BOCS EMAIL CANCELLED: Subscription data keys: ' . print_r(array_keys($subscription_data), true));
-        if (isset($subscription_data['customer'])) {
+        if (isset($subscription_data['customer']) && is_array($subscription_data['customer'])) {
             error_log('BOCS EMAIL CANCELLED: Customer object keys: ' . print_r(array_keys($subscription_data['customer']), true));
         }
-        if (isset($subscription_data['billing'])) {
+        if (isset($subscription_data['billing']) && is_array($subscription_data['billing'])) {
             error_log('BOCS EMAIL CANCELLED: Billing object keys: ' . print_r(array_keys($subscription_data['billing']), true));
         }
         
@@ -220,6 +243,12 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         if (empty($customer_email) && strpos(json_encode($subscription_data), 'od-dev@cru.io') !== false) {
             $customer_email = 'od-dev@cru.io';
             error_log('BOCS EMAIL CANCELLED: Using hardcoded email found in data: ' . $customer_email);
+        }
+        
+        // If still no email and we're likely in a preview, use admin email
+        if (empty($customer_email) && defined('WP_ADMIN') && WP_ADMIN) {
+            $customer_email = get_option('admin_email');
+            error_log('BOCS EMAIL CANCELLED: Using admin email for preview: ' . $customer_email);
         }
         
         $this->recipient = $customer_email;
@@ -234,10 +263,10 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         error_log('BOCS EMAIL CANCELLED: Final recipient set to: ' . $this->recipient);
         
         // Set the placeholders for email template
-        $this->placeholders['{subscription_id}'] = $subscription_data['id'] ?? '';
+        $this->placeholders['{subscription_id}'] = isset($subscription_data['id']) ? $subscription_data['id'] : '';
         
         // Set the Bocs ID (if available)
-        $this->bocs_id = $bocs_id ?: ($subscription_data['bocs']['id'] ?? '');
+        $this->bocs_id = $bocs_id ?: (isset($subscription_data['bocs']) && isset($subscription_data['bocs']['id']) ? $subscription_data['bocs']['id'] : '');
         
         // Use default heading and subject
         $this->heading = $this->get_default_heading();

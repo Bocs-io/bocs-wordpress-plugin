@@ -169,6 +169,11 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
      * @return string Email HTML content
      */
     public function get_content_html() {
+        // If this is a preview, create a mock order
+        if (is_admin() && empty($this->object)) {
+            $this->object = $this->get_preview_order();
+        }
+
         return wc_get_template_html(
             $this->template_html,
             array(
@@ -193,6 +198,11 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
      * @return string Email plain text content
      */
     public function get_content_plain() {
+        // If this is a preview, create a mock order
+        if (is_admin() && empty($this->object)) {
+            $this->object = $this->get_preview_order();
+        }
+
         return wc_get_template_html(
             $this->template_plain,
             array(
@@ -208,6 +218,72 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
             $this->template_base,
             $this->template_base
         );
+    }
+
+    /**
+     * Create a mock WC_Order for previewing the email template.
+     * 
+     * @since 1.0.0
+     * @return WC_Order
+     */
+    protected function get_preview_order() {
+        // Try to get an existing order for preview
+        $orders = wc_get_orders(array(
+            'limit' => 1,
+            'status' => array('completed', 'processing'),
+            'return' => 'ids',
+        ));
+
+        if (!empty($orders)) {
+            $order = wc_get_order($orders[0]);
+            
+            // Add required metadata for preview purposes
+            $order->update_meta_data('__bocs_order_status', 'upcoming');
+            $order->update_meta_data('__bocs_subscription_id', 'preview_sub_123');
+            
+            // Don't save these changes to the database
+            
+            // Set up placeholder renewal date for preview
+            $this->placeholders['{renewal_date}'] = date_i18n(wc_date_format(), strtotime('+7 days'));
+            
+            return $order;
+        } else {
+            // If no real orders exist, create a mock order object
+            $order = new WC_Order();
+            
+            // Set up basic order data for preview
+            $order->set_billing_first_name('Sample');
+            $order->set_billing_last_name('Customer');
+            $order->set_billing_email('customer@example.com');
+            $order->set_billing_address_1('123 Preview St');
+            $order->set_billing_city('Sample City');
+            $order->set_billing_state('CA');
+            $order->set_billing_postcode('90210');
+            $order->set_billing_country('US');
+            $order->set_payment_method_title('Credit Card');
+            $order->set_total('49.99');
+            
+            // Set mock metadata
+            $order->update_meta_data('__bocs_order_status', 'upcoming');
+            $order->update_meta_data('__bocs_subscription_id', 'preview_sub_123');
+            
+            // Set date created
+            $order->set_date_created(time());
+            
+            // Add a sample product
+            if (class_exists('WC_Order_Item_Product')) {
+                $item = new WC_Order_Item_Product();
+                $item->set_name('Sample Subscription Box');
+                $item->set_quantity(1);
+                $item->set_total(49.99);
+                $order->add_item($item);
+            }
+            
+            // Set up placeholder renewal date
+            $this->placeholders['{renewal_date}'] = date_i18n(wc_date_format(), strtotime('+7 days'));
+            
+            return $order;
+        }
     }
 
     /**

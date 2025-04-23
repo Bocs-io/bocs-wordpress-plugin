@@ -114,7 +114,29 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
         $this->setup_locale();
         
         error_log('BOCS EMAIL PAUSED: Starting trigger method');
-        error_log('BOCS EMAIL PAUSED: Subscription data structure: ' . json_encode(array_keys($subscription_data)));
+        
+        // Check if subscription_data is an integer (subscription ID) - this happens during email previews
+        if (is_numeric($subscription_data)) {
+            error_log('BOCS EMAIL PAUSED: Received numeric subscription ID (' . $subscription_data . ') instead of array data - likely a preview');
+            // Create a minimal dummy subscription array for preview purposes
+            $subscription_data = array(
+                'id' => $subscription_data,
+                'billing' => array(
+                    'email' => get_option('admin_email'), // Use admin email for preview
+                ),
+                'status' => 'paused',
+                'metaData' => array(
+                    array('key' => 'pause_reason', 'value' => $pause_reason ?: 'Preview reason')
+                )
+            );
+        }
+        
+        // Now safe to log array keys
+        if (is_array($subscription_data)) {
+            error_log('BOCS EMAIL PAUSED: Subscription data structure: ' . json_encode(array_keys($subscription_data)));
+        } else {
+            error_log('BOCS EMAIL PAUSED: Subscription data is not an array, it is: ' . gettype($subscription_data));
+        }
         
         // Check if we have valid subscription data
         if (empty($subscription_data) || !is_array($subscription_data)) {
@@ -204,12 +226,14 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
         }
         
         // Dump the subscription data structure for debugging
-        error_log('BOCS EMAIL PAUSED: Subscription data keys: ' . print_r(array_keys($subscription_data), true));
-        if (isset($subscription_data['customer'])) {
-            error_log('BOCS EMAIL PAUSED: Customer object keys: ' . print_r(array_keys($subscription_data['customer']), true));
-        }
-        if (isset($subscription_data['billing'])) {
-            error_log('BOCS EMAIL PAUSED: Billing object keys: ' . print_r(array_keys($subscription_data['billing']), true));
+        if (is_array($subscription_data)) {
+            error_log('BOCS EMAIL PAUSED: Subscription data keys: ' . print_r(array_keys($subscription_data), true));
+            if (isset($subscription_data['customer']) && is_array($subscription_data['customer'])) {
+                error_log('BOCS EMAIL PAUSED: Customer object keys: ' . print_r(array_keys($subscription_data['customer']), true));
+            }
+            if (isset($subscription_data['billing']) && is_array($subscription_data['billing'])) {
+                error_log('BOCS EMAIL PAUSED: Billing object keys: ' . print_r(array_keys($subscription_data['billing']), true));
+            }
         }
         
         // FINAL EMERGENCY: Hardcode to the known email if found in the subscription data dump

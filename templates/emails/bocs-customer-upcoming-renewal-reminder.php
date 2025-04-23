@@ -17,6 +17,11 @@ if (!isset($email)) {
     $email = null;
 }
 
+// Ensure order object exists
+if (!isset($order) || !is_object($order)) {
+    $order = null;
+}
+
 /*
  * @hooked WC_Emails::email_header() Output the email header
  */
@@ -24,7 +29,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
 ?>
 
 <div style="padding: 0 12px; max-width: 100%;">
-    <p style="margin: 0 0 16px;">Hi <?php echo esc_html($order->get_billing_address_1() ? $order->get_billing_first_name() : __('there', 'bocs-wordpress')); ?>,</p>
+    <p style="margin: 0 0 16px;">Hi <?php echo esc_html(($order && is_callable(array($order, 'get_billing_first_name')) && $order->get_billing_first_name()) ? $order->get_billing_first_name() : __('there', 'bocs-wordpress')); ?>,</p>
     
     <p style="margin: 0 0 16px;"><?php esc_html_e('This is a reminder that your subscription renewal payment will be automatically processed soon.', 'bocs-wordpress'); ?></p>
     
@@ -45,7 +50,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
     
     <!-- Payment method info, if applicable -->
     <?php 
-    $payment_method_title = $order->get_payment_method_title();
+    $payment_method_title = ($order && is_callable(array($order, 'get_payment_method_title'))) ? $order->get_payment_method_title() : '';
     if (!empty($payment_method_title)) : 
     ?>
     <div style="background-color: #f8f9fa; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; border: 1px solid #e0e0e0;">
@@ -60,7 +65,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
     
     <!-- Bocs App notice, if applicable -->
     <?php 
-    if (function_exists('bocs_order_created_via_app') && bocs_order_created_via_app($order)) : 
+    if ($order && function_exists('bocs_order_created_via_app') && bocs_order_created_via_app($order)) : 
     ?>
     <div style="background-color: #fff8e1; padding: 12px 15px; margin-bottom: 25px; border-radius: 4px; border: 1px dashed #ffa000;">
         <p style="margin: 0 0 16px;"><span style="color: #ff6b00; font-weight: 500;"><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
@@ -69,21 +74,24 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <?php endif; ?>
 </div>
 
+<?php if ($order): ?>
 <h2 style="color: #3C7B7C !important; display: block; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 18px; font-weight: bold; line-height: 130%; margin: 0 0 18px; text-align: left;">
     <?php 
-        $order_date = $order->get_date_created();
+        $order_date = is_callable(array($order, 'get_date_created')) ? $order->get_date_created() : null;
         $formatted_date = $order_date ? $order_date->format(wc_date_format()) : date_i18n(wc_date_format());
-        printf(esc_html__('[Order #%s] (%s)', 'bocs-wordpress'), $order->get_order_number(), $formatted_date); 
+        $order_number = is_callable(array($order, 'get_order_number')) ? $order->get_order_number() : 'N/A';
+        printf(esc_html__('[Order #%s] (%s)', 'bocs-wordpress'), $order_number, $formatted_date); 
     ?>
 </h2>
+<?php endif; ?>
 
 <?php
 // Check if this is a "placeholder" order for upcoming renewals
-$items = $order->get_items();
+$items = $order && is_callable(array($order, 'get_items')) ? $order->get_items() : array();
 $order_for_display = $order;
 
 // If this is a placeholder order with no items, find the original order
-if (empty($items) && method_exists($order, 'get_meta')) {
+if ($order && empty($items) && is_callable(array($order, 'get_meta'))) {
     $bocs_subscription_id = $order->get_meta('__bocs_subscription_id');
     if (!empty($bocs_subscription_id)) {
         // Query for the most recent completed order with this subscription ID
@@ -101,7 +109,7 @@ if (empty($items) && method_exists($order, 'get_meta')) {
             $original_order_id = $original_orders[0];
             $original_order = wc_get_order($original_order_id);
             
-            if ($original_order && $original_order->get_items()) {
+            if ($original_order && is_callable(array($original_order, 'get_items')) && $original_order->get_items()) {
                 $order_for_display = $original_order;
                 $items = $original_order->get_items();
             }
@@ -121,11 +129,11 @@ if (empty($items) && method_exists($order, 'get_meta')) {
             </tr>
         </thead>
         <tbody>
-            <?php if (!empty($items)) : ?>
+            <?php if (!empty($items) && is_array($items)) : ?>
                 <?php foreach ($items as $item_id => $item) : 
-                    $product = $item->get_product();
-                    $sku = $product ? $product->get_sku() : '';
-                    $name = $item->get_name();
+                    $product = is_callable(array($item, 'get_product')) ? $item->get_product() : null;
+                    $sku = $product && is_callable(array($product, 'get_sku')) ? $product->get_sku() : '';
+                    $name = is_callable(array($item, 'get_name')) ? $item->get_name() : __('Product', 'bocs-wordpress');
                 ?>
                 <tr class="<?php echo esc_attr(apply_filters('woocommerce_order_item_class', 'order_item', $item, $order_for_display)); ?>">
                     <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; word-wrap: break-word;">
@@ -135,10 +143,18 @@ if (empty($items) && method_exists($order, 'get_meta')) {
                         <?php endif; ?>
                     </td>
                     <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
-                        <?php echo wp_kses_post($item->get_quantity()); ?>
+                        <?php echo wp_kses_post(is_callable(array($item, 'get_quantity')) ? $item->get_quantity() : 1); ?>
                     </td>
                     <td class="td" style="text-align: left; border: 1px solid #e5e5e5; padding: 12px; color: #636363; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
-                        <?php echo wp_kses_post($order_for_display->get_formatted_line_subtotal($item)); ?>
+                        <?php 
+                        if ($order_for_display && is_callable(array($order_for_display, 'get_formatted_line_subtotal'))) {
+                            echo wp_kses_post($order_for_display->get_formatted_line_subtotal($item));
+                        } elseif (is_callable(array($item, 'get_total'))) {
+                            echo wp_kses_post(wc_price($item->get_total()));
+                        } else {
+                            echo wp_kses_post(wc_price(0));
+                        }
+                        ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -152,7 +168,7 @@ if (empty($items) && method_exists($order, 'get_meta')) {
         </tbody>
         <tfoot>
             <?php
-            $totals = $order_for_display->get_order_item_totals();
+            $totals = $order_for_display && is_callable(array($order_for_display, 'get_order_item_totals')) ? $order_for_display->get_order_item_totals() : array();
             if ($totals) :
                 $i = 0;
                 foreach ($totals as $total) :
@@ -175,23 +191,25 @@ if (empty($items) && method_exists($order, 'get_meta')) {
 /*
  * @hooked WC_Emails::order_meta() Shows order meta data.
  */
-do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);
+if ($order) {
+    do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $email);
 
-/*
- * @hooked WC_Emails::customer_details() Shows customer details
- * @hooked WC_Emails::email_address() Shows email address
- */
-do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
+    /*
+    * @hooked WC_Emails::customer_details() Shows customer details
+    * @hooked WC_Emails::email_address() Shows email address
+    */
+    do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
+}
 ?>
 
 <div style="padding: 0 12px; max-width: 100%;">
     <!-- Manage subscription button -->
     <div style="margin: 40px 0; text-align: center;">
         <?php
-        $order_number = $order->get_order_number();
+        $order_number = $order && is_callable(array($order, 'get_order_number')) ? $order->get_order_number() : '';
         $myaccount_url = wc_get_page_permalink('myaccount');
         $view_order_url = wc_get_endpoint_url('view-order', '', $myaccount_url);
-        $manage_url = add_query_arg(array('view-order' => $order_number), $view_order_url);
+        $manage_url = $order_number ? add_query_arg(array('view-order' => $order_number), $view_order_url) : $myaccount_url;
         ?>
         <a href="<?php echo esc_url($manage_url); ?>" style="display: inline-block; background-color: #3C7B7C; color: #ffffff; font-size: 16px; font-weight: bold; line-height: 100%; text-decoration: none; padding: 12px 25px; border-radius: 4px;">
             <?php esc_html_e('Manage Subscription', 'bocs-wordpress'); ?>
