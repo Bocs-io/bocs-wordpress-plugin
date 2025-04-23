@@ -13,8 +13,8 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250423.1', true);
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250423.5');
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250423.3', true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250423.7');
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -55,7 +55,25 @@ if (class_exists('Bocs_Log_Handler')) {
 }
 
 wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
-    'subscriptions' => $subscriptions_formatted,
+    'subscriptions' => array_map(function($sub) {
+        // Add frequencies to each subscription if available
+        if (!isset($sub['bocs'])) {
+            $sub['bocs'] = array();
+        }
+        
+        // Ensure bocs has a frequencies array
+        if (!isset($sub['bocs']['frequencies'])) {
+            $sub['bocs']['frequencies'] = array();
+            
+            // Try to get frequencies from price adjustments if available
+            if (isset($sub['bocs']['priceAdjustment']['adjustments']) && 
+                is_array($sub['bocs']['priceAdjustment']['adjustments'])) {
+                $sub['bocs']['frequencies'] = $sub['bocs']['priceAdjustment']['adjustments'];
+            }
+        }
+        
+        return $sub;
+    }, $subscriptions_formatted),
     'ajaxUrl' => admin_url('admin-ajax.php'),
     'nonce' => wp_create_nonce('bocs-subscriptions-nonce'),
     'apiUrl' => BOCS_API_URL,
@@ -70,6 +88,15 @@ wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
         'loading' => __('Loading...', 'bocs-wordpress')
     )
 ));
+
+// Add console logging for frequencies in the JavaScript
+wp_add_inline_script('bocs-subscriptions', '
+// Log subscription data for debugging frequencies
+console.log("BOCS Subscriptions Data:", bocsSubscriptionsData);
+bocsSubscriptionsData.subscriptions.forEach(function(sub) {
+    console.log("Subscription " + sub.id + " BOCS frequencies:", sub.bocs.frequencies);
+});
+', 'after');
 
 // Log subscription data for debugging
 if (function_exists('bocs_log')) {
@@ -102,6 +129,23 @@ if (function_exists('bocs_log')) {
                 $price = isset($subscription['price']) ? $subscription['price'] : '';
                 $frequency = isset($subscription['frequency']) ? $subscription['frequency'] : '';
                 $frequency_formatted = isset($subscription['frequency_formatted']) ? $subscription['frequency_formatted'] : '';
+                
+                // Get BOCS frequencies if available
+                $bocs_frequencies = [];
+                if (isset($subscription['bocs']['frequencies']) && is_array($subscription['bocs']['frequencies'])) {
+                    $bocs_frequencies = $subscription['bocs']['frequencies'];
+                } elseif (isset($subscription['bocs']['priceAdjustment']['adjustments']) && is_array($subscription['bocs']['priceAdjustment']['adjustments'])) {
+                    $bocs_frequencies = $subscription['bocs']['priceAdjustment']['adjustments'];
+                }
+                
+                // Log frequencies for debugging if Bocs_Log_Handler exists
+                if (class_exists('Bocs_Log_Handler') && !empty($subscription['id'])) {
+                    $logger = new Bocs_Log_Handler();
+                    $logger->insert_log('debug', '[Subscription List] Frequencies for subscription ' . $subscription['id'], [
+                        'bocs_frequencies' => !empty($bocs_frequencies) ? json_encode($bocs_frequencies) : 'None found',
+                        'bocs_id' => isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : 'None'
+                    ]);
+                }
                 
                 $next_payment_date = isset($subscription['next_payment_date']) ? $subscription['next_payment_date'] : '';
                 $next_delivery_date = isset($subscription['next_delivery_date']) ? $subscription['next_delivery_date'] : '';
@@ -218,7 +262,15 @@ if (function_exists('bocs_log')) {
                                         <?php 
                                         if (isset($frequency_formatted)) {
                                             echo esc_html($frequency_formatted);
-                                            echo !empty($discount) ? ' (' . esc_html($discount) . ' Discount)' : '';
+                                            if (!empty($discount)) {
+                                                // Check if discount is a percentage or fixed amount
+                                                $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
+                                                if ($discount_type === 'fixed') {
+                                                    echo ' ($' . esc_html($discount) . ' discount)';
+                                                } else {
+                                                    echo ' (' . esc_html($discount) . '% discount)';
+                                                }
+                                            }
                                         } else {
                                             echo esc_html('EVERY month');
                                         }
@@ -479,6 +531,7 @@ if (function_exists('bocs_log')) {
     </div>
 </div>
 
+<!-- Modal for edit frequency -->
 <div id="bocs-edit-frequency-modal" class="bocs-modal">
     <div class="bocs-modal-content">
         <span class="bocs-modal-close">&times;</span>
@@ -486,24 +539,13 @@ if (function_exists('bocs_log')) {
         <form id="edit-frequency-form">
             <input type="hidden" id="frequency-id" name="frequency_id">
             <input type="hidden" id="time-unit" name="time_unit">
+            <input type="hidden" id="discount" name="discount">
+            <input type="hidden" id="discount-type" name="discount_type">
             
             <div class="bocs-form-row">
                 <label for="frequency-value">Frequency</label>
                 <select id="frequency-value" name="frequency_value">
                     <!-- Will be populated dynamically -->
-                </select>
-            </div>
-            
-            <div class="bocs-form-row">
-                <label for="discount">Discount (%)</label>
-                <input type="number" id="discount" name="discount" min="0" max="100" step="1" disabled>
-            </div>
-            
-            <div class="bocs-form-row">
-                <label for="discount-type">Discount Type</label>
-                <select id="discount-type" name="discount_type" disabled>
-                    <option value="percent">Percent</option>
-                    <option value="fixed">Fixed Amount</option>
                 </select>
             </div>
             
