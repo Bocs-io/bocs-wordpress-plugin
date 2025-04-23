@@ -284,8 +284,19 @@ class Bocs_Account
                                 
                                 $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                                 
+                                // Check if $subscriptions is a WP_Error
+                                if (is_wp_error($subscriptions)) {
+                                    if (class_exists('Bocs_Log_Handler')) {
+                                        $logger->insert_log('error', '[Subscriptions Page] Error in order ID fallback search', [
+                                            'error' => $subscriptions->get_error_message()
+                                        ]);
+                                    }
+                                    // Continue without returning to at least show an empty page
+                                    $subscriptions = ['data' => ['data' => []]];
+                                }
+                                
                                 if (class_exists('Bocs_Log_Handler') && isset($subscriptions['data']['data'])) {
-                                    $logger->insert_log('debug', '[Subscriptions Page] Found by order IDs', [
+                                    $logger->insert_log('debug', '[Subscriptions Page] Found by order IDs (fallback)', [
                                         'count' => count($subscriptions['data']['data'])
                                     ]);
                                 }
@@ -360,6 +371,17 @@ class Bocs_Account
                             
                             $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                             
+                            // Check if $subscriptions is a WP_Error
+                            if (is_wp_error($subscriptions)) {
+                                if (class_exists('Bocs_Log_Handler')) {
+                                    $logger->insert_log('error', '[Subscriptions Page] Error in order ID fallback search', [
+                                        'error' => $subscriptions->get_error_message()
+                                    ]);
+                                }
+                                // Continue without returning to at least show an empty page
+                                $subscriptions = ['data' => ['data' => []]];
+                            }
+                            
                             if (class_exists('Bocs_Log_Handler') && isset($subscriptions['data']['data'])) {
                                 $logger->insert_log('debug', '[Subscriptions Page] Found by order IDs (fallback)', [
                                     'count' => count($subscriptions['data']['data'])
@@ -372,6 +394,18 @@ class Bocs_Account
 
             // Add fields parameter to get only needed data
             //$url .= '&fields=' . urlencode('id,subscriptionStatus,nextPaymentDateGmt,startDateGmt,total,currency,billingPeriod,frequency,externalSourceParentOrderId,orderKey,paymentMethodTitle,lineItems');
+            
+            // Make sure $subscriptions is not a WP_Error before proceeding
+            if (is_wp_error($subscriptions)) {
+                if (class_exists('Bocs_Log_Handler')) {
+                    $logger->insert_log('error', '[Subscriptions Page] Cannot proceed with WP_Error', [
+                        'error_message' => $subscriptions->get_error_message()
+                    ]);
+                }
+                // Set an empty subscriptions array to prevent errors
+                $subscriptions = ['data' => ['data' => []]];
+            }
+            
             if (isset($subscriptions['data']['data'])) {
                 if (class_exists('Bocs_Log_Handler')) {
                     $logger->insert_log('debug', '[Subscriptions Page] Final subscription data', [
@@ -437,11 +471,42 @@ class Bocs_Account
                             }
                             
                             $bocs_id = $subscription['bocs']['id'];
-                            $url = BOCS_API_URL . 'bocs/' . $bocs_id;
-                            $bocs_details = $helper->curl_request($url, 'GET', [], $this->headers);
                             
-                            if (isset($bocs_details['data']['name']) && !empty($bocs_details['data']['name'])) {
+                            // Use static cache to prevent duplicate requests
+                            static $bocs_cache = [];
+                            
+                            if (isset($bocs_cache[$bocs_id])) {
+                                // Use cached data
+                                $bocs_details = $bocs_cache[$bocs_id];
+                                if (class_exists('Bocs_Log_Handler')) {
+                                    $logger->insert_log('debug', '[Subscriptions Page] Using cached BOCS details', [
+                                        'bocs_id' => $bocs_id
+                                    ]);
+                                }
+                            } else {
+                                // Make API request and cache the result
+                                $url = BOCS_API_URL . 'bocs/' . $bocs_id;
+                                $bocs_details = $helper->curl_request($url, 'GET', [], $this->headers);
+                                
+                                // Cache the result
+                                if (!is_wp_error($bocs_details)) {
+                                    $bocs_cache[$bocs_id] = $bocs_details;
+                                }
+                            }
+                            
+                            // Check for WP_Error before attempting to access as array
+                            if (!is_wp_error($bocs_details) && isset($bocs_details['data']['name']) && !empty($bocs_details['data']['name'])) {
                                 $formatted['bocs']['name'] = $bocs_details['data']['name'];
+                            } else if (is_wp_error($bocs_details)) {
+                                // Log the error
+                                if (class_exists('Bocs_Log_Handler')) {
+                                    $logger->insert_log('error', '[Subscriptions Page] Error fetching BOCS details', [
+                                        'bocs_id' => $bocs_id,
+                                        'error_message' => $bocs_details->get_error_message()
+                                    ]);
+                                } else {
+                                    error_log('BOCS Error: Failed to get BOCS details - ' . $bocs_details->get_error_message());
+                                }
                             }
                         }
                     } else {
@@ -1463,8 +1528,25 @@ class Bocs_Account
                 $bocs_id = $current_subscription['data']['bocs']['id'];
                 error_log('DEBUG - Bocs ID: ' . $bocs_id);
                 
+                // Use static cache to prevent duplicate requests
+                static $bocs_cache = [];
+                
                 // get the bocs details
-                $bocs_details = $helper->curl_request(BOCS_API_URL . 'bocs/' . $bocs_id, 'GET', [], $this->headers);
+                if (isset($bocs_cache[$bocs_id])) {
+                    // Use cached data
+                    $bocs_details = $bocs_cache[$bocs_id];
+                    error_log('DEBUG - Using cached BOCS details for ID: ' . $bocs_id);
+                } else {
+                    // Make API request and cache the result
+                    $bocs_details = $helper->curl_request(BOCS_API_URL . 'bocs/' . $bocs_id, 'GET', [], $this->headers);
+                    
+                    // Cache the result only if not an error
+                    if (!is_wp_error($bocs_details)) {
+                        $bocs_cache[$bocs_id] = $bocs_details;
+                        error_log('DEBUG - Caching BOCS details for ID: ' . $bocs_id);
+                    }
+                }
+                
                 if (is_wp_error($bocs_details)) {
                     error_log('Error fetching bocs details: ' . $bocs_details->get_error_message());
                     $response['message'] = 'Error retrieving bocs details';

@@ -11,6 +11,22 @@
 
 class Bocs_Helper
 {
+    /**
+     * Track recent API requests to prevent loops
+     * 
+     * @var array
+     */
+    private static $recent_requests = [];
+    
+    /**
+     * Max number of allowed similar requests within the threshold time
+     */
+    const MAX_SIMILAR_REQUESTS = 3;
+    
+    /**
+     * Threshold time in seconds for detecting duplicate requests
+     */
+    const REQUEST_THRESHOLD_TIME = 5;
 
     /**
      * Make an HTTP request to the BOCS API
@@ -24,6 +40,92 @@ class Bocs_Helper
     public function curl_request($url, $method = 'GET', $data = [], $headers = [])
     {
         try {
+            // Generate a simplified request fingerprint for loop detection
+            // Don't include all data/headers to avoid false positives
+            $request_fingerprint = md5($url . $method);
+            $current_time = time();
+            
+            // Get stack trace for debugging
+            $debug_backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+            $calling_function = '';
+            $calling_file = '';
+            
+            // Skip the first entry (it's this function)
+            if (isset($debug_backtrace[1])) {
+                $calling_function = isset($debug_backtrace[1]['function']) ? $debug_backtrace[1]['function'] : 'unknown';
+                $calling_file = isset($debug_backtrace[1]['file']) ? basename($debug_backtrace[1]['file']) : 'unknown';
+                $calling_line = isset($debug_backtrace[1]['line']) ? $debug_backtrace[1]['line'] : 'unknown';
+                
+                // For deeper inspection, capture the next caller too
+                if (isset($debug_backtrace[2])) {
+                    $parent_function = isset($debug_backtrace[2]['function']) ? $debug_backtrace[2]['function'] : 'unknown';
+                    $parent_file = isset($debug_backtrace[2]['file']) ? basename($debug_backtrace[2]['file']) : 'unknown';
+                    $parent_line = isset($debug_backtrace[2]['line']) ? $debug_backtrace[2]['line'] : 'unknown';
+                    
+                    $calling_function = "{$parent_function}() -> {$calling_function}()";
+                    $calling_file = "{$parent_file}:{$parent_line} -> {$calling_file}:{$calling_line}";
+                } else {
+                    $calling_function .= '()';
+                    $calling_file .= ':' . $calling_line;
+                }
+            }
+            
+            // Track the number of similar requests
+            if (!isset(self::$recent_requests[$request_fingerprint])) {
+                self::$recent_requests[$request_fingerprint] = [
+                    'count' => 1,
+                    'first_time' => $current_time,
+                    'last_time' => $current_time,
+                    'callers' => ["{$calling_file} in {$calling_function}"]
+                ];
+            } else {
+                // Only count requests within the threshold time
+                if ($current_time - self::$recent_requests[$request_fingerprint]['first_time'] <= self::REQUEST_THRESHOLD_TIME) {
+                    self::$recent_requests[$request_fingerprint]['count']++;
+                    self::$recent_requests[$request_fingerprint]['last_time'] = $current_time;
+                    
+                    // Track unique callers (up to 5)
+                    $caller_key = "{$calling_file} in {$calling_function}";
+                    if (!in_array($caller_key, self::$recent_requests[$request_fingerprint]['callers']) 
+                        && count(self::$recent_requests[$request_fingerprint]['callers']) < 5) {
+                        self::$recent_requests[$request_fingerprint]['callers'][] = $caller_key;
+                    }
+                    
+                    // Check if we're potentially in a loop
+                    if (self::$recent_requests[$request_fingerprint]['count'] > self::MAX_SIMILAR_REQUESTS) {
+                        $message = sprintf(
+                            'Potential API request loop detected: %s %s has been called %d times in %d seconds',
+                            $method,
+                            $url,
+                            self::$recent_requests[$request_fingerprint]['count'],
+                            $current_time - self::$recent_requests[$request_fingerprint]['first_time']
+                        );
+                        
+                        // Log callers for debugging
+                        error_log('BOCS API ERROR - ' . $message);
+                        error_log('BOCS API ERROR - Current call from: ' . $calling_file . ' in ' . $calling_function);
+                        error_log('BOCS API ERROR - Call stack: ' . implode(' | ', self::$recent_requests[$request_fingerprint]['callers']));
+                        
+                        return new WP_Error('bocs_api_loop', $message);
+                    }
+                } else {
+                    // Reset counter if outside threshold
+                    self::$recent_requests[$request_fingerprint] = [
+                        'count' => 1,
+                        'first_time' => $current_time,
+                        'last_time' => $current_time,
+                        'callers' => ["{$calling_file} in {$calling_function}"]
+                    ];
+                }
+            }
+            
+            // Clean up old request records
+            foreach (self::$recent_requests as $fp => $data) {
+                if ($current_time - $data['last_time'] > self::REQUEST_THRESHOLD_TIME * 2) {
+                    unset(self::$recent_requests[$fp]);
+                }
+            }
+
             if (empty($url)) {
                 throw new Exception(__('API URL is required', 'bocs-wordpress'));
             }
@@ -54,17 +156,32 @@ class Bocs_Helper
                 $host = $parsed_url['host'];
                 $region = $this->extract_aws_region($host);
                 
-                // Add AWS SigV4 required headers
-                $headers['X-Amz-Date'] = gmdate('Ymd\THis\Z');
-                $headers['host'] = $host;
+                // Add detailed logging for debugging
+                error_log('BOCS API Debug - AWS API Gateway detected:');
+                error_log('BOCS API Debug - URL: ' . $url);
+                error_log('BOCS API Debug - Host: ' . $host);
+                error_log('BOCS API Debug - Region: ' . $region);
                 
-                // Add original Authorization token as custom header
-                if (isset($headers['Authorization'])) {
-                    $headers['X-Bocs-Authorization'] = $headers['Authorization'];
-                    // Don't remove the original Authorization header as it might still be needed
+                // Check for issues with existing headers that might cause looping
+                $this->debug_aws_headers($headers);
+                
+                // Check if we already have AWS headers to prevent duplicates
+                if (isset($headers['X-Amz-Date']) || isset($headers['X-Bocs-Authorization'])) {
+                    error_log('BOCS API Debug - AWS headers already exist, skipping addition to avoid duplication');
+                } else {
+                    // Add AWS SigV4 required headers
+                    $date = gmdate('Ymd\THis\Z');
+                    $headers['X-Amz-Date'] = $date;
+                    $headers['host'] = $host;
+                    
+                    // Add original Authorization token as custom header
+                    if (isset($headers['Authorization'])) {
+                        $headers['X-Bocs-Authorization'] = $headers['Authorization'];
+                        error_log('BOCS API Debug - Authorization header copied to X-Bocs-Authorization');
+                    }
+                    
+                    error_log('BOCS API Debug - Added AWS SigV4 headers to request - Date: ' . $date);
                 }
-                
-                error_log('Added AWS SigV4 headers to request');
             }
 
             $args = [
@@ -87,14 +204,32 @@ class Bocs_Helper
                 $args['body'] = wp_json_encode($data);
             }
 
-            // Log the request details (redacted sensitive info)
+            // Add detailed logging for request
+            $log_url = preg_replace('/\?.*/', '?[query_params_redacted]', $url); // Redact query params
+            error_log('BOCS API Request - URL: ' . $log_url);
+            error_log('BOCS API Request - Method: ' . $method);
+            
+            // Log headers with sensitive data redacted
             $log_headers = $headers;
             if (isset($log_headers['Authorization'])) {
                 $log_headers['Authorization'] = substr($log_headers['Authorization'], 0, 10) . '...';
             }
-            error_log('BOCS API Request - URL: ' . $url);
-            error_log('BOCS API Request - Method: ' . $method);
+            if (isset($log_headers['X-Bocs-Authorization'])) {
+                $log_headers['X-Bocs-Authorization'] = substr($log_headers['X-Bocs-Authorization'], 0, 10) . '...';
+            }
             error_log('BOCS API Request - Headers: ' . json_encode($log_headers));
+            
+            // Log request body for debugging (redact sensitive data)
+            if ($method !== 'GET' && !empty($data)) {
+                $log_data = is_array($data) ? $data : json_decode($data, true);
+                if (is_array($log_data)) {
+                    // Redact sensitive fields
+                    if (isset($log_data['card']) || isset($log_data['payment_method'])) {
+                        $log_data = '[payment_data_redacted]';
+                    }
+                }
+                error_log('BOCS API Request - Body: ' . json_encode($log_data));
+            }
             
             $response = wp_remote_request($url, $args);
 
@@ -111,14 +246,44 @@ class Bocs_Helper
 
             $response_code = wp_remote_retrieve_response_code($response);
             $response_body = wp_remote_retrieve_body($response);
+            $response_headers = wp_remote_retrieve_headers($response);
             
             // Log response details
             error_log('BOCS API Response - Code: ' . $response_code);
+            
+            // Log response headers (useful for debugging auth issues)
+            $log_response_headers = [];
+            foreach ($response_headers as $header_name => $header_value) {
+                // Skip sensitive headers
+                if (in_array(strtolower($header_name), ['set-cookie', 'authorization', 'x-bocs-authorization'])) {
+                    continue;
+                }
+                $log_response_headers[$header_name] = $header_value;
+            }
+            
+            if (!empty($log_response_headers)) {
+                error_log('BOCS API Response - Headers: ' . json_encode($log_response_headers));
+            }
+            
             // Truncate long responses for logging
             if (strlen($response_body) > 1000) {
                 error_log('BOCS API Response - Body (truncated): ' . substr($response_body, 0, 500) . '...');
             } else {
                 error_log('BOCS API Response - Body: ' . $response_body);
+            }
+            
+            // Detect AWS API Gateway specific errors
+            if ($response_code >= 400) {
+                $response_json = json_decode($response_body, true);
+                
+                // Check for common API Gateway error patterns
+                if (isset($response_json['message'])) {
+                    if (strpos($response_json['message'], 'Missing Authentication Token') !== false) {
+                        error_log('BOCS API Error - AWS API Gateway authentication error - Check URL path and authorization headers');
+                    } else if (strpos($response_json['message'], 'Access Denied') !== false) {
+                        error_log('BOCS API Error - AWS API Gateway access denied - Check IAM permissions and authorization tokens');
+                    }
+                }
             }
 
             if ($response_code < 200 || $response_code >= 300) {
@@ -324,6 +489,59 @@ class Bocs_Helper
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Debug AWS SigV4 headers for potential issues
+     * 
+     * @param array $headers Headers array to check
+     * @return void
+     */
+    private function debug_aws_headers(&$headers) {
+        // Check for case sensitivity issues
+        $header_keys_lower = array_change_key_case($headers, CASE_LOWER);
+        $problematic_headers = [];
+        
+        // Check for duplicate headers with different cases
+        foreach (['x-amz-date', 'host', 'authorization', 'x-bocs-authorization'] as $key) {
+            if (isset($header_keys_lower[$key])) {
+                // Find all variations of this header
+                $variations = array_filter(array_keys($headers), function($header) use ($key) {
+                    return strtolower($header) === $key;
+                });
+                
+                if (count($variations) > 1) {
+                    $problematic_headers[$key] = $variations;
+                    error_log('BOCS API Debug - Duplicate header found with different cases: ' . $key . ' as ' . implode(', ', $variations));
+                    
+                    // Keep only one variation (preferably the correct case for AWS)
+                    $preferred_case = $key === 'host' ? 'host' : ($key === 'x-amz-date' ? 'X-Amz-Date' : $key);
+                    
+                    // If preferred case exists, use it, otherwise use the first one
+                    $keep_header = in_array($preferred_case, $variations) ? $preferred_case : reset($variations);
+                    
+                    foreach ($variations as $variation) {
+                        if ($variation !== $keep_header) {
+                            error_log('BOCS API Debug - Removing duplicate header: ' . $variation . ' (keeping ' . $keep_header . ')');
+                            unset($headers[$variation]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Check for API Gateway known requirements
+        if (isset($headers['Host']) && !isset($headers['host'])) {
+            error_log('BOCS API Debug - Converting "Host" header to lowercase "host" for AWS compatibility');
+            $headers['host'] = $headers['Host'];
+            unset($headers['Host']);
+        }
+        
+        // Check for common header issues
+        if (isset($headers['X-Amz-Date']) && isset($headers['x-amz-date'])) {
+            error_log('BOCS API Debug - Both X-Amz-Date and x-amz-date headers found, using X-Amz-Date');
+            unset($headers['x-amz-date']);
+        }
     }
 }
 ?>
