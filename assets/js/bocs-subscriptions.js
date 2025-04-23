@@ -131,6 +131,7 @@
             request: async function(endpoint, method = 'GET', data = null) {
                 try {
                     const url = `${bocsSubscriptionsData.apiUrl}${endpoint}`;
+                    console.log(`API Request: ${method} ${url}`, data ? data : '(no data)');
                     
                     const options = {
                         method: method,
@@ -146,10 +147,17 @@
                         options.body = JSON.stringify(data);
                     }
                     
+                    console.log('Request options:', {...options, headers: 'HIDDEN FOR SECURITY'});
                     const response = await fetch(url, options);
+                    
+                    // Log response status
+                    console.log(`API Response status: ${response.status} ${response.statusText}`);
+                    
                     const responseData = await response.json();
+                    console.log('API Response data:', responseData);
                     
                     if (!response.ok) {
+                        console.error('API Error:', responseData);
                         throw new Error(responseData.message || 'API request failed');
                     }
                     
@@ -231,6 +239,7 @@
                 
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const nextPaymentDate = $('#next-payment-date').val();
+                const submitButton = $(e.target).find('button[type="submit"]');
                 
                 if (!subscriptionId || !nextPaymentDate) {
                     BocsSubscriptions.helpers.showNotification('Missing required information', 'error');
@@ -238,6 +247,9 @@
                 }
                 
                 try {
+                    // Show loading state on button
+                    submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
+                    
                     BocsSubscriptions.helpers.showNotification('Updating schedule...', 'loading');
                     
                     const response = await BocsSubscriptions.api.updateSchedule(subscriptionId, nextPaymentDate);
@@ -259,6 +271,9 @@
                     BocsSubscriptions.helpers.showNotification('Schedule updated successfully', 'success');
                 } catch (error) {
                     BocsSubscriptions.helpers.showNotification('Failed to update schedule', 'error');
+                } finally {
+                    // Reset button state
+                    submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
             
@@ -280,22 +295,39 @@
                     const bocsId = subscription?.bocs?.id;
                     
                     if (!bocsId) {
+                        console.error('BOCS ID not found for subscription:', subscriptionId);
+                        console.log('Subscription data:', subscription);
                         throw new Error('BOCS ID not found for this subscription');
                     }
                     
                     // Fetch BOCS details to get frequency options
                     const bocsDetails = await BocsSubscriptions.api.request(`bocs/${bocsId}`, 'GET');
+                    console.log('BOCS details retrieved:', bocsDetails);
                     
                     // Clear existing options in the dropdown
                     $('#frequency-value').empty();
                     
-                    // Check if we have adjustment options
-                    if (bocsDetails?.data?.priceAdjustment?.adjustments) {
+                    // Check if we have adjustment options in the BOCS details
+                    if (bocsDetails?.data?.priceAdjustment?.adjustments && 
+                        bocsDetails.data.priceAdjustment.adjustments.length > 0) {
+                        
+                        console.log('Found frequency options in BOCS details:', bocsDetails.data.priceAdjustment.adjustments);
                         const adjustments = bocsDetails.data.priceAdjustment.adjustments;
                         
                         // Populate the frequency dropdown with available options
                         adjustments.forEach(adjustment => {
-                            const frequencyText = adjustment.name || `${adjustment.frequency} ${adjustment.timeUnit}`;
+                            // Create frequency text with discount information included
+                            let frequencyText = adjustment.name || `${adjustment.frequency} ${adjustment.timeUnit}`;
+                            
+                            // Add discount information if available
+                            if (adjustment.discount > 0) {
+                                if (adjustment.discountType === 'percent') {
+                                    frequencyText += ` (${adjustment.discount}% discount)`;
+                                } else if (adjustment.discountType === 'fixed') {
+                                    frequencyText += ` ($${adjustment.discount} discount)`;
+                                }
+                            }
+                            
                             $('#frequency-value').append(`<option value="${adjustment.frequency}" 
                                 data-id="${adjustment.id}"
                                 data-time-unit="${adjustment.timeUnit}" 
@@ -306,58 +338,72 @@
                             </option>`);
                         });
                         
-                        // Set up change handler for the frequency dropdown
-                        $('#frequency-value').off('change').on('change', function() {
-                            const selectedOption = $(this).find('option:selected');
-                            const frequencyId = selectedOption.data('id');
-                            const timeUnit = selectedOption.data('time-unit');
-                            const discount = selectedOption.data('discount');
-                            const discountType = selectedOption.data('discount-type');
-                            
-                            // Update hidden fields
-                            $('#frequency-id').val(frequencyId);
-                            $('#time-unit').val(timeUnit);
-                            $('#discount').val(discount);
-                            $('#discount-type').val(discountType);
-                        });
+                    } else if (subscription?.bocs?.frequencies && subscription.bocs.frequencies.length > 0) {
+                        // Try to get frequencies from subscription data if available
+                        console.log('Using frequencies from subscription data:', subscription.bocs.frequencies);
                         
-                        // Set current frequency as selected
-                        if (subscription && subscription.frequency) {
-                            // Find the matching option
-                            const matchingOption = $(`#frequency-value option[data-id="${subscription.frequency.id}"]`);
+                        subscription.bocs.frequencies.forEach(freq => {
+                            let frequencyText = `${freq.frequency} ${freq.timeUnit}`;
                             
-                            if (matchingOption.length) {
-                                matchingOption.prop('selected', true);
-                                
-                                // Trigger change to update the hidden fields
-                                $('#frequency-value').trigger('change');
+                            // Add discount information if available
+                            if (freq.discount > 0) {
+                                if (freq.discountType === 'percent') {
+                                    frequencyText += ` (${freq.discount}% discount)`;
+                                } else if (freq.discountType === 'fixed') {
+                                    frequencyText += ` ($${freq.discount} discount)`;
+                                }
                             }
-                        }
-                    } else {
-                        // Fallback options if no adjustments are available
-                        $('#frequency-value').append(`
-                            <option value="1" data-time-unit="month" data-discount="0" data-discount-type="percent">1 Month</option>
-                            <option value="3" data-time-unit="months" data-discount="0" data-discount-type="percent">3 Months</option>
-                            <option value="6" data-time-unit="months" data-discount="0" data-discount-type="percent">6 Months</option>
-                            <option value="12" data-time-unit="months" data-discount="0" data-discount-type="percent">12 Months</option>
-                        `);
-                        
-                        // Set up change handler
-                        $('#frequency-value').off('change').on('change', function() {
-                            const selectedOption = $(this).find('option:selected');
-                            const timeUnit = selectedOption.data('time-unit');
-                            const discount = selectedOption.data('discount');
-                            const discountType = selectedOption.data('discount-type');
                             
-                            // Update hidden fields
-                            $('#time-unit').val(timeUnit);
-                            $('#discount').val(discount);
-                            $('#discount-type').val(discountType);
+                            $('#frequency-value').append(`<option value="${freq.frequency}" 
+                                data-id="${freq.id || ''}"
+                                data-time-unit="${freq.timeUnit}" 
+                                data-discount="${freq.discount || 0}"
+                                data-discount-type="${freq.discountType || 'percent'}">
+                                ${frequencyText}
+                            </option>`);
                         });
+                    } else {
+                        console.error('No frequency options found in BOCS or subscription');
+                        console.log('BOCS adjustments:', bocsDetails?.data?.priceAdjustment?.adjustments);
+                        console.log('Subscription frequencies:', subscription?.bocs?.frequencies);
+                        throw new Error('No frequency options found for this subscription');
+                    }
+                    
+                    // Set up change handler for the frequency dropdown
+                    $('#frequency-value').off('change').on('change', function() {
+                        const selectedOption = $(this).find('option:selected');
+                        const frequencyId = selectedOption.data('id');
+                        const timeUnit = selectedOption.data('time-unit');
+                        const discount = selectedOption.data('discount');
+                        const discountType = selectedOption.data('discount-type');
                         
-                        if (subscription && subscription.frequency) {
-                            // Set the value and trigger change
-                            $('#frequency-value').val(subscription.frequency.frequency || '1').trigger('change');
+                        // Update hidden fields
+                        $('#frequency-id').val(frequencyId);
+                        $('#time-unit').val(timeUnit);
+                        $('#discount').val(discount);
+                        $('#discount-type').val(discountType);
+                    });
+                    
+                    // Set current frequency as selected if available
+                    if (subscription && subscription.frequency) {
+                        // Find the matching option
+                        const matchingOption = $(`#frequency-value option[data-id="${subscription.frequency.id}"]`);
+                        
+                        if (matchingOption.length) {
+                            matchingOption.prop('selected', true);
+                            
+                            // Trigger change to update the hidden fields
+                            $('#frequency-value').trigger('change');
+                        } else {
+                            // If no matching option by ID, try to match by frequency value
+                            const freqValue = subscription.frequency.frequency;
+                            if (freqValue) {
+                                const valueOption = $(`#frequency-value option[value="${freqValue}"]`);
+                                if (valueOption.length) {
+                                    valueOption.prop('selected', true);
+                                    $('#frequency-value').trigger('change');
+                                }
+                            }
                         }
                     }
                     
@@ -382,6 +428,7 @@
                 
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const selectedOption = $('#frequency-value option:selected');
+                const submitButton = $(e.target).find('button[type="submit"]');
                 
                 // Get data from the selected option's data attributes
                 const frequencyValue = selectedOption.val();
@@ -391,12 +438,30 @@
                 const discountType = selectedOption.data('discount-type') || $('#discount-type').val() || 'percent';
                 const scheduledPaymentDate = selectedOption.data('scheduled-payment-date') || 3;
                 
+                console.log('Saving frequency with data:', {
+                    subscriptionId,
+                    frequencyValue,
+                    frequencyId,
+                    timeUnit,
+                    discount,
+                    discountType,
+                    scheduledPaymentDate
+                });
+                
                 if (!subscriptionId || !timeUnit || !frequencyValue) {
+                    console.error('Missing required frequency data:', {
+                        subscriptionId,
+                        timeUnit,
+                        frequencyValue
+                    });
                     BocsSubscriptions.helpers.showNotification('Missing required information', 'error');
                     return;
                 }
                 
                 try {
+                    // Show loading state on button
+                    submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
+                    
                     BocsSubscriptions.helpers.showNotification('Updating frequency...', 'loading');
                     
                     // Construct the frequency object
@@ -409,42 +474,52 @@
                         scheduledPaymentDate: parseInt(scheduledPaymentDate)
                     };
                     
+                    console.log('Sending frequency update request:', frequencyData);
                     const response = await BocsSubscriptions.api.updateFrequency(subscriptionId, frequencyData);
+                    console.log('Frequency update response:', response);
                     
                     // Get the display text directly from the selected option
                     let frequencyText = selectedOption.text().trim();
                     
                     // If we don't have display text from the option, construct it
                     if (!frequencyText || frequencyText === '') {
-                        frequencyText = `EVERY ${frequencyValue}`;
-                        if (timeUnit === 'month' && frequencyValue > 1) {
-                            frequencyText += ' months';
+                        frequencyText = `${frequencyValue}`;
+                        if (timeUnit === 'month' && parseInt(frequencyValue) > 1) {
+                            frequencyText += ' Months';
                         } else if (timeUnit === 'month') {
-                            frequencyText += ' month';
+                            frequencyText += ' Month';
                         } else if (timeUnit === 'months') {
-                            frequencyText += ' months';
-                        } else if (timeUnit === 'week' && frequencyValue > 1) {
-                            frequencyText += ' weeks';
+                            frequencyText += ' Months';
+                        } else if (timeUnit === 'week' && parseInt(frequencyValue) > 1) {
+                            frequencyText += ' Weeks';
                         } else if (timeUnit === 'week') {
-                            frequencyText += ' week';
+                            frequencyText += ' Week';
                         } else if (timeUnit === 'weeks') {
-                            frequencyText += ' weeks';
+                            frequencyText += ' Weeks';
+                        }
+                        
+                        // Add discount information if available and not already in the text
+                        if (parseInt(discount) > 0 && !frequencyText.includes('discount')) {
+                            if (discountType === 'percent') {
+                                frequencyText += ` (${discount}% discount)`;
+                            } else if (discountType === 'fixed') {
+                                frequencyText += ` ($${discount} discount)`;
+                            }
                         }
                     }
                     
-                    // Add discount information if available
-                    if (parseInt(discount) > 0 && !frequencyText.includes('Discount')) {
-                        frequencyText += ` (${discount}% Discount)`;
-                    }
+                    // For display in the main subscription section
+                    const displayFrequency = frequencyText.charAt(0).toUpperCase() + frequencyText.slice(1);
                     
                     // Update the frequency display in the subscription section
                     $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-section:eq(1) .bocs-section-line')
-                        .text(frequencyText);
+                        .text(displayFrequency);
                     
                     // Update header price frequency display
                     // For consistency, reuse the display text but format for the header
-                    const frequencyFormatted = frequencyText.replace(/\(.+\)/, '').trim();
+                    // Remove any discount information for the header
+                    const frequencyFormatted = frequencyText.replace(/\(.+\)/, '').trim().toLowerCase();
                     
                     const priceElement = $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-subscription-price');
@@ -461,6 +536,9 @@
                 } catch (error) {
                     console.error('Error updating frequency:', error);
                     BocsSubscriptions.helpers.showNotification('Failed to update frequency: ' + (error.message || 'Unknown error'), 'error');
+                } finally {
+                    // Reset button state
+                    submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
             
@@ -508,6 +586,7 @@
                 const city = $('#city').val();
                 const state = $('#state').val();
                 const postcode = $('#postcode').val();
+                const submitButton = $(e.target).find('button[type="submit"]');
                 
                 if (!subscriptionId || !address || !city || !state || !postcode) {
                     BocsSubscriptions.helpers.showNotification('Please fill in all address fields', 'error');
@@ -515,6 +594,9 @@
                 }
                 
                 try {
+                    // Show loading state on button
+                    submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
+                    
                     BocsSubscriptions.helpers.showNotification('Updating address...', 'loading');
                     
                     // Format address data properly as shipping object
@@ -543,6 +625,9 @@
                     BocsSubscriptions.helpers.showNotification('Address updated successfully', 'success');
                 } catch (error) {
                     BocsSubscriptions.helpers.showNotification('Failed to update address', 'error');
+                } finally {
+                    // Reset button state
+                    submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
             
@@ -637,7 +722,7 @@
                                                         appearance: {
                                                             theme: 'stripe',
                                                             variables: {
-                                                                colorPrimary: '#38b2ac',
+                                                                colorPrimary: '#0f766d',
                                                                 colorBackground: '#ffffff',
                                                                 colorText: '#30313d',
                                                                 colorDanger: '#df1b41',
@@ -738,9 +823,10 @@
                     return;
                 }
                 
-                submitButton.prop('disabled', true).html('Processing...');
-                
                 try {
+                    // Show loading state on button
+                    submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
+                    
                     // For new payment method with Stripe
                     if (paymentMethodId === 'new') {
                         if (!window.stripe || !window.stripeElements) {
@@ -889,7 +975,8 @@
                         BocsSubscriptions.helpers.showNotification('Error: ' + error.message, 'error');
                     }
                 } finally {
-                    submitButton.prop('disabled', false).html('Save Changes');
+                    // Reset button state
+                    submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
             

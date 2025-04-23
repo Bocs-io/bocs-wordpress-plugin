@@ -18,7 +18,7 @@
     --bocs-transition: all 0.3s ease;
     
     /* Status Colors */
-    --bocs-active: #38A169;
+    --bocs-active: #0d9f6e;
     --bocs-paused: #ECC94B;
     --bocs-cancelled: #E53E3E;
     --bocs-upcoming: #3182CE;
@@ -467,19 +467,26 @@
 }
 
 .bocs-button.loading {
-    opacity: 0.7;
-    cursor: not-allowed;
+    position: relative;
+    opacity: 0.8;
+    cursor: wait;
 }
 
-.bocs-button.loading .loading-spinner {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    margin-right: 8px;
+.bocs-button.loading:before {
+    content: "";
+    position: absolute;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
+    width: 20px;
+    height: 20px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    border-top-color: #fff;
+    border-top-color: white;
     animation: bocs-spinner 0.8s linear infinite;
+}
+
+.bocs-button.loading .button-text {
+    visibility: hidden;
 }
 
 /* === Modals === */
@@ -586,7 +593,7 @@
     align-items: center;
     gap: 0.75rem;
     max-width: 400px;
-    z-index: 1100;
+    z-index: 9999;
     transform: translateY(150%);
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
@@ -758,4 +765,16 @@
 
 .StripeElement--webkit-autofill {
     background-color: #fefde5 !important;
+}
+
+/* Styling for frequency display with discount */
+.bocs-section-line .frequency-discount {
+    color: var(--bocs-active);
+    font-size: 0.9em;
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+
+#frequency-value option {
+    padding: 8px;
 } 
