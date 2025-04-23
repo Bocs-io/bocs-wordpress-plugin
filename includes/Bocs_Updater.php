@@ -162,14 +162,14 @@ class Bocs_Updater {
             ));
 
             if (is_wp_error($response)) {
-                //error_log('Bocs Updater: GitHub API request failed - ' . $response->get_error_message());
+                error_log('Bocs Updater: GitHub API request failed - ' . $response->get_error_message());
                 return false;
             }
 
             $response_body = json_decode(wp_remote_retrieve_body($response));
             
             if (json_last_error() !== JSON_ERROR_NONE) {
-                //error_log('Bocs Updater: JSON decode error - ' . json_last_error_msg());
+                error_log('Bocs Updater: JSON decode error - ' . json_last_error_msg());
                 return false;
             }
 
@@ -213,7 +213,7 @@ class Bocs_Updater {
 
         $this->get_repository_info();
 
-        if (!$this->github_response) {
+        if (!$this->github_response || !isset($this->github_response->tag_name)) {
             return $transient;
         }
 
@@ -231,7 +231,7 @@ class Bocs_Updater {
             $plugin = array(
                 'url' => $this->plugin['PluginURI'],
                 'slug' => current(explode('/', $this->basename)),
-                'package' => $this->github_response->zipball_url,
+                'package' => isset($this->github_response->zipball_url) ? $this->github_response->zipball_url : null,
                 'new_version' => $latest_version,
                 'icons' => array(),
                 'banners' => array(),
@@ -266,20 +266,24 @@ class Bocs_Updater {
             if ($args->slug == current(explode('/', $this->basename))) {
                 $this->get_repository_info();
 
+                if (!$this->github_response || !isset($this->github_response->tag_name)) {
+                    return $result;
+                }
+
                 $plugin = array(
                     'name'              => $this->plugin['Name'],
                     'slug'              => $this->basename,
                     'version'           => $this->github_response->tag_name,
                     'author'            => $this->plugin['AuthorName'],
                     'author_profile'    => $this->plugin['AuthorURI'],
-                    'last_updated'      => $this->github_response->published_at,
+                    'last_updated'      => isset($this->github_response->published_at) ? $this->github_response->published_at : date('Y-m-d'),
                     'homepage'          => $this->plugin['PluginURI'],
                     'short_description' => $this->plugin['Description'],
                     'sections'          => array(
                         'Description'   => $this->plugin['Description'],
-                        'Updates'       => $this->github_response->body,
+                        'Updates'       => isset($this->github_response->body) ? $this->github_response->body : '',
                     ),
-                    'download_link'     => $this->github_response->zipball_url
+                    'download_link'     => isset($this->github_response->zipball_url) ? $this->github_response->zipball_url : ''
                 );
 
                 return (object) $plugin;
