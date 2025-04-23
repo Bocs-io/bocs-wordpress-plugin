@@ -416,7 +416,7 @@
                     
                     // If we don't have display text from the option, construct it
                     if (!frequencyText || frequencyText === '') {
-                        frequencyText = `Every ${frequencyValue}`;
+                        frequencyText = `EVERY ${frequencyValue}`;
                         if (timeUnit === 'month' && frequencyValue > 1) {
                             frequencyText += ' months';
                         } else if (timeUnit === 'month') {
@@ -444,7 +444,7 @@
                     
                     // Update header price frequency display
                     // For consistency, reuse the display text but format for the header
-                    const frequencyFormatted = frequencyText.toLowerCase().replace(/\(.+\)/, '').trim();
+                    const frequencyFormatted = frequencyText.replace(/\(.+\)/, '').trim();
                     
                     const priceElement = $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-subscription-price');
