@@ -13,8 +13,8 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250416.1', true);
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250416.1');
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250423.1', true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250423.5');
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -127,6 +127,7 @@ if (function_exists('bocs_log')) {
                     </div>
                     <div class="bocs-subscription-info">
                         <div class="bocs-subscription-id-row">
+                            <div class="bocs-subscription-status <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></div>
                             <div class="bocs-subscription-id">
                                 <?php 
                                 // Use externalSourceParentOrderId if available, otherwise use subscription ID
@@ -141,18 +142,17 @@ if (function_exists('bocs_log')) {
                                 }
                                 ?>
                             </div>
-                            <div class="bocs-subscription-status <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></div>
+                            <div class="bocs-subscription-price">
+                                <?php 
+                                // Format the price with the subscription data
+                                // Ensure total is a numeric value
+                                $numeric_total = is_array($total) ? 0 : (float)$total;
+                                $formatted_price = '$' . number_format($numeric_total, 2, '.', ',');
+                                $formatted_frequency = strtolower($frequency_formatted);
+                                echo esc_html($formatted_price . ' ' . $formatted_frequency); 
+                                ?>
+                            </div>
                         </div>
-                    </div>
-                    <div class="bocs-subscription-price">
-                        <?php 
-                        // Format the price with the subscription data
-                        // Ensure total is a numeric value
-                        $numeric_total = is_array($total) ? 0 : (float)$total;
-                        $formatted_price = '$' . number_format($numeric_total, 2, '.', ',');
-                        $formatted_frequency = strtolower($frequency_formatted);
-                        echo esc_html($formatted_price . ' ' . $formatted_frequency); 
-                        ?>
                     </div>
                     <div class="bocs-subscription-billing">
                         <div class="bocs-billing-dates">
@@ -220,7 +220,7 @@ if (function_exists('bocs_log')) {
                                             echo esc_html($frequency_formatted);
                                             echo !empty($discount) ? ' (' . esc_html($discount) . ' Discount)' : '';
                                         } else {
-                                            echo esc_html('Every month');
+                                            echo esc_html('EVERY month');
                                         }
                                         ?>
                                     </div>

@@ -124,7 +124,7 @@ wp_add_inline_style('bocs-switch-bocs', '
 ');
 
 // Also include the subscription styles since we want to maintain visual consistency
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250416.1');
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250423.5');
 
 // Initialize helper
 $helper = new Bocs_Helper();
