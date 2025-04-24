@@ -37,6 +37,65 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
 define('BOCS_VERSION', '0.0.139');
 
 /**
+ * Debug option for script and style cache busting
+ * When enabled, generates a unique timestamp each time a resource is loaded
+ */
+define('BOCS_DEBUG_CACHE_BUSTING', false);
+
+/**
+ * Get cache busting version string
+ * 
+ * IMPORTANT:
+ * 1. ALWAYS update cache bust versions when modifying any JS or CSS files
+ * 2. ALWAYS verify the current date using system command: date "+%Y%m%d"
+ * 3. Format should be YYYYMMDD.N where N is incremented for each change on the same day
+ * 
+ * @param string $version Base version string (typically a date in format YYYYMMDD.N)
+ * @return string Modified version string with timestamp appended if debug mode is on
+ */
+function bocs_get_cache_bust_version($version) {
+    if (defined('BOCS_DEBUG_CACHE_BUSTING') && BOCS_DEBUG_CACHE_BUSTING) {
+        return $version . '.' . time(); // Append current timestamp
+    }
+    return $version;
+}
+
+/**
+ * Enqueue cache busting scripts in development mode
+ */
+function bocs_enqueue_dev_scripts() {
+    $options = get_option('bocs_plugin_options', ['developer_mode' => 'off']);
+    $developer_mode = isset($options['developer_mode']) ? sanitize_text_field($options['developer_mode']) : 'off';
+    
+    if ($developer_mode === 'on' || isset($_GET['bocs_cache_bust'])) {
+        // Enqueue the cache busting script
+        wp_enqueue_script(
+            'bocs-cache-buster', 
+            plugin_dir_url(__FILE__) . 'assets/js/clear-cache.js', 
+            [], 
+            time(), // Always use current time to prevent caching
+            true
+        );
+        
+        // Pass developer mode status to JavaScript
+        wp_localize_script(
+            'bocs-cache-buster',
+            'bocsData',
+            [
+                'developerMode' => true,
+                'cacheBustTime' => time()
+            ]
+        );
+        
+        // Force debug cache busting
+        if (!defined('BOCS_DEBUG_CACHE_BUSTING')) {
+            define('BOCS_DEBUG_CACHE_BUSTING', true);
+        }
+    }
+}
+add_action('wp_enqueue_scripts', 'bocs_enqueue_dev_scripts', 999); // Run late to ensure it loads after other scripts
+
+/**
  * Flush rewrite rules on plugin load for development
  * This should be removed in production
  */
@@ -620,10 +679,6 @@ function bocs_setup_email_templates() {
         return;
     }
     
-    // Override the default email footer text
-    add_filter('woocommerce_email_footer_text', function($text) {
-        return sprintf('%s — Powered by <a href="https://bocs.io" style="color: #3C7B7C !important; font-weight: normal; text-decoration: underline;">Bocs</a>', get_bloginfo('name', 'display'));
-    }, 99);
     
     // Add a filter to modify all email subjects with proper branding
     add_filter('woocommerce_email_subject', function($subject, $email) {
