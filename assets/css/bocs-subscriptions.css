@@ -414,15 +414,8 @@
     cursor: pointer;
     transition: var(--bocs-transition);
     text-decoration: none !important;
-    border: 1px solid;
-    background-color: #ffffff;
-    /*color: var(--bocs-primary);*/
-    /*border-color: var(--bocs-primary);*/
-    border-bottom-color: rgb(224, 226, 228);
-    border-left-color: rgb(224, 226, 228);
-    border-right-color: rgb(224, 226, 228);
+    border: 1px solid rgb(224, 226, 228);
     color: rgb(54, 61, 72);
-    border-top-color: rgb(224, 226, 228);
     background-color: rgb(239, 240, 243);
 }
 
@@ -433,6 +426,7 @@
 .bocs-button.primary {
     background-color: var(--bocs-primary);
     color: #ffffff;
+    border-color: var(--bocs-primary);
 }
 
 .bocs-button.primary:hover {
@@ -440,20 +434,14 @@
 }
 
 .bocs-button.early-renewal {
-    /*background-color: #ffffff;*/
-    /*color: var(--bocs-primary);*/
-    /*border-color: var(--bocs-primary);*/
-    border-bottom-color: rgb(224, 226, 228);
-    border-left-color: rgb(224, 226, 228);
-    border-right-color: rgb(224, 226, 228);
+    border: 1px solid rgb(224, 226, 228);
     color: rgb(54, 61, 72);
-    border-top-color: rgb(224, 226, 228);
     background-color: rgb(239, 240, 243);
     text-decoration: none !important;
 }
 
 .bocs-button.early-renewal:hover {
-    /*background-color: rgba(0, 101, 169, 0.05);*/
+    background-color: rgba(0, 101, 169, 0.05);
 }
 
 .bocs-button.pay-now {
@@ -501,6 +489,14 @@
     background-color: rgba(0, 0, 0, 0.5);
     align-items: center;
     justify-content: center;
+}
+
+/* Fix for modals that use display style directly */
+.bocs-modal[style*="display: block"],
+.bocs-modal[style*="display:block"],
+.bocs-modal[style*="display: flex"],
+.bocs-modal[style*="display:flex"] {
+    display: flex !important;
 }
 
 .bocs-modal-content {
@@ -777,4 +773,24 @@
 
 #frequency-value option {
     padding: 8px;
+}
+
+/* Style for modal confirm button when loading */
+.bocs-modal-actions .modal-confirm.loading {
+    position: relative;
+    opacity: 0.8;
+    cursor: wait;
+}
+
+.bocs-modal-actions .modal-confirm.loading:before {
+    content: "";
+    position: absolute;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: bocs-spinner 0.8s linear infinite;
 } 

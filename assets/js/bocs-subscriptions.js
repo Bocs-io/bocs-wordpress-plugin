@@ -94,7 +94,10 @@
             $('.edit-payment').on('click', this.handlers.editPayment);
             
             // Action buttons
-            $('.early-renewal').on('click', this.handlers.earlyRenewal);
+            $('.early-renewal').on('click', function(e) {
+                console.log('Early renewal button clicked');
+                BocsSubscriptions.handlers.earlyRenewal.call(this, e);
+            });
             // $('.edit-contents').on('click', this.handlers.editContents);
             // $('.change-box').on('click', this.handlers.changeBox);
             
@@ -109,20 +112,25 @@
         setupModals: function() {
             // Close modal when clicking the X
             $('.bocs-modal-close').on('click', function() {
-                $(this).closest('.bocs-modal').hide();
+                $(this).closest('.bocs-modal').css('display', 'none');
             });
             
             // Close modal when clicking cancel button
-            $('.bocs-modal .cancel').on('click', function() {
-                $(this).closest('.bocs-modal').hide();
+            $('.bocs-modal .cancel, .bocs-modal .modal-cancel').on('click', function() {
+                $(this).closest('.bocs-modal').css('display', 'none');
             });
             
             // Close modal when clicking outside
             $(window).on('click', function(event) {
                 if ($(event.target).hasClass('bocs-modal')) {
-                    $('.bocs-modal').hide();
+                    $('.bocs-modal').css('display', 'none');
                 }
             });
+            
+            // Debug which modals exist
+            console.log('Available modals:', $('.bocs-modal').map(function() {
+                return '#' + $(this).attr('id');
+            }).get());
         },
 
         // API helper functions
@@ -147,11 +155,24 @@
                         options.body = JSON.stringify(data);
                     }
                     
-                    console.log('Request options:', {...options, headers: 'HIDDEN FOR SECURITY'});
+                    console.log('Request options:', {...options, headers: {...options.headers, 'Authorization': '[HIDDEN]'}});
+                    console.log('Request body:', options.body || 'No body');
+                    
                     const response = await fetch(url, options);
                     
                     // Log response status
                     console.log(`API Response status: ${response.status} ${response.statusText}`);
+                    
+                    // Clone the response so we can log it and still use it
+                    const clonedResponse = response.clone();
+                    
+                    // Log full response for debugging
+                    try {
+                        const textResponse = await clonedResponse.text();
+                        console.log('API Raw Response:', textResponse);
+                    } catch (err) {
+                        console.error('Error logging response text:', err);
+                    }
                     
                     const responseData = await response.json();
                     console.log('API Response data:', responseData);
@@ -185,6 +206,19 @@
             
             // Update delivery address
             updateAddress: function(subscriptionId, address) {
+                console.log('updateAddress: Called with subscription ID', subscriptionId);
+                console.log('updateAddress: Address data', address);
+                
+                // Ensure the shipping object has the correct property names
+                if (address && address.shipping) {
+                    // The API might expect different property names than what we're using
+                    // Log this for debugging
+                    console.log('updateAddress: Shipping data before formatting', address.shipping);
+                    
+                    // Some APIs expect camelCase and others expect snake_case, let's ensure we're using the right format
+                    // This is just a logging step to help identify issues
+                }
+                
                 return this.request(`subscriptions/${subscriptionId}`, 'PUT', address);
             },
             
@@ -553,21 +587,43 @@
                 // Find this subscription in the data
                 const subscription = bocsSubscriptionsData.subscriptions.find(sub => sub.id === subscriptionId);
                 
+                console.log('editAddress: Subscription data for ID ' + subscriptionId, subscription);
+                
                 if (subscription) {
-                    // Try to populate with shipping address first
-                    if (subscription.shipping && subscription.shipping.address1) {
-                        $('#address').val(subscription.shipping.address1);
+                    console.log('editAddress: Shipping data in subscription', subscription.shipping);
+                    
+                    // Try to populate with shipping address first - it's at the top level in the subscription object
+                    if (subscription.shipping) {
+                        console.log('editAddress: Using shipping data', subscription.shipping);
+                        $('#first-name').val(subscription.shipping.firstName || '');
+                        $('#last-name').val(subscription.shipping.lastName || '');
+                        $('#company').val(subscription.shipping.company || '');
+                        $('#phone').val(subscription.shipping.phone || '');
+                        $('#address').val(subscription.shipping.address1 || '');
+                        $('#address2').val(subscription.shipping.address2 || '');
                         $('#city').val(subscription.shipping.city || '');
                         $('#state').val(subscription.shipping.state || '');
                         $('#postcode').val(subscription.shipping.postcode || '');
+                        $('#country').val(subscription.shipping.country || 'AU');
                     } 
                     // Fallback to billing address if shipping is empty
-                    else if (subscription.billing && subscription.billing.address1) {
-                        $('#address').val(subscription.billing.address1);
+                    else if (subscription.billing) {
+                        console.log('editAddress: No shipping data, using billing data', subscription.billing);
+                        $('#first-name').val(subscription.billing.firstName || '');
+                        $('#last-name').val(subscription.billing.lastName || '');
+                        $('#company').val(subscription.billing.company || '');
+                        $('#phone').val(subscription.billing.phone || '');
+                        $('#address').val(subscription.billing.address1 || '');
+                        $('#address2').val(subscription.billing.address2 || '');
                         $('#city').val(subscription.billing.city || '');
                         $('#state').val(subscription.billing.state || '');
                         $('#postcode').val(subscription.billing.postcode || '');
+                        $('#country').val(subscription.billing.country || 'AU');
+                    } else {
+                        console.log('editAddress: No shipping or billing data found in subscription');
                     }
+                } else {
+                    console.error('editAddress: Subscription not found for ID ' + subscriptionId);
                 }
                 
                 // Show the modal
@@ -580,16 +636,39 @@
             // Save address changes
             saveAddress: async function(e) {
                 e.preventDefault();
+                console.log('saveAddress: Starting address save process');
                 
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                const firstName = $('#first-name').val();
+                const lastName = $('#last-name').val();
+                const company = $('#company').val(); // Optional field
+                const phone = $('#phone').val(); // Optional field
                 const address = $('#address').val();
+                const address2 = $('#address2').val(); // Optional field
                 const city = $('#city').val();
                 const state = $('#state').val();
                 const postcode = $('#postcode').val();
+                const country = $('#country').val() || 'AU';
                 const submitButton = $(e.target).find('button[type="submit"]');
                 
-                if (!subscriptionId || !address || !city || !state || !postcode) {
-                    BocsSubscriptions.helpers.showNotification('Please fill in all address fields', 'error');
+                console.log('saveAddress: Collected form data', {
+                    subscriptionId,
+                    firstName,
+                    lastName,
+                    company,
+                    phone,
+                    address,
+                    address2,
+                    city,
+                    state,
+                    postcode,
+                    country
+                });
+                
+                // Only required fields validation
+                if (!subscriptionId || !firstName || !lastName || !address || !city || !state || !postcode) {
+                    console.error('saveAddress: Validation failed - missing required fields');
+                    BocsSubscriptions.helpers.showNotification('Please fill all required fields', 'error');
                     return;
                 }
                 
@@ -602,18 +681,32 @@
                     // Format address data properly as shipping object
                     const addressData = {
                         shipping: {
+                            firstName: firstName,
+                            lastName: lastName,
+                            company: company, // Optional, may be empty
+                            phone: phone, // Optional, may be empty
                             address1: address,
+                            address2: address2, // Optional, may be empty
                             city: city,
                             state: state,
                             postcode: postcode,
-                            country: 'AU' // Default to Australia
+                            country: country
                         }
                     };
                     
-                    const response = await BocsSubscriptions.api.updateAddress(subscriptionId, addressData);
+                    console.log('saveAddress: Sending address data to API', addressData);
                     
-                    // Update the UI with formatted address
-                    const formattedAddress = `${address}, ${city}, ${state} ${postcode}`;
+                    const response = await BocsSubscriptions.api.updateAddress(subscriptionId, addressData);
+                    console.log('saveAddress: API response received', response);
+                    
+                    // Update the UI with formatted address - include optional fields only if not empty
+                    let formattedAddress = `${firstName} ${lastName}`;
+                    if (company) formattedAddress += `, ${company}`;
+                    formattedAddress += `, ${address}`;
+                    if (address2) formattedAddress += `, ${address2}`;
+                    formattedAddress += `, ${city}, ${state} ${postcode}, ${country}`;
+                    
+                    console.log('saveAddress: Updated address display to:', formattedAddress);
                     
                     $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-section:eq(2) .bocs-section-line')
@@ -623,7 +716,9 @@
                     $('#bocs-edit-address-modal').hide();
                     
                     BocsSubscriptions.helpers.showNotification('Address updated successfully', 'success');
+                    console.log('saveAddress: Address update complete');
                 } catch (error) {
+                    console.error('saveAddress: Error updating address', error);
                     BocsSubscriptions.helpers.showNotification('Failed to update address', 'error');
                 } finally {
                     // Reset button state
@@ -985,26 +1080,63 @@
                 e.preventDefault();
                 e.stopPropagation();
                 
+                console.log('Early renewal handler called');
+                
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
-                const subscriptionId = subscriptionItem.data('subscription-id');
+                const subscriptionId = subscriptionItem.data('subscription-id') || $(this).data('sub-id');
+                
+                console.log('Subscription ID:', subscriptionId);
                 
                 if (!subscriptionId) {
+                    console.error('No subscription ID found');
                     BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
                     return;
                 }
                 
-                try {
-                    BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
+                // Store the subscription ID
+                BocsSubscriptions.activeSubscriptionId = subscriptionId;
+                
+                // Check if modal exists
+                const modal = $('#bocs-early-renewal-modal');
+                console.log('Early renewal modal exists:', modal.length > 0);
+                
+                // Show the early renewal modal
+                modal.css('display', 'flex');
+                console.log('Modal display style after show:', modal.css('display'));
+                
+                // Set up confirm button handler
+                $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
+                    const confirmButton = $(this);
                     
-                    const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
-                    
-                    BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
-                    
-                    // In a real implementation, you might want to reload the page
-                    // or update the UI with new subscription details
-                } catch (error) {
-                    BocsSubscriptions.helpers.showNotification('Failed to process early renewal', 'error');
-                }
+                    try {
+                        // Show loading state
+                        confirmButton.addClass('loading').prop('disabled', true);
+                        BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
+                        
+                        const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
+                        
+                        // Hide the modal
+                        $('#bocs-early-renewal-modal').css('display', 'none');
+                        
+                        BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
+                        
+                        // In a real implementation, we might want to reload the page
+                        // or update the UI with new subscription details
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } catch (error) {
+                        BocsSubscriptions.helpers.showNotification('Failed to process early renewal: ' + (error.message || 'Unknown error'), 'error');
+                    } finally {
+                        // Reset button state
+                        confirmButton.removeClass('loading').prop('disabled', false);
+                    }
+                });
+                
+                // Set up cancel button handler
+                $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
+                    $('#bocs-early-renewal-modal').css('display', 'none');
+                });
             },
             
             // Edit contents handler (placeholder)
@@ -1095,6 +1227,208 @@
     // Initialize when document is ready
     $(document).ready(function() {
         BocsSubscriptions.init();
+        
+        // Handle legacy Early Renewal button that might be from WooCommerce Subscriptions
+        // or other templates not using our class system
+        setTimeout(function() {
+            setupEarlyRenewalHandlers();
+        }, 1000); // Short delay to ensure page is fully loaded
     });
+    
+    /**
+     * Set up all early renewal handlers for various button types
+     */
+    function setupEarlyRenewalHandlers() {
+        console.log("Setting up early renewal handlers");
+        
+        // Ensure the early-renewal-modal exists
+        if ($('#bocs-early-renewal-modal').length === 0) {
+            const modalHtml = `
+            <div id="bocs-early-renewal-modal" class="bocs-modal">
+                <div class="bocs-modal-content">
+                    <span class="bocs-modal-close">&times;</span>
+                    <h3>Early Renewal</h3>
+                    <p>This will create an order with all the products in your subscription, and will automatically move your next order date.</p>
+                    <div class="bocs-modal-actions">
+                        <button class="bocs-button modal-cancel">Cancel</button>
+                        <button class="bocs-button primary modal-confirm">Confirm Early Renewal</button>
+                    </div>
+                </div>
+            </div>`;
+            $('body').append(modalHtml);
+            
+            // Re-initialize modal events
+            BocsSubscriptions.setupModals();
+        }
+        
+        // Set up confirm button handler for early renewal modal
+        setupEarlyRenewalModalHandlers();
+        
+        // Look for all types of early renewal buttons across different interfaces
+        handleLegacyRenewalButtons();
+        handleNativeWooCommerceRenewalButtons();
+    }
+    
+    /**
+     * Set up the handlers for the early renewal modal buttons
+     */
+    function setupEarlyRenewalModalHandlers() {
+        // Set up confirm button handler
+        $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
+            const confirmButton = $(this);
+            const subscriptionId = BocsSubscriptions.activeSubscriptionId;
+            
+            if (!subscriptionId) {
+                console.error("No active subscription ID found for renewal");
+                BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
+                return;
+            }
+            
+            console.log('Processing early renewal for:', subscriptionId);
+            
+            try {
+                // Show loading state
+                confirmButton.addClass('loading').prop('disabled', true);
+                BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
+                
+                const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
+                
+                // Hide the modal
+                $('#bocs-early-renewal-modal').css('display', 'none');
+                
+                BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
+                
+                // Reload the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                BocsSubscriptions.helpers.showNotification('Failed to process early renewal: ' + (error.message || 'Unknown error'), 'error');
+            } finally {
+                // Reset button state
+                confirmButton.removeClass('loading').prop('disabled', false);
+            }
+        });
+        
+        // Set up cancel button handler
+        $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
+            $('#bocs-early-renewal-modal').css('display', 'none');
+        });
+    }
+    
+    /**
+     * Handle legacy early renewal buttons across the interface
+     */
+    function handleLegacyRenewalButtons() {
+        // Look for buttons with "Early Renewal" text that aren't already handled
+        // Also look for WooCommerce Subscriptions buttons with specific classes
+        $('button:contains("Early Renewal"), a:contains("Early Renewal"), .subscription_renewal_early, .wcs-auto-renew-toggle, .subscription_renewal_button').each(function() {
+            const $btn = $(this);
+            
+            // Skip if it already has our early-renewal class
+            if ($btn.hasClass('early-renewal')) {
+                return;
+            }
+            
+            console.log('Found legacy Early Renewal button:', $btn);
+            
+            // Get subscription ID from the button or nearby elements
+            let subscriptionId = $btn.data('subscription-id');
+            
+            // If no subscription ID, try to get it from parent elements
+            if (!subscriptionId) {
+                const $parent = $btn.closest('[data-subscription-id]');
+                if ($parent.length) {
+                    subscriptionId = $parent.data('subscription-id');
+                }
+            }
+            
+            // If still no subscription ID, try to get it from the URL
+            if (!subscriptionId) {
+                const urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    subscriptionId = urlMatch[1];
+                }
+            }
+            
+            console.log('Subscription ID for legacy button:', subscriptionId);
+            
+            if (subscriptionId) {
+                // Add click handler
+                $btn.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('Legacy Early Renewal button clicked');
+                    
+                    // Store the subscription ID
+                    BocsSubscriptions.activeSubscriptionId = subscriptionId;
+                    
+                    // Show our modal
+                    $('#bocs-early-renewal-modal').css('display', 'flex');
+                });
+            }
+        });
+    }
+    
+    /**
+     * Handle Early Renewal buttons in WooCommerce native subscription view
+     * This targets the specific button shown in the user's screenshot
+     */
+    function handleNativeWooCommerceRenewalButtons() {
+        console.log("Adding handler for WooCommerce native Early Renewal buttons");
+        
+        // Find all Early Renewal buttons in the WooCommerce layout
+        $('a.bocs-button, button.bocs-button, .woocommerce-button.button').filter(function() {
+            return $(this).text().trim() === 'Early Renewal';
+        }).each(function() {
+            console.log("Found WooCommerce Early Renewal button to handle:", this);
+            
+            // Skip if already handled by the legacy handler
+            if ($(this).data('bocs-handled')) {
+                return;
+            }
+            
+            // Mark as handled to avoid duplicates
+            $(this).data('bocs-handled', true);
+            
+            // Add our handler
+            $(this).off('click').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log("Intercepted WooCommerce Early Renewal button click");
+                
+                // Get subscription ID
+                var subscriptionId = $(this).data('subscription-id') || '';
+                if (!subscriptionId) {
+                    // Try to extract from URL or parent elements
+                    var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                    if (urlMatch && urlMatch[1]) {
+                        subscriptionId = urlMatch[1];
+                    } else {
+                        // Try to get from parent elements
+                        var $parent = $(this).closest('[data-subscription-id]');
+                        if ($parent.length) {
+                            subscriptionId = $parent.data('subscription-id');
+                        }
+                    }
+                }
+                
+                console.log("Subscription ID for WooCommerce handler:", subscriptionId);
+                
+                if (!subscriptionId) {
+                    console.error("No subscription ID found for this button");
+                    return;
+                }
+                
+                // Store the subscription ID
+                BocsSubscriptions.activeSubscriptionId = subscriptionId;
+                
+                // Show our modal
+                $('#bocs-early-renewal-modal').css('display', 'flex');
+            });
+        });
+    }
 
 })(jQuery); 
