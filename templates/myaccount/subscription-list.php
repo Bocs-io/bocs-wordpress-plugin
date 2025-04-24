@@ -10,11 +10,14 @@
  * @version 1.0.0
  */
 
-defined('ABSPATH') || exit;
+// Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), '20250423.3', true);
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), '20250423.7');
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), bocs_get_cache_bust_version('20250424.1'));
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), bocs_get_cache_bust_version('20250424.1'), true);
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -210,7 +213,7 @@ if (function_exists('bocs_log')) {
                     <div class="bocs-subscription-actions">
                         <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-edit-details') . $subscription_id); ?>" class="bocs-button edit-contents">Edit contents</a>
                         <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-switch-bocs') . $subscription_id); ?>" class="bocs-button change-box">Change box</a>
-                        <button class="bocs-button early-renewal">Early Renewal</button>
+                        <button class="bocs-button early-renewal" id="early-renewal-<?php echo esc_attr($subscription_id); ?>" data-sub-id="<?php echo esc_attr($subscription_id); ?>">Early Renewal</button>
                     </div>
                     
                     <div class="bocs-subscription-name">
@@ -511,6 +514,18 @@ if (function_exists('bocs_log')) {
             <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="button"><?php esc_html_e('Browse products', 'bocs-wordpress'); ?></a>
         </div>
     <?php endif; ?>
+    
+    <!-- Debug button: Directly opens the early renewal modal -->
+    <button id="test-early-renewal-modal" style="margin-top: 20px; padding: 10px; background: #f0f0f0; cursor: pointer;">Test Early Renewal Modal</button>
+    <script>
+        jQuery(document).ready(function($) {
+            $('#test-early-renewal-modal').on('click', function() {
+                console.log('Test button clicked');
+                console.log('Modal exists:', $('#bocs-early-renewal-modal').length > 0);
+                $('#bocs-early-renewal-modal').css('display', 'flex');
+            });
+        });
+    </script>
 </div>
 
 <!-- Modals for subscription actions -->
@@ -563,8 +578,28 @@ if (function_exists('bocs_log')) {
         <h3>Edit Delivery Address</h3>
         <form id="edit-address-form">
             <div class="bocs-form-row">
+                <label for="first-name">First Name</label>
+                <input type="text" id="first-name" name="first_name">
+            </div>
+            <div class="bocs-form-row">
+                <label for="last-name">Last Name</label>
+                <input type="text" id="last-name" name="last_name">
+            </div>
+            <div class="bocs-form-row">
+                <label for="company">Company (optional)</label>
+                <input type="text" id="company" name="company">
+            </div>
+            <div class="bocs-form-row">
+                <label for="phone">Phone (optional)</label>
+                <input type="tel" id="phone" name="phone">
+            </div>
+            <div class="bocs-form-row">
                 <label for="address">Street Address</label>
                 <input type="text" id="address" name="address">
+            </div>
+            <div class="bocs-form-row">
+                <label for="address2">Street Address 2 (optional)</label>
+                <input type="text" id="address2" name="address2">
             </div>
             <div class="bocs-form-row">
                 <label for="city">City</label>
@@ -577,6 +612,10 @@ if (function_exists('bocs_log')) {
             <div class="bocs-form-row">
                 <label for="postcode">Postcode</label>
                 <input type="text" id="postcode" name="postcode">
+            </div>
+            <div class="bocs-form-row">
+                <label for="country">Country</label>
+                <input type="text" id="country" name="country">
             </div>
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
@@ -615,6 +654,19 @@ if (function_exists('bocs_log')) {
                 <button type="submit" class="bocs-button primary">Save Changes</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Early Renewal Modal -->
+<div id="bocs-early-renewal-modal" class="bocs-modal">
+    <div class="bocs-modal-content">
+        <span class="bocs-modal-close">&times;</span>
+        <h3>Early Renewal</h3>
+        <p>This will create an order with all the products in your subscription, and will automatically move your next order date.</p>
+        <div class="bocs-modal-actions">
+            <button class="bocs-button modal-cancel">Cancel</button>
+            <button class="bocs-button primary modal-confirm">Confirm Early Renewal</button>
+        </div>
     </div>
 </div>
 

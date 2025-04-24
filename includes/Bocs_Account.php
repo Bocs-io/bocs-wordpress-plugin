@@ -49,6 +49,9 @@ class Bocs_Account
     /** @var array API headers for Bocs authentication */
     private $headers;
 
+    /** @var array Storage for BOCS products lookup */
+    private $bocs_products = array();
+
     /**
      * Initialize the class and set its properties.
      */
@@ -561,22 +564,22 @@ class Bocs_Account
                     // Add delivery address
                     if (isset($subscription['shipping']) && is_array($subscription['shipping'])) {
                         $address_parts = array(
+                            isset($subscription['shipping']['firstName']) && isset($subscription['shipping']['lastName']) ? 
+                                $subscription['shipping']['firstName'] . ' ' . $subscription['shipping']['lastName'] : '',
+                            isset($subscription['shipping']['company']) ? $subscription['shipping']['company'] : '',
                             isset($subscription['shipping']['address1']) ? $subscription['shipping']['address1'] : '',
+                            isset($subscription['shipping']['address2']) ? $subscription['shipping']['address2'] : '',
                             isset($subscription['shipping']['city']) ? $subscription['shipping']['city'] : '',
                             isset($subscription['shipping']['state']) ? $subscription['shipping']['state'] : '',
-                            isset($subscription['shipping']['postcode']) ? $subscription['shipping']['postcode'] : ''
+                            isset($subscription['shipping']['postcode']) ? $subscription['shipping']['postcode'] : '',
+                            isset($subscription['shipping']['country']) ? $subscription['shipping']['country'] : ''
                         );
                         $formatted['delivery_address'] = array(
                             'formatted' => implode(', ', array_filter($address_parts))
                         );
                         
-                        // Add full shipping address data
-                        $formatted['shipping'] = array(
-                            'address1' => isset($subscription['shipping']['address1']) ? $subscription['shipping']['address1'] : '',
-                            'city' => isset($subscription['shipping']['city']) ? $subscription['shipping']['city'] : '',
-                            'state' => isset($subscription['shipping']['state']) ? $subscription['shipping']['state'] : '',
-                            'postcode' => isset($subscription['shipping']['postcode']) ? $subscription['shipping']['postcode'] : ''
-                        );
+                        // Add full shipping address data - maintain original data structure
+                        $formatted['shipping'] = $subscription['shipping'];
                     } else {
                         $formatted['delivery_address'] = array(
                             'formatted' => __('No address provided', 'bocs-wordpress')
@@ -586,12 +589,8 @@ class Bocs_Account
                     
                     // Add billing address
                     if (isset($subscription['billing']) && is_array($subscription['billing'])) {
-                        $formatted['billing'] = array(
-                            'address1' => isset($subscription['billing']['address1']) ? $subscription['billing']['address1'] : '',
-                            'city' => isset($subscription['billing']['city']) ? $subscription['billing']['city'] : '',
-                            'state' => isset($subscription['billing']['state']) ? $subscription['billing']['state'] : '',
-                            'postcode' => isset($subscription['billing']['postcode']) ? $subscription['billing']['postcode'] : ''
-                        );
+                        // Preserve the complete billing data
+                        $formatted['billing'] = $subscription['billing'];
                     } else {
                         $formatted['billing'] = array();
                     }
@@ -1485,6 +1484,20 @@ class Bocs_Account
             if ($has_complete_data) {
                 error_log('Using complete product data from frontend');
                 
+                // We still need the subscription details for product name lookups
+                $helper = new Bocs_Helper();
+                $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+                $current_subscription = $helper->curl_request($url, 'GET', [], $this->headers);
+                
+                // Make it available globally for lookup even if there was an error
+                global $bocs_current_subscription;
+                $bocs_current_subscription = is_wp_error($current_subscription) ? null : $current_subscription;
+                
+                // Log error but continue with available data
+                if (is_wp_error($current_subscription)) {
+                    error_log('Warning: Could not retrieve subscription data for name lookup: ' . $current_subscription->get_error_message());
+                }
+                
                 // Format lineItems from complete data
                 $formatted_line_items = [];
                 foreach ($products as $product) {
@@ -1496,6 +1509,15 @@ class Bocs_Account
                     // Skip invalid products
                     if (!isset($product['productId']) || !isset($product['quantity']) || (int)$product['quantity'] <= 0) {
                         continue;
+                    }
+                    
+                    // Make sure name field is preserved from the frontend data
+                    if (!isset($product['name']) || empty($product['name'])) {
+                        error_log('WARNING - Product ' . $product['productId'] . ' is missing name field');
+                        // Look for name in other sources
+                        $product['name'] = $this->get_product_name_from_id($product['productId']);
+                    } else {
+                        error_log('DEBUG - Product ' . $product['productId'] . ' has name: ' . $product['name']);
                     }
                     
                     // Add to formatted line items - pass all fields without modification
@@ -1510,6 +1532,10 @@ class Bocs_Account
                 $helper = new Bocs_Helper();
                 $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
                 $current_subscription = $helper->curl_request($url, 'GET', [], $this->headers);
+                
+                // Make it available globally for lookup
+                global $bocs_current_subscription;
+                $bocs_current_subscription = is_wp_error($current_subscription) ? null : $current_subscription;
                 
                 if (is_wp_error($current_subscription)) {
                     error_log('Error fetching current subscription: ' . $current_subscription->get_error_message());
@@ -1555,18 +1581,18 @@ class Bocs_Account
                 }
 
                 // Create a lookup table for bocs products
-                $bocs_products = [];
+                $this->bocs_products = [];
                 if (isset($bocs_details['data']['products']) && is_array($bocs_details['data']['products'])) {
                     foreach ($bocs_details['data']['products'] as $bocs_product) {
                         if (isset($bocs_product['id'])) {
-                            $bocs_products[$bocs_product['id']] = $bocs_product;
+                            $this->bocs_products[$bocs_product['id']] = $bocs_product;
                             error_log('DEBUG - Added product to lookup: ' . $bocs_product['id'] . ' - ' . $bocs_product['name']);
                         }
                     }
                 }
 
                 // Log how many products we found in the bocs
-                error_log('Found ' . count($bocs_products) . ' products in bocs details');
+                error_log('Found ' . count($this->bocs_products) . ' products in bocs details');
                 
                 // Prepare line items for API request based on the format from the API
                 $line_items = [];
@@ -1587,8 +1613,8 @@ class Bocs_Account
                         ];
                         
                         // First check if we have this product in the bocs details
-                        if (isset($bocs_products[$product_id])) {
-                            $bocs_product = $bocs_products[$product_id];
+                        if (isset($this->bocs_products[$product_id])) {
+                            $bocs_product = $this->bocs_products[$product_id];
                             
                             // Copy all required fields from bocs product
                             $line_item['taxClass'] = $bocs_product['taxClass'] ?? '';
@@ -1780,5 +1806,89 @@ class Bocs_Account
             'message' => __('Subscription updated successfully', 'bocs-wordpress'),
             'data' => $response
         );
+    }
+
+    /**
+     * Get product name from its ID using various sources
+     * 
+     * @param string $product_id The product ID
+     * @return string The product name or a default name
+     */
+    private function get_product_name_from_id($product_id) {
+        global $bocs_current_subscription;
+        
+        // Check if the global variable is set
+        if (isset($bocs_current_subscription)) {
+            error_log('Looking for product name for: ' . $product_id);
+            
+            // Try to find in lineItems at data.lineItems
+            if (isset($bocs_current_subscription['data']) && 
+                isset($bocs_current_subscription['data']['lineItems']) && 
+                is_array($bocs_current_subscription['data']['lineItems'])) {
+                error_log('Checking in data.lineItems with ' . count($bocs_current_subscription['data']['lineItems']) . ' items');
+                foreach ($bocs_current_subscription['data']['lineItems'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $product_id && isset($item['name'])) {
+                        error_log('Found name in data.lineItems: ' . $item['name']);
+                        return $item['name'];
+                    }
+                }
+            }
+            
+            // Try to find in direct lineItems
+            if (isset($bocs_current_subscription['lineItems']) && 
+                is_array($bocs_current_subscription['lineItems'])) {
+                error_log('Checking in lineItems with ' . count($bocs_current_subscription['lineItems']) . ' items');
+                foreach ($bocs_current_subscription['lineItems'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $product_id && isset($item['name'])) {
+                        error_log('Found name in lineItems: ' . $item['name']);
+                        return $item['name'];
+                    }
+                }
+            }
+            
+            // Check old format with line_items
+            if (isset($bocs_current_subscription['data']) && 
+                isset($bocs_current_subscription['data']['line_items']) && 
+                is_array($bocs_current_subscription['data']['line_items'])) {
+                foreach ($bocs_current_subscription['data']['line_items'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $product_id && isset($item['name'])) {
+                        error_log('Found name in data.line_items: ' . $item['name']);
+                        return $item['name'];
+                    }
+                }
+            }
+        } else {
+            error_log('bocs_current_subscription is not set');
+        }
+        
+        // Try to get name from BOCS product data (from local variable in this context)
+        if (isset($this->bocs_products) && isset($this->bocs_products[$product_id]) && isset($this->bocs_products[$product_id]['name'])) {
+            error_log('Found name in bocs_products: ' . $this->bocs_products[$product_id]['name']);
+            return $this->bocs_products[$product_id]['name'];
+        }
+        
+        // Try to get name from current context if available
+        if (isset($bocs_products) && isset($bocs_products[$product_id]) && isset($bocs_products[$product_id]['name'])) {
+            error_log('Found name in local bocs_products: ' . $bocs_products[$product_id]['name']);
+            return $bocs_products[$product_id]['name'];
+        }
+        
+        // Try to get name from WooCommerce if we have an externalSourceId mapping
+        $product_mapping = get_option('bocs_product_mapping', []);
+        if (isset($product_mapping[$product_id])) {
+            $wc_product_id = $product_mapping[$product_id];
+            if (function_exists('wc_get_product')) {
+                $product = wc_get_product($wc_product_id);
+                if ($product) {
+                    error_log('Found name in WooCommerce: ' . $product->get_name());
+                    return $product->get_name();
+                }
+            }
+        }
+        
+        error_log('Could not find name for product: ' . $product_id);
+        
+        // Fallback default name
+        return 'Product';
     }
 }

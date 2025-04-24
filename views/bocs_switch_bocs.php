@@ -1556,7 +1556,7 @@ jQuery(document).ready(function($) {
             // Always make an API request to get products for the box, whether updating current or switching
             console.log('Fetching products for box ID:', bocsId);
             $.ajax({
-                url: '<?php echo esc_js(BOCS_API_URL); ?>bocs/' + bocsId + '/products',
+                url: '<?php echo esc_js(BOCS_API_URL); ?>bocs/' + bocsId,
                 type: 'GET',
                 async: false,
                 headers: {

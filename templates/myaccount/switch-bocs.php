@@ -13,8 +13,8 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), '20250415.5', true);
-wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), '20250415.4');
+wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), bocs_get_cache_bust_version('20250424.1'), true);
+wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), bocs_get_cache_bust_version('20250424.1'));
 
 // Add additional inline styles for product selection
 wp_add_inline_style('bocs-switch-bocs', '
