@@ -41,7 +41,7 @@
     line-height: 1.6;
     background: var(--bocs-white);
     border-radius: var(--bocs-radius);
-    box-shadow: var(--bocs-shadow);
+    box-shadow: none;
 }
 
 .bocs-back-link {
@@ -56,6 +56,7 @@
 
 .bocs-back-link:hover {
     color: var(--bocs-primary-dark);
+    text-decoration: underline;
 }
 
 /* =========== Typography =========== */
@@ -92,9 +93,9 @@ h3 {
     justify-content: space-between;
     margin-bottom: 32px;
     padding: 24px;
-    background-color: var(--bocs-background);
+    background-color: #f8f9fa;
     border-radius: var(--bocs-radius);
-    box-shadow: var(--bocs-shadow);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border-left: 4px solid var(--bocs-primary);
 }
 
@@ -153,10 +154,10 @@ h3 {
 .edit-section {
     background: var(--bocs-white);
     border-radius: var(--bocs-radius);
-    padding: 24px;
-    box-shadow: var(--bocs-shadow);
-    border: 1px solid var(--bocs-border);
-    transition: var(--bocs-transition);
+    padding: 0;
+    box-shadow: none;
+    border: none;
+    margin-bottom: 40px;
 }
 
 .edit-section:hover {
@@ -168,15 +169,16 @@ h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--bocs-border);
+    margin-bottom: 16px;
     padding-bottom: 12px;
+    border-bottom: none;
 }
 
 .section-header h3 {
     margin: 0;
-    font-size: 1.2em;
+    font-size: 1.5em;
     color: var(--bocs-primary);
+    font-weight: 600;
 }
 
 .section-content {
@@ -222,6 +224,23 @@ h3 {
 .edit-button:hover {
     background: var(--bocs-background);
     color: var(--bocs-primary-dark);
+}
+
+.edit-button.modify-products {
+    background-color: transparent;
+    color: #3182ce;
+    border: 1px solid #3182ce;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.edit-button.modify-products:hover {
+    background-color: #3182ce;
+    color: white;
 }
 
 /* =========== Form Elements =========== */
@@ -420,6 +439,10 @@ h3 {
 /* =========== Product List Styles =========== */
 .bocs-order-details {
     margin-bottom: 24px;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .bocs-order-table {
@@ -430,128 +453,205 @@ h3 {
 
 .bocs-order-table th,
 .bocs-order-table td {
-    padding: 12px;
-    /* border-bottom: 1px solid var(--bocs-border); */
+    padding: 16px;
     vertical-align: middle;
-    line-height: 1.2;
+    line-height: 1.4;
+    border-bottom: 1px solid #f2f2f2;
 }
 
-/* Align column headers */
-.bocs-order-table thead th:first-child {
-    text-align: left;
+/* Table header styling */
+.bocs-order-table thead {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eaecef;
 }
 
 .bocs-order-table thead th {
-    text-align: center;
-    background-color: var(--bocs-background);
-    font-weight: 600;
-    color: var(--bocs-text);
+    text-align: left;
+    font-weight: 500;
+    color: #4a5568;
+    font-size: 0.92em;
+    padding: 12px 16px;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 /* Column widths */
 .bocs-order-table th:nth-child(1),
 .bocs-order-table td:nth-child(1) {
+    width: 35%;
     text-align: left;
 }
 
 .bocs-order-table th:nth-child(2),
 .bocs-order-table td:nth-child(2) {
     width: 15%;
-    text-align: center;
+    text-align: right;
 }
 
 .bocs-order-table th:nth-child(3),
-.bocs-order-table td:nth-child(3),
+.bocs-order-table td:nth-child(3) {
+    width: 15%;
+    text-align: center;
+}
+
 .bocs-order-table th:nth-child(4),
-.bocs-order-table td:nth-child(4) {
+.bocs-order-table td:nth-child(4),
+.bocs-order-table th:nth-child(5),
+.bocs-order-table td:nth-child(5) {
     width: 17.5%;
-    text-align: center;
-}
-
-/* Fix quantities to be properly centered */
-.quantity-value {
-    display: inline-block;
-    line-height: 1;
-    text-align: center;
-    width: 100%;
-}
-
-/* Ensure prices and totals are centered */
-.product-price,
-.product-total {
-    text-align: center !important;
-}
-
-.woocommerce-Price-amount {
-    white-space: nowrap;
-    display: inline-block;
-    text-align: center;
-    font-weight: 500;
-    width: 100%;
-}
-
-/* Footer row styling */
-.bocs-order-table tfoot tr {
-    background-color: var(--bocs-background);
-}
-
-.bocs-order-table tfoot th {
     text-align: right;
-    padding-right: 20px;
-    font-weight: 600;
-}
-
-.bocs-order-table tfoot td {
-    text-align: center;
-    font-weight: 600;
 }
 
 /* Product images and names */
 .product-thumbnail {
-    max-width: 50px;
-    max-height: 50px;
+    max-width: 60px;
+    max-height: 80px;
     width: auto;
     height: auto;
     object-fit: contain;
-    margin-right: 12px;
+    margin-right: 16px;
     vertical-align: middle;
     display: inline-block;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-title {
+    font-weight: 500;
+    color: #1a202c;
 }
 
 .product-name {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
 }
 
-/* Fix for specific footer rows */
-.bocs-subtotal-row th,
-.bocs-discount-row th,
-.bocs-shipping-row th,
-.bocs-total-row th {
-    text-align: right !important;
-    padding-right: 20px;
+.product-discount {
+    display: block;
+    font-size: 85%;
+    color: #b45309;
+    margin-top: 5px;
 }
 
-/* Ensure rows have consistent height */
-.bocs-order-table tbody tr {
-    height: 80px;
+.discount-amount {
+    color: #b45309;
+    font-weight: 500;
 }
 
-/* Make discount row stand out */
-.bocs-discount-row td {
-    color: var(--bocs-secondary);
-    font-weight: bold;
+.discount-label {
+    color: #b45309;
+    margin-left: 4px;
+}
+
+/* Cost column styling */
+.product-price {
+    color: #111827;
+    font-weight: 500;
+}
+
+/* Reset some table cell styling */
+.bocs-order-table tbody td {
+    vertical-align: top;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* Quantity styling */
+.quantity-value {
+    color: #666;
+    font-weight: normal;
+    font-size: 0.95em;
+}
+
+/* Footer row styling */
+.bocs-order-table tfoot {
+    background-color: #f8f9fa;
+}
+
+.bocs-order-table tfoot tr {
+    border-bottom: none;
+}
+
+.bocs-order-table tfoot tr:first-child {
+    border-top: 1px solid #eaecef;
+}
+
+.bocs-order-table tfoot th {
+    text-align: right;
+    padding: 12px 16px 12px 16px;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.bocs-order-table tfoot td {
+    padding: 12px 16px;
+    font-weight: 500;
+}
+
+/* GST row styling */
+.bocs-tax-row {
+    color: #4a5568;
+}
+
+.bocs-tax-row th,
+.bocs-tax-row td {
+    border-bottom: none;
+    color: #4a5568;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+/* Discount row styling */
+.bocs-discount-row td.discount {
+    color: #e53e3e;
+    font-weight: 500;
 }
 
 /* Highlight total row */
 .bocs-total-row {
-    border-top: 2px solid var(--bocs-border);
+    border-top: 1px solid #eaecef !important;
 }
 
 .bocs-total-row th,
 .bocs-total-row td {
     font-weight: 700 !important;
-    font-size: 1.1em;
+    font-size: 1.05em;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    border-bottom: none;
+}
+
+.bocs-total-row td.order-total {
+    color: var(--bocs-primary);
+}
+
+/* Table cell alignment */
+.text-right {
+    text-align: right !important;
+}
+
+.bocs-order-table .product-name {
+    text-align: left;
+}
+
+.bocs-order-table .product-price,
+.bocs-order-table .product-total,
+.bocs-order-table .product-tax,
+.bocs-order-table .shipping,
+.bocs-order-table .subtotal,
+.bocs-order-table .discount,
+.bocs-order-table .tax,
+.bocs-order-table .order-total {
+    text-align: right;
+}
+
+.bocs-order-table .product-quantity {
+    text-align: center;
 }
 
 /* =========== Modal Styles =========== */
@@ -650,8 +750,8 @@ h3 {
     padding: 20px;
     max-height: 100%;
     overflow-y: auto;
-    width: 90%;
-    max-width: 500px;
+    width: 100%;
+    max-width: 90%;
 }
 
 .bocs-modal-footer {
@@ -918,5 +1018,110 @@ h3 {
     .product-list,
     .product-selection-list {
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
+}
+
+/* =========== Tax Display Styles =========== */
+.includes-tax {
+    display: block;
+    font-size: 80%;
+    color: #777;
+    font-weight: normal;
+}
+
+.product-tax {
+    text-align: center !important;
+}
+
+.product-discount {
+    display: block;
+    font-size: 85%;
+    color: #b45309;
+    margin-top: 5px;
+}
+
+/* Table cell alignment */
+.text-right {
+    text-align: right !important;
+}
+
+.bocs-order-table th {
+    vertical-align: middle;
+}
+
+.bocs-order-table thead th {
+    padding: 10px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.bocs-order-table tbody td {
+    padding: 15px 10px;
+    vertical-align: middle;
+}
+
+.bocs-order-table .product-name {
+    text-align: left;
+}
+
+.bocs-order-table .product-price,
+.bocs-order-table .product-total,
+.bocs-order-table .product-tax,
+.bocs-order-table .shipping,
+.bocs-order-table .subtotal,
+.bocs-order-table .discount,
+.bocs-order-table .tax,
+.bocs-order-table .order-total {
+    text-align: right;
+}
+
+.bocs-order-table .product-quantity {
+    text-align: center;
+}
+
+.bocs-order-table .quantity-value {
+    color: #666;
+    font-weight: normal;
+}
+
+/* Spacing in footers */
+.bocs-order-table tfoot th {
+    text-align: right;
+    padding: 10px 20px 10px 10px;
+}
+
+.bocs-order-table tfoot td {
+    padding: 10px;
+}
+
+.bocs-order-table .bocs-total-row th,
+.bocs-order-table .bocs-total-row td {
+    border-top: 2px solid var(--bocs-border);
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+@media (max-width: 767px) {
+    .bocs-order-table th,
+    .bocs-order-table td {
+        padding: 12px 8px;
+    }
+    
+    .product-thumbnail {
+        max-width: 40px;
+        max-height: 40px;
+        margin-right: 8px;
+    }
+    
+    .bocs-order-table thead th {
+        font-size: 0.85em;
+    }
+    
+    .quantity-value {
+        white-space: nowrap;
+    }
+    
+    .product-discount {
+        font-size: 80%;
     }
 }

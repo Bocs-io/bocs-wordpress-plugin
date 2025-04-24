@@ -371,7 +371,8 @@
                             id: item.productId,
                             name: item.name || '',
                             quantity: parseInt(item.quantity) || 0,
-                            price: parseFloat(item.price) || 0
+                            price: parseFloat(item.price) || 0,
+                            externalSourceId: item.externalSourceId || ''
                         };
                     }
                 });
@@ -407,17 +408,25 @@
             // Map products to subscription items and display
             $.each(productsToShow, function(index, product) {
                 var quantity = 0;
+                var externalSourceId = '';
                 
                 // Check if this product is in the subscription using lineItems data
                 if (itemLookup[product.id]) {
                     quantity = itemLookup[product.id].quantity;
+                    externalSourceId = itemLookup[product.id].externalSourceId || '';
+                }
+                
+                // If we don't have an externalSourceId yet, try to get it from our mapping
+                if (!externalSourceId && window.bocsToWcProductMapping && window.bocsToWcProductMapping[product.id]) {
+                    externalSourceId = window.bocsToWcProductMapping[product.id];
+                    console.log('Using mapped WooCommerce ID for product: ' + product.id + ' -> ' + externalSourceId);
                 }
                 
                 var productImage = product.image || '';
                 var productName = product.name || 'Product ' + (index + 1);
                 var productPrice = product.price_html || '$0.00';
                 
-                html += '<div class="product-item" data-product-id="' + product.id + '">';
+                html += '<div class="product-item" data-product-id="' + product.id + '" data-external-source-id="' + externalSourceId + '">';
                 html += '<div class="product-image"><img src="' + productImage + '" alt="' + productName + '"></div>';
                 html += '<div class="product-details">';
                 html += '<h4>' + productName + '</h4>';
@@ -472,6 +481,13 @@
                     // Get the product ID
                     const productId = $item.data('product-id');
                     
+                    // Get the externalSourceId either from data attribute or from global mapping
+                    let externalSourceId = $item.data('external-source-id') || '';
+                    if (!externalSourceId && window.bocsToWcProductMapping && window.bocsToWcProductMapping[productId]) {
+                        externalSourceId = window.bocsToWcProductMapping[productId];
+                        console.log('Using mapped WooCommerce ID for product in update: ' + productId + ' -> ' + externalSourceId);
+                    }
+                    
                     // Get the price - either from data attribute or default to 45
                     const price = parseFloat($item.data('price') || 45);
                     
@@ -524,7 +540,7 @@
                         parentName: "", // Required field - empty string
                         variationId: "0", // Required field - set to "0"
                         sku: "", // Required field - empty string
-                        externalSourceId: $item.data('external-source-id') || "" // Include if available
+                        externalSourceId: externalSourceId // Include if available
                     });
                 }
             });
