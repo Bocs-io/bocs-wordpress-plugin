@@ -1,4 +1,4 @@
-v0.0.139 05/14/2025
+v0.0.139 04/23/2025
 * Feature: Added frequency discount display and improved data handling
 * Fix: Implemented API request loop detection and error handling
 * Style: Improved button loading states and subscription display 
