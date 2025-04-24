@@ -80,6 +80,13 @@ class BOCS_AJAX {
         // Add direct email fallback
         add_action('wp_ajax_bocs_direct_email_fallback', array($this, 'direct_email_fallback'));
         add_action('wp_ajax_nopriv_bocs_direct_email_fallback', array($this, 'must_login_first'));
+
+        // Add product mappings update
+        add_action('wp_ajax_bocs_update_product_mappings', array($this, 'update_product_mappings'));
+
+        // Admin AJAX actions
+        add_action('wp_ajax_bocs_add_product_mapping', array($this, 'add_product_mapping'));
+        add_action('wp_ajax_bocs_remove_product_mapping', array($this, 'remove_product_mapping'));
     }
 
     /**
@@ -1242,6 +1249,243 @@ class BOCS_AJAX {
             if (strpos($plugin, 'mail') !== false || strpos($plugin, 'smtp') !== false) {
                 // error_log('BOCS EMERGENCY MAIL: Possible mail plugin detected: ' . $plugin);
             }
+        }
+    }
+
+    /**
+     * Handle AJAX request to update subscription products
+     */
+    public function update_subscription_products() {
+        check_ajax_referer('bocs_ajax_nonce', 'nonce');
+        
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => __('You must be logged in to update your subscription.', 'bocs-wordpress')]);
+            return;
+        }
+        
+        $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
+        $products_json = isset($_POST['products']) ? sanitize_text_field($_POST['products']) : '';
+        
+        if (empty($subscription_id)) {
+            wp_send_json_error(['message' => __('Subscription ID is required.', 'bocs-wordpress')]);
+            return;
+        }
+        
+        if (empty($products_json)) {
+            wp_send_json_error(['message' => __('No products provided.', 'bocs-wordpress')]);
+            return;
+        }
+        
+        // Decode products JSON
+        $products = json_decode($products_json, true);
+        if (!$products || !is_array($products)) {
+            wp_send_json_error(['message' => __('Invalid products data.', 'bocs-wordpress')]);
+            return;
+        }
+        
+        // Log detailed DEBUG info to help debug issues
+        error_log('DETAILED DEBUG - Received product data: ' . $products_json);
+        
+        // Check if products have complete data (with all required fields)
+        $has_complete_data = true;
+        if (isset($products[0])) {
+            $required_fields = ['id', 'productId', 'quantity', 'name', 'price', 'subtotal', 'total', 'taxClass', 'taxes', 'totalTax', 'subtotalTax', 'metaData', 'parentName', 'variationId'];
+            foreach ($required_fields as $field) {
+                if (!isset($products[0][$field])) {
+                    $has_complete_data = false;
+                    break;
+                }
+            }
+        }
+        
+        error_log('DEBUG - Products have complete data: ' . ($has_complete_data ? 'Yes' : 'No'));
+        
+        // For now, just pass the products directly to the API
+        if ($has_complete_data) {
+            error_log('Using complete product data from frontend');
+            $api = new BOCS_API();
+            $response = $api->update_subscription_products($subscription_id, ['lineItems' => $products]);
+            
+            error_log('DEBUG - Complete update request data: ' . json_encode(['lineItems' => $products]));
+        } else {
+            error_log('Using simplified product data format');
+            $api = new BOCS_API();
+            $response = $api->update_subscription_products($subscription_id, $products);
+            
+            error_log('DEBUG - Simplified update request data: ' . json_encode($products));
+        }
+        
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            error_log('BOCS API Error: ' . $error_message);
+            wp_send_json_error(['message' => $error_message]);
+            return;
+        }
+        
+        // Check for API error
+        if (isset($response['code']) && $response['code'] != 200) {
+            $error_message = isset($response['message']) ? $response['message'] : 'Unknown API error';
+            error_log('BOCS API Error: ' . $error_message);
+            wp_send_json_error(['message' => $error_message]);
+            return;
+        }
+        
+        // Success
+        wp_send_json_success(['message' => __('Subscription products updated successfully.', 'bocs-wordpress')]);
+    }
+
+    /**
+     * AJAX handler for updating product mappings
+     * 
+     * Updates the product mapping option with mappings from the frontend
+     */
+    public function update_product_mappings() {
+        // Check nonce for security
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_update_mappings_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+        
+        // Check user permissions
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'You do not have permission to update product mappings']);
+            return;
+        }
+        
+        // Get mappings from request
+        if (!isset($_POST['mappings']) || empty($_POST['mappings'])) {
+            wp_send_json_error(['message' => 'No mappings provided']);
+            return;
+        }
+        
+        $mappings = json_decode(stripslashes($_POST['mappings']), true);
+        
+        if (!is_array($mappings)) {
+            wp_send_json_error(['message' => 'Invalid mappings format']);
+            return;
+        }
+        
+        // Clean up mappings - ensure all values are strings
+        $product_mapping = [];
+        foreach ($mappings as $bocs_id => $wc_id) {
+            if (!empty($bocs_id) && !empty($wc_id)) {
+                $product_mapping[$bocs_id] = (string)$wc_id;
+            }
+        }
+        
+        // Get existing mappings
+        $existing_mappings = get_option('bocs_product_mapping', []);
+        
+        // Merge with existing mappings (prioritize new mappings)
+        $updated_mappings = array_merge($existing_mappings, $product_mapping);
+        
+        // Save to options
+        $result = update_option('bocs_product_mapping', $updated_mappings);
+        
+        if ($result) {
+            // Log the update
+            error_log('BOCS: Updated product mappings. ' . count($product_mapping) . ' mappings processed.');
+            wp_send_json_success(['message' => 'Product mappings updated successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to update product mappings']);
+        }
+    }
+
+    /**
+     * AJAX handler for adding a product mapping in admin
+     */
+    public function add_product_mapping() {
+        // Check nonce for security
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_admin_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+        
+        // Check user permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'You do not have permission to manage product mappings']);
+            return;
+        }
+        
+        // Get mapping data
+        if (!isset($_POST['bocs_id']) || empty($_POST['bocs_id']) || !isset($_POST['wc_id']) || empty($_POST['wc_id'])) {
+            wp_send_json_error(['message' => 'Missing required fields']);
+            return;
+        }
+        
+        $bocs_id = sanitize_text_field($_POST['bocs_id']);
+        $wc_id = sanitize_text_field($_POST['wc_id']);
+        
+        // Validate WooCommerce product ID
+        $product = wc_get_product($wc_id);
+        if (!$product) {
+            wp_send_json_error(['message' => 'Invalid WooCommerce product ID']);
+            return;
+        }
+        
+        // Get existing mappings
+        $product_mapping = get_option('bocs_product_mapping', []);
+        
+        // Add new mapping
+        $product_mapping[$bocs_id] = (string)$wc_id;
+        
+        // Save to options
+        $result = update_option('bocs_product_mapping', $product_mapping);
+        
+        if ($result) {
+            // Log the update
+            error_log('BOCS Admin: Added product mapping ' . $bocs_id . ' -> ' . $wc_id);
+            wp_send_json_success(['message' => 'Product mapping added successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to add product mapping']);
+        }
+    }
+    
+    /**
+     * AJAX handler for removing a product mapping in admin
+     */
+    public function remove_product_mapping() {
+        // Check nonce for security
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs_admin_nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+        
+        // Check user permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'You do not have permission to manage product mappings']);
+            return;
+        }
+        
+        // Get BOCS ID to remove
+        if (!isset($_POST['bocs_id']) || empty($_POST['bocs_id'])) {
+            wp_send_json_error(['message' => 'Missing BOCS product ID']);
+            return;
+        }
+        
+        $bocs_id = sanitize_text_field($_POST['bocs_id']);
+        
+        // Get existing mappings
+        $product_mapping = get_option('bocs_product_mapping', []);
+        
+        // Check if mapping exists
+        if (!isset($product_mapping[$bocs_id])) {
+            wp_send_json_error(['message' => 'Mapping not found']);
+            return;
+        }
+        
+        // Remove mapping
+        unset($product_mapping[$bocs_id]);
+        
+        // Save to options
+        $result = update_option('bocs_product_mapping', $product_mapping);
+        
+        if ($result) {
+            // Log the update
+            error_log('BOCS Admin: Removed product mapping for ' . $bocs_id);
+            wp_send_json_success(['message' => 'Product mapping removed successfully']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to remove product mapping']);
         }
     }
 }
