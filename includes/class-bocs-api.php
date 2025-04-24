@@ -27,13 +27,29 @@ class BOCS_API {
         $options = get_option('bocs_plugin_options');
         $options['bocs_headers'] = $options['bocs_headers'] ?? array();
 
-        if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
-            $this->headers = [
-                'Organization' => $options['bocs_headers']['organization'] ?? '',
-                'Store' => $options['bocs_headers']['store'] ?? '',
-                'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-                'Content-Type' => 'application/json'
-            ];
+        $this->headers = [
+            'Content-Type' => 'application/json'
+        ];
+
+        if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store'])) {
+            $this->headers['Organization'] = $options['bocs_headers']['organization'];
+            $this->headers['Store'] = $options['bocs_headers']['store'];
+        }
+        
+        // Handle authorization
+        if (! empty($options['bocs_headers']['authorization'])) {
+            $auth_value = $options['bocs_headers']['authorization'];
+            
+            // If this is a pre-formatted AWS SigV4 header, use it directly
+            if (strpos($auth_value, 'Credential=') !== false && 
+                strpos($auth_value, 'SignedHeaders=') !== false && 
+                strpos($auth_value, 'Signature=') !== false) {
+                $this->headers['Authorization'] = $auth_value;
+            } 
+            // Otherwise use it as a simple authorization token
+            else {
+                $this->headers['Authorization'] = $auth_value;
+            }
         }
         
         // Initialize the helper
@@ -58,9 +74,55 @@ class BOCS_API {
      */
     public function update_subscription_products($subscription_id, $data) {
         // Log incoming data for debugging
-        $this->helper->log('Updating products for subscription: ' . $subscription_id, 'info');
-        $this->helper->log('Update data: ' . json_encode($data), 'info');
+        $this->helper->log('Starting subscription products update for subscription ID: ' . $subscription_id, 'info');
+        $this->helper->log('Incoming data: ' . json_encode($data), 'info');
+        
+        // Validate subscription ID
+        if (empty($subscription_id)) {
+            $this->helper->log('Invalid subscription ID provided', 'error');
+            return new WP_Error('invalid_subscription_id', 'Invalid subscription ID provided');
+        }
 
+        // Get current subscription first
+        $subscription = $this->get_subscription($subscription_id);
+        if (is_wp_error($subscription)) {
+            $this->helper->log('Error retrieving subscription: ' . $subscription->get_error_message(), 'error');
+            return $subscription;
+        }
+        
+        // Make the subscription data available globally for lookups
+        global $bocs_current_subscription;
+        $bocs_current_subscription = $subscription;
+        
+        // Get BOCS data if available
+        $bocs_id = '';
+        if (isset($subscription['bocs']['id']) && !empty($subscription['bocs']['id'])) {
+            $bocs_id = $subscription['bocs']['id'];
+        } else {
+            // Look for BOCS ID in metadata
+            if (isset($subscription['metaData']) && is_array($subscription['metaData'])) {
+                foreach ($subscription['metaData'] as $meta) {
+                    if (isset($meta['key']) && ($meta['key'] === '_bocs_id' || $meta['key'] === '__bocs_bocs_id')) {
+                        $bocs_id = $meta['value'];
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // If we have a BOCS ID, get the BOCS data for direct product lookups
+        if (!empty($bocs_id)) {
+            $bocs_data = $this->get_bocs_products($bocs_id);
+            if (!is_wp_error($bocs_data)) {
+                // Store BOCS data in global for lookups
+                global $bocs_current_data;
+                $bocs_current_data = $bocs_data;
+                $this->helper->log('BOCS data retrieved and stored for product lookups', 'info');
+            } else {
+                $this->helper->log('Could not retrieve BOCS data: ' . $bocs_data->get_error_message(), 'warning');
+            }
+        }
+        
         // Get current subscription to have the latest data
         $current_sub = $this->get_subscription($subscription_id);
         if (is_wp_error($current_sub)) {
@@ -173,6 +235,14 @@ class BOCS_API {
                 continue;
             }
 
+            // Debug log for received externalSourceId values
+            if (isset($item['externalSourceId'])) {
+                $ext_id_value = empty($item['externalSourceId']) ? 'empty string' : $item['externalSourceId'];
+                $this->helper->log("Item {$product_id} received with externalSourceId: {$ext_id_value}", 'info');
+            } else {
+                $this->helper->log("Item {$product_id} has no externalSourceId field", 'info');
+            }
+
             // Initialize line item with required fields
             $line_item = [
                 'productId' => $product_id,
@@ -192,10 +262,49 @@ class BOCS_API {
                     $line_item['price'] = 0;
                 }
 
+                // Ensure externalSourceId is preserved
+                if (isset($existing_item['externalSourceId']) && !empty($existing_item['externalSourceId'])) {
+                    $line_item['externalSourceId'] = (string)$existing_item['externalSourceId'];
+                    $this->helper->log('Preserved externalSourceId for product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
+                } elseif (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                    $line_item['externalSourceId'] = (string)$item['externalSourceId'];
+                    $this->helper->log('Using provided externalSourceId for product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
+                } else {
+                    // First check in BOCS products data - this is the most direct source
+                    global $bocs_current_data;
+                    if (isset($bocs_current_data) && !empty($bocs_current_data['data']) && !empty($bocs_current_data['data']['products'])) {
+                        $products = $bocs_current_data['data']['products'];
+                        foreach ($products as $bocs_product) {
+                            if (isset($bocs_product['id']) && $bocs_product['id'] === $product_id) {
+                                if (isset($bocs_product['externalSourceId']) && !empty($bocs_product['externalSourceId'])) {
+                                    $line_item['externalSourceId'] = (string)$bocs_product['externalSourceId'];
+                                    $this->helper->log('Found externalSourceId in BOCS products data: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
+                                    
+                                    // Save this mapping for future reference
+                                    $this->save_product_mapping($product_id, $line_item['externalSourceId']);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If still not found, use our lookup function
+                    if (!isset($line_item['externalSourceId']) || empty($line_item['externalSourceId'])) {
+                        $wc_product_id = $this->get_wc_product_id_from_bocs_id($product_id);
+                        if ($wc_product_id) {
+                            $line_item['externalSourceId'] = (string)$wc_product_id;
+                            $this->helper->log('Found WooCommerce product ID for product: ' . $product_id . ' -> ' . $wc_product_id, 'info');
+                        } else {
+                            $line_item['externalSourceId'] = '';
+                            $this->helper->log('WARNING: Could not find WooCommerce product ID for product: ' . $product_id, 'warning');
+                        }
+                    }
+                }
+
                 // Copy other fields if available
                 $copy_fields = [
                     'name', 'sku', 'taxes', 'metaData', 'taxClass', 'parentName', 
-                    'variationId', 'externalSourceId', 'totalTax', 'subtotalTax'
+                    'variationId', 'totalTax', 'subtotalTax'
                 ];
                 
                 foreach ($copy_fields as $field) {
@@ -209,6 +318,42 @@ class BOCS_API {
                     $line_item['price'] = floatval($item['price']);
                 } else {
                     $line_item['price'] = 0;
+                }
+                
+                // Make sure we set externalSourceId if available in the input data
+                if (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                    $line_item['externalSourceId'] = (string)$item['externalSourceId'];
+                    $this->helper->log('Using provided externalSourceId for new product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
+                } else {
+                    // First check in BOCS products data - this is the most direct source
+                    global $bocs_current_data;
+                    if (isset($bocs_current_data) && !empty($bocs_current_data['data']) && !empty($bocs_current_data['data']['products'])) {
+                        $products = $bocs_current_data['data']['products'];
+                        foreach ($products as $bocs_product) {
+                            if (isset($bocs_product['id']) && $bocs_product['id'] === $product_id) {
+                                if (isset($bocs_product['externalSourceId']) && !empty($bocs_product['externalSourceId'])) {
+                                    $line_item['externalSourceId'] = (string)$bocs_product['externalSourceId'];
+                                    $this->helper->log('Found externalSourceId in BOCS products data: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
+                                    
+                                    // Save this mapping for future reference
+                                    $this->save_product_mapping($product_id, $line_item['externalSourceId']);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If still not found, use our lookup function
+                    if (!isset($line_item['externalSourceId']) || empty($line_item['externalSourceId'])) {
+                        $wc_product_id = $this->get_wc_product_id_from_bocs_id($product_id);
+                        if ($wc_product_id) {
+                            $line_item['externalSourceId'] = (string)$wc_product_id;
+                            $this->helper->log('Found WooCommerce product ID for new product: ' . $product_id . ' -> ' . $wc_product_id, 'info');
+                        } else {
+                            $line_item['externalSourceId'] = '';
+                            $this->helper->log('WARNING: Could not find WooCommerce product ID for new product: ' . $product_id, 'warning');
+                        }
+                    }
                 }
                 
                 // Set name if provided
@@ -297,81 +442,108 @@ class BOCS_API {
         // Calculate final total
         $final_total = $subtotal - $discount_total + $total_tax + $shipping_total + $shipping_tax;
 
-        // Prepare request data
-        $request_data = [
-            'lineItems' => $line_items,
-            'subtotal' => round($subtotal, 2),
-            'total' => round($final_total, 2),
-            'totalTax' => round($total_tax + $shipping_tax, 2)
-        ];
-
-        // Add discount fields if there's a discount
-        if ($has_discount) {
-            $request_data['discountTotal'] = round($discount_total, 2);
-            $request_data['discountTax'] = round($discount_tax, 2);
-            $request_data['couponLines'] = $coupon_lines;
+        // Build request with essential data from current subscription
+        $request_data = [];
+        
+        // Always start with what was provided in the data
+        if (is_array($data)) {
+            $request_data = $data;
         }
-
-        // Add shipping fields if there's shipping
+        
+        // Preserve essential fields from the current subscription
+        $essential_fields = [];
+        
+        foreach ($essential_fields as $field) {
+            if (!isset($request_data[$field]) && isset($current_data[$field])) {
+                $request_data[$field] = $current_data[$field];
+                $this->helper->log('Added field to request data: ' . $field, 'info');
+            }
+        }
+        
+        // Ensure we have properly formatted lineItems
+        $request_data['lineItems'] = $line_items;
+        
+        // Calculate total
+        $total = $subtotal - $discount_total + $shipping_total;
+        $request_data['total'] = $total;
+        $request_data['subtotal'] = $subtotal;
+        
         if ($shipping_total > 0) {
-            $request_data['shippingTotal'] = round($shipping_total, 2);
-            $request_data['shippingTax'] = round($shipping_tax, 2);
+            $request_data['shippingTotal'] = $shipping_total;
         }
-
-        // Add cart tax
-        $request_data['cartTax'] = round($total_tax, 2);
-
-        // Add frequency fields if provided
-        if (isset($data['frequency'])) {
-            $request_data['frequency'] = $data['frequency'];
-            
-            // Add billing fields if not already provided
-            if (isset($data['frequency']['frequency']) && !isset($data['billingInterval'])) {
-                $request_data['billingInterval'] = $data['frequency']['frequency'];
-            }
-            
-            if (isset($data['frequency']['timeUnit']) && !isset($data['billingPeriod'])) {
-                $request_data['billingPeriod'] = strtolower($data['frequency']['timeUnit']);
+        
+        if ($total_tax > 0) {
+            $request_data['totalTax'] = $total_tax + $shipping_tax;
+        }
+        
+        if ($has_discount) {
+            $request_data['discountTotal'] = $discount_total;
+            if (!empty($coupon_lines)) {
+                $request_data['couponLines'] = $coupon_lines;
             }
         }
-
-        // Add additional fields if provided
-        $extra_fields = [
-            'billingInterval', 'billingPeriod', 'bocsId', 
-            'frequencyId', 'dateCreated', 'dateModified'
+        
+        // Log request data for debugging
+        $this->helper->log('Request data: ' . json_encode($request_data), 'info');
+        
+        // Make API request - use the main subscription endpoint (full URL for clarity)
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        $this->helper->log('Using subscription endpoint: ' . $url, 'info');
+        
+        $curl = new Curl();
+        
+        // Create a request with ONLY the line items field
+        $api_request = [
+            'lineItems' => []
         ];
         
-        foreach ($extra_fields as $field) {
-            if (isset($data[$field])) {
-                $request_data[$field] = $data[$field];
+        // Extract only the required fields from each line item
+        foreach ($line_items as $item) {
+            $simplified_item = [
+                'productId' => $item['productId'],
+                'quantity' => $item['quantity']
+            ];
+            
+            // Add external source ID if available (very important!)
+            if (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                $simplified_item['externalSourceId'] = (string)$item['externalSourceId'];
             }
+            
+            $api_request['lineItems'][] = $simplified_item;
         }
-
-        // Log the request data
-        $this->helper->log('Prepared subscription update data: ' . json_encode($request_data), 'info');
-
-        // Make the request to update the subscription
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
         
-        $this->helper->log('Making PUT request to: ' . $url, 'info');
+        // Include shipping item if available in the same simplified format
+        if ($shipping_item) {
+            $shipping = [
+                'productId' => 'shipping',
+                'quantity' => 1
+            ];
+            
+            if (isset($shipping_item['price'])) {
+                $shipping['price'] = floatval($shipping_item['price']);
+            }
+            
+            $api_request['lineItems'][] = $shipping;
+        }
         
-        $response = $this->helper->curl_request($url, 'PUT', $request_data, $this->headers);
+        $this->helper->log('Simplified API request data: ' . json_encode($api_request), 'info');
         
-        // Handle the response
+        // Make the API request with the simplified data
+        $response = $curl->put($url, $api_request, 'subscriptions', $subscription_id);
+        
         if (is_wp_error($response)) {
-            $this->helper->log('Error updating subscription: ' . $response->get_error_message(), 'error');
+            $this->helper->log('API request failed: ' . $response->get_error_message(), 'error');
             return $response;
         }
-
-        // Check for success
-        if (isset($response['code']) && $response['code'] === 200) {
-            $this->helper->log('Successfully updated subscription products', 'info');
-            return $response;
-        } else {
-            $error_message = isset($response['message']) ? $response['message'] : 'Failed to update subscription';
-            $this->helper->log('API error: ' . $error_message, 'error');
-            return new WP_Error('api_error', $error_message);
+        
+        // Check for error in response
+        if (isset($response->error) && $response->error === true) {
+            $this->helper->log('API returned error: ' . ($response->message ?? 'Unknown error'), 'error');
+            return new WP_Error('api_error', $response->message ?? 'Unknown API error');
         }
+        
+        $this->helper->log('Subscription products updated successfully', 'info');
+        return $response;
     }
 
     /**
@@ -516,12 +688,20 @@ class BOCS_API {
             error_log('BOCS API Notice - No products found for BOCS ID: ' . $bocs_id);
         } else {
             error_log('BOCS API Success - Found ' . count($data['data']['products']) . ' products');
+            
+            // Check for externalSourceId in products and log a warning if missing
+            foreach ($data['data']['products'] as $product) {
+                if (!isset($product['externalSourceId']) || empty($product['externalSourceId'])) {
+                    error_log('BOCS API Warning - Product missing externalSourceId: ' . json_encode($product));
+                }
+            }
         }
 
-        // Format the products data for the frontend
-        $products = array_map(function($product) {
+        // Format the products data for frontend while preserving the original data
+        $formatted_products = array_map(function($product) {
             return array(
-                'id' => $product['externalSourceId'],
+                'id' => $product['id'],
+                'externalSourceId' => isset($product['externalSourceId']) ? $product['externalSourceId'] : '',
                 'name' => $product['name'],
                 'price' => $product['price'],
                 'max_quantity' => $product['stockQuantity'],
@@ -531,12 +711,197 @@ class BOCS_API {
             );
         }, $data['data']['products']);
 
-        error_log('BOCS API - Formatted ' . count($products) . ' products for frontend');
+        error_log('BOCS API - Formatted ' . count($formatted_products) . ' products for frontend');
 
-        return array(
-            'code' => $data['code'],
-            'message' => $data['message'],
-            'data' => $products
-        );
+        // Return both the raw data and formatted products
+        return $data;
+    }
+
+    /**
+     * Helper method to get WooCommerce product ID from BOCS product ID
+     * 
+     * @param string $bocs_product_id The BOCS product ID
+     * @return string|null WooCommerce product ID or null if not found
+     */
+    private function get_wc_product_id_from_bocs_id($bocs_product_id) {
+        if (empty($bocs_product_id)) {
+            $this->helper->log("Empty BOCS product ID provided to lookup function", 'warning');
+            return null;
+        }
+
+        $this->helper->log("Looking up WooCommerce product ID for BOCS product: " . $bocs_product_id, 'info');
+        
+        // STEP 1: Check if we already have the BOCS data in the current request context
+        global $bocs_current_data;
+        if (isset($bocs_current_data)) {
+            // Try to find the product in different possible structures
+            
+            // Check in data.products (from API response)
+            if (isset($bocs_current_data['data']) && isset($bocs_current_data['data']['products'])) {
+                foreach ($bocs_current_data['data']['products'] as $product) {
+                    if (isset($product['id']) && $product['id'] === $bocs_product_id && 
+                        isset($product['externalSourceId']) && !empty($product['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in BOCS data.products: " . $product['externalSourceId'], 'info');
+                        return (string)$product['externalSourceId'];
+                    }
+                }
+            }
+            
+            // Check in products (older format or already processed data)
+            if (isset($bocs_current_data['products'])) {
+                foreach ($bocs_current_data['products'] as $product) {
+                    if (isset($product['id']) && $product['id'] === $bocs_product_id && 
+                        isset($product['externalSourceId']) && !empty($product['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in BOCS products: " . $product['externalSourceId'], 'info');
+                        return (string)$product['externalSourceId'];
+                    }
+                }
+            }
+        }
+        
+        // STEP 2: Check if this ID is in a current subscription's line items
+        global $bocs_current_subscription;
+        if (isset($bocs_current_subscription)) {
+            // Check multiple possible places where line items might be stored
+            
+            // Check in top level of subscription
+            if (isset($bocs_current_subscription['lineItems'])) {
+                foreach ($bocs_current_subscription['lineItems'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $bocs_product_id && 
+                        isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in subscription lineItems: " . $item['externalSourceId'], 'info');
+                        return (string)$item['externalSourceId'];
+                    }
+                }
+            }
+            
+            // Check in data.lineItems (API nested response)
+            if (isset($bocs_current_subscription['data']) && isset($bocs_current_subscription['data']['lineItems'])) {
+                foreach ($bocs_current_subscription['data']['lineItems'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $bocs_product_id && 
+                        isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in subscription data.lineItems: " . $item['externalSourceId'], 'info');
+                        return (string)$item['externalSourceId'];
+                    }
+                }
+            }
+            
+            // Check for legacy format (line_items)
+            if (isset($bocs_current_subscription['line_items'])) {
+                foreach ($bocs_current_subscription['line_items'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $bocs_product_id && 
+                        isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in subscription line_items: " . $item['externalSourceId'], 'info');
+                        return (string)$item['externalSourceId'];
+                    }
+                }
+            }
+            
+            // Also check data.line_items (legacy + nested)
+            if (isset($bocs_current_subscription['data']) && isset($bocs_current_subscription['data']['line_items'])) {
+                foreach ($bocs_current_subscription['data']['line_items'] as $item) {
+                    if (isset($item['productId']) && $item['productId'] === $bocs_product_id && 
+                        isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
+                        $this->helper->log("Found WC product ID in subscription data.line_items: " . $item['externalSourceId'], 'info');
+                        return (string)$item['externalSourceId'];
+                    }
+                }
+            }
+        }
+        
+        // STEP 3: Check in saved mappings as fallback
+        $product_mapping = get_option('bocs_product_mapping', []);
+        if (is_array($product_mapping) && isset($product_mapping[$bocs_product_id])) {
+            $wc_product_id = $product_mapping[$bocs_product_id];
+            $this->helper->log("Found WC product ID in saved mapping: " . $wc_product_id, 'info');
+            return (string)$wc_product_id;
+        }
+        
+        // STEP 4: Check global mapping if available
+        global $bocs_product_mapping;
+        if (isset($bocs_product_mapping) && is_array($bocs_product_mapping) && isset($bocs_product_mapping[$bocs_product_id])) {
+            $wc_product_id = $bocs_product_mapping[$bocs_product_id];
+            $this->helper->log("Found WC product ID in global mapping: " . $wc_product_id, 'info');
+            return (string)$wc_product_id;
+        }
+        
+        // STEP 5: Check if the BOCS ID is actually a SKU that matches a WooCommerce product
+        global $wpdb;
+        $wc_product_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM $wpdb->postmeta 
+            WHERE meta_key = '_sku' AND meta_value = %s 
+            LIMIT 1",
+            $bocs_product_id
+        ));
+        
+        if ($wc_product_id) {
+            $this->helper->log("Found WC product ID by SKU lookup: " . $wc_product_id, 'info');
+            
+            // Save for future reference
+            $this->save_product_mapping($bocs_product_id, $wc_product_id);
+            
+            return (string)$wc_product_id;
+        }
+        
+        // STEP 6: Check if this BOCS ID is stored in product meta
+        $wc_product_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT post_id FROM $wpdb->postmeta 
+            WHERE meta_key = '_bocs_product_id' AND meta_value = %s 
+            LIMIT 1",
+            $bocs_product_id
+        ));
+        
+        if ($wc_product_id) {
+            $this->helper->log("Found WC product ID by _bocs_product_id meta: " . $wc_product_id, 'info');
+            
+            // Save for future reference
+            $this->save_product_mapping($bocs_product_id, $wc_product_id);
+            
+            return (string)$wc_product_id;
+        }
+        
+        // STEP 7: If ID is numeric, it might already be a WooCommerce product ID
+        if (is_numeric($bocs_product_id)) {
+            $product = wc_get_product($bocs_product_id);
+            if ($product) {
+                $this->helper->log("BOCS product ID appears to already be a valid WooCommerce product ID", 'info');
+                return (string)$bocs_product_id;
+            }
+        }
+        
+        $this->helper->log("Could not find a WooCommerce product ID for BOCS product: " . $bocs_product_id, 'warning');
+        return '';
+    }
+    
+    /**
+     * Get product name from BOCS ID if possible
+     * 
+     * @param string $bocs_product_id The BOCS product ID
+     * @return string|null The product name if found, null otherwise
+     */
+    private function get_product_name_from_bocs_id($bocs_product_id) {
+        // Check if we have this product in the current request context
+        global $bocs_current_subscription;
+        if (isset($bocs_current_subscription) && !empty($bocs_current_subscription['lineItems'])) {
+            foreach ($bocs_current_subscription['lineItems'] as $item) {
+                if (isset($item['productId']) && $item['productId'] === $bocs_product_id) {
+                    return $item['name'] ?? null;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Save product mapping for future use
+     * 
+     * @param string $bocs_product_id The BOCS product ID
+     * @param string $wc_product_id The WooCommerce product ID
+     */
+    private function save_product_mapping($bocs_product_id, $wc_product_id) {
+        $product_mapping = get_option('bocs_product_mapping', []);
+        $product_mapping[$bocs_product_id] = (string)$wc_product_id;
+        update_option('bocs_product_mapping', $product_mapping);
     }
 } 
