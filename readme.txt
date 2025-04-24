@@ -1,3 +1,13 @@
+v0.0.140 04/24/2025
+* Feature: Added developer mode with cache management tooling
+* Feature: Implemented product mapping and enhanced admin settings panel
+* Feature: Improved user account management and subscription handling
+* Feature: Enhanced subscription management interface with better UI/UX
+* Feature: Improved edit details page with better product selection experience
+* Refactor: Enhanced AJAX handlers and request management
+* Fix: Updated email footer template for better compatibility
+* Chore: Organized code structure and improved documentation
+
 v0.0.139 04/23/2025
 * Feature: Added frequency discount display and improved data handling
 * Fix: Implemented API request loop detection and error handling
