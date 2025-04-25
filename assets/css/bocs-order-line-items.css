@@ -1,0 +1,240 @@
+/**
+ * BOCS Order Line Items Component Styling
+ * 
+ * Styles for the reusable order line items component
+ */
+
+/* Order Details Container */
+.bocs-order-details {
+    margin-top: 2rem;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.bocs-order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.bocs-order-header h4 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #333333;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.bocs-order-header .pay-now {
+    background-color: #4CAF50;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.tax-notice {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Order Table */
+.bocs-order-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+/* Table Headers */
+.bocs-order-table th,
+.bocs-order-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.bocs-order-table thead {
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.bocs-order-table tbody tr:last-child td {
+    border-bottom: 2px solid #e5e5e5;
+}
+
+.bocs-order-table .text-center {
+    text-align: center;
+}
+
+.bocs-order-table .text-right {
+    text-align: right;
+}
+
+/* Product name column styling */
+.bocs-order-table .product-name {
+    font-weight: 500;
+}
+
+.bocs-order-table .product-meta {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 3px;
+}
+
+.bocs-order-table .meta-item {
+    margin-bottom: 2px;
+}
+
+.bocs-order-table .meta-key {
+    font-weight: 600;
+}
+
+/* Footer styling */
+.bocs-order-table tfoot {
+    background-color: #f8f8f8;
+}
+
+.bocs-order-table tfoot th {
+    font-weight: 600;
+    text-align: right;
+}
+
+.bocs-order-table tfoot td {
+    font-weight: 500;
+}
+
+/* Specific row styling */
+.bocs-order-table .bocs-subtotal-row {
+    background-color: #f8f8f8;
+}
+
+.bocs-order-table .bocs-discount-row {
+    color: #d63638;
+    background-color: #fff8f7;
+}
+
+.bocs-order-table .bocs-discount-row th,
+.bocs-order-table .bocs-discount-row td {
+    border-bottom-color: #ffdfdf;
+}
+
+.bocs-order-table .bocs-shipping-row {
+    background-color: #f8f8f8;
+}
+
+.bocs-order-table .bocs-tax-row {
+    background-color: #f7f7f7;
+}
+
+.bocs-order-table .bocs-total-row {
+    background-color: #efefef;
+    font-weight: 600;
+}
+
+.bocs-order-table .bocs-total-row th,
+.bocs-order-table .bocs-total-row td {
+    border-bottom: none;
+    font-size: 1.1em;
+}
+
+.bocs-order-table .bocs-final-total-row {
+    background-color: #e6f3ff;
+    font-weight: 700;
+}
+
+.bocs-order-table .bocs-final-total-row th,
+.bocs-order-table .bocs-final-total-row td {
+    border-bottom: none;
+    font-size: 1.1em;
+    color: #1e73be;
+}
+
+/* Small note styling */
+.bocs-order-table small {
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 400;
+}
+
+.bocs-order-table .includes-tax {
+    font-size: 0.85em;
+    color: #1e73be;
+    font-weight: normal;
+}
+
+/* Responsive Styling for Mobile */
+@media screen and (max-width: 767px) {
+    .bocs-order-table {
+        border: 0;
+        box-shadow: none;
+    }
+    
+    .bocs-order-table thead {
+        display: none;
+    }
+    
+    .bocs-order-table tr {
+        display: block;
+        margin-bottom: 15px;
+        border: 1px solid #e5e5e5;
+        border-radius: 3px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .bocs-order-table td {
+        display: block;
+        text-align: right;
+        border-bottom: 1px solid #e5e5e5;
+        position: relative;
+        padding-left: 50%;
+    }
+    
+    .bocs-order-table td:before {
+        content: attr(data-title);
+        position: absolute;
+        left: 15px;
+        font-weight: 600;
+    }
+    
+    .bocs-order-table td:last-child {
+        border-bottom: 0;
+    }
+    
+    .bocs-order-table tfoot tr {
+        margin-bottom: 5px;
+    }
+    
+    .bocs-order-table tfoot th {
+        display: none;
+    }
+    
+    .bocs-order-table tfoot td {
+        text-align: center;
+        padding: 10px;
+    }
+    
+    .bocs-order-table .bocs-total-row td {
+        background-color: #efefef;
+        font-weight: 700;
+    }
+    
+    .bocs-order-table .bocs-final-total-row td {
+        background-color: #e6f3ff;
+    }
+} 

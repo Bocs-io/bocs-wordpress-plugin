@@ -79,6 +79,10 @@ class Bocs_Account
         add_action('wp_ajax_bocs_update_subscription', array($this, 'ajax_update_subscription'));
         add_action('wp_ajax_bocs_get_box_products', array($this, 'ajax_get_box_products'));
         add_action('wp_ajax_bocs_update_subscription_products', array($this, 'ajax_update_subscription_products'));
+        
+        // Line items AJAX handlers
+        add_action('wp_ajax_bocs_get_subscription_line_items', array($this, 'ajax_get_subscription_line_items'));
+        add_action('wp_ajax_bocs_get_subscription_line_items_data', array($this, 'ajax_get_subscription_line_items_data'));
     }
 
     /**
@@ -1890,5 +1894,281 @@ class Bocs_Account
         
         // Fallback default name
         return 'Product';
+    }
+
+    /**
+     * AJAX handler for getting subscription line items HTML
+     * 
+     * Returns the HTML for the subscription line items component
+     * for dynamic updates in the frontend
+     */
+    public function ajax_get_subscription_line_items() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs-ajax-nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'You must be logged in to perform this action']);
+            return;
+        }
+        
+        // Check if subscription ID is provided
+        if (!isset($_POST['subscription_id']) || empty($_POST['subscription_id'])) {
+            wp_send_json_error(['message' => 'No subscription ID provided']);
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        
+        // Get the subscription data
+        $subscription_data = $this->get_subscription_data($subscription_id);
+        
+        if (is_wp_error($subscription_data)) {
+            wp_send_json_error(['message' => $subscription_data->get_error_message()]);
+            return;
+        }
+        
+        // Extract line items and totals
+        $items = isset($subscription_data['items']) ? $subscription_data['items'] : [];
+        $subtotal = isset($subscription_data['subtotal']) ? $subscription_data['subtotal'] : 0;
+        $discount = isset($subscription_data['discount']) ? $subscription_data['discount'] : 0;
+        $shipping = isset($subscription_data['shipping']) ? $subscription_data['shipping'] : 0;
+        $tax = isset($subscription_data['tax']) ? $subscription_data['tax'] : 0;
+        $total = isset($subscription_data['total']) ? $subscription_data['total'] : 0;
+        $coupon_lines = isset($subscription_data['couponLines']) ? $subscription_data['couponLines'] : [];
+        
+        // Set unique component ID
+        $component_id = 'bocs-order-items-' . uniqid();
+        
+        // Load the component template
+        ob_start();
+        
+        // Include the component template
+        include $this->get_template_path('components/order-line-items.php');
+        
+        $html = ob_get_clean();
+        
+        // Return the HTML
+        wp_send_json_success(['html' => $html]);
+    }
+    
+    /**
+     * AJAX handler for getting subscription line items data
+     * 
+     * Returns the raw data for subscription line items
+     * for processing in the frontend
+     */
+    public function ajax_get_subscription_line_items_data() {
+        // Check nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'bocs-ajax-nonce')) {
+            wp_send_json_error(['message' => 'Invalid security token']);
+            return;
+        }
+        
+        // Check if user is logged in
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'You must be logged in to perform this action']);
+            return;
+        }
+        
+        // Check if subscription ID is provided
+        if (!isset($_POST['subscription_id']) || empty($_POST['subscription_id'])) {
+            wp_send_json_error(['message' => 'No subscription ID provided']);
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        
+        // Get the subscription data
+        $subscription_data = $this->get_subscription_data($subscription_id);
+        
+        if (is_wp_error($subscription_data)) {
+            wp_send_json_error(['message' => $subscription_data->get_error_message()]);
+            return;
+        }
+        
+        // Extract line items and totals data
+        $data = [
+            'items' => isset($subscription_data['items']) ? $subscription_data['items'] : [],
+            'subtotal' => isset($subscription_data['subtotal']) ? $subscription_data['subtotal'] : 0,
+            'discount' => isset($subscription_data['discount']) ? $subscription_data['discount'] : 0,
+            'shipping' => isset($subscription_data['shipping']) ? $subscription_data['shipping'] : 0,
+            'tax' => isset($subscription_data['tax']) ? $subscription_data['tax'] : 0,
+            'total' => isset($subscription_data['total']) ? $subscription_data['total'] : 0,
+            'coupon_lines' => isset($subscription_data['couponLines']) ? $subscription_data['couponLines'] : [],
+        ];
+        
+        // Return the data
+        wp_send_json_success($data);
+    }
+    
+    /**
+     * Get subscription data including line items
+     * 
+     * @param string $subscription_id The subscription ID
+     * @return array|WP_Error Subscription data or error
+     */
+    private function get_subscription_data($subscription_id) {
+        // Get the BOCS subscription
+        $url = BOCS_API_URL . 'subscriptions/' . urlencode($subscription_id);
+        $helper = new Bocs_Helper();
+        $response = $helper->curl_request($url, 'GET', [], $this->headers);
+        
+        if (is_wp_error($response)) {
+            return $response;
+        }
+        
+        if (!isset($response['data']) || empty($response['data'])) {
+            return new WP_Error('no_subscription', 'Subscription not found');
+        }
+        
+        $subscription = $response['data'];
+        
+        // Start preparing the data for return
+        $data = [];
+        
+        // Get the line items
+        $data['items'] = isset($subscription['lineItems']) ? $subscription['lineItems'] : [];
+        
+        // Check if product names or prices are empty and get BOCS data if needed
+        $need_bocs_data = false;
+        if (!empty($data['items'])) {
+            foreach ($data['items'] as $item) {
+                if (empty($item['name']) || empty($item['price']) || $item['price'] == 0) {
+                    $need_bocs_data = true;
+                    break;
+                }
+            }
+            
+            // Log whether we need to retrieve BOCS data
+            if (function_exists('bocs_log')) {
+                bocs_log('Checking for missing product info in subscription: ' . $subscription_id, 'debug', [
+                    'need_bocs_data' => $need_bocs_data ? 'Yes' : 'No',
+                    'has_bocs_id' => isset($subscription['bocs']['id']) ? 'Yes' : 'No',
+                    'bocs_id' => isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : 'None'
+                ]);
+            }
+            
+            // If we need BOCS data and we have a BOCS ID, fetch it
+            if ($need_bocs_data && isset($subscription['bocs']['id']) && !empty($subscription['bocs']['id'])) {
+                $bocs_id = $subscription['bocs']['id'];
+                $bocs_url = BOCS_API_URL . 'bocs/' . urlencode($bocs_id);
+                
+                if (function_exists('bocs_log')) {
+                    bocs_log('Fetching BOCS details for ID: ' . $bocs_id, 'debug');
+                }
+                
+                $bocs_response = $helper->curl_request($bocs_url, 'GET', [], $this->headers);
+                
+                if (is_wp_error($bocs_response)) {
+                    if (function_exists('bocs_log')) {
+                        bocs_log('Error fetching BOCS details', 'error', [
+                            'message' => $bocs_response->get_error_message()
+                        ]);
+                    }
+                } elseif (!isset($bocs_response['data']['products']) || empty($bocs_response['data']['products'])) {
+                    if (function_exists('bocs_log')) {
+                        bocs_log('No products found in BOCS response', 'warning');
+                    }
+                } else {
+                    if (function_exists('bocs_log')) {
+                        bocs_log('BOCS data received', 'debug', [
+                            'bocs_name' => isset($bocs_response['data']['name']) ? $bocs_response['data']['name'] : 'Unknown',
+                            'product_count' => count($bocs_response['data']['products'])
+                        ]);
+                    }
+                    
+                    // Create a map of product IDs to product details for quick lookup
+                    $bocs_products = [];
+                    foreach ($bocs_response['data']['products'] as $product) {
+                        if (isset($product['id'])) {
+                            $bocs_products[$product['id']] = $product;
+                        }
+                    }
+                    
+                    if (function_exists('bocs_log')) {
+                        bocs_log('Created product ID mapping', 'debug', [
+                            'product_id_count' => count($bocs_products)
+                        ]);
+                    }
+                    
+                    // Update line items with product details from BOCS
+                    $updated_count = 0;
+                    foreach ($data['items'] as &$item) {
+                        if (isset($item['productId']) && isset($bocs_products[$item['productId']])) {
+                            $bocs_product = $bocs_products[$item['productId']];
+                            $item_updated = false;
+                            
+                            // Update name if empty
+                            if (empty($item['name'])) {
+                                $item['name'] = $bocs_product['name'];
+                                $item_updated = true;
+                            }
+                            
+                            // Update price if empty or zero
+                            if (empty($item['price']) || $item['price'] == 0) {
+                                $item['price'] = $bocs_product['price'];
+                                
+                                // Also update total based on quantity and price
+                                $quantity = isset($item['quantity']) ? (int)$item['quantity'] : 1;
+                                $item['total'] = $bocs_product['price'] * $quantity;
+                                $item['subtotal'] = $bocs_product['price'] * $quantity;
+                                $item_updated = true;
+                            }
+                            
+                            if ($item_updated) {
+                                $updated_count++;
+                            }
+                        }
+                    }
+                    
+                    if (function_exists('bocs_log')) {
+                        bocs_log('Updated line items with BOCS product data', 'debug', [
+                            'updated_count' => $updated_count,
+                            'total_items' => count($data['items'])
+                        ]);
+                    }
+                }
+            }
+        }
+        
+        // Calculate the subtotal
+        $subtotal = 0;
+        if (!empty($data['items'])) {
+            foreach ($data['items'] as $item) {
+                $price = isset($item['price']) ? (float)$item['price'] : 0;
+                $quantity = isset($item['quantity']) ? (int)$item['quantity'] : 1;
+                $subtotal += $price * $quantity;
+            }
+        }
+        $data['subtotal'] = $subtotal;
+        
+        // Get discount
+        $discount = 0;
+        if (isset($subscription['couponLines']) && is_array($subscription['couponLines'])) {
+            $coupon_lines = $subscription['couponLines'];
+            $data['couponLines'] = $coupon_lines;
+            
+            foreach ($coupon_lines as $coupon) {
+                if (isset($coupon['discount'])) {
+                    $discount += (float)$coupon['discount'];
+                }
+            }
+        }
+        $data['discount'] = $discount;
+        
+        // Get shipping
+        $data['shipping'] = isset($subscription['shippingTotal']) ? (float)$subscription['shippingTotal'] : 0;
+        
+        // Get tax
+        $data['tax'] = isset($subscription['taxTotal']) ? (float)$subscription['taxTotal'] : 0;
+        
+        // Get total
+        $data['total'] = isset($subscription['total']) ? (float)$subscription['total'] : ($subtotal - $discount + $data['shipping'] + $data['tax']);
+        
+        return $data;
     }
 }
