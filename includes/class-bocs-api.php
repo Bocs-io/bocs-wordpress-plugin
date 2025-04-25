@@ -614,10 +614,6 @@ class BOCS_API {
     public function get_bocs_products($bocs_id) {
         $url = BOCS_API_URL . 'bocs/' . $bocs_id;
         
-        error_log('BOCS API Request - Getting products for BOCS ID: ' . $bocs_id);
-        error_log('BOCS API URL: ' . $url);
-        error_log('BOCS API Headers: ' . print_r($this->get_headers(), true));
-        
         $response = wp_remote_get(
             $url,
             array(
@@ -627,7 +623,6 @@ class BOCS_API {
         );
 
         if (is_wp_error($response)) {
-            error_log('BOCS API Error - WP Error: ' . $response->get_error_message());
             return $response;
         }
 
@@ -635,19 +630,11 @@ class BOCS_API {
         $response_body = wp_remote_retrieve_body($response);
         $response_headers = wp_remote_retrieve_headers($response);
 
-        error_log('BOCS API Response Code: ' . $response_code);
-        error_log('BOCS API Response Headers: ' . print_r($response_headers, true));
-        
         if ($response_code !== 200) {
             $error_message = 'Failed to get BOCS products.';
             
             // Handle 400 Bad Request specifically
             if ($response_code === 400) {
-                error_log('BOCS API Error - 400 Bad Request');
-                error_log('Request URL: ' . $url);
-                error_log('Request Headers: ' . print_r($this->get_headers(), true));
-                error_log('Response Body: ' . $response_body);
-                
                 // Try to parse error message from response
                 $response_data = json_decode($response_body, true);
                 if ($response_data && isset($response_data['message'])) {
@@ -655,9 +642,6 @@ class BOCS_API {
                 } else {
                     $error_message .= ' Invalid request format or parameters.';
                 }
-            } else {
-                error_log('BOCS API Error - Non-200 Status Code: ' . $response_code);
-                error_log('BOCS API Response: ' . $response_body);
             }
 
             return new WP_Error(
@@ -669,7 +653,6 @@ class BOCS_API {
         $data = json_decode($response_body, true);
 
         if (!$data) {
-            error_log('BOCS API Error - Invalid JSON response: ' . $response_body);
             return new WP_Error(
                 'bocs_api_error',
                 'Invalid JSON response from API'
@@ -677,24 +660,10 @@ class BOCS_API {
         }
 
         if (!isset($data['data']) || !isset($data['data']['products'])) {
-            error_log('BOCS API Error - Invalid data structure. Response: ' . print_r($data, true));
             return new WP_Error(
                 'bocs_api_error',
                 'Invalid BOCS data structure'
             );
-        }
-
-        if (empty($data['data']['products'])) {
-            error_log('BOCS API Notice - No products found for BOCS ID: ' . $bocs_id);
-        } else {
-            error_log('BOCS API Success - Found ' . count($data['data']['products']) . ' products');
-            
-            // Check for externalSourceId in products and log a warning if missing
-            foreach ($data['data']['products'] as $product) {
-                if (!isset($product['externalSourceId']) || empty($product['externalSourceId'])) {
-                    error_log('BOCS API Warning - Product missing externalSourceId: ' . json_encode($product));
-                }
-            }
         }
 
         // Format the products data for frontend while preserving the original data
@@ -710,8 +679,6 @@ class BOCS_API {
                 'sku' => $product['sku']
             );
         }, $data['data']['products']);
-
-        error_log('BOCS API - Formatted ' . count($formatted_products) . ' products for frontend');
 
         // Return both the raw data and formatted products
         return $data;

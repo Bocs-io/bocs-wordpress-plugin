@@ -1196,19 +1196,11 @@ class Sync
 		
 		// Validate API response
 		if (!$result) {
-			$this->logMessage('ERROR', "Bocs API request failed", [
-				'email' => $user->user_email,
-				'url' => $url
-			]);
 			throw new Exception("API request failed for email: {$user->user_email}");
 		}
 
 		// Handle string response (usually an error UUID)
 		if (is_string($result)) {
-			$this->logMessage('ERROR', "Received error response from Bocs API", [
-				'user_id' => $user->ID,
-				'response' => $result
-			]);
 			throw new Exception("Failed to search Bocs user. API Error: " . $result);
 		}
 		
