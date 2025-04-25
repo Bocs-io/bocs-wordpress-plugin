@@ -1,3 +1,11 @@
+v0.0.142 05/08/2025
+* Feature: Implemented reusable order line items component for consistent display
+* Feature: Enhanced subscription interface with dynamic order line items integration
+* Refactor: Improved account templates and subscription display for better user experience
+* Refactor: Optimized API handling and helper classes for better performance
+* Fix: Fixed handling of product data in subscription details
+* UI: Enhanced subscription management interface with improved styling
+
 v0.0.141 04/25/2025
 * Feature: Enhanced subscription management UI with improved interaction
 * Style: Standardized button hover effects across all components
