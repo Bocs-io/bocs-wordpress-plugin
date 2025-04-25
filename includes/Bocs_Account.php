@@ -447,7 +447,7 @@ class Bocs_Account
                     );
                     
                     // Check if there are any pending orders for this subscription
-                    if (!empty($subscription['id'])) {
+                    if (!empty($subscription['id']) && $formatted['status'] != 'paused') {
                         $pending_orders = wc_get_orders(array(
                             'status' => 'pending',
                             'limit' => 1,
@@ -456,7 +456,7 @@ class Bocs_Account
                         ));
                         
                         // If pending orders exist, set status to "upcoming"
-                        if (!empty($pending_orders)) {
+                        if (!empty($pending_orders) ) {
                             $formatted['status'] = 'upcoming';
                         }
                     }
