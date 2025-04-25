@@ -315,21 +315,10 @@ h3 {
     color: var(--bocs-white);
 }
 
-.bocs-button.primary:hover, .button.alt:hover {
-    background: var(--bocs-primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
 .bocs-button.secondary, .button:not(.alt) {
     background: var(--bocs-white);
     border: 1px solid var(--bocs-border);
     color: var(--bocs-text);
-}
-
-.bocs-button.secondary:hover, .button:not(.alt):hover {
-    background: var(--bocs-background);
-    border-color: var(--bocs-primary);
 }
 
 /* =========== Frequency Options =========== */

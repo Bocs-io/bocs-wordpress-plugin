@@ -157,16 +157,6 @@
     color: var(--bocs-white);
 }
 
-.bocs-button:hover,
-.woocommerce-button.button:hover,
-.edit-button:hover,
-.save-button:hover {
-    background-color: var(--bocs-primary-dark);
-    color: var(--bocs-white);
-    transform: translateY(-1px);
-    box-shadow: var(--bocs-shadow);
-}
-
 .bocs-button.secondary,
 .cancel-button {
     background-color: var(--bocs-background);
@@ -174,21 +164,10 @@
     border-color: var(--bocs-border);
 }
 
-.bocs-button.secondary:hover,
-.cancel-button:hover {
-    background-color: var(--bocs-white);
-    border-color: var(--bocs-primary);
-    color: var(--bocs-primary);
-}
 
 .bocs-button.danger {
     background-color: var(--bocs-error);
     color: var(--bocs-white);
-}
-
-.bocs-button.danger:hover {
-    background-color: var(--bocs-error-light);
-    color: var(--bocs-error);
 }
 
 /* Form Elements */
