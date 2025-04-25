@@ -135,8 +135,9 @@
 }
 
 .bocs-subscription-status.status-paused {
-    background-color: #e2e8f0;
-    color: #4a5568;
+    background-color: #ebf8ff;
+    color: #3182ce;
+    font-weight: 600;
 }
 
 .bocs-subscription-status.status-cancelled {
@@ -419,18 +420,10 @@
     background-color: rgb(239, 240, 243);
 }
 
-.bocs-button:hover {
-    background-color: rgba(0, 101, 169, 0.05);
-}
-
 .bocs-button.primary {
     background-color: var(--bocs-primary);
     color: #ffffff;
     border-color: var(--bocs-primary);
-}
-
-.bocs-button.primary:hover {
-    background-color: #005490;
 }
 
 .bocs-button.early-renewal {
@@ -440,18 +433,17 @@
     text-decoration: none !important;
 }
 
-.bocs-button.early-renewal:hover {
-    background-color: rgba(0, 101, 169, 0.05);
+.bocs-button.pause-subscription {
+    border: 1px solid rgb(224, 226, 228);
+    color: rgb(54, 61, 72);
+    background-color: rgb(239, 240, 243);
+    text-decoration: none !important;
 }
 
 .bocs-button.pay-now {
     background-color: var(--bocs-active);
     color: #ffffff;
     border-color: var(--bocs-active);
-}
-
-.bocs-button.pay-now:hover {
-    background-color: #2f8c5a;
 }
 
 .bocs-button.loading {
@@ -567,6 +559,12 @@
     justify-content: flex-end;
     gap: 1rem;
     margin-top: 2rem;
+}
+
+.bocs-form-actions .pause-subscription {
+    margin-right: auto;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
 }
 
 .bocs-modal-actions {
@@ -793,4 +791,15 @@
     border-radius: 50%;
     border-top-color: white;
     animation: bocs-spinner 0.8s linear infinite;
+}
+
+/* Style for modal confirm button */
+.bocs-modal-actions .modal-confirm {
+    background-color: var(--bocs-primary);
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.bocs-modal-actions .modal-confirm:hover {
+    background-color: #005490;
 } 

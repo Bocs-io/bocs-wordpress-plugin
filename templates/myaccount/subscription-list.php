@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), bocs_get_cache_bust_version('20250424.1'));
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), bocs_get_cache_bust_version('20250424.1'), true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), bocs_get_cache_bust_version('20250425.5'));
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), bocs_get_cache_bust_version('20250425.5'), true);
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -514,18 +514,6 @@ if (function_exists('bocs_log')) {
             <a href="<?php echo esc_url(wc_get_page_permalink('shop')); ?>" class="button"><?php esc_html_e('Browse products', 'bocs-wordpress'); ?></a>
         </div>
     <?php endif; ?>
-    
-    <!-- Debug button: Directly opens the early renewal modal -->
-    <button id="test-early-renewal-modal" style="margin-top: 20px; padding: 10px; background: #f0f0f0; cursor: pointer;">Test Early Renewal Modal</button>
-    <script>
-        jQuery(document).ready(function($) {
-            $('#test-early-renewal-modal').on('click', function() {
-                console.log('Test button clicked');
-                console.log('Modal exists:', $('#bocs-early-renewal-modal').length > 0);
-                $('#bocs-early-renewal-modal').css('display', 'flex');
-            });
-        });
-    </script>
 </div>
 
 <!-- Modals for subscription actions -->
@@ -540,6 +528,7 @@ if (function_exists('bocs_log')) {
             </div>
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
+                <button type="button" class="bocs-button pause-subscription" id="pause-button">Pause Subscription</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
             </div>
         </form>
@@ -666,6 +655,33 @@ if (function_exists('bocs_log')) {
         <div class="bocs-modal-actions">
             <button class="bocs-button modal-cancel">Cancel</button>
             <button class="bocs-button primary modal-confirm">Confirm Early Renewal</button>
+        </div>
+    </div>
+</div>
+
+<!-- Pause Subscription Modal -->
+<div id="bocs-pause-subscription-modal" class="bocs-modal">
+    <div class="bocs-modal-content">
+        <span class="bocs-modal-close">&times;</span>
+        <h3>Pause Subscription</h3>
+        <p>This will pause your subscription. You won't be charged until you resume your subscription.</p>
+        <div class="bocs-form-row">
+            <label for="pause-reason">Reason for pausing (optional)</label>
+            <select id="pause-reason" name="pause_reason">
+                <option value="">Select a reason...</option>
+                <option value="going_away">Going away/vacation</option>
+                <option value="too_many">Have too many products right now</option>
+                <option value="financial">Financial reasons</option>
+                <option value="other">Other reason</option>
+            </select>
+        </div>
+        <div class="bocs-form-row">
+            <label for="pause-until-date">Resume on (optional)</label>
+            <input type="date" id="pause-until-date" name="pause_until_date">
+        </div>
+        <div class="bocs-modal-actions">
+            <button class="bocs-button modal-cancel">Cancel</button>
+            <button class="bocs-button primary modal-confirm">Confirm Pause</button>
         </div>
     </div>
 </div>
