@@ -246,10 +246,6 @@
     align-self: flex-start;
 }
 
-.bocs-edit-button:hover {
-    background-color: #e5e7eb;
-}
-
 /* === Order Details === */
 .bocs-order-details {
     margin-top: 2rem;
@@ -509,10 +505,6 @@
     font-weight: 600;
     color: #aaa;
     cursor: pointer;
-}
-
-.bocs-modal-close:hover {
-    color: var(--bocs-text);
 }
 
 .bocs-modal h3 {
@@ -799,7 +791,3 @@
     color: #ffffff;
     font-weight: 500;
 }
-
-.bocs-modal-actions .modal-confirm:hover {
-    background-color: #005490;
-} 
