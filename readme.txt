@@ -1,3 +1,10 @@
+v0.0.141 04/25/2025
+* Feature: Enhanced subscription management UI with improved interaction
+* Style: Standardized button hover effects across all components
+* Fix: Prevented paused subscriptions from incorrectly showing as upcoming
+* Fix: Updated frontend template links and references
+* Chore: Organized commits into logical feature groups
+
 v0.0.140 04/24/2025
 * Feature: Added developer mode with cache management tooling
 * Feature: Implemented product mapping and enhanced admin settings panel
