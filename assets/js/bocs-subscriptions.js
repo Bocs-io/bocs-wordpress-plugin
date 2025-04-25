@@ -52,6 +52,7 @@
                         const subscriptionItem = $(this).closest('.bocs-subscription-item');
                         const details = subscriptionItem.find('.bocs-subscription-details');
                         const toggleIcon = subscriptionItem.find('.bocs-toggle-icon');
+                        const subscriptionId = subscriptionItem.data('subscription-id');
                         
                         // Toggle the details
                         details.slideToggle(300);
@@ -64,8 +65,28 @@
 
                         // Store the active subscription ID
                         if (subscriptionItem.hasClass('active')) {
-                            BocsSubscriptions.activeSubscriptionId = subscriptionItem.data('subscription-id');
+                            BocsSubscriptions.activeSubscriptionId = subscriptionId;
                             console.log('BocsSubscriptions: Activated subscription', BocsSubscriptions.activeSubscriptionId);
+                            
+                            // Load order line items via AJAX if the subscription is opened
+                            const orderComponent = subscriptionItem.find('.bocs-order-details');
+                            if (orderComponent.length > 0) {
+                                // Get the component ID
+                                const componentId = orderComponent.attr('id');
+                                
+                                // Refresh the line items
+                                if (typeof window.BocsOrderLineItems !== 'undefined' && window.BocsOrderLineItems.refresh) {
+                                    console.log('BocsSubscriptions: Refreshing line items for', subscriptionId);
+                                    window.BocsOrderLineItems.refresh(componentId, subscriptionId);
+                                } else {
+                                    console.log('BocsSubscriptions: BocsOrderLineItems not available, using event');
+                                    // Trigger custom event for refreshing line items
+                                    $(document).trigger('bocs:refresh-line-items', {
+                                        componentId: componentId,
+                                        subscriptionId: subscriptionId
+                                    });
+                                }
+                            }
                         }
 
                         // Close other open items
@@ -1291,9 +1312,40 @@
         // Set up early renewal handlers
         setupEarlyRenewalHandlers();
         
-        // Remove the debug test button after development is complete
-        $('#test-early-renewal-modal').on('click', function() {
-            console.log('Test button clicked');
+        // Immediately run to ensure all product cells with "Unknown product" or "0" are hidden
+        $('.bocs-order-table .product-name').each(function() {
+            const text = $(this).text().trim();
+            const orderTableWrapper = $(this).find('.bocs-order-details-wrapper')[0];
+            const orderTable = $(orderTableWrapper).find('.bocs-order-table')[0];
+            if (text === 'Unknown product') {
+                $(this).addClass('unknown-product');
+                orderTable.hide();
+            } else if (text === '0') {
+                $(this).addClass('zero-product');
+                orderTable.hide();
+            }
+        });
+        
+        // Set up missing product data handling
+        $('.bocs-subscription-item').each(function() {
+            const subscriptionId = $(this).data('subscription-id');
+            const orderTableWrapper = $(this).find('.bocs-order-details-wrapper')[0];
+            
+            if (subscriptionId && orderTableWrapper) {
+                // Changed from strictly comparing with boolean true to a looser comparison that works with string "true"
+                const needsLoading = $(orderTableWrapper).data('needs-loading') == true || $(orderTableWrapper).data('needs-loading') === "true";
+                const orderTable = $(orderTableWrapper).find('.bocs-order-table')[0];
+                if (needsLoading && orderTable) {
+                    // Call function to fill missing data
+                    fillMissingProductInfo(subscriptionId, orderTable);
+                }
+            }
+        });
+        
+        // Early renewal button click (existing code)
+        $('.bocs-button.early-renewal').on('click', function() {
+            var subscriptionId = $(this).data('sub-id');
+            $('#bocs-early-renewal-modal').data('subscription-id', subscriptionId);
             $('#bocs-early-renewal-modal').css('display', 'flex');
         });
     });
@@ -1602,6 +1654,212 @@
                 $('#bocs-early-renewal-modal').css('display', 'flex');
             });
         });
+    }
+
+    /**
+     * Fill in missing product information by retrieving data from the BOCS
+     * @param {string} subscriptionId - The subscription ID
+     * @param {HTMLElement} orderTableElement - The order table element to update
+     */
+    function fillMissingProductInfo(subscriptionId, orderTableElement) {
+        // Skip if no subscription ID or table element
+        if (!subscriptionId || !orderTableElement) return;
+        
+        console.log('Filling missing product info for subscription:', subscriptionId);
+        
+        // Find the subscription in our data
+        const subscription = bocsSubscriptionsData.subscriptions.find(sub => sub.id === subscriptionId);
+        if (!subscription) {
+            console.log('Subscription not found in data');
+            showOrderDetails(subscriptionId);
+            return;
+        }
+        
+        // Skip if we don't have line items
+        if (!subscription.lineItems || subscription.lineItems.length === 0) {
+            console.log('No line items found in subscription');
+            showOrderDetails(subscriptionId);
+            return;
+        }
+        
+        // We need to fetch BOCS details
+        const bocsId = subscription.bocs?.id;
+        if (!bocsId) {
+            console.log('No BOCS ID found for subscription');
+            showOrderDetails(subscriptionId);
+            return;
+        }
+        
+        console.log('Fetching BOCS details for ID:', bocsId);
+        
+        // Create the request
+        const apiUrl = bocsSubscriptionsData.apiUrl + 'bocs/' + bocsId;
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-BOCS-Organization': bocsSubscriptionsData.headers.organization,
+            'X-BOCS-Store': bocsSubscriptionsData.headers.store,
+            'Authorization': bocsSubscriptionsData.headers.authorization
+        };
+        
+        // Fetch BOCS details
+        fetch(apiUrl, {
+            method: 'GET',
+            headers: headers
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show the order details regardless of outcome, we've tried our best to get data
+            if (data.code !== 200 || !data.data || !data.data.products) {
+                console.log('Invalid BOCS data response:', data);
+                showOrderDetails(subscriptionId);
+                return;
+            }
+            
+            // Process the product data
+            processProductData(subscriptionId, orderTableElement, subscription, data.data.products);
+            
+            // Show the order details after processing
+            showOrderDetails(subscriptionId);
+        })
+        .catch(error => {
+            console.error('Error fetching BOCS details:', error);
+            showOrderDetails(subscriptionId);
+        });
+    }
+    
+    // Helper function to process product data
+    function processProductData(subscriptionId, orderTableElement, subscription, bocsProducts) {
+        // Map product IDs to product details for quick lookup
+        const bocsProductMap = {};
+        bocsProducts.forEach(product => {
+            bocsProductMap[product.id] = product;
+        });
+        
+        // Get all row elements
+        const rows = orderTableElement.querySelectorAll('tbody tr');
+        
+        // Loop through each row
+        rows.forEach((row, index) => {
+            // Skip if we don't have a corresponding line item
+            if (!subscription.lineItems[index]) return;
+            
+            const lineItem = subscription.lineItems[index];
+            const productCell = row.querySelector('.product-name');
+            const priceCell = row.querySelector('td[data-title="Price"]');
+            const quantityCell = row.querySelector('td[data-title="Quantity"]');
+            const totalCell = row.querySelector('td[data-title="Total"]');
+            
+            // If product cell is empty and we have a matching product in BOCS
+            if ((!productCell.textContent.trim() || productCell.textContent.trim() === '0' || 
+                 productCell.textContent.trim() === 'Unknown product') && 
+                lineItem.productId && bocsProductMap[lineItem.productId]) {
+                
+                const bocsProduct = bocsProductMap[lineItem.productId];
+                
+                // Update the product name
+                productCell.textContent = bocsProduct.name;
+                
+                // Update price if needed
+                if (priceCell && (!priceCell.textContent.trim() || priceCell.textContent.trim() === '$0.00')) {
+                    if (typeof wc_price === 'function') {
+                        priceCell.innerHTML = wc_price(bocsProduct.price);
+                    } else {
+                        priceCell.textContent = '$' + Number(bocsProduct.price).toFixed(2);
+                    }
+                }
+                
+                // Update total if needed
+                if (totalCell && (!totalCell.textContent.trim() || totalCell.textContent.trim() === '$0.00')) {
+                    const quantity = quantityCell ? parseInt(quantityCell.textContent.trim() || '1', 10) : 1;
+                    const totalPrice = bocsProduct.price * quantity;
+                    
+                    if (typeof wc_price === 'function') {
+                        totalCell.innerHTML = wc_price(totalPrice);
+                    } else {
+                        totalCell.textContent = '$' + Number(totalPrice).toFixed(2);
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * Shows the order details after loading is complete
+     * @param {string} subscriptionId - The subscription ID
+     */
+    function showOrderDetails(subscriptionId) {
+        // Find the order details wrapper
+        const wrapper = document.querySelector(`.bocs-order-details-wrapper[data-subscription-id="${subscriptionId}"]`);
+        if (!wrapper) {
+            console.error('Order details wrapper not found for subscription:', subscriptionId);
+            return;
+        }
+        
+        console.log('Showing order details for subscription:', subscriptionId);
+        
+        // Get content element before hiding loading indicator
+        const content = wrapper.querySelector('.bocs-order-details-content');
+        
+        // Make sure any "Unknown product" or empty cells are handled
+        if (content) {
+            const productCells = content.querySelectorAll('.product-name');
+            productCells.forEach(cell => {
+                const text = cell.textContent.trim();
+                if (text === 'Unknown product' || text === '0' || text === '') {
+                    cell.innerHTML = '<span class="product-placeholder">Product information unavailable</span>';
+                }
+            });
+            
+            // Ensure content is displayed
+            content.style.display = 'block';
+            content.style.opacity = '1';
+            content.style.visibility = 'visible';
+            
+            // Explicitly show the table that was hidden
+            $(content).find('table.bocs-order-table').show();
+            $(content).find('.bocs-order-table-loading-spinner').hide();
+            
+            // Show the bocs-order-details div that might be hidden
+            $(content).find('.bocs-order-details').fadeIn(300);
+        } else {
+            console.error('Content element not found in wrapper');
+        }
+        
+        // Hide the loading indicator with a fade out
+        const loading = wrapper.querySelector('.bocs-order-details-loading');
+        if (loading) {
+            loading.style.opacity = '0';
+            setTimeout(() => {
+                loading.style.display = 'none';
+                
+                // Show the content with a smooth transition
+                if (content) {
+                    // Give the browser a moment to process the display change before adding the transition class
+                    setTimeout(() => {
+                        content.classList.add('loaded');
+                        // Make sure table is shown even after transition
+                        $(content).find('table.bocs-order-table').show();
+                        // Ensure bocs-order-details is visible even after transition
+                        $(content).find('.bocs-order-details').fadeIn(300);
+                        $(content).find('.bocs-order-table-loading-spinner').hide();
+                    }, 50);
+                }
+            }, 300); // Wait for fade out to complete
+        } else {
+            // If no loading indicator, just show content
+            if (content) {
+                setTimeout(() => {
+                    content.classList.add('loaded');
+                    // Make sure table is shown even after transition
+                    $(content).find('table.bocs-order-table').show();
+                    // Ensure bocs-order-details is visible even after transition
+                    $(content).find('.bocs-order-details').fadeIn(300);
+                    $(content).find('.bocs-order-table-loading-spinner').hide();
+                }, 50);
+            }
+        }
+        
+        console.log('Order details shown for subscription:', subscriptionId);
     }
 
 })(jQuery); 

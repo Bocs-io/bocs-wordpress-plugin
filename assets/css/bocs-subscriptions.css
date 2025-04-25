@@ -251,6 +251,88 @@
     margin-top: 2rem;
 }
 
+/* Order details loading state */
+.bocs-order-details-wrapper {
+    margin-top: 2rem;
+    position: relative;
+    min-height: 120px;
+}
+
+.bocs-order-details-loading {
+    text-align: center;
+    padding: 3rem 2rem;
+    background-color: #f9f9f9;
+    border-radius: var(--bocs-radius);
+    font-style: italic;
+    color: #666;
+    position: relative;
+    border: 1px dashed #ddd;
+    font-size: 1.1rem;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.03);
+    transition: opacity 0.3s ease;
+}
+
+.bocs-order-details-loading::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(15, 118, 110, 0.2);
+    border-top-color: var(--bocs-primary, #0f766e);
+    border-radius: 50%;
+    animation: bocs-spinner 1s linear infinite;
+    margin: 0 auto 1.5rem;
+}
+
+/* Ensure no table content is visible during loading */
+.bocs-order-details-content {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    visibility: hidden; /* Use visibility to ensure it takes up space but is hidden */
+}
+
+.bocs-order-details-content.loaded {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Hide product placeholders */
+.product-placeholder {
+    display: none;
+}
+
+/* Additional safety to hide any unknown product */
+.bocs-order-table .product-name:empty {
+    visibility: hidden;
+}
+
+/* These classes will be added via JavaScript */
+.bocs-order-table .unknown-product,
+.bocs-order-table .zero-product {
+    visibility: hidden;
+}
+
+/* Add styling for empty price cells */
+.bocs-order-table td[data-title="Price"]:empty::after {
+    content: "Loading...";
+    font-style: italic;
+    color: #999;
+}
+
+/* Add styling for empty total cells */
+.bocs-order-table td[data-title="Total"]:empty::after {
+    content: "Loading...";
+    font-style: italic;
+    color: #999;
+}
+
+/* Add specific class for zero-value cells that will be filled */
+.bocs-order-table .loading-price::after {
+    content: "Loading...";
+    font-style: italic;
+    color: #999;
+}
+
 .bocs-order-details h4 {
     font-family: var(--bocs-font-secondary);
     font-size: 1.125rem;
