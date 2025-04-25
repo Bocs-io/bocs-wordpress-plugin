@@ -312,10 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     <h2>
         <?php 
-        echo sprintf(
-            esc_html__('Edit Subscription #%s', 'bocs-wordpress'), 
-            esc_html($subscription['externalSourceParentOrderId'] ?? $subscription_id)
-        ); 
+        esc_html_e('Edit Products', 'bocs-wordpress');
         ?>
     </h2>
 
