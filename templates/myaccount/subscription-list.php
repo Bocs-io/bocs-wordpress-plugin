@@ -16,8 +16,12 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), bocs_get_cache_bust_version('20250425.6'));
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), bocs_get_cache_bust_version('20250425.5'), true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250425.10");
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250425.17", true);
+
+// Add order line items component
+wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
+wp_enqueue_script('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/js/bocs-order-line-items.js', array('jquery'), "20250425.10", true);
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -57,6 +61,7 @@ if (class_exists('Bocs_Log_Handler')) {
     ]);
 }
 
+// Pass data to JavaScript
 wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
     'subscriptions' => array_map(function($sub) {
         // Add frequencies to each subscription if available
@@ -77,19 +82,30 @@ wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
         
         return $sub;
     }, $subscriptions_formatted),
-    'ajaxUrl' => admin_url('admin-ajax.php'),
-    'nonce' => wp_create_nonce('bocs-subscriptions-nonce'),
     'apiUrl' => BOCS_API_URL,
+    'ajaxUrl' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('bocs-ajax-nonce'),
     'headers' => array(
-        'store' => $options['bocs_headers']['store'],
-        'organization' => $options['bocs_headers']['organization'],
-        'authorization' => $options['bocs_headers']['authorization']
+        'organization' => isset($options['bocs_headers']['organization']) ? $options['bocs_headers']['organization'] : '',
+        'store' => isset($options['bocs_headers']['store']) ? $options['bocs_headers']['store'] : '',
+        'authorization' => isset($options['bocs_headers']['authorization']) ? $options['bocs_headers']['authorization'] : '',
     ),
+    'redirectUrl' => wc_get_endpoint_url('bocs-subscriptions'),
+    'orderEndpoint' => wc_get_endpoint_url('bocs-edit-details', ''),
+    'updateBoxEndpoint' => wc_get_endpoint_url('bocs-update-box', ''),
+    'viewSubscriptionEndpoint' => wc_get_endpoint_url('bocs-view-subscription', ''),
     'i18n' => array(
         'processing' => __('Processing...', 'bocs-wordpress'),
         'saveChanges' => __('Save Changes', 'bocs-wordpress'),
         'loading' => __('Loading...', 'bocs-wordpress')
     )
+));
+
+// Pass data specifically for order line items component
+wp_localize_script('bocs-order-line-items', 'bocs_data', array(
+    'ajax_url' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('bocs-ajax-nonce'),
+    'is_admin' => current_user_can('manage_options')
 ));
 
 // Add console logging for frequencies in the JavaScript
@@ -166,6 +182,21 @@ if (function_exists('bocs_log')) {
                 $discount = isset($subscription['discount']) ? $subscription['discount'] : '';
                 $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '5.00';
                 $total = isset($subscription['total']) ? $subscription['total'] : $price;
+                $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
+                
+                // Make sure discount_type and discount_percent are set for order-line-items component
+                $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
+                $discount_percent = isset($subscription['discount']) ? $subscription['discount'] : '';
+                
+                // For debugging
+                if (current_user_can('manage_options')) {
+                    echo '<!-- DEBUG: Items count: ' . count($items) . ' -->';
+                    if (count($items) === 0) {
+                        echo '<!-- DEBUG: Items sources check: lineItems=' . (isset($subscription['lineItems']) ? 'yes' : 'no') . ', items=' . (isset($subscription['items']) ? 'yes' : 'no') . ' -->';
+                        // Check the entire subscription structure
+                        echo '<!-- DEBUG: Subscription keys: ' . implode(', ', array_keys($subscription)) . ' -->';
+                    }
+                }
             ?>
             <div class="bocs-subscription-item" data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
                 <div class="bocs-subscription-header">
@@ -267,8 +298,9 @@ if (function_exists('bocs_log')) {
                                             echo esc_html($frequency_formatted);
                                             if (!empty($discount)) {
                                                 // Check if discount is a percentage or fixed amount
-                                                $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
-                                                if ($discount_type === 'fixed') {
+                                                // Note: We're getting this from subscription data but not overwriting the global discount_type
+                                                $freq_discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
+                                                if ($freq_discount_type === 'fixed') {
                                                     echo ' ($' . esc_html($discount) . ' discount)';
                                                 } else {
                                                     echo ' (' . esc_html($discount) . '% discount)';
@@ -305,205 +337,92 @@ if (function_exists('bocs_log')) {
                         </div>
                     </div>
                     
-                    <div class="bocs-order-details">
-                        <div class="bocs-order-header">
-                            <h4>Order details</h4>
-                            <?php if (strtolower($status) === 'upcoming') : 
-                                // Get the payment URL for any pending orders for this subscription
+                    <?php
+                    // Prepare the payment URL for any upcoming orders
+                    $payment_url = '';
+                    if (strtolower($status) === 'upcoming') {
                                 $bocs_account = new Bocs_Account();
                                 $payment_url = $bocs_account->get_pending_order_url($subscription_id);
-                                
-                                if ($payment_url) : ?>
-                                    <a href="<?php echo esc_url($payment_url); ?>" class="bocs-button pay-now">Pay Now</a>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-                        <table class="bocs-order-table">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Quantity</th>
-                                    <th>Price</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php 
-                                $subtotal = 0;
-                                if (!empty($items) && is_array($items)) {
-                                    foreach ($items as $item) : 
-                                        $product_name = isset($item['name']) ? $item['name'] : '';
-                                        $quantity = isset($item['quantity']) ? (int)$item['quantity'] : 1;
-                                        $unit_price = isset($item['price']) ? (float)$item['price'] : 0;
-                                        $total_price = $quantity * $unit_price;
-                                        $subtotal += $total_price;
-                                ?>
-                                <tr>
-                                    <td class="product-name" data-title="<?php esc_attr_e('Product', 'bocs-wordpress'); ?>">
-                                        <?php echo esc_html($product_name); ?>
-                                        <?php if (!empty($item['metadata']) && is_array($item['metadata'])): ?>
-                                            <div class="product-meta">
-                                                <?php foreach ($item['metadata'] as $meta): ?>
-                                                    <div class="meta-item">
-                                                        <span class="meta-key"><?php echo esc_html($meta['key'] ?? ''); ?>:</span>
-                                                        <span class="meta-value"><?php echo esc_html($meta['value'] ?? ''); ?></span>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td data-title="<?php esc_attr_e('Quantity', 'bocs-wordpress'); ?>"><?php echo esc_html($quantity); ?></td>
-                                    <td data-title="<?php esc_attr_e('Price', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($unit_price));
-                                        } else {
-                                            echo esc_html('$' . number_format($unit_price, 2));
-                                        }
-                                        ?>
-                                    </td>
-                                    <td data-title="<?php esc_attr_e('Total', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($total_price));
-                                        } else {
-                                            echo esc_html('$' . number_format($total_price, 2));
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                                <?php endforeach; 
-                                } else {
-                                    echo '<tr><td colspan="4">' . esc_html__('No items found', 'bocs-wordpress') . '</td></tr>';
-                                }
-                                ?>
-                            </tbody>
-                            <tfoot>
-                                <tr class="bocs-subtotal-row">
-                                    <th colspan="3">Subtotal</th>
-                                    <td data-title="<?php esc_attr_e('Subtotal', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($subtotal));
-                                        } else {
-                                            echo esc_html('$' . number_format($subtotal, 2));
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                                
-                                <?php if (!empty($subscription['couponLines']) && is_array($subscription['couponLines'])): ?>
-                                    <?php foreach ($subscription['couponLines'] as $coupon): ?>
-                                        <tr class="bocs-discount-row">
-                                            <th colspan="3">
-                                                <?php 
-                                                if (!empty($coupon['code'])) {
-                                                    echo sprintf(esc_html__('Discount (%s)', 'bocs-wordpress'), esc_html($coupon['code']));
-                                                } else {
-                                                    esc_html_e('Discount', 'bocs-wordpress');
+                    }
+                    
+                    // Set up data for our reusable component
+                    $component_id = 'bocs-order-items-' . $subscription_id;
+                    
+                    // Check for lineItems first (API-style keys)
+                    if (isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
+                        $items = $subscription['lineItems'];
                                                 }
-                                                ?>
-                                            </th>
-                                            <td data-title="<?php esc_attr_e('Discount', 'bocs-wordpress'); ?>">
-                                                <?php 
-                                                if (!empty($coupon['discount'])) {
-                                                    if (function_exists('wc_price')) {
-                                                        echo wp_kses_post(wc_price($coupon['discount'] * -1));
-                                                    } else {
-                                                        echo esc_html('-$' . number_format($coupon['discount'], 2));
-                                                    }
-                                                }
-                                                ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($shipping)): ?>
-                                <tr class="bocs-shipping-row">
-                                    <th colspan="3">Shipping</th>
-                                    <td data-title="<?php esc_attr_e('Shipping', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        // Use shippingTotal if available, otherwise use shipping
-                                        $shipping_amount = isset($subscription['shippingTotal']) ? $subscription['shippingTotal'] : $shipping;
-                                        // Ensure shipping_amount is a numeric value
-                                        $shipping_amount = is_array($shipping_amount) ? 0 : (float)$shipping_amount;
-                                        
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($shipping_amount));
+                    // Fall back to items format (formatted data keys)
+                    elseif (isset($subscription['items']) && is_array($subscription['items'])) {
+                        $items = $subscription['items'];
                                         } else {
-                                            echo esc_html('$' . number_format($shipping_amount, 2));
+                        $items = array();
                                         }
-                                        ?>
-                                    </td>
-                                </tr>
-                                <?php endif; ?>
-                                
-                                <?php if (!empty($subscription['taxTotal'])): ?>
-                                <tr class="bocs-tax-row">
-                                    <th colspan="3">Tax</th>
-                                    <td data-title="<?php esc_attr_e('Tax', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        // Ensure taxTotal is a numeric value
-                                        $tax_amount = is_array($subscription['taxTotal']) ? 0 : (float)$subscription['taxTotal'];
-                                        
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($tax_amount));
-                                        } else {
-                                            echo esc_html('$' . number_format($tax_amount, 2));
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                                <?php endif; ?>
-                                
-                                <tr class="bocs-total-row">
-                                    <th colspan="3">Subscription Total</th>
-                                    <td data-title="<?php esc_attr_e('Total', 'bocs-wordpress'); ?>">
-                                        <?php 
-                                        // Calculate the total from line items, shipping, tax, and discounts
-                                        $calculated_total = $subtotal;
-                                        
-                                        // Add shipping if present
-                                        if (!empty($shipping)) {
-                                            $shipping_amount = isset($subscription['shippingTotal']) ? $subscription['shippingTotal'] : $shipping;
-                                            // Ensure shipping_amount is a numeric value
-                                            $shipping_amount = is_array($shipping_amount) ? 0 : (float)$shipping_amount;
-                                            $calculated_total += $shipping_amount;
-                                        }
-                                        
-                                        // Add tax if present
-                                        if (!empty($subscription['taxTotal'])) {
-                                            // Ensure taxTotal is a numeric value
-                                            $tax_amount = is_array($subscription['taxTotal']) ? 0 : (float)$subscription['taxTotal'];
-                                            $calculated_total += $tax_amount;
-                                        }
-                                        
-                                        // Subtract discounts if present
-                                        if (!empty($subscription['couponLines']) && is_array($subscription['couponLines'])) {
-                                            foreach ($subscription['couponLines'] as $coupon) {
-                                                if (!empty($coupon['discount'])) {
-                                                    // Ensure discount is a numeric value
-                                                    $discount_amount = is_array($coupon['discount']) ? 0 : (float)$coupon['discount'];
-                                                    $calculated_total -= $discount_amount;
-                                                }
-                                            }
-                                        }
-                                        
-                                        // Use the calculated total or fall back to the provided total if needed
-                                        $display_total = $calculated_total > 0 ? $calculated_total : $total;
-                                        
-                                        if (function_exists('wc_price')) {
-                                            echo wp_kses_post(wc_price($display_total));
-                                        } else {
-                                            echo esc_html('$' . number_format($display_total, 2));
-                                        }
-                                        ?>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                    
+                    $subtotal = isset($subscription['subtotal']) ? $subscription['subtotal'] : 0;
+                    $discount = isset($subscription['discount']) ? $subscription['discount'] : 0;
+                    $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '5.00';
+                    $tax = isset($subscription['taxTotal']) ? $subscription['taxTotal'] : 0;
+                    $total = isset($subscription['total']) ? $subscription['total'] : $price;
+                    $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
+                    
+                    // Make sure discount_type and discount_percent are set for order-line-items component
+                    $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
+                    $discount_percent = isset($subscription['discount']) ? $subscription['discount'] : '';
+                    
+                    // For debugging
+                    if (current_user_can('manage_options')) {
+                        echo '<!-- DEBUG: Items count: ' . count($items) . ' -->';
+                        if (count($items) === 0) {
+                            echo '<!-- DEBUG: Items sources check: lineItems=' . (isset($subscription['lineItems']) ? 'yes' : 'no') . ', items=' . (isset($subscription['items']) ? 'yes' : 'no') . ' -->';
+                            // Check the entire subscription structure
+                            echo '<!-- DEBUG: Subscription keys: ' . implode(', ', array_keys($subscription)) . ' -->';
+                        }
+                    }
+                    
+                    // Check if any products have empty names
+                    $has_empty_products = false;
+                    foreach ($items as $item) {
+                        if (empty($item['name']) || $item['name'] == '0' || $item['name'] == 'Unknown product') {
+                            $has_empty_products = true;
+                            break;
+                        }
+                    }
+                    
+                    // Add a wrapper div with loading state and unique ID
+                    $wrapper_id = 'bocs-order-details-wrapper-' . esc_attr($subscription_id);
+                    echo '<div class="bocs-order-details-wrapper" id="' . $wrapper_id . '" data-subscription-id="' . esc_attr($subscription_id) . '" data-needs-loading="' . ($has_empty_products ? 'true' : 'false') . '">';
+                    
+                    if ($has_empty_products) {
+                        // Show loading indicator only if we have empty products
+                        echo '<div class="bocs-order-details-loading">Retrieving product information...</div>';
+                        echo '<div class="bocs-order-details-content" style="display:none;">';
+                    } else {
+                        // Show content immediately if all products have names
+                        echo '<div class="bocs-order-details-content" style="opacity:1; visibility:visible;">';
+                    }
+                    
+                    // Include the line items component within a buffer to prevent partial display
+                    ob_start();
+                    include(dirname(dirname(__FILE__)) . '/components/order-line-items.php');
+                    $order_content = ob_get_clean();
+                    
+                    // Only replace empty product names if we need to
+                    if ($has_empty_products) {
+                        // Replace any "Unknown product" or empty product names with a placeholder
+                        $order_content = preg_replace('/<td class="product-name"[^>]*>\s*(?:Unknown product|0)?\s*<\/td>/', '<td class="product-name"><span class="product-placeholder"></span></td>', $order_content);
+                        
+                        // Hide the entire bocs-order-details div initially
+                        $order_content = str_replace('<div class="bocs-order-details"', '<div class="bocs-order-details" style="display:none;"', $order_content);
+                    }
+                    
+                    // Output the buffered and modified content
+                    echo $order_content;
+                    
+                    // Close wrapper divs
+                    echo '</div>'; // End of content div
+                    echo '</div>'; // End of wrapper div
+                    ?>
                 </div>
             </div>
             <?php endforeach; ?>

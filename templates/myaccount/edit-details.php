@@ -16,8 +16,12 @@ if (!defined('ABSPATH')) {
 wp_enqueue_script('jquery');
 wp_enqueue_script('jquery-ui-datepicker');
 wp_enqueue_style('jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
-wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), bocs_get_cache_bust_version('20250425.1'));
-wp_enqueue_script('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/js/bocs-edit-details.js', array('jquery'), bocs_get_cache_bust_version('20250424.3'), true);
+wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), bocs_get_cache_bust_version('20250425.2'));
+wp_enqueue_script('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/js/bocs-edit-details.js', array('jquery'), bocs_get_cache_bust_version('20250425.2'), true);
+
+// Add order line items component
+wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
+wp_enqueue_script('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/js/bocs-order-line-items.js', array('jquery'), "20250425.10", true);
 
 // Get subscription ID from the query vars
 global $wp;
@@ -73,13 +77,8 @@ $min_products = 0;
 $max_products = 0;
 
 if (!empty($bocs_id)) {
-    // Debug log
-    error_log('Fetching BOCS data for ID: ' . $bocs_id);
     
     $bocs_request_url = BOCS_API_URL . 'bocs/' . $bocs_id;
-    
-    // Log request details
-    error_log('BOCS API Request URL: ' . $bocs_request_url);
     
     // Get API headers 
     $api_headers = [
@@ -94,7 +93,6 @@ if (!empty($bocs_id)) {
     if (isset($log_headers['Authorization'])) {
         $log_headers['Authorization'] = substr($log_headers['Authorization'], 0, 10) . '...';
     }
-    error_log('BOCS API Headers: ' . json_encode($log_headers));
     
     $bocs_response = $helper->curl_request(
         $bocs_request_url,
@@ -103,17 +101,11 @@ if (!empty($bocs_id)) {
         $api_headers
     );
     
-    // Log response status
-    error_log('BOCS API Response received: ' . (isset($bocs_response['success']) ? 'Success' : 'Failed'));
-    
     $bocs_data = isset($bocs_response['data']) ? $bocs_response['data'] : null;
     
     if ($bocs_data) {
-        error_log('BOCS data retrieved successfully. Type: ' . ($bocs_data['type'] ?? 'unknown'));
-        
         if (isset($bocs_data['products']) && is_array($bocs_data['products'])) {
             $all_products = $bocs_data['products'];
-            error_log('Found ' . count($all_products) . ' products in BOCS data');
             
             // Format products for JavaScript
             foreach ($all_products as &$product) {
@@ -126,26 +118,14 @@ if (!empty($bocs_id)) {
                 $product['price_html'] = $helper->format_price($product['price'] ?? 0, $subscription['currency'] ?? 'USD');
                 $product['image'] = $image_url;
             }
-        } else {
-            error_log('No products found in BOCS data. Product key exists: ' . (isset($bocs_data['products']) ? 'Yes' : 'No'));
-            if (isset($bocs_data['products'])) {
-                error_log('Products is array: ' . (is_array($bocs_data['products']) ? 'Yes' : 'No'));
-            }
         }
         
         // Get min/max products range
         if (isset($bocs_data['range']) && is_array($bocs_data['range']) && count($bocs_data['range']) >= 2) {
             $min_products = intval($bocs_data['range'][0]);
             $max_products = intval($bocs_data['range'][1]);
-            error_log("Product range: min={$min_products}, max={$max_products}");
-        } else {
-            error_log('No product range found in BOCS data');
         }
-    } else {
-        error_log('Failed to retrieve BOCS data. Response: ' . json_encode($bocs_response));
     }
-} else {
-    error_log('No BOCS ID found for this subscription');
 }
 
 // Format subscription status for display
@@ -177,26 +157,32 @@ $is_custom_box = false;
 if ($bocs_data && isset($bocs_data['type'])) {
     $bocs_type = strtolower($bocs_data['type']);
     $is_custom_box = $bocs_type === 'custom';
-    error_log('BOCS type (raw): "' . $bocs_data['type'] . '"');
-    error_log('BOCS type (lowercase): "' . $bocs_type . '"');
-    error_log('Is custom box: ' . ($is_custom_box ? 'Yes' : 'No'));
 } else {
     $is_custom_box = false;
-    error_log('BOCS type not found in data');
 }
 
-// Localize script for AJAX
+// Localize scripts
 wp_localize_script('bocs-edit-details', 'bocs_edit_details_data', array(
     'ajax_url' => admin_url('admin-ajax.php'),
-    'subscription_id' => $subscription_id,
-    'nonce' => wp_create_nonce('bocs_ajax_nonce'),
+    'nonce' => wp_create_nonce('bocs-ajax-nonce'),
     'edit_details_nonce' => wp_create_nonce('bocs_edit_details_nonce'),
+    'subscription_id' => $subscription_id,
     'subscription_items' => $subscription['lineItems'] ?? [],
     'all_products' => $all_products,
     'is_custom_box' => $is_custom_box,
     'min_products' => $min_products,
     'max_products' => $max_products,
-    'subscription_list_url' => $return_url
+    'subscription_list_url' => $return_url,
+    'is_admin' => current_user_can('manage_options'),
+    'box_title' => isset($box_title) ? $box_title : 'Custom Box',
+    'api_url' => BOCS_API_URL
+));
+
+// Pass data specifically for order line items component
+wp_localize_script('bocs-order-line-items', 'bocs_data', array(
+    'ajax_url' => admin_url('admin-ajax.php'),
+    'nonce' => wp_create_nonce('bocs-ajax-nonce'),
+    'is_admin' => current_user_can('manage_options')
 ));
 
 // Add this script to ensure WooCommerce product IDs are added to BOCS products
@@ -205,15 +191,12 @@ wp_localize_script('bocs-edit-details', 'bocs_edit_details_data', array(
 // Map WooCommerce product IDs to BOCS products if available
 document.addEventListener('DOMContentLoaded', function() {
     // Add logging for debugging
-    console.log('BOCS Edit Details - Setting up WooCommerce product ID mapping');
     
     // Get saved product mappings from PHP if available
     const savedProductMappings = <?php 
         $product_mapping = get_option('bocs_product_mapping', []); 
         echo json_encode($product_mapping);
     ?>;
-    
-    console.log('Product mappings from database:', savedProductMappings);
     
     // Get all product items in the table
     const tableRows = document.querySelectorAll('.bocs-order-table tbody tr[data-product-id]');
@@ -243,9 +226,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Merge mappings and save to window 
     window.bocsToWcProductMapping = {...savedProductMappings, ...productMapping};
-    
-    // Make the mapping available globally for other scripts to access
-    console.log('BOCS to WC product mapping complete:', window.bocsToWcProductMapping);
     
     <?php
     // Save the mappings from the current subscription to the database
@@ -356,498 +336,36 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         
         <div class="section-content">
-            <div class="bocs-order-details">
-                <table class="bocs-order-table">
-                    <thead>
-                        <tr>
-                            <th><?php esc_html_e('Item', 'bocs-wordpress'); ?></th>
-                            <th><?php esc_html_e('Cost', 'bocs-wordpress'); ?></th>
-                            <th><?php esc_html_e('Qty', 'bocs-wordpress'); ?></th>
-                            <th><?php esc_html_e('Total', 'bocs-wordpress'); ?></th>
-                            <th><?php esc_html_e('GST', 'bocs-wordpress'); ?></th>
-                        </tr>
-                    </thead>
-                    <tbody>
                     <?php 
-                    $subtotal = 0;
-                    $tax_total = 0;
+            // Set up data for the order line items component
+            $component_id = 'bocs-order-items-' . $subscription_id;
                     
-                    // Properly access items from the API response structure
-                    $items = [];
-                    if (isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
-                        $items = $subscription['lineItems'];
-                    }
-                    
-                    // Get discount amount per item (if any)
-                    $discount_percent = 0;
-                    $has_coupon = false;
-                    $total_discount_amount = 0;
-                    $coupon_code = '';
-                    
-                    // First check if there's a discount in the frequency object
-                    if (isset($subscription['frequency']) && isset($subscription['frequency']['discount'])) {
-                        $discount_percent = floatval($subscription['frequency']['discount']);
-                        $discount_type = isset($subscription['frequency']['discountType']) ? $subscription['frequency']['discountType'] : 'percent';
-                        
-                        error_log("Found discount in frequency: {$discount_percent}% ({$discount_type})");
-                        
-                        // Ensure it's a percentage discount
-                        if ($discount_type === 'percent' && $discount_percent > 0) {
-                            $has_coupon = true; // Treat frequency discount like a coupon
-                        }
-                    }
-                    
-                    // Then check coupon lines as backup
-                    if (!empty($subscription['couponLines']) && is_array($subscription['couponLines'])) {
-                        foreach ($subscription['couponLines'] as $coupon) {
-                            if (!empty($coupon['discount']) && !empty($coupon['code'])) {
-                                $has_coupon = true;
-                                $coupon_code = $coupon['code'];
-                                
-                                // Store total discount amount from API
-                                $total_discount_amount = floatval($coupon['discount']);
-                                
-                                // If we don't already have a percentage from frequency, try to parse from coupon code
-                                if ($discount_percent <= 0 && strpos($coupon['code'], 'percent') !== false) {
-                                    // Extract percentage from coupon code if possible
-                                    preg_match('/(\d+)-percent/', $coupon['code'], $matches);
-                                    if (!empty($matches[1])) {
-                                        $discount_percent = intval($matches[1]);
-                                    }
-                                }
-                                
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Calculate sum of line item discounts for verification
-                    $calculated_discount_sum = 0;
-                    
-                    if (!empty($items)): 
-                        foreach ($items as $item): 
-                            $product_id = isset($item['productId']) ? $item['productId'] : '';
-                            $quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
-                            
-                            // Get regular price from BOCS products if available
-                            $regular_price = 0;
-                            $found_in_bocs = false;
-                            
-                            if (!empty($all_products)) {
-                                foreach ($all_products as $bocs_product) {
-                                    if (isset($bocs_product['id']) && $bocs_product['id'] === $product_id) {
-                                        $regular_price = isset($bocs_product['regularPrice']) ? floatval($bocs_product['regularPrice']) : 0;
-                                        $found_in_bocs = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Use the price from lineItems only if not found in BOCS products
-                            $unit_price = $found_in_bocs ? $regular_price : (isset($item['price']) ? floatval($item['price']) : 0);
-                            
-                            // For display purposes, determine the unit prices properly
-                            $display_unit_price = null;
-                            $original_unit_price = null;
-                            
-                            if ($found_in_bocs) {
-                                // Use regularPrice as the display price if available
-                                if (isset($bocs_product['regularPrice'])) {
-                                    $original_unit_price = floatval($bocs_product['regularPrice']);
-                                    $display_unit_price = $original_unit_price;
-                                    
-                                    // Check for sale price
-                                    if ((isset($bocs_product['price']) && $bocs_product['price'] > 0)) {
-                                        $sale_price = floatval($bocs_product['price']);
-                                        // Don't override display price with sale price
-                                    } elseif (isset($bocs_product['salePrice']) && $bocs_product['salePrice'] > 0) {
-                                        $sale_price = floatval($bocs_product['salePrice']);
-                                        // Don't override display price with sale price
-                                    }
-                                }
-                                // Fallback to price field
-                                elseif (isset($bocs_product['price'])) {
-                                    $display_unit_price = floatval($bocs_product['price']);
-                                }
-                            }
-                            
-                            // If no display price found yet, use the one from subscription line item
-                            if ($display_unit_price === null) {
-                                $display_unit_price = $unit_price;
-                            }
-                            
-                            // Calculate line total based on displayed unit price and quantity
-                            $line_total = $display_unit_price * $quantity;
-                            
-                            // For demonstration purposes, directly calculate GST as 5% of line total
-                            // This matches the values shown in the reference image ($4.50 per line)
-                            $item_tax = round($line_total * 0.05, 2);
-                            
-                            // If this doesn't look right, uncomment the section below to use standard 10% GST
-                            /*
-                            // Calculate GST properly - 10% is standard Australian GST rate
-                            // Australian GST is calculated on the price after discounts
-                            $tax_rate = 0.1; // 10% GST
-                            
-                            // Calculate the price after any discount
-                            $price_after_discount = $display_unit_price;
-                            if ($discount_display) {
-                                // Calculate the discount per unit
-                                $unit_discount = $discount_amount / $quantity;
-                                // Apply discount to the unit price
-                                $price_after_discount = max(0, $display_unit_price - $unit_discount);
-                            }
-                            
-                            // Calculate GST on the price after discount
-                            $item_tax = round($price_after_discount * $quantity * $tax_rate, 2);
-                            */
-                            
-                            // For debugging
-                            error_log("Item: {$item['name']} - Qty: {$quantity} - Unit Price: {$display_unit_price} - Total: {$line_total} - GST: {$item_tax}");
-                            
-                            // Add to subtotal and tax total
-                            $subtotal += $line_total;
-                            $tax_total += $item_tax;
-                            
-                            // Calculate discount amount per item if applicable
-                            $discount_amount = 0;
-                            $discount_display = false;
-                            $sale_price_discount = 0;
-                            $should_show_discount = false;
-                            
-                            // Check for product-specific discount (regular price vs sale price)
-                            if ($found_in_bocs) {
-                                // If we have both regular and sale price in BOCS product data
-                                if (isset($bocs_product['regularPrice']) && isset($bocs_product['price'])) {
-                                    $regular_price = floatval($bocs_product['regularPrice']);
-                                    $sale_price = floatval($bocs_product['price']);
-                                    
-                                    if ($regular_price > $sale_price) {
-                                        $sale_price_discount = ($regular_price - $sale_price) * $quantity;
-                                        // Store it but don't display if we have percent coupon
-                                        $should_show_discount = true;
-                                    }
-                                }
-                                // Also check for salePrice field if available
-                                elseif (isset($bocs_product['regularPrice']) && isset($bocs_product['salePrice']) && $bocs_product['salePrice'] > 0) {
-                                    $regular_price = floatval($bocs_product['regularPrice']);
-                                    $sale_price = floatval($bocs_product['salePrice']);
-                                    
-                                    if ($regular_price > $sale_price) {
-                                        $sale_price_discount = ($regular_price - $sale_price) * $quantity;
-                                        // Store it but don't display if we have percent coupon
-                                        $should_show_discount = true;
-                                    }
-                                }
-                            }
-                            
-                            // For percentage-based coupon
-                            if ($has_coupon && $discount_percent > 0) {
-                                // Calculate the percentage discount based on original price (regular price)
-                                if ($found_in_bocs && isset($bocs_product['regularPrice'])) {
-                                    // Use the regular price for percentage discount calculation
-                                    $regular_price = floatval($bocs_product['regularPrice']);
-                                    $discount_amount = ($regular_price * $quantity * $discount_percent / 100);
-                                } else {
-                                    // Fallback to current line total if regular price not available
-                                    $discount_amount = ($line_total * $discount_percent / 100);
-                                }
-                                $discount_display = true;
-                                // Don't display original product discount
-                            } 
-                            // Only show product-specific discount if there's no percentage coupon
-                            else if ($should_show_discount) {
-                                $discount_amount = $sale_price_discount;
-                                $discount_display = true;
-                            }
-                            
-                            // Store the discount flag in the item array for later reference
-                            $item['discount_display'] = $discount_display;
-                            $item['discount_amount'] = $discount_amount;
-                            
-                            // Add to the total calculated discount sum for verification
-                            $calculated_discount_sum += $discount_amount;
-                            
-                            // Get product image if available
-                            $image_url = '';
-                            if (isset($item['images']) && is_array($item['images']) && !empty($item['images'])) {
-                                // Try to get image URL directly from the first image in the array
-                                if (isset($item['images'][0]['url'])) {
-                                    $image_url = esc_url($item['images'][0]['url']);
-                                }
-                                // If url is not found but raw is present, use that
-                                elseif (isset($item['images'][0]['raw'])) {
-                                    $image_url = esc_url($item['images'][0]['raw']);
-                                }
-                            }
-                            
-                            // Look for image in all_products if still no image found
-                            if (empty($image_url) && !empty($all_products)) {
-                                // Find the product in all_products by ID
-                                foreach ($all_products as $prod) {
-                                    if (isset($prod['id']) && $prod['id'] === $product_id) {
-                                        if (isset($prod['images']) && is_array($prod['images']) && !empty($prod['images'])) {
-                                            if (isset($prod['images'][0]['url'])) {
-                                                $image_url = esc_url($prod['images'][0]['url']);
-                                            } elseif (isset($prod['images'][0]['raw'])) {
-                                                $image_url = esc_url($prod['images'][0]['raw']);
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Use placeholder image if no image is available
-                            if (empty($image_url)) {
-                                // Use a single, general placeholder image suitable for any product type
-                                $image_url = 'https://placehold.co/60x80/f5f5f5/888888?text=Product';
-                            }
-
-                            // Check if there's a corresponding WooCommerce product ID
-                            $wc_product_id = '';
-                            if (!empty($item['externalSourceId'])) {
-                                $wc_product_id = $item['externalSourceId'];
-                            } else {
-                                // Try to look it up (simplified version)
-                                $bocs_product_id = $product_id;
-                                if (function_exists('wc_get_product_id_by_sku')) {
-                                    $wc_product_id = wc_get_product_id_by_sku($bocs_product_id);
-                                }
-                            }
-
-                            // Try to get the product name from the item directly
-                            $product_name = '';
-                            if (isset($item['name']) && !empty($item['name'])) {
-                                $product_name = $item['name'];
-                                error_log("Found product name in item: " . $product_name);
-                            } 
-                            // If not found in the item, try to find it in all_products
-                            elseif (!empty($all_products)) {
-                                foreach ($all_products as $prod) {
-                                    if (isset($prod['id']) && $prod['id'] === $product_id && isset($prod['name'])) {
-                                        $product_name = $prod['name'];
-                                        error_log("Found product name in all_products: " . $product_name);
-                                        break;
-                                    }
-                                }
-                            }
-                            // Try to find in BOCS data if available
-                            elseif (isset($bocs_data) && isset($bocs_data['data']) && isset($bocs_data['data']['products'])) {
-                                foreach ($bocs_data['data']['products'] as $prod) {
-                                    if (isset($prod['id']) && $prod['id'] === $product_id && isset($prod['name'])) {
-                                        $product_name = $prod['name'];
-                                        error_log("Found product name in bocs_data: " . $product_name);
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Fallback to trying a direct API call for this product
-                            if (empty($product_name)) {
-                                $product_url = BOCS_API_URL . 'products/' . $product_id;
-                                $product_response = $helper->curl_request(
-                                    $product_url,
-                                    'GET',
-                                    [],
-                                    [
-                                        'Organization' => $options['bocs_headers']['organization'] ?? '',
-                                        'Store' => $options['bocs_headers']['store'] ?? '',
-                                        'Authorization' => $options['bocs_headers']['authorization'] ?? '',
-                                        'Content-Type' => 'application/json'
-                                    ]
-                                );
-                                
-                                if (!is_wp_error($product_response) && isset($product_response['data']) && isset($product_response['data']['name'])) {
-                                    $product_name = $product_response['data']['name'];
-                                    error_log("Found product name via API call: " . $product_name);
-                                }
-                            }
-
-                            // Record discrepancy for debugging if needed
-                            if ($has_coupon && $discount_percent > 0 && abs($calculated_discount_sum - $display_discount) > 0.01) {
-                                error_log("Discount discrepancy: API discount = {$display_discount}, calculated sum = {$calculated_discount_sum}");
-                                // Debug info
-                                error_log("Products in coupon calculation:");
-                                foreach ($items as $debug_item) {
-                                    $debug_id = isset($debug_item['productId']) ? $debug_item['productId'] : 'unknown';
-                                    $debug_name = isset($debug_item['name']) ? $debug_item['name'] : 'unknown';
-                                    $debug_price = isset($debug_item['price']) ? $debug_item['price'] : 0;
-                                    $debug_qty = isset($debug_item['quantity']) ? $debug_item['quantity'] : 0;
-                                    $debug_item_discount = isset($debug_item['discount_amount']) ? $debug_item['discount_amount'] : 0;
-                                    
-                                    error_log("Item: {$debug_name} (ID: {$debug_id}) - Price: {$debug_price} - Qty: {$debug_qty} - Discount: {$debug_item_discount}");
-                                }
-                                
-                                // If there's a significant discrepancy, the API total is more reliable
-                                // Force the calculated discount to be distributed proportionally
-                                if ($calculated_discount_sum > 0) {
-                                    $adjustment_factor = $display_discount / $calculated_discount_sum;
-                                    error_log("Adjusting discount calculation by factor: {$adjustment_factor}");
-                                }
-                            }
-
-                            // For percentage-based coupons, always display the coupon discount
-                            // directly from the API instead of the calculated sum to ensure accuracy
-                            if ($has_coupon && $discount_percent > 0) {
-                                // Override with API value if significant difference
-                                if (abs($calculated_discount_sum - $display_discount) > 0.01) {
-                                    $display_discount = $total_discount_amount;
-                                }
-                            }
-                        ?>
-                        <tr data-product-id="<?php echo esc_attr($product_id); ?>" <?php echo !empty($wc_product_id) ? 'data-wc-product-id="' . esc_attr($wc_product_id) . '"' : ''; ?>>
-                            <td class="product-name">
-                                <?php if (!empty($image_url)): ?>
-                                    <img src="<?php echo esc_url($image_url); ?>" alt="<?php echo esc_attr($item['name'] ?? ''); ?>" class="product-thumbnail">
-                                <?php endif; ?>
-                                <div class="product-info">
-                                    <div class="product-title"><?php echo esc_html($product_name); ?></div>
-                                    <?php if ($discount_display): ?>
-                                    <div class="product-discount">
-                                        <?php 
-                                        if ($has_coupon && $discount_percent > 0) {
-                                            echo wp_kses_post(wc_price($discount_amount)) . ' discount (' . $discount_percent . '% off)';
-                                        } else {
-                                            echo wp_kses_post(wc_price($discount_amount)) . ' discount';
-                                        }
-                                        ?>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                            <td class="product-price">
-                                <?php 
-                                // Show the price after any discounts applied
-                                echo wp_kses_post(wc_price($display_unit_price)); 
-                                ?>
-                            </td>
-                            <td class="product-quantity">
-                                <span class="quantity-value">× <?php echo esc_html($quantity); ?></span>
-                            </td>
-                            <td class="product-total">
-                                <?php 
-                                // Show the exact line total from the API
-                                echo wp_kses_post(wc_price($line_total)); 
-                                ?>
-                            </td>
-                            <td class="product-tax">
-                                <?php 
-                                // Show the GST amount - with at most 2 decimal places
-                                echo wp_kses_post(wc_price(round($item_tax, 2))); 
-                                ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="5"><?php esc_html_e('No items found in this subscription.', 'bocs-wordpress'); ?></td>
-                        </tr>
-                    <?php endif; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr class="bocs-subtotal-row">
-                            <th colspan="3" class="text-right"><?php esc_html_e('Items Subtotal:', 'bocs-wordpress'); ?></th>
-                            <td class="subtotal"><?php echo wp_kses_post(wc_price($subtotal)); ?></td>
-                            <td></td>
-                        </tr>
-                        
-                        <?php // Show coupon discount row regardless of per-item discounts
-                        if (!empty($subscription['couponLines']) && is_array($subscription['couponLines'])): 
-                            foreach ($subscription['couponLines'] as $coupon):
-                                // Use the discount amount directly from the API by default
-                                $display_discount = !empty($coupon['discount']) ? floatval($coupon['discount']) : 0;
-                                
-                                // Record discrepancy for debugging if needed
-                                if ($has_coupon && $discount_percent > 0 && abs($calculated_discount_sum - $display_discount) > 0.01) {
-                                    error_log("Discount discrepancy: API discount = {$display_discount}, calculated sum = {$calculated_discount_sum}");
-                                    error_log("Products in coupon calculation:");
-                                    foreach ($items as $debug_item) {
-                                        $debug_id = isset($debug_item['productId']) ? $debug_item['productId'] : 'unknown';
-                                        $debug_name = isset($debug_item['name']) ? $debug_item['name'] : 'unknown';
-                                        $debug_price = isset($debug_item['price']) ? $debug_item['price'] : 0;
-                                        $debug_qty = isset($debug_item['quantity']) ? $debug_item['quantity'] : 0;
-                                        $debug_item_discount = isset($debug_item['discount_amount']) ? $debug_item['discount_amount'] : 0;
-                                        
-                                        error_log("Item: {$debug_name} (ID: {$debug_id}) - Price: {$debug_price} - Qty: {$debug_qty} - Discount: {$debug_item_discount}");
-                                    }
-                                }
-                                ?>
-                                <tr class="bocs-coupon-row">
-                                    <th colspan="3" class="text-right coupon-label">
-                                        <?php 
-                                        // Just display "Discount" without the coupon code
-                                        echo esc_html__('Discount:', 'bocs-wordpress');
-                                        ?>
-                                    </th>
-                                    <td class="coupon-discount">
-                                        <?php
-                                        // Always use the calculated discount sum from line items
-                                        // instead of the API value to ensure consistency
-                                        echo wp_kses_post(wc_price($calculated_discount_sum * -1)); 
-                                        
-                                        // Log if there's a discrepancy but we're using our calculated value
-                                        if ($display_discount != $calculated_discount_sum && $calculated_discount_sum > 0) {
-                                            error_log("Using calculated discount sum ({$calculated_discount_sum}) instead of API value ({$display_discount})");
-                                        }
-                                        ?>
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            <?php endforeach;
-                        endif; ?>
-                        
-                        <?php if (!empty($subscription['shippingTotal'])): ?>
-                        <tr class="bocs-shipping-row">
-                            <th colspan="3" class="text-right"><?php esc_html_e('Shipping:', 'bocs-wordpress'); ?></th>
-                            <td data-title="<?php esc_attr_e('Shipping', 'bocs-wordpress'); ?>" class="shipping">
-                                <?php echo wp_kses_post(wc_price($subscription['shippingTotal'])); ?>
-                            </td>
-                            <td>
-                                <?php 
-                                // Based on the reference image, shipping GST is $2.00 for a $20.00 shipping charge (10%)
-                                $shipping_tax = round($subscription['shippingTotal'] * 0.1, 2);
-                                
-                                echo wp_kses_post(wc_price($shipping_tax)); 
-                                $tax_total += $shipping_tax; // Add to total tax
-                                ?>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-                        
-                        <?php if ($tax_total > 0): ?>
-                        <tr class="bocs-tax-row">
-                            <th colspan="3" class="text-right"><?php esc_html_e('GST:', 'bocs-wordpress'); ?></th>
-                            <td></td>
-                            <td data-title="<?php esc_attr_e('GST', 'bocs-wordpress'); ?>" class="tax">
-                                <?php 
-                                // Use the actual calculated tax total
-                                echo wp_kses_post(wc_price($tax_total)); 
-                                ?>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-                        
-                        <tr class="bocs-total-row">
-                            <th colspan="3" class="text-right"><?php esc_html_e('Order Total:', 'bocs-wordpress'); ?></th>
-                            <td colspan="2" data-title="<?php esc_attr_e('Total', 'bocs-wordpress'); ?>" class="order-total">
-                                <?php 
-                                // Calculate the order total based on:
-                                // Subtotal - Calculated Discount + Shipping
-                                $shipping_total = isset($subscription['shippingTotal']) ? floatval($subscription['shippingTotal']) : 0;
-                                $calculated_total = $subtotal - $calculated_discount_sum + $shipping_total;
-                                
-                                // Log the calculation for debugging
-                                error_log("Order total calculation: Subtotal ({$subtotal}) - Discount ({$calculated_discount_sum}) + Shipping ({$shipping_total}) = {$calculated_total}");
-                                
-                                // Display the calculated total instead of the API total
-                                echo wp_kses_post(wc_price($calculated_total));
-                                ?>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            // Check for lineItems first (API-style keys)
+            if (isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
+                $items = $subscription['lineItems'];
+            }
+            // Fall back to items format (formatted data keys)
+            elseif (isset($subscription['items']) && is_array($subscription['items'])) {
+                $items = $subscription['items'];
+            } else {
+                $items = array();
+            }
+            
+            $subtotal = isset($subscription['subtotal']) ? $subscription['subtotal'] : 0;
+            $discount = isset($subscription['discount']) ? $subscription['discount'] : 0;
+            $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : 0;
+            $tax = isset($subscription['taxTotal']) ? $subscription['taxTotal'] : 0;
+            $total = isset($subscription['total']) ? $subscription['total'] : 0;
+            $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
+            
+            // Pass the frequency object to make discount percentage available
+            $frequency = isset($subscription['frequency']) ? $subscription['frequency'] : array();
+            $discount_type = isset($frequency['discountType']) ? $frequency['discountType'] : '';
+            $discount_percent = isset($frequency['discount']) ? $frequency['discount'] : '';
+            
+            // Include the order line items component
+            include(dirname(dirname(__FILE__)) . '/components/order-line-items.php');
+            ?>
         </div>
     </div>
 </div>
