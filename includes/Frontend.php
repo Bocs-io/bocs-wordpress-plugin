@@ -20,7 +20,7 @@ class Frontend {
 	public function enqueue_styles()
 	{
 		// Enqueue the main plugin styles
-		wp_enqueue_style('bocs-style', plugin_dir_url(dirname(__FILE__)) . 'assets/css/style.css', array(), '20250423.1');
+		wp_enqueue_style('bocs-style', plugin_dir_url(dirname(__FILE__)) . 'assets/css/style.css', array(), '20250425.1');
 		
 		// Enqueue Font Awesome for the icons
 		wp_enqueue_style('font-awesome', plugin_dir_url(dirname(__FILE__)) . 'assets/css/font-awesome.min.css', array(), BOCS_VERSION);
