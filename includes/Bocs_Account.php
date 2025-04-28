@@ -987,7 +987,7 @@ class Bocs_Account
      */
     public function ajax_get_payment_methods() {
         // Check nonce for security
-        check_ajax_referer('bocs-subscriptions-nonce', 'nonce');
+        check_ajax_referer('bocs-ajax-nonce', 'nonce');
         
         // Get the current user ID
         $user_id = get_current_user_id();
@@ -1025,7 +1025,7 @@ class Bocs_Account
      */
     public function ajax_update_payment_method() {
         // Check nonce for security
-        check_ajax_referer('bocs-subscriptions-nonce', 'nonce');
+        check_ajax_referer('bocs-ajax-nonce', 'nonce');
         
         // Get the subscription ID from the request
         $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
@@ -1065,7 +1065,7 @@ class Bocs_Account
      * AJAX handler for getting user billing details
      */
     public function ajax_get_user_billing_details() {
-        check_ajax_referer('bocs-subscriptions-nonce', 'nonce');
+        check_ajax_referer('bocs-ajax-nonce', 'nonce');
         
         $user_id = get_current_user_id();
         if (empty($user_id)) {
@@ -1109,7 +1109,7 @@ class Bocs_Account
      * AJAX handler for getting Stripe setup intent data
      */
     public function ajax_get_stripe_setup() {
-        check_ajax_referer('bocs-subscriptions-nonce', 'nonce');
+        check_ajax_referer('bocs-ajax-nonce', 'nonce');
         
         $user_id = get_current_user_id();
         if (empty($user_id)) {

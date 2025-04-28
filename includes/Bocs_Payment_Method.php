@@ -301,9 +301,223 @@ class Bocs_Payment_Method {
             ]);
         //}
     }
+    
+    /**
+     * AJAX handler for getting payment methods for a subscription.
+     * 
+     * @since 0.0.140
+     * @return void Sends JSON response
+     */
+    public function ajax_get_payment_methods() {
+        // Check for different nonce parameter names
+        if (isset($_POST['nonce'])) {
+            check_ajax_referer('bocs-ajax-nonce', 'nonce');
+        } else {
+            check_ajax_referer('bocs_ajax_nonce', 'nonce');
+        }
+        
+        if (!isset($_POST['subscription_id'])) {
+            wp_send_json_error(array('message' => 'Subscription ID is required'));
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        
+        try {
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            
+            // Get the appropriate key
+            $secret_key = $test_mode ? 
+                $stripe_settings['test_secret_key'] : 
+                $stripe_settings['secret_key'];
+                
+            // Initialize Stripe with secret key
+            $stripe = new \Stripe\StripeClient($secret_key);
+            
+            // Get current user's customer ID
+            $user_id = get_current_user_id();
+            $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            
+            // Get payment methods from Stripe
+            $payment_methods = [];
+            
+            if (!empty($customer_id)) {
+                // Get customer's payment methods from Stripe
+                $methods = $stripe->paymentMethods->all([
+                    'customer' => $customer_id,
+                    'type' => 'card',
+                    'limit' => 10,
+                ]);
+                
+                if (!empty($methods->data)) {
+                    foreach ($methods->data as $method) {
+                        $payment_methods[] = [
+                            'method' => [
+                                'id' => $method->id,
+                                'brand' => ucfirst($method->card->brand),
+                                'last4' => $method->card->last4,
+                                'exp_month' => $method->card->exp_month,
+                                'exp_year' => $method->card->exp_year,
+                            ],
+                            'is_default' => false  // We'll set this later
+                        ];
+                    }
+                }
+                
+                // Get the default payment method if available
+                try {
+                    $customer = $stripe->customers->retrieve($customer_id);
+                    $default_payment_method = $customer->invoice_settings->default_payment_method;
+                    
+                    // Mark the default payment method
+                    if (!empty($default_payment_method) && !empty($payment_methods)) {
+                        foreach ($payment_methods as &$pm) {
+                            if ($pm['method']['id'] === $default_payment_method) {
+                                $pm['is_default'] = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // Continue without setting default
+                }
+            }
+            
+            wp_send_json_success(array(
+                'payment_methods' => $payment_methods,
+                'test_mode' => $test_mode
+            ));
+            
+        } catch (\Exception $e) {
+            wp_send_json_error(array('message' => $e->getMessage()));
+        }
+    }
+    
+    /**
+     * AJAX handler for updating subscription payment method.
+     * 
+     * @since 0.0.140
+     * @return void Sends JSON response
+     */
+    public function ajax_update_payment_method() {
+        // Check for different nonce parameter names
+        if (isset($_POST['nonce'])) {
+            check_ajax_referer('bocs-ajax-nonce', 'nonce');
+        } else {
+            check_ajax_referer('bocs_ajax_nonce', 'nonce');
+        }
+        
+        if (!isset($_POST['subscription_id']) || !isset($_POST['payment_method_id'])) {
+            wp_send_json_error(array('message' => 'Subscription ID and payment method ID are required'));
+            return;
+        }
+        
+        $subscription_id = sanitize_text_field($_POST['subscription_id']);
+        $payment_method_id = sanitize_text_field($_POST['payment_method_id']);
+        $is_new_method = isset($_POST['is_new_method']) && $_POST['is_new_method'] === 'true';
+        
+        try {
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            
+            // Get the appropriate key
+            $secret_key = $test_mode ? 
+                $stripe_settings['test_secret_key'] : 
+                $stripe_settings['secret_key'];
+                
+            // Initialize Stripe with secret key
+            $stripe = new \Stripe\StripeClient($secret_key);
+            
+            // Get current user's customer ID
+            $user_id = get_current_user_id();
+            $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            
+            // If no customer ID exists and this is a new method, we need to create a customer
+            if (empty($customer_id) && $is_new_method) {
+                try {
+                    $customer = $stripe->customers->create([
+                        'email' => wp_get_current_user()->user_email,
+                        'payment_method' => $payment_method_id,
+                        'invoice_settings' => [
+                            'default_payment_method' => $payment_method_id,
+                        ],
+                        'metadata' => [
+                            'source' => 'bocs_wordpress',
+                            'user_id' => $user_id
+                        ]
+                    ]);
+                    
+                    $customer_id = $customer->id;
+                    update_user_meta($user_id, '_stripe_customer_id', $customer_id);
+                } catch (\Exception $e) {
+                    wp_send_json_error(array('message' => 'Failed to create customer: ' . $e->getMessage()));
+                    return;
+                }
+            } 
+            // If we have a customer ID but need to attach a new payment method
+            elseif (!empty($customer_id) && $is_new_method) {
+                try {
+                    // Attach payment method to customer
+                    $stripe->paymentMethods->attach(
+                        $payment_method_id,
+                        ['customer' => $customer_id]
+                    );
+                    
+                    // Set as default payment method
+                    $stripe->customers->update($customer_id, [
+                        'invoice_settings' => [
+                            'default_payment_method' => $payment_method_id
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    wp_send_json_error(array('message' => 'Failed to attach payment method: ' . $e->getMessage()));
+                    return;
+                }
+            }
+            // If we're using an existing payment method, set it as default
+            elseif (!empty($customer_id)) {
+                try {
+                    $stripe->customers->update($customer_id, [
+                        'invoice_settings' => [
+                            'default_payment_method' => $payment_method_id
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    wp_send_json_error(array('message' => 'Failed to set default payment method: ' . $e->getMessage()));
+                    return;
+                }
+            }
+            
+            // Now update the payment method on the subscription with the BOCS API
+            $helper = new Bocs_Helper();
+            $options = get_option('bocs_settings', []);
+            $headers = isset($options['bocs_headers']) ? $options['bocs_headers'] : [];
+            
+            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id . '/payment';
+            $data = ['payment_method_id' => $payment_method_id];
+            
+            $response = $helper->curl_request($url, 'PUT', $data, $headers);
+            
+            if (isset($response['error']) && !empty($response['error'])) {
+                throw new \Exception('API Error: ' . (isset($response['message']) ? $response['message'] : 'Unknown error'));
+            }
+            
+            wp_send_json_success(array(
+                'message' => 'Payment method updated successfully',
+                'subscription_id' => $subscription_id,
+                'payment_method_id' => $payment_method_id
+            ));
+            
+        } catch (\Exception $e) {
+            wp_send_json_error(array('message' => $e->getMessage()));
+        }
+    }
 
     /**
-     * Handle Stripe setup completion.
+     * Handle setup completion.
      *
      * Processes the redirect after Stripe setup, saves payment tokens,
      * and updates subscription payment details.
@@ -773,7 +987,7 @@ class Bocs_Payment_Method {
             $status = $_GET['payment_updated'];
             
             if ($status === 'success') {
-                wc_add_notice(__('Payment method successfully updated.', 'bocs-wordpress'), 'success');
+                wc_add_notice(__('Your payment method has been successfully updated.', 'bocs-wordpress'), 'success');
             } 
             else if ($status === 'pending') {
                 wc_add_notice(__('Your payment verification is in progress. Please complete any additional steps required by your bank.', 'bocs-wordpress'), 'notice');
