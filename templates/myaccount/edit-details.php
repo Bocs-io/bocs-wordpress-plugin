@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 wp_enqueue_script('jquery');
 wp_enqueue_script('jquery-ui-datepicker');
 wp_enqueue_style('jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
-wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), bocs_get_cache_bust_version('20250425.2'));
+wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), '20250428.3');
 wp_enqueue_script('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/js/bocs-edit-details.js', array('jquery'), bocs_get_cache_bust_version('20250425.2'), true);
 
 // Add order line items component

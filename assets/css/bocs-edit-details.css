@@ -100,16 +100,25 @@ h3 {
 }
 
 .subscription-status {
-    padding: 8px 16px;
+
+    /*padding: 8px 16px;
     border-radius: var(--bocs-radius);
     font-weight: 600;
     display: inline-block;
-    transition: var(--bocs-transition);
+    transition: var(--bocs-transition);*/
+
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
 }
 
 .status-active {
-    background: var(--bocs-success-light);
-    color: var(--bocs-success);
+    background-color: #e6f7ec;
+    color: #0d9f6e;
 }
 
 .status-paused,
