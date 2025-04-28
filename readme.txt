@@ -1,3 +1,8 @@
+v0.0.143 04/27/2025
+* style: Improved subscription status badge styling with modern design
+* fix: Added null checks to prevent PHP notices in updater class
+* docs: Updated changelog release dates for consistency
+
 v0.0.142 04/26/2025
 * Feature: Implemented reusable order line items component for consistent display
 * Feature: Enhanced subscription interface with dynamic order line items integration
