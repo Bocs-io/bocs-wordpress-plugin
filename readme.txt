@@ -1,3 +1,6 @@
+v0.0.144 04/28/2025
+* fix: Resolved issue with React component initialization by reverting CSS enqueues
+
 v0.0.143 04/27/2025
 * style: Improved subscription status badge styling with modern design
 * fix: Added null checks to prevent PHP notices in updater class
