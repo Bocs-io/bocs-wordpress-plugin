@@ -52,7 +52,6 @@
                         const subscriptionItem = $(this).closest('.bocs-subscription-item');
                         const details = subscriptionItem.find('.bocs-subscription-details');
                         const toggleIcon = subscriptionItem.find('.bocs-toggle-icon');
-                        const subscriptionId = subscriptionItem.data('subscription-id');
                         
                         // Toggle the details
                         details.slideToggle(300);
@@ -65,28 +64,8 @@
 
                         // Store the active subscription ID
                         if (subscriptionItem.hasClass('active')) {
-                            BocsSubscriptions.activeSubscriptionId = subscriptionId;
+                            BocsSubscriptions.activeSubscriptionId = subscriptionItem.data('subscription-id');
                             console.log('BocsSubscriptions: Activated subscription', BocsSubscriptions.activeSubscriptionId);
-                            
-                            // Load order line items via AJAX if the subscription is opened
-                            const orderComponent = subscriptionItem.find('.bocs-order-details');
-                            if (orderComponent.length > 0) {
-                                // Get the component ID
-                                const componentId = orderComponent.attr('id');
-                                
-                                // Refresh the line items
-                                if (typeof window.BocsOrderLineItems !== 'undefined' && window.BocsOrderLineItems.refresh) {
-                                    console.log('BocsSubscriptions: Refreshing line items for', subscriptionId);
-                                    window.BocsOrderLineItems.refresh(componentId, subscriptionId);
-                                } else {
-                                    console.log('BocsSubscriptions: BocsOrderLineItems not available, using event');
-                                    // Trigger custom event for refreshing line items
-                                    $(document).trigger('bocs:refresh-line-items', {
-                                        componentId: componentId,
-                                        subscriptionId: subscriptionId
-                                    });
-                                }
-                            }
                         }
 
                         // Close other open items
@@ -119,49 +98,14 @@
                 console.log('Early renewal button clicked');
                 BocsSubscriptions.handlers.earlyRenewal.call(this, e);
             });
+            // $('.edit-contents').on('click', this.handlers.editContents);
+            // $('.change-box').on('click', this.handlers.changeBox);
             
             // Form submissions
             $('#edit-schedule-form').on('submit', this.handlers.saveSchedule);
             $('#edit-frequency-form').on('submit', this.handlers.saveFrequency);
             $('#edit-address-form').on('submit', this.handlers.saveAddress);
             $('#edit-payment-form').on('submit', this.handlers.savePayment);
-            
-            // Modal internal buttons (pausing from schedule modal)
-            $(document).on('click', '#pause-button', function(e) {
-                console.log('Pause button clicked in schedule modal');
-                
-                // Get the subscription ID from the active subscription
-                const subscriptionId = BocsSubscriptions.activeSubscriptionId;
-                console.log('Subscription ID for pause:', subscriptionId);
-                
-                if (!subscriptionId) {
-                    console.error('No subscription ID found for pause button');
-                    BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
-                    return;
-                }
-                
-                // Close schedule modal first
-                $('#bocs-edit-schedule-modal').css('display', 'none');
-                
-                // Create a modified event object with subscription ID
-                const modifiedEvent = {
-                    ...e,
-                    preventDefault: () => e.preventDefault(),
-                    stopPropagation: () => e.stopPropagation(),
-                    currentTarget: {
-                        dataset: {
-                            subId: subscriptionId
-                        }
-                    }
-                };
-                
-                // Call the pause subscription handler with the modified event
-                BocsSubscriptions.handlers.pauseSubscription.call({
-                    data: function(key) {
-                        return key === 'sub-id' ? subscriptionId : null;
-                    }
-                }, modifiedEvent);
-            });
         },
 
         // Set up modal functionality
@@ -293,11 +237,6 @@
             // Process early renewal
             earlyRenewal: function(subscriptionId) {
                 return this.request(`subscriptions/${subscriptionId}/renew`, 'POST');
-            },
-            
-            // Pause subscription
-            pauseSubscription: function(subscriptionId, pauseData) {
-                return this.request(`subscriptions/${subscriptionId}/pause`, 'PUT', pauseData);
             }
         },
 
@@ -311,11 +250,6 @@
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id');
                 
-                console.log('Edit schedule clicked for subscription:', subscriptionId);
-                
-                // Store the subscription ID globally
-                BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                
                 // Get current next payment date and populate the form
                 const nextPaymentText = subscriptionItem.find('.bocs-section:first .bocs-section-line:first').text();
                 const nextPaymentDate = nextPaymentText.replace('Next payment date: ', '');
@@ -326,11 +260,11 @@
                 
                 $('#next-payment-date').val(formattedDate);
                 
-                // Explicitly log that we're setting the subscription ID for debugging
-                console.log('Setting active subscription ID:', subscriptionId);
-                
                 // Show the modal
                 $('#bocs-edit-schedule-modal').show();
+                
+                // Store the subscription ID
+                BocsSubscriptions.activeSubscriptionId = subscriptionId;
             },
             
             // Save schedule changes
@@ -1162,62 +1096,47 @@
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
                 
+                // Check if modal exists
+                const modal = $('#bocs-early-renewal-modal');
+                console.log('Early renewal modal exists:', modal.length > 0);
+                
                 // Show the early renewal modal
-                $('#bocs-early-renewal-modal').css('display', 'flex');
-                console.log('Early renewal modal opened for subscription:', subscriptionId);
-            },
-            
-            // Pause subscription handler
-            pauseSubscription: async function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+                modal.css('display', 'flex');
+                console.log('Modal display style after show:', modal.css('display'));
                 
-                console.log('Pause subscription handler called');
-                console.log('this object:', this);
-                console.log('event object:', e);
+                // Set up confirm button handler
+                $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
+                    const confirmButton = $(this);
+                    
+                    try {
+                        // Show loading state
+                        confirmButton.addClass('loading').prop('disabled', true);
+                        BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
+                        
+                        const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
+                        
+                        // Hide the modal
+                        $('#bocs-early-renewal-modal').css('display', 'none');
+                        
+                        BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
+                        
+                        // In a real implementation, we might want to reload the page
+                        // or update the UI with new subscription details
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } catch (error) {
+                        BocsSubscriptions.helpers.showNotification('Failed to process early renewal: ' + (error.message || 'Unknown error'), 'error');
+                    } finally {
+                        // Reset button state
+                        confirmButton.removeClass('loading').prop('disabled', false);
+                    }
+                });
                 
-                // Try to get the subscription ID from multiple sources
-                let subscriptionId = null;
-                
-                // 1. Try from data-sub-id attribute via jQuery data method
-                if ($(this).data('sub-id')) {
-                    subscriptionId = $(this).data('sub-id');
-                    console.log('Found subscription ID from data-sub-id:', subscriptionId);
-                } 
-                // 2. Try from closest subscription item
-                else if ($(this).closest('.bocs-subscription-item').length) {
-                    subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
-                    console.log('Found subscription ID from closest subscription item:', subscriptionId);
-                } 
-                // 3. Try from the global active subscription ID
-                else if (BocsSubscriptions.activeSubscriptionId) {
-                    subscriptionId = BocsSubscriptions.activeSubscriptionId;
-                    console.log('Using active subscription ID:', subscriptionId);
-                }
-                // 4. Check if 'this' has a data function (from our modified call)
-                else if (typeof this.data === 'function') {
-                    subscriptionId = this.data('sub-id');
-                    console.log('Found subscription ID from this.data function:', subscriptionId);
-                }
-                
-                console.log('Final subscription ID for pause:', subscriptionId);
-                
-                if (!subscriptionId) {
-                    console.error('No subscription ID found for pause');
-                    BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
-                    return;
-                }
-                
-                // Store the subscription ID
-                BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                
-                // Clear any previous values
-                $('#pause-reason').val('');
-                $('#pause-until-date').val('');
-                
-                // Show the pause subscription modal
-                $('#bocs-pause-subscription-modal').css('display', 'flex');
-                console.log('Pause subscription modal opened for subscription:', subscriptionId);
+                // Set up cancel button handler
+                $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
+                    $('#bocs-early-renewal-modal').css('display', 'none');
+                });
             },
             
             // Edit contents handler (placeholder)
@@ -1309,45 +1228,11 @@
     $(document).ready(function() {
         BocsSubscriptions.init();
         
-        // Set up early renewal handlers
-        setupEarlyRenewalHandlers();
-        
-        // Immediately run to ensure all product cells with "Unknown product" or "0" are hidden
-        $('.bocs-order-table .product-name').each(function() {
-            const text = $(this).text().trim();
-            const orderTableWrapper = $(this).find('.bocs-order-details-wrapper')[0];
-            const orderTable = $(orderTableWrapper).find('.bocs-order-table')[0];
-            if (text === 'Unknown product') {
-                $(this).addClass('unknown-product');
-                orderTable.hide();
-            } else if (text === '0') {
-                $(this).addClass('zero-product');
-                orderTable.hide();
-            }
-        });
-        
-        // Set up missing product data handling
-        $('.bocs-subscription-item').each(function() {
-            const subscriptionId = $(this).data('subscription-id');
-            const orderTableWrapper = $(this).find('.bocs-order-details-wrapper')[0];
-            
-            if (subscriptionId && orderTableWrapper) {
-                // Changed from strictly comparing with boolean true to a looser comparison that works with string "true"
-                const needsLoading = $(orderTableWrapper).data('needs-loading') == true || $(orderTableWrapper).data('needs-loading') === "true";
-                const orderTable = $(orderTableWrapper).find('.bocs-order-table')[0];
-                if (needsLoading && orderTable) {
-                    // Call function to fill missing data
-                    fillMissingProductInfo(subscriptionId, orderTable);
-                }
-            }
-        });
-        
-        // Early renewal button click (existing code)
-        $('.bocs-button.early-renewal').on('click', function() {
-            var subscriptionId = $(this).data('sub-id');
-            $('#bocs-early-renewal-modal').data('subscription-id', subscriptionId);
-            $('#bocs-early-renewal-modal').css('display', 'flex');
-        });
+        // Handle legacy Early Renewal button that might be from WooCommerce Subscriptions
+        // or other templates not using our class system
+        setTimeout(function() {
+            setupEarlyRenewalHandlers();
+        }, 1000); // Short delay to ensure page is fully loaded
     });
     
     /**
@@ -1376,45 +1261,8 @@
             BocsSubscriptions.setupModals();
         }
         
-        // Ensure the pause-subscription-modal exists
-        if ($('#bocs-pause-subscription-modal').length === 0) {
-            const pauseModalHtml = `
-            <div id="bocs-pause-subscription-modal" class="bocs-modal">
-                <div class="bocs-modal-content">
-                    <span class="bocs-modal-close">&times;</span>
-                    <h3>Pause Subscription</h3>
-                    <p>This will pause your subscription. You won't be charged until you resume your subscription.</p>
-                    <div class="bocs-form-row">
-                        <label for="pause-reason">Reason for pausing (optional)</label>
-                        <select id="pause-reason" name="pause_reason">
-                            <option value="">Select a reason...</option>
-                            <option value="going_away">Going away/vacation</option>
-                            <option value="too_many">Have too many products right now</option>
-                            <option value="financial">Financial reasons</option>
-                            <option value="other">Other reason</option>
-                        </select>
-                    </div>
-                    <div class="bocs-form-row">
-                        <label for="pause-until-date">Resume on (optional)</label>
-                        <input type="date" id="pause-until-date" name="pause_until_date">
-                    </div>
-                    <div class="bocs-modal-actions">
-                        <button class="bocs-button modal-cancel">Cancel</button>
-                        <button class="bocs-button primary modal-confirm">Confirm Pause</button>
-                    </div>
-                </div>
-            </div>`;
-            $('body').append(pauseModalHtml);
-            
-            // Re-initialize modal events
-            BocsSubscriptions.setupModals();
-        }
-        
         // Set up confirm button handler for early renewal modal
         setupEarlyRenewalModalHandlers();
-        
-        // Set up confirm button handler for pause subscription modal
-        setupPauseModalHandlers();
         
         // Look for all types of early renewal buttons across different interfaces
         handleLegacyRenewalButtons();
@@ -1425,8 +1273,6 @@
      * Set up the handlers for the early renewal modal buttons
      */
     function setupEarlyRenewalModalHandlers() {
-        console.log('Setting up early renewal modal handlers');
-        
         // Set up confirm button handler
         $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
             const confirmButton = $(this);
@@ -1465,79 +1311,8 @@
         });
         
         // Set up cancel button handler
-        $('#bocs-early-renewal-modal .modal-cancel, #bocs-early-renewal-modal .bocs-modal-close').off('click').on('click', function() {
+        $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
             $('#bocs-early-renewal-modal').css('display', 'none');
-        });
-    }
-    
-    /**
-     * Set up the handlers for the pause subscription modal buttons
-     */
-    function setupPauseModalHandlers() {
-        console.log('Setting up pause subscription modal handlers');
-        
-        // Set up confirm button handler
-        $('#bocs-pause-subscription-modal .modal-confirm').off('click').on('click', async function() {
-            const confirmButton = $(this);
-            const subscriptionId = BocsSubscriptions.activeSubscriptionId;
-            
-            if (!subscriptionId) {
-                console.error("No active subscription ID found for pause");
-                BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
-                return;
-            }
-            
-            // Get pause reason and until date (both optional)
-            const pauseReason = $('#pause-reason').val();
-            const pauseUntilDate = $('#pause-until-date').val();
-            
-            console.log('Processing pause for subscription:', subscriptionId, {
-                reason: pauseReason,
-                until: pauseUntilDate
-            });
-            
-            try {
-                // Show loading state
-                confirmButton.addClass('loading').prop('disabled', true);
-                BocsSubscriptions.helpers.showNotification('Processing pause request...', 'loading');
-                
-                // Prepare data for API call
-                const pauseData = {
-                    status: 'paused'
-                };
-                
-                // Add optional fields if provided
-                if (pauseReason) {
-                    pauseData.pauseReason = pauseReason;
-                }
-                
-                if (pauseUntilDate) {
-                    pauseData.resumeDate = pauseUntilDate;
-                }
-                
-                // Call API to pause the subscription
-                const response = await BocsSubscriptions.api.pauseSubscription(subscriptionId, pauseData);
-                
-                // Hide the modal
-                $('#bocs-pause-subscription-modal').css('display', 'none');
-                
-                BocsSubscriptions.helpers.showNotification('Subscription paused successfully', 'success');
-                
-                // Reload the page after a short delay
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } catch (error) {
-                BocsSubscriptions.helpers.showNotification('Failed to pause subscription: ' + (error.message || 'Unknown error'), 'error');
-            } finally {
-                // Reset button state
-                confirmButton.removeClass('loading').prop('disabled', false);
-            }
-        });
-        
-        // Set up cancel button handler
-        $('#bocs-pause-subscription-modal .modal-cancel, #bocs-pause-subscription-modal .bocs-modal-close').off('click').on('click', function() {
-            $('#bocs-pause-subscription-modal').css('display', 'none');
         });
     }
     
@@ -1654,212 +1429,6 @@
                 $('#bocs-early-renewal-modal').css('display', 'flex');
             });
         });
-    }
-
-    /**
-     * Fill in missing product information by retrieving data from the BOCS
-     * @param {string} subscriptionId - The subscription ID
-     * @param {HTMLElement} orderTableElement - The order table element to update
-     */
-    function fillMissingProductInfo(subscriptionId, orderTableElement) {
-        // Skip if no subscription ID or table element
-        if (!subscriptionId || !orderTableElement) return;
-        
-        console.log('Filling missing product info for subscription:', subscriptionId);
-        
-        // Find the subscription in our data
-        const subscription = bocsSubscriptionsData.subscriptions.find(sub => sub.id === subscriptionId);
-        if (!subscription) {
-            console.log('Subscription not found in data');
-            showOrderDetails(subscriptionId);
-            return;
-        }
-        
-        // Skip if we don't have line items
-        if (!subscription.lineItems || subscription.lineItems.length === 0) {
-            console.log('No line items found in subscription');
-            showOrderDetails(subscriptionId);
-            return;
-        }
-        
-        // We need to fetch BOCS details
-        const bocsId = subscription.bocs?.id;
-        if (!bocsId) {
-            console.log('No BOCS ID found for subscription');
-            showOrderDetails(subscriptionId);
-            return;
-        }
-        
-        console.log('Fetching BOCS details for ID:', bocsId);
-        
-        // Create the request
-        const apiUrl = bocsSubscriptionsData.apiUrl + 'bocs/' + bocsId;
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-BOCS-Organization': bocsSubscriptionsData.headers.organization,
-            'X-BOCS-Store': bocsSubscriptionsData.headers.store,
-            'Authorization': bocsSubscriptionsData.headers.authorization
-        };
-        
-        // Fetch BOCS details
-        fetch(apiUrl, {
-            method: 'GET',
-            headers: headers
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Show the order details regardless of outcome, we've tried our best to get data
-            if (data.code !== 200 || !data.data || !data.data.products) {
-                console.log('Invalid BOCS data response:', data);
-                showOrderDetails(subscriptionId);
-                return;
-            }
-            
-            // Process the product data
-            processProductData(subscriptionId, orderTableElement, subscription, data.data.products);
-            
-            // Show the order details after processing
-            showOrderDetails(subscriptionId);
-        })
-        .catch(error => {
-            console.error('Error fetching BOCS details:', error);
-            showOrderDetails(subscriptionId);
-        });
-    }
-    
-    // Helper function to process product data
-    function processProductData(subscriptionId, orderTableElement, subscription, bocsProducts) {
-        // Map product IDs to product details for quick lookup
-        const bocsProductMap = {};
-        bocsProducts.forEach(product => {
-            bocsProductMap[product.id] = product;
-        });
-        
-        // Get all row elements
-        const rows = orderTableElement.querySelectorAll('tbody tr');
-        
-        // Loop through each row
-        rows.forEach((row, index) => {
-            // Skip if we don't have a corresponding line item
-            if (!subscription.lineItems[index]) return;
-            
-            const lineItem = subscription.lineItems[index];
-            const productCell = row.querySelector('.product-name');
-            const priceCell = row.querySelector('td[data-title="Price"]');
-            const quantityCell = row.querySelector('td[data-title="Quantity"]');
-            const totalCell = row.querySelector('td[data-title="Total"]');
-            
-            // If product cell is empty and we have a matching product in BOCS
-            if ((!productCell.textContent.trim() || productCell.textContent.trim() === '0' || 
-                 productCell.textContent.trim() === 'Unknown product') && 
-                lineItem.productId && bocsProductMap[lineItem.productId]) {
-                
-                const bocsProduct = bocsProductMap[lineItem.productId];
-                
-                // Update the product name
-                productCell.textContent = bocsProduct.name;
-                
-                // Update price if needed
-                if (priceCell && (!priceCell.textContent.trim() || priceCell.textContent.trim() === '$0.00')) {
-                    if (typeof wc_price === 'function') {
-                        priceCell.innerHTML = wc_price(bocsProduct.price);
-                    } else {
-                        priceCell.textContent = '$' + Number(bocsProduct.price).toFixed(2);
-                    }
-                }
-                
-                // Update total if needed
-                if (totalCell && (!totalCell.textContent.trim() || totalCell.textContent.trim() === '$0.00')) {
-                    const quantity = quantityCell ? parseInt(quantityCell.textContent.trim() || '1', 10) : 1;
-                    const totalPrice = bocsProduct.price * quantity;
-                    
-                    if (typeof wc_price === 'function') {
-                        totalCell.innerHTML = wc_price(totalPrice);
-                    } else {
-                        totalCell.textContent = '$' + Number(totalPrice).toFixed(2);
-                    }
-                }
-            }
-        });
-    }
-    
-    /**
-     * Shows the order details after loading is complete
-     * @param {string} subscriptionId - The subscription ID
-     */
-    function showOrderDetails(subscriptionId) {
-        // Find the order details wrapper
-        const wrapper = document.querySelector(`.bocs-order-details-wrapper[data-subscription-id="${subscriptionId}"]`);
-        if (!wrapper) {
-            console.error('Order details wrapper not found for subscription:', subscriptionId);
-            return;
-        }
-        
-        console.log('Showing order details for subscription:', subscriptionId);
-        
-        // Get content element before hiding loading indicator
-        const content = wrapper.querySelector('.bocs-order-details-content');
-        
-        // Make sure any "Unknown product" or empty cells are handled
-        if (content) {
-            const productCells = content.querySelectorAll('.product-name');
-            productCells.forEach(cell => {
-                const text = cell.textContent.trim();
-                if (text === 'Unknown product' || text === '0' || text === '') {
-                    cell.innerHTML = '<span class="product-placeholder">Product information unavailable</span>';
-                }
-            });
-            
-            // Ensure content is displayed
-            content.style.display = 'block';
-            content.style.opacity = '1';
-            content.style.visibility = 'visible';
-            
-            // Explicitly show the table that was hidden
-            $(content).find('table.bocs-order-table').show();
-            $(content).find('.bocs-order-table-loading-spinner').hide();
-            
-            // Show the bocs-order-details div that might be hidden
-            $(content).find('.bocs-order-details').fadeIn(300);
-        } else {
-            console.error('Content element not found in wrapper');
-        }
-        
-        // Hide the loading indicator with a fade out
-        const loading = wrapper.querySelector('.bocs-order-details-loading');
-        if (loading) {
-            loading.style.opacity = '0';
-            setTimeout(() => {
-                loading.style.display = 'none';
-                
-                // Show the content with a smooth transition
-                if (content) {
-                    // Give the browser a moment to process the display change before adding the transition class
-                    setTimeout(() => {
-                        content.classList.add('loaded');
-                        // Make sure table is shown even after transition
-                        $(content).find('table.bocs-order-table').show();
-                        // Ensure bocs-order-details is visible even after transition
-                        $(content).find('.bocs-order-details').fadeIn(300);
-                        $(content).find('.bocs-order-table-loading-spinner').hide();
-                    }, 50);
-                }
-            }, 300); // Wait for fade out to complete
-        } else {
-            // If no loading indicator, just show content
-            if (content) {
-                setTimeout(() => {
-                    content.classList.add('loaded');
-                    // Make sure table is shown even after transition
-                    $(content).find('table.bocs-order-table').show();
-                    // Ensure bocs-order-details is visible even after transition
-                    $(content).find('.bocs-order-details').fadeIn(300);
-                    $(content).find('.bocs-order-table-loading-spinner').hide();
-                }, 50);
-            }
-        }
-        
-        console.log('Order details shown for subscription:', subscriptionId);
     }
 
 })(jQuery); 
