@@ -32,6 +32,7 @@ $component_id = isset($component_id) ? $component_id : 'bocs-order-items-' . uni
 $frequency = isset($frequency) ? $frequency : [];
 $discount_type = isset($discount_type) ? $discount_type : '';
 $discount_percent = isset($discount_percent) ? $discount_percent : '';
+$has_empty_products = isset($has_empty_products) ? $has_empty_products : false;
 
 // Get WooCommerce tax settings
 $prices_include_tax = get_option('woocommerce_prices_include_tax', 'no') === 'yes';

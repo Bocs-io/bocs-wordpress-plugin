@@ -29,6 +29,23 @@ if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publisha
     
     // Add inline script to set publishable key
     wp_add_inline_script('stripe', 'window.stripePublishableKey = "' . wc_stripe_get_publishable_key() . '";', 'after');
+    
+    // Initialize stripe for the payment methods
+    wp_add_inline_script('bocs-subscriptions', '
+        // Ensure Stripe is properly initialized
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof Stripe !== "undefined") {
+                if (window.stripePublishableKey) {
+                    console.log("Pre-initializing Stripe with publishable key");
+                    window.stripe = Stripe(window.stripePublishableKey);
+                } else {
+                    console.error("Stripe publishable key not found");
+                }
+            } else {
+                console.error("Stripe.js not loaded");
+            }
+        });
+    ', 'after');
 }
 
 // Log template loading - for debugging
