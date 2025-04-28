@@ -228,8 +228,13 @@ class Bocs_Updater {
         );
 
         if ($out_of_date) {
+            // Make sure plugin properties are initialized
+            if (!isset($this->plugin) || !is_array($this->plugin)) {
+                $this->set_plugin_properties();
+            }
+            
             $plugin = array(
-                'url' => $this->plugin['PluginURI'],
+                'url' => isset($this->plugin['PluginURI']) ? $this->plugin['PluginURI'] : '',
                 'slug' => current(explode('/', $this->basename)),
                 'package' => isset($this->github_response->zipball_url) ? $this->github_response->zipball_url : null,
                 'new_version' => $latest_version,
@@ -270,17 +275,27 @@ class Bocs_Updater {
                     return $result;
                 }
 
+                // Make sure plugin properties are initialized
+                if (!isset($this->plugin) || !is_array($this->plugin)) {
+                    $this->set_plugin_properties();
+                }
+
+                // Check if plugin data is still not available
+                if (!isset($this->plugin) || !is_array($this->plugin)) {
+                    return $result;
+                }
+
                 $plugin = array(
-                    'name'              => $this->plugin['Name'],
+                    'name'              => isset($this->plugin['Name']) ? $this->plugin['Name'] : '',
                     'slug'              => $this->basename,
                     'version'           => $this->github_response->tag_name,
-                    'author'            => $this->plugin['AuthorName'],
-                    'author_profile'    => $this->plugin['AuthorURI'],
+                    'author'            => isset($this->plugin['AuthorName']) ? $this->plugin['AuthorName'] : '',
+                    'author_profile'    => isset($this->plugin['AuthorURI']) ? $this->plugin['AuthorURI'] : '',
                     'last_updated'      => isset($this->github_response->published_at) ? $this->github_response->published_at : date('Y-m-d'),
-                    'homepage'          => $this->plugin['PluginURI'],
-                    'short_description' => $this->plugin['Description'],
+                    'homepage'          => isset($this->plugin['PluginURI']) ? $this->plugin['PluginURI'] : '',
+                    'short_description' => isset($this->plugin['Description']) ? $this->plugin['Description'] : '',
                     'sections'          => array(
-                        'Description'   => $this->plugin['Description'],
+                        'Description'   => isset($this->plugin['Description']) ? $this->plugin['Description'] : '',
                         'Updates'       => isset($this->github_response->body) ? $this->github_response->body : '',
                     ),
                     'download_link'     => isset($this->github_response->zipball_url) ? $this->github_response->zipball_url : ''
