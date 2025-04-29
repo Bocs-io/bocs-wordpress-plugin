@@ -127,6 +127,55 @@
                 }
             });
             
+            // Country change handler for address modal
+            $('#country').on('change', function() {
+                const country = $(this).val();
+                const stateSelect = $('#state');
+                
+                // Save current state value
+                const currentState = stateSelect.val();
+                
+                // Reset state options based on country
+                stateSelect.empty();
+                
+                if (country === 'AU') {
+                    // Australian states
+                    stateSelect.append(new Option('Victoria', 'VIC'));
+                    stateSelect.append(new Option('New South Wales', 'NSW'));
+                    stateSelect.append(new Option('Queensland', 'QLD'));
+                    stateSelect.append(new Option('Western Australia', 'WA'));
+                    stateSelect.append(new Option('South Australia', 'SA'));
+                    stateSelect.append(new Option('Tasmania', 'TAS'));
+                    stateSelect.append(new Option('Australian Capital Territory', 'ACT'));
+                    stateSelect.append(new Option('Northern Territory', 'NT'));
+                } else if (country === 'US') {
+                    // US states (abbreviated list for example)
+                    stateSelect.append(new Option('California', 'CA'));
+                    stateSelect.append(new Option('New York', 'NY'));
+                    stateSelect.append(new Option('Texas', 'TX'));
+                    stateSelect.append(new Option('Florida', 'FL'));
+                    // Add more US states as needed
+                } else if (country === 'NZ') {
+                    // New Zealand regions
+                    stateSelect.append(new Option('Auckland', 'Auckland'));
+                    stateSelect.append(new Option('Wellington', 'Wellington'));
+                    stateSelect.append(new Option('Canterbury', 'Canterbury'));
+                    // Add more NZ regions as needed
+                } else if (country === 'GB') {
+                    // UK counties/regions
+                    stateSelect.append(new Option('England', 'England'));
+                    stateSelect.append(new Option('Scotland', 'Scotland'));
+                    stateSelect.append(new Option('Wales', 'Wales'));
+                    stateSelect.append(new Option('Northern Ireland', 'Northern Ireland'));
+                    // Add more UK counties as needed
+                }
+                
+                // Try to restore previous selection or default to first option
+                if (stateSelect.find(`option[value="${currentState}"]`).length) {
+                    stateSelect.val(currentState);
+                }
+            });
+            
             // Debug which modals exist
             console.log('Available modals:', $('.bocs-modal').map(function() {
                 return '#' + $(this).attr('id');
@@ -602,9 +651,34 @@
                         $('#address').val(subscription.shipping.address1 || '');
                         $('#address2').val(subscription.shipping.address2 || '');
                         $('#city').val(subscription.shipping.city || '');
-                        $('#state').val(subscription.shipping.state || '');
+                        
+                        // Handle select fields - state and country
+                        const stateSelect = $('#state');
+                        const countrySelect = $('#country');
+                        const state = subscription.shipping.state || '';
+                        const country = subscription.shipping.country || 'AU';
+                        
+                        // Set the country value - we need to check if option exists
+                        if (countrySelect.find(`option[value="${country}"]`).length) {
+                            countrySelect.val(country);
+                        } else {
+                            countrySelect.val('AU'); // Default to Australia if not found
+                        }
+                        
+                        // Set the state value - we need to check if option exists
+                        if (stateSelect.find(`option[value="${state}"]`).length) {
+                            stateSelect.val(state);
+                        } else {
+                            // If state doesn't exist in dropdown, check if we need to add it
+                            // This is important for international addresses
+                            if (state && state !== '') {
+                                const stateOption = new Option(state, state);
+                                stateSelect.append(stateOption);
+                                stateSelect.val(state);
+                            }
+                        }
+                        
                         $('#postcode').val(subscription.shipping.postcode || '');
-                        $('#country').val(subscription.shipping.country || 'AU');
                     } 
                     // Fallback to billing address if shipping is empty
                     else if (subscription.billing) {
@@ -616,9 +690,33 @@
                         $('#address').val(subscription.billing.address1 || '');
                         $('#address2').val(subscription.billing.address2 || '');
                         $('#city').val(subscription.billing.city || '');
-                        $('#state').val(subscription.billing.state || '');
+                        
+                        // Handle select fields - state and country
+                        const stateSelect = $('#state');
+                        const countrySelect = $('#country');
+                        const state = subscription.billing.state || '';
+                        const country = subscription.billing.country || 'AU';
+                        
+                        // Set the country value
+                        if (countrySelect.find(`option[value="${country}"]`).length) {
+                            countrySelect.val(country);
+                        } else {
+                            countrySelect.val('AU'); // Default to Australia if not found
+                        }
+                        
+                        // Set the state value
+                        if (stateSelect.find(`option[value="${state}"]`).length) {
+                            stateSelect.val(state);
+                        } else {
+                            // If state doesn't exist in dropdown, check if we need to add it
+                            if (state && state !== '') {
+                                const stateOption = new Option(state, state);
+                                stateSelect.append(stateOption);
+                                stateSelect.val(state);
+                            }
+                        }
+                        
                         $('#postcode').val(subscription.billing.postcode || '');
-                        $('#country').val(subscription.billing.country || 'AU');
                     } else {
                         console.log('editAddress: No shipping or billing data found in subscription');
                     }
@@ -758,7 +856,30 @@
                             
                             // Add the payment methods to the dropdown
                             if (response.data.payment_methods.length > 0) {
+                                // Track unique payment methods by last4 + brand (case-insensitive)
+                                const uniqueMethods = new Map();
+                                
+                                // First pass - organize by signature (last4 + lowercase brand)
                                 response.data.payment_methods.forEach(function(method) {
+                                    if (method.method && method.method.last4 && method.method.brand) {
+                                        const signature = method.method.last4 + '_' + method.method.brand.toLowerCase();
+                                        
+                                        // If we haven't seen this card before, or this is default (prefer default)
+                                        if (!uniqueMethods.has(signature) || method.is_default) {
+                                            uniqueMethods.set(signature, method);
+                                        }
+                                    } else {
+                                        // For methods without complete info, use token ID as key
+                                        if (method.token_id) {
+                                            uniqueMethods.set('token_' + method.token_id, method);
+                                        } else if (method.method && method.method.id) {
+                                            uniqueMethods.set('id_' + method.method.id, method);
+                                        }
+                                    }
+                                });
+                                
+                                // Second pass - add unique methods to dropdown
+                                uniqueMethods.forEach(function(method) {
                                     const methodLabel = method.method.brand + 
                                         (method.method.last4 ? (' ending in ' + method.method.last4) : '');
                                     
@@ -980,7 +1101,8 @@
                         const confirmParams = {
                             elements: window.stripeElements,
                             confirmParams: {
-                                return_url: window.location.href,
+                                return_url: window.location.origin + window.location.pathname + 
+                                    '?subscription_id=' + encodeURIComponent(subscriptionId),
                                 payment_method_data: {
                                     billing_details: billingDetails
                                 }
@@ -1235,6 +1357,55 @@
         setTimeout(function() {
             setupEarlyRenewalHandlers();
         }, 1000); // Short delay to ensure page is fully loaded
+
+        // Country change handler for address modal
+        $('#country').on('change', function() {
+            const country = $(this).val();
+            const stateSelect = $('#state');
+            
+            // Save current state value
+            const currentState = stateSelect.val();
+            
+            // Reset state options based on country
+            stateSelect.empty();
+            
+            if (country === 'AU') {
+                // Australian states
+                stateSelect.append(new Option('Victoria', 'VIC'));
+                stateSelect.append(new Option('New South Wales', 'NSW'));
+                stateSelect.append(new Option('Queensland', 'QLD'));
+                stateSelect.append(new Option('Western Australia', 'WA'));
+                stateSelect.append(new Option('South Australia', 'SA'));
+                stateSelect.append(new Option('Tasmania', 'TAS'));
+                stateSelect.append(new Option('Australian Capital Territory', 'ACT'));
+                stateSelect.append(new Option('Northern Territory', 'NT'));
+            } else if (country === 'US') {
+                // US states (abbreviated list for example)
+                stateSelect.append(new Option('California', 'CA'));
+                stateSelect.append(new Option('New York', 'NY'));
+                stateSelect.append(new Option('Texas', 'TX'));
+                stateSelect.append(new Option('Florida', 'FL'));
+                // Add more US states as needed
+            } else if (country === 'NZ') {
+                // New Zealand regions
+                stateSelect.append(new Option('Auckland', 'Auckland'));
+                stateSelect.append(new Option('Wellington', 'Wellington'));
+                stateSelect.append(new Option('Canterbury', 'Canterbury'));
+                // Add more NZ regions as needed
+            } else if (country === 'GB') {
+                // UK counties/regions
+                stateSelect.append(new Option('England', 'England'));
+                stateSelect.append(new Option('Scotland', 'Scotland'));
+                stateSelect.append(new Option('Wales', 'Wales'));
+                stateSelect.append(new Option('Northern Ireland', 'Northern Ireland'));
+                // Add more UK counties as needed
+            }
+            
+            // Try to restore previous selection or default to first option
+            if (stateSelect.find(`option[value="${currentState}"]`).length) {
+                stateSelect.val(currentState);
+            }
+        });
     });
     
     /**

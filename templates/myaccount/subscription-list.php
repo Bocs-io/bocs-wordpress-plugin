@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250425.10");
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250428.1", true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250428.2");
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250429.2", true);
 
 // Add order line items component
 wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
@@ -502,46 +502,73 @@ if (function_exists('bocs_log')) {
         <span class="bocs-modal-close">&times;</span>
         <h3>Edit Delivery Address</h3>
         <form id="edit-address-form">
-            <div class="bocs-form-row">
-                <label for="first-name">First Name</label>
-                <input type="text" id="first-name" name="first_name">
+            <div class="form-row-container">
+                <div class="bocs-form-row half-width">
+                    <label for="first-name">First Name</label>
+                    <input type="text" id="first-name" name="first_name">
+                </div>
+                <div class="bocs-form-row half-width">
+                    <label for="last-name">Last Name</label>
+                    <input type="text" id="last-name" name="last_name">
+                </div>
             </div>
-            <div class="bocs-form-row">
-                <label for="last-name">Last Name</label>
-                <input type="text" id="last-name" name="last_name">
+            
+            <div class="form-row-container">
+                <div class="bocs-form-row half-width">
+                    <label for="company">Company (optional)</label>
+                    <input type="text" id="company" name="company">
+                </div>
+                <div class="bocs-form-row half-width">
+                    <label for="phone">Phone (optional)</label>
+                    <input type="tel" id="phone" name="phone">
+                </div>
             </div>
+            
             <div class="bocs-form-row">
-                <label for="company">Company (optional)</label>
-                <input type="text" id="company" name="company">
-            </div>
-            <div class="bocs-form-row">
-                <label for="phone">Phone (optional)</label>
-                <input type="tel" id="phone" name="phone">
-            </div>
-            <div class="bocs-form-row">
-                <label for="address">Street Address</label>
+                <label for="address">Address 1</label>
                 <input type="text" id="address" name="address">
             </div>
             <div class="bocs-form-row">
-                <label for="address2">Street Address 2 (optional)</label>
+                <label for="address2">Address 2 (optional)</label>
                 <input type="text" id="address2" name="address2">
             </div>
-            <div class="bocs-form-row">
-                <label for="city">City</label>
-                <input type="text" id="city" name="city">
+            
+            <div class="form-row-container">
+                <div class="bocs-form-row half-width">
+                    <label for="country">Country</label>
+                    <select id="country" name="country">
+                        <option value="AU">Australia</option>
+                        <option value="NZ">New Zealand</option>
+                        <option value="US">United States</option>
+                        <option value="GB">United Kingdom</option>
+                    </select>
+                </div>
+                <div class="bocs-form-row half-width">
+                    <label for="state">State</label>
+                    <select id="state" name="state">
+                        <option value="VIC">Victoria</option>
+                        <option value="NSW">New South Wales</option>
+                        <option value="QLD">Queensland</option>
+                        <option value="WA">Western Australia</option>
+                        <option value="SA">South Australia</option>
+                        <option value="TAS">Tasmania</option>
+                        <option value="ACT">Australian Capital Territory</option>
+                        <option value="NT">Northern Territory</option>
+                    </select>
+                </div>
             </div>
-            <div class="bocs-form-row">
-                <label for="state">State</label>
-                <input type="text" id="state" name="state">
+            
+            <div class="form-row-container">
+                <div class="bocs-form-row half-width">
+                    <label for="city">City</label>
+                    <input type="text" id="city" name="city">
+                </div>
+                <div class="bocs-form-row half-width">
+                    <label for="postcode">Post Code</label>
+                    <input type="text" id="postcode" name="postcode">
+                </div>
             </div>
-            <div class="bocs-form-row">
-                <label for="postcode">Postcode</label>
-                <input type="text" id="postcode" name="postcode">
-            </div>
-            <div class="bocs-form-row">
-                <label for="country">Country</label>
-                <input type="text" id="country" name="country">
-            </div>
+            
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
