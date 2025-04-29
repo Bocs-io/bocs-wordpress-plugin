@@ -63,6 +63,9 @@ class Bocs_Payment_Method {
         // Add hook for Stripe setup
         add_action('wp_ajax_bocs_get_stripe_setup', array($this, 'get_stripe_setup'));
         
+        // Add debug endpoint for syncing payment methods
+        add_action('wp_ajax_debug_sync_payment_methods', array($this, 'debug_sync_payment_methods'));
+        
         // Show any payment method status messages
         add_action('woocommerce_before_account_payment_methods', array($this, 'show_status_messages'));
     }
@@ -2853,6 +2856,18 @@ class Bocs_Payment_Method {
             wp_send_json_error(['message' => 'Subscription ID is required']);
             return;
         }
+        
+        // Add direct diagnostic data for troubleshooting
+        if (current_user_can('manage_options')) {
+            error_log("==========================================");
+            error_log("DIAGNOSTIC PAYMENT DEBUG: " . date('Y-m-d H:i:s'));
+            error_log("PHP Version: " . PHP_VERSION);
+            error_log("WordPress Version: " . get_bloginfo('version'));
+            error_log("Error Log Path: " . ini_get('error_log'));
+            error_log("Subscription ID: " . $subscription_id);
+            error_log("User ID: " . get_current_user_id());
+            error_log("==========================================");
+        }
 
         try {
             // Get subscription data
@@ -2929,7 +2944,17 @@ class Bocs_Payment_Method {
                         'limit' => 10,
                     ]);
                     
+                    // Get WooCommerce tokens for comparison
+                    $wc_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+                    $wc_token_ids = [];
+                    foreach ($wc_tokens as $token) {
+                        $wc_token_ids[] = $token->get_token(); // This is the Stripe payment method ID
+                    }
+                    error_log("WooCommerce token IDs: " . json_encode($wc_token_ids));
+                    
                     if (!empty($methods->data)) {
+                        $missing_tokens = [];
+                        
                         foreach ($methods->data as $method) {
                             $stripe_payment_methods[] = [
                                 'id' => $method->id,
@@ -2937,10 +2962,48 @@ class Bocs_Payment_Method {
                                 'last4' => $method->card->last4,
                                 'exp_month' => $method->card->exp_month,
                                 'exp_year' => $method->card->exp_year,
-                                'default' => false // Will set later if applicable
+                                'default' => false, // Will set later if applicable
+                                'in_woocommerce' => in_array($method->id, $wc_token_ids)
                             ];
+                            
+                            // Track methods that are in Stripe but not in WooCommerce
+                            if (!in_array($method->id, $wc_token_ids)) {
+                                $missing_tokens[] = [
+                                    'id' => $method->id,
+                                    'brand' => $method->card->brand,
+                                    'last4' => $method->card->last4
+                                ];
+                            }
                         }
+                        
                         error_log("Found " . count($stripe_payment_methods) . " payment methods in Stripe");
+                        
+                        // Log any discrepancies
+                        if (!empty($missing_tokens)) {
+                            error_log("IMPORTANT: Found " . count($missing_tokens) . " payment methods in Stripe that are NOT in WooCommerce tokens: " . json_encode($missing_tokens));
+                            
+                            // Attempt to sync the missing payment methods
+                            $sync_result = $this->sync_missing_payment_methods($user_id, $stripe_customer_id, $stripe);
+                            
+                            // If any sync succeeded, refresh the payment methods list
+                            if ($sync_result['synced'] > 0) {
+                                // Refresh WooCommerce tokens
+                                $wc_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+                                $wc_token_ids = [];
+                                foreach ($wc_tokens as $token) {
+                                    $wc_token_ids[] = $token->get_token();
+                                }
+                                
+                                // Update the in_woocommerce flag for each payment method
+                                foreach ($stripe_payment_methods as &$pm) {
+                                    $pm['in_woocommerce'] = in_array($pm['id'], $wc_token_ids);
+                                }
+                                
+                                error_log("After sync: " . count($wc_token_ids) . " WooCommerce tokens available");
+                            }
+                        } else {
+                            error_log("All Stripe payment methods are properly represented in WooCommerce tokens");
+                        }
                     }
                     
                     // Get the default payment method if available
@@ -3039,7 +3102,34 @@ class Bocs_Payment_Method {
             }
             
             // Prepare UI for output
+            error_log("====== BOCS PAYMENT METHOD MODAL START ======");
+            error_log("User ID: {$user_id}");
+            error_log("Subscription ID: {$subscription_id}");
+            error_log("Stripe Customer ID: {$stripe_customer_id}");
+            error_log("Stripe Source ID: {$stripe_source_id}");
+            error_log("Has Current Payment Method: " . ($has_current_payment_method ? 'Yes' : 'No'));
+            error_log("Stripe Payment Methods Count: " . count($stripe_payment_methods));
+            
+            // Log sync status
+            $wc_count = count(array_filter($stripe_payment_methods, function($pm) { 
+                return isset($pm['in_woocommerce']) && $pm['in_woocommerce'] === true; 
+            }));
+            $non_wc_count = count(array_filter($stripe_payment_methods, function($pm) { 
+                return isset($pm['in_woocommerce']) && $pm['in_woocommerce'] === false; 
+            }));
+            
+            error_log("Payment Methods in WooCommerce: {$wc_count}");
+            error_log("Payment Methods missing from WooCommerce: {$non_wc_count}");
+            
+            if (isset($sync_result)) {
+                error_log("Sync performed: Yes");
+                error_log("Sync results: " . json_encode($sync_result));
+            } else {
+                error_log("Sync performed: No");
+            }
+            
             ob_start();
+            
             echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
             
             if ($has_current_payment_method && $current_payment_method) {
@@ -3112,6 +3202,72 @@ class Bocs_Payment_Method {
             echo '</div>';
             
             echo '</form>';
+            
+            // Add special debug section for admins
+            if (current_user_can('manage_options')) {
+                ?>
+                <div class="admin-debug-info" style="margin-top: 20px; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px;">
+                    <h4 style="margin-top: 0; color: #004085;">Admin Debug Information</h4>
+                    <p>This section is only visible to administrators</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Data</th>
+                            <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Value</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">User ID</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo esc_html($user_id); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Subscription ID</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo esc_html($subscription_id); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Stripe Customer ID</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo esc_html($stripe_customer_id); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Stripe Source ID</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo esc_html($stripe_source_id); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Has Current Payment Method</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo $has_current_payment_method ? 'Yes' : 'No'; ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Stripe Methods Count</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo count($stripe_payment_methods); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Methods in WooCommerce</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo $wc_count; ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Methods Missing from WC</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo $non_wc_count; ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">PHP Version</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo PHP_VERSION; ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">WordPress Version</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo get_bloginfo('version'); ?></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;">Error Log Path</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #eee;"><?php echo ini_get('error_log'); ?></td>
+                        </tr>
+                    </table>
+                    
+                    <div style="margin-top: 10px;">
+                        <p><strong>Run Manual Sync:</strong></p>
+                        <a href="<?php echo admin_url('admin-ajax.php?action=debug_sync_payment_methods'); ?>" target="_blank" class="button" style="display: inline-block; padding: 5px 10px; background: #007bff; color: white; text-decoration: none; border-radius: 3px;">Sync Payment Methods</a>
+                    </div>
+                </div>
+                <?php
+            }
             
             // Add CSS for the form
             ?>
@@ -3214,7 +3370,57 @@ class Bocs_Payment_Method {
             // Add JavaScript for form handling
             ?>
             <script type="text/javascript">
+                // Immediate logs to ensure they appear
+                console.log('%c BOCS PAYMENT DEBUG START', 'background: #7b68ee; color: white; font-size: 16px; padding: 5px;');
+                console.log('Modal opened at:', new Date().toISOString());
+                
+                // Force error to make logs visible in console
+                console.error("BOCS DEBUG ACTIVATED - Check logs below");
+                
+                // Log direct JSON data outside jQuery ready for maximum visibility
+                console.log("STRIPE PAYMENT METHODS:", <?php echo json_encode($stripe_payment_methods); ?>);
+                console.log("WC TOKEN COUNT:", <?php echo $wc_count; ?>);
+                console.log("MISSING TOKEN COUNT:", <?php echo $non_wc_count; ?>);
+                console.log("USER ID:", <?php echo json_encode($user_id); ?>);
+                console.log("SUBSCRIPTION ID:", <?php echo json_encode($subscription_id); ?>);
+                
                 jQuery(document).ready(function($) {
+                    // Force log visibility with styling
+                    console.log('%c PAYMENT METHODS MODAL LOADED', 'background: #004085; color: white; font-size: 14px; padding: 3px;');
+                    
+                    // Debug information about payment methods - force with table format for clarity
+                    console.table(<?php echo json_encode($stripe_payment_methods); ?>);
+                    
+                    // Log PHP variables directly for debugging
+                    console.log('PHP variables:', {
+                        user_id: <?php echo json_encode($user_id); ?>,
+                        subscription_id: <?php echo json_encode($subscription_id); ?>,
+                        stripe_customer_id: <?php echo json_encode($stripe_customer_id); ?>,
+                        has_current_payment_method: <?php echo json_encode($has_current_payment_method); ?>
+                    });
+                    
+                    // Check for payment methods not in WooCommerce
+                    var methodsNotInWC = <?php 
+                        $not_in_wc = array_filter($stripe_payment_methods, function($pm) { 
+                            return isset($pm['in_woocommerce']) && $pm['in_woocommerce'] === false; 
+                        });
+                        echo json_encode(array_values($not_in_wc)); 
+                    ?>;
+                    
+                    if (methodsNotInWC.length > 0) {
+                        console.warn('%c MISSING WC TOKENS', 'background: #dc3545; color: white; font-size: 14px; padding: 3px;');
+                        console.table(methodsNotInWC);
+                    } else {
+                        console.log('%c ALL TOKENS SYNCED', 'background: #28a745; color: white; font-size: 14px; padding: 3px;');
+                        console.log('All payment methods are properly synced between Stripe and WooCommerce');
+                    }
+                    
+                    // Sync results if available
+                    <?php if (isset($sync_result) && !empty($sync_result)): ?>
+                    console.log('%c SYNC RESULTS', 'background: #fd7e14; color: white; font-size: 14px; padding: 3px;');
+                    console.table(<?php echo json_encode($sync_result); ?>);
+                    <?php endif; ?>
+                    
                     // Handle payment method selection
                     $('input[name="payment_method"]').on('change', function() {
                         if ($(this).val() === 'new') {
@@ -3392,7 +3598,15 @@ class Bocs_Payment_Method {
                     'source_id' => $stripe_source_id,
                     'customer_id' => $stripe_customer_id,
                     'has_payment_method' => $has_current_payment_method,
-                    'stripe_methods_count' => count($stripe_payment_methods)
+                    'stripe_methods_count' => count($stripe_payment_methods),
+                    'stripe_methods_in_wc' => count(array_filter($stripe_payment_methods, function($pm) { 
+                        return isset($pm['in_woocommerce']) && $pm['in_woocommerce'] === true; 
+                    })),
+                    'stripe_methods_not_in_wc' => count(array_filter($stripe_payment_methods, function($pm) { 
+                        return isset($pm['in_woocommerce']) && $pm['in_woocommerce'] === false; 
+                    })),
+                    'sync_performed' => isset($sync_result),
+                    'sync_results' => $sync_result ?? null
                 ]
             ]);
             
@@ -3494,5 +3708,167 @@ class Bocs_Payment_Method {
         }
 
         wp_send_json_success($response_data);
+    }
+
+    /**
+     * Sync missing payment methods from Stripe to WooCommerce tokens.
+     *
+     * Scans for payment methods in Stripe that aren't in WooCommerce tokens
+     * and creates corresponding tokens.
+     *
+     * @since 1.0.0
+     * @param int $user_id User ID
+     * @param string $customer_id Stripe customer ID
+     * @param \Stripe\StripeClient $stripe Initialized Stripe client
+     * @return array Results with count of synced and failed methods
+     */
+    private function sync_missing_payment_methods($user_id, $customer_id, $stripe) {
+        error_log("Syncing missing payment methods for user {$user_id} with Stripe customer {$customer_id}");
+        $result = [
+            'synced' => 0,
+            'failed' => 0,
+            'existing' => 0,
+            'details' => []
+        ];
+        
+        try {
+            // Get WooCommerce tokens
+            $wc_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+            $wc_token_ids = [];
+            
+            foreach ($wc_tokens as $token) {
+                $wc_token_ids[] = $token->get_token();
+            }
+            
+            // Get all payment methods from Stripe
+            $methods = $stripe->paymentMethods->all([
+                'customer' => $customer_id,
+                'type' => 'card',
+                'limit' => 20,
+            ]);
+            
+            if (empty($methods->data)) {
+                error_log("No payment methods found in Stripe for customer {$customer_id}");
+                return $result;
+            }
+            
+            // Process each payment method
+            foreach ($methods->data as $method) {
+                // Skip if already in WooCommerce
+                if (in_array($method->id, $wc_token_ids)) {
+                    $result['existing']++;
+                    continue;
+                }
+                
+                // Only process card payment methods
+                if ($method->type !== 'card' || !isset($method->card)) {
+                    continue;
+                }
+                
+                try {
+                    // Create a new WooCommerce token
+                    $token = new WC_Payment_Token_CC();
+                    $token->set_token($method->id);
+                    $token->set_gateway_id('stripe');
+                    $token->set_card_type(strtolower($method->card->brand));
+                    $token->set_last4($method->card->last4);
+                    $token->set_expiry_month($method->card->exp_month);
+                    $token->set_expiry_year($method->card->exp_year);
+                    $token->set_user_id($user_id);
+                    
+                    // Save the token
+                    if ($token->save()) {
+                        // Save Stripe customer ID as token meta
+                        update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
+                        
+                        $result['synced']++;
+                        $result['details'][] = [
+                            'id' => $method->id,
+                            'token_id' => $token->get_id(),
+                            'card' => "{$method->card->brand} ending in {$method->card->last4}"
+                        ];
+                        
+                        error_log("Successfully synced Stripe payment method {$method->id} to WooCommerce token {$token->get_id()}");
+                    } else {
+                        $result['failed']++;
+                        error_log("Failed to save WooCommerce token for Stripe payment method {$method->id}");
+                    }
+                } catch (\Exception $e) {
+                    $result['failed']++;
+                    error_log("Error syncing payment method {$method->id}: " . $e->getMessage());
+                }
+            }
+            
+        } catch (\Exception $e) {
+            error_log("Error in sync_missing_payment_methods: " . $e->getMessage());
+            $result['error'] = $e->getMessage();
+        }
+        
+        error_log("Sync results: " . json_encode($result));
+        return $result;
+    }
+
+    /**
+     * Debug function to force sync payment methods from Stripe to WooCommerce
+     *
+     * @since 1.0.0
+     * @return void Sends JSON response
+     */
+    public function debug_sync_payment_methods() {
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => 'Permission denied']);
+            return;
+        }
+        
+        $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : get_current_user_id();
+        
+        try {
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
+            
+            if (empty($secret_key)) {
+                throw new Exception('Stripe secret key is not configured');
+            }
+            
+            // Initialize Stripe
+            $stripe = new \Stripe\StripeClient($secret_key);
+            
+            // Get customer ID for this user
+            $customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            
+            if (empty($customer_id)) {
+                throw new Exception('No Stripe customer ID found for this user');
+            }
+            
+            // Get WooCommerce tokens for comparison
+            $wc_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+            $wc_token_ids = [];
+            foreach ($wc_tokens as $token) {
+                $wc_token_ids[] = $token->get_token(); // This is the Stripe payment method ID
+            }
+            
+            // Run sync
+            $sync_result = $this->sync_missing_payment_methods($user_id, $customer_id, $stripe);
+            
+            // Get updated WooCommerce tokens
+            $updated_wc_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+            
+            wp_send_json_success([
+                'message' => 'Payment method sync completed',
+                'sync_results' => $sync_result,
+                'before_count' => count($wc_tokens),
+                'after_count' => count($updated_wc_tokens),
+                'stripe_customer_id' => $customer_id,
+                'wc_token_ids_before' => $wc_token_ids,
+                'wc_token_ids_after' => array_map(function($token) { return $token->get_token(); }, $updated_wc_tokens)
+            ]);
+            
+        } catch (Exception $e) {
+            wp_send_json_error([
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 }
