@@ -1,4 +1,4 @@
-v0.0.146 04/29/2025
+v0.0.145 04/29/2025
 * Fix: Improved payment method handling and API integration
 * Fix: Enhanced payment method selection and updated script version
 * Style: Refined button and modal styles for better visual consistency
@@ -6,8 +6,6 @@ v0.0.146 04/29/2025
 * Feature: Improved payment token handling and management
 * Refactor: Optimized customer subscription lookup by using externalSourceId
 * Feature: Added debug sync endpoint and improved payment method handling
-
-v0.0.145 04/29/2025
 * Feature: Added payment intent synchronization between Stripe and BOCS API
 * Fix: Resolved issue with default payment method selection
 * Refactor: Enhanced error handling in API communication
