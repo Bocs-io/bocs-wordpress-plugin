@@ -180,157 +180,65 @@ class Bocs_Account
                 ]);
             }
 
-            // Step 1: Try customer.id first
-            if (!empty($bocs_customer_id)) {
-                $query = 'customer.id:' . urlencode($bocs_customer_id);
-                $url .= '?query=' . urlencode($query);
-                
+            // Step 1: Start with customer.externalSourceId
+            $query = 'customer.externalSourceId:' . urlencode($user_id);
+            $url .= '?query=' . urlencode($query);
+            
+            if (class_exists('Bocs_Log_Handler')) {
+                $logger->insert_log('debug', '[Subscriptions Page] Searching by customer.externalSourceId', [
+                    'query' => $query,
+                    'full_url' => $url,
+                    'user_id' => $user_id
+                ]);
+            }
+            
+            $helper = new Bocs_Helper();
+            $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
+            
+            if (is_wp_error($subscriptions)) {
                 if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('debug', '[Subscriptions Page] Searching by customer.id', [
-                        'query' => $query,
-                        'full_url' => $url
+                    $logger->insert_log('error', '[Subscriptions Page] WP Error when fetching by externalSourceId', [
+                        'error' => $subscriptions->get_error_message()
                     ]);
                 }
-                
-                $helper = new Bocs_Helper();
-                $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
-                
-                if (is_wp_error($subscriptions)) {
-                    if (class_exists('Bocs_Log_Handler')) {
-                        $logger->insert_log('error', '[Subscriptions Page] WP Error when fetching subscriptions', [
-                            'error' => $subscriptions->get_error_message()
-                        ]);
-                    }
-                    return;
-                }
-                
+                // Continue to next method without returning
+            } 
+            
+            if (class_exists('Bocs_Log_Handler')) {
+                $logger->insert_log('debug', '[Subscriptions Page] API Response for customer.externalSourceId', [
+                    'has_data' => isset($subscriptions['data']),
+                    'has_data_data' => isset($subscriptions['data']['data']),
+                    'data_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0,
+                    'response_keys' => array_keys($subscriptions)
+                ]);
+            }
+            
+            if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
+                // Found subscriptions by customer.externalSourceId
                 if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('debug', '[Subscriptions Page] API Response for customer.id', [
-                        'has_data' => isset($subscriptions['data']),
-                        'has_data_data' => isset($subscriptions['data']['data']),
-                        'data_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0,
-                        'response_keys' => array_keys($subscriptions)
+                    $logger->insert_log('debug', '[Subscriptions Page] Found subscriptions by customer.externalSourceId', [
+                        'count' => count($subscriptions['data']['data'])
                     ]);
-                }
-                
-                if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                    // Found subscriptions by customer.id
-                    if (class_exists('Bocs_Log_Handler')) {
-                        $logger->insert_log('debug', '[Subscriptions Page] Found subscriptions by customer.id', [
-                            'count' => count($subscriptions['data']['data'])
-                        ]);
-                    }
-                } else {
-                    // Step 2: Try billing.email if customer.id didn't work
-                    if ($current_user->exists()) {
-                        $query = 'billing.email:' . urlencode($current_user->user_email);
-                        $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                        
-                        if (class_exists('Bocs_Log_Handler')) {
-                            $logger->insert_log('debug', '[Subscriptions Page] Searching by billing.email', [
-                                'query' => $query,
-                                'full_url' => $url,
-                                'email' => $current_user->user_email
-                            ]);
-                        }
-                        
-                        $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
-                        
-                        if (is_wp_error($subscriptions)) {
-                            if (class_exists('Bocs_Log_Handler')) {
-                                $logger->insert_log('error', '[Subscriptions Page] WP Error when fetching by email', [
-                                    'error' => $subscriptions->get_error_message()
-                                ]);
-                            }
-                            return;
-                        }
-                        
-                        if (class_exists('Bocs_Log_Handler')) {
-                            $logger->insert_log('debug', '[Subscriptions Page] API Response for billing.email', [
-                                'has_data' => isset($subscriptions['data']),
-                                'has_data_data' => isset($subscriptions['data']['data']),
-                                'data_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0
-                            ]);
-                        }
-                        
-                        if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                            // Found subscriptions by billing.email
-                            if (class_exists('Bocs_Log_Handler')) {
-                                $logger->insert_log('debug', '[Subscriptions Page] Found subscriptions by billing.email', [
-                                    'count' => count($subscriptions['data']['data'])
-                                ]);
-                            }
-                        } else {
-                            // Step 3: Try order IDs if email didn't work
-                            $order_ids = wc_get_orders(array(
-                                'customer_id' => $user_id,
-                                'limit' => -1,
-                                'return' => 'ids'
-                            ));
-                            
-                            if (class_exists('Bocs_Log_Handler')) {
-                                $logger->insert_log('debug', '[Subscriptions Page] Searching by order IDs', [
-                                    'order_count' => count($order_ids),
-                                    'order_ids' => $order_ids
-                                ]);
-                            }
-                            
-                            if (!empty($order_ids)) {
-                                $order_id_queries = array_map(function($order_id) {
-                                    return 'externalSourceParentOrderId:' . urlencode($order_id);
-                                }, $order_ids);
-                                $query = implode(' OR ', $order_id_queries);
-                                $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                                
-                                if (class_exists('Bocs_Log_Handler')) {
-                                    $logger->insert_log('debug', '[Subscriptions Page] Order ID query', [
-                                        'query' => $query,
-                                        'full_url' => $url
-                                    ]);
-                                }
-                                
-                                $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
-                                
-                                // Check if $subscriptions is a WP_Error
-                                if (is_wp_error($subscriptions)) {
-                                    if (class_exists('Bocs_Log_Handler')) {
-                                        $logger->insert_log('error', '[Subscriptions Page] Error in order ID fallback search', [
-                                            'error' => $subscriptions->get_error_message()
-                                        ]);
-                                    }
-                                    // Continue without returning to at least show an empty page
-                                    $subscriptions = ['data' => ['data' => []]];
-                                }
-                                
-                                if (class_exists('Bocs_Log_Handler') && isset($subscriptions['data']['data'])) {
-                                    $logger->insert_log('debug', '[Subscriptions Page] Found by order IDs (fallback)', [
-                                        'count' => count($subscriptions['data']['data'])
-                                    ]);
-                                }
-                            }
-                        }
-                    }
                 }
             } else {
-                // If no customer.id, start with billing.email
+                // Step 2: Try billing.email if externalSourceId didn't work
                 if ($current_user->exists()) {
                     $query = 'billing.email:' . urlencode($current_user->user_email);
-                    $url .= '?query=' . urlencode($query);
+                    $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
                     
                     if (class_exists('Bocs_Log_Handler')) {
-                        $logger->insert_log('debug', '[Subscriptions Page] No customer ID, searching by email', [
+                        $logger->insert_log('debug', '[Subscriptions Page] Searching by billing.email', [
                             'query' => $query,
                             'full_url' => $url,
                             'email' => $current_user->user_email
                         ]);
                     }
                     
-                    $helper = new Bocs_Helper();
                     $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
                     
                     if (is_wp_error($subscriptions)) {
                         if (class_exists('Bocs_Log_Handler')) {
-                            $logger->insert_log('error', '[Subscriptions Page] WP Error on email search', [
+                            $logger->insert_log('error', '[Subscriptions Page] WP Error when fetching by email', [
                                 'error' => $subscriptions->get_error_message()
                             ]);
                         }
@@ -338,7 +246,7 @@ class Bocs_Account
                     }
                     
                     if (class_exists('Bocs_Log_Handler')) {
-                        $logger->insert_log('debug', '[Subscriptions Page] API Response for billing.email (no customer ID)', [
+                        $logger->insert_log('debug', '[Subscriptions Page] API Response for billing.email', [
                             'has_data' => isset($subscriptions['data']),
                             'has_data_data' => isset($subscriptions['data']['data']),
                             'data_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0
@@ -346,54 +254,11 @@ class Bocs_Account
                     }
                     
                     if (isset($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
-                        // error_log('Bocs Account Debug - Found subscriptions by billing.email');
-                    } else {
-                        // Try order IDs if email didn't work
-                        $order_ids = wc_get_orders(array(
-                            'customer_id' => $user_id,
-                            'limit' => -1,
-                            'return' => 'ids'
-                        ));
-                        
+                        // Found subscriptions by billing.email
                         if (class_exists('Bocs_Log_Handler')) {
-                            $logger->insert_log('debug', '[Subscriptions Page] Searching by order IDs (fallback)', [
-                                'order_count' => count($order_ids),
-                                'order_ids' => $order_ids
+                            $logger->insert_log('debug', '[Subscriptions Page] Found subscriptions by billing.email', [
+                                'count' => count($subscriptions['data']['data'])
                             ]);
-                        }
-                        
-                        if (!empty($order_ids)) {
-                            $order_id_queries = array_map(function($order_id) {
-                                return 'externalSourceParentOrderId:' . urlencode($order_id);
-                            }, $order_ids);
-                            $query = implode(' OR ', $order_id_queries);
-                            $url = BOCS_API_URL . 'subscriptions?query=' . urlencode($query);
-                            
-                            if (class_exists('Bocs_Log_Handler')) {
-                                $logger->insert_log('debug', '[Subscriptions Page] Order ID query (fallback)', [
-                                    'query' => $query,
-                                    'full_url' => $url
-                                ]);
-                            }
-                            
-                            $subscriptions = $helper->curl_request($url, 'GET', [], $this->headers);
-                            
-                            // Check if $subscriptions is a WP_Error
-                            if (is_wp_error($subscriptions)) {
-                                if (class_exists('Bocs_Log_Handler')) {
-                                    $logger->insert_log('error', '[Subscriptions Page] Error in order ID fallback search', [
-                                        'error' => $subscriptions->get_error_message()
-                                    ]);
-                                }
-                                // Continue without returning to at least show an empty page
-                                $subscriptions = ['data' => ['data' => []]];
-                            }
-                            
-                            if (class_exists('Bocs_Log_Handler') && isset($subscriptions['data']['data'])) {
-                                $logger->insert_log('debug', '[Subscriptions Page] Found by order IDs (fallback)', [
-                                    'count' => count($subscriptions['data']['data'])
-                                ]);
-                            }
                         }
                     }
                 }
