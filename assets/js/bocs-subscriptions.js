@@ -736,6 +736,8 @@
                 
                 // Show loading state in the modal
                 $('#payment-method').html('<option>Loading payment methods...</option>');
+                $('#bocs-edit-payment-modal').show();
+                console.log('BOCS DEBUG: Modal shown with loading message');
                 
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
