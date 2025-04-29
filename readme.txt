@@ -1,3 +1,12 @@
+v0.0.146 05/05/2025
+* fix(payments): improve payment method handling and API integration
+* fix(ui): improve payment method selection and update script version
+* style(ui): refine button and modal styles for better visual consistency
+* feat(address): enhance delivery address form with country-specific states
+* feat(payment): improve payment token handling and management
+* refactor(account): optimize customer subscription lookup by using externalSourceId
+* feat(payment): add debug sync endpoint and improve payment method handling
+
 v0.0.144 04/28/2025
 * feat(payment): improve Stripe payment method handling for subscriptions
 * fix(ui): enhance subscription management interface and early renewal functionality
