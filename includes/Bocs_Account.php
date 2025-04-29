@@ -79,10 +79,12 @@ class Bocs_Account
         add_action('wp_ajax_bocs_update_subscription', array($this, 'ajax_update_subscription'));
         add_action('wp_ajax_bocs_get_box_products', array($this, 'ajax_get_box_products'));
         add_action('wp_ajax_bocs_update_subscription_products', array($this, 'ajax_update_subscription_products'));
-        
-        // Line items AJAX handlers
         add_action('wp_ajax_bocs_get_subscription_line_items', array($this, 'ajax_get_subscription_line_items'));
         add_action('wp_ajax_bocs_get_subscription_line_items_data', array($this, 'ajax_get_subscription_line_items_data'));
+        add_action('wp_ajax_bocs_get_missing_tokens', array($this, 'ajax_get_missing_tokens'));
+        
+        // Add init action to handle payment method redirect
+        add_action('wp', array($this, 'handle_payment_setup_redirect'));
     }
 
     /**
@@ -868,17 +870,501 @@ class Bocs_Account
             return;
         }
         
-        // Get saved payment methods
+        // Force cache refresh for tokens
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '%wc_payment_tokens%'");
+        if (function_exists('wp_cache_flush')) {
+            wp_cache_flush();
+        }
+        
+        // Query database directly for all tokens - first do a broad search
+        $all_tokens = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens 
+                WHERE user_id = %d ORDER BY token_id DESC LIMIT 20",
+                $user_id
+            )
+        );
+        
+        $this->log('Direct database query found ' . count($all_tokens) . ' tokens for user ' . $user_id);
+        
+        // Log all found tokens to understand what's in the database
+        foreach ($all_tokens as $token) {
+            $this->log("Token ID: {$token->token_id}, Gateway: {$token->gateway_id}, Token: {$token->token}");
+        }
+        
+        // Now filter for Stripe tokens
+        $db_tokens = [];
+        foreach ($all_tokens as $token) {
+            if ($token->gateway_id == 'stripe') {
+                $db_tokens[] = $token;
+            }
+        }
+        
+        $this->log('After filtering, found ' . count($db_tokens) . ' Stripe tokens for user ' . $user_id);
+        
+        // Check for specific tokens we're missing
+        $recent_token_ids = [47, 48, 49, 50, 51, 52]; // Specific IDs we're looking for
+        foreach ($recent_token_ids as $missing_id) {
+            $found = false;
+            foreach ($db_tokens as $token) {
+                if ($token->token_id == $missing_id) {
+                    $found = true;
+                    break;
+                }
+            }
+            
+            if (!$found) {
+                // Check if this token exists at all
+                $specific_token = $wpdb->get_row(
+                    $wpdb->prepare(
+                        "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
+                        $missing_id
+                    )
+                );
+                
+                if ($specific_token) {
+                    $this->log("Found token {$missing_id} but it's not associated with current user. User ID: {$specific_token->user_id}, Gateway: {$specific_token->gateway_id}");
+                    
+                    // If this token is a Stripe token but just has wrong user ID, add it
+                    if ($specific_token->gateway_id == 'stripe') {
+                        $this->log("Adding token {$missing_id} to results even though user ID is {$specific_token->user_id}");
+                        $db_tokens[] = $specific_token;
+                    }
+                } else {
+                    $this->log("Token {$missing_id} not found in database at all");
+                }
+            }
+        }
+        
+        // Log and create a map of token IDs to tokens
+        $token_map = [];
+        foreach ($db_tokens as $db_token) {
+            $this->log('DB Token ID: ' . $db_token->token_id . ', Token: ' . $db_token->token);
+            $token_map[$db_token->token_id] = $db_token;
+        }
+        
+        // Get token metadata from database
+        $token_meta = [];
+        if (!empty($db_tokens)) {
+            $token_ids = array_column($db_tokens, 'token_id');
+            $placeholders = implode(',', array_fill(0, count($token_ids), '%d'));
+            
+            // Build the query with the correct number of placeholders
+            $query = "SELECT payment_token_id, meta_key, meta_value 
+                     FROM {$wpdb->prefix}woocommerce_payment_tokenmeta 
+                     WHERE payment_token_id IN ($placeholders)";
+            
+            // Prepare the query with token_ids
+            $prepared_query = $wpdb->prepare($query, ...$token_ids);
+            
+            // Execute query
+            $meta_results = $wpdb->get_results($prepared_query);
+            
+            $this->log('Found ' . count($meta_results) . ' token metadata entries');
+            
+            // Group metadata by token ID
+            foreach ($meta_results as $meta) {
+                if (!isset($token_meta[$meta->payment_token_id])) {
+                    $token_meta[$meta->payment_token_id] = [];
+                }
+                $token_meta[$meta->payment_token_id][$meta->meta_key] = $meta->meta_value;
+            }
+        }
+        
+        // Look up tokens using WC_Payment_Tokens (standard method)
+        $tokens = WC_Payment_Tokens::get_customer_tokens($user_id);
+        $this->log('Payment methods request: Found ' . count($tokens) . ' total payment tokens for user ' . $user_id);
+        
+        // Get tokens specific to Stripe
+        $stripe_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+        $this->log('Payment methods request: Found ' . count($stripe_tokens) . ' Stripe payment tokens via API');
+        
+        // Log details of all tokens for debugging
+        foreach ($stripe_tokens as $token) {
+            $this->log('Token ID: ' . $token->get_id() . ', Type: ' . $token->get_card_type() . ', Last4: ' . $token->get_last4());
+        }
+        
+        // Get saved payment methods using the WooCommerce function
         $saved_methods = wc_get_customer_saved_methods_list($user_id);
         $payment_methods = array();
         
+        // Check if we have credit card methods
         if (isset($saved_methods['cc']) && is_array($saved_methods['cc'])) {
             $payment_methods = $saved_methods['cc'];
+            $this->log('Found ' . count($payment_methods) . ' credit card payment methods via wc_get_customer_saved_methods_list');
+        } else {
+            $this->log('No credit card payment methods found in saved_methods');
         }
+        
+        // Create a tracking map of payment methods already in the list
+        $tracked_payment_methods = [];
+        $normalized_cards = []; // Track by last4 and card type
+        
+        // First pass - build tracking maps
+        foreach ($payment_methods as $key => $pm) {
+            if (isset($pm['token_id'])) {
+                $tracked_payment_methods[$pm['token_id']] = $key;
+            }
+            if (isset($pm['method']['id'])) {
+                $tracked_payment_methods[$pm['method']['id']] = $key;
+            }
+            
+            // Track by card details (last4 + brand) to catch case-insensitive duplicates
+            if (isset($pm['method']['last4']) && isset($pm['method']['brand'])) {
+                $signature = strtolower($pm['method']['last4'] . '_' . $pm['method']['brand']);
+                $normalized_cards[$signature] = $key;
+            }
+        }
+        
+        // Remove any case-sensitive duplicates (keep first occurrence)
+        $filtered_payment_methods = [];
+        foreach ($payment_methods as $key => $pm) {
+            if (isset($pm['method']['last4']) && isset($pm['method']['brand'])) {
+                $signature = strtolower($pm['method']['last4'] . '_' . $pm['method']['brand']);
+                
+                // If we haven't seen this card before, or this is the first occurrence we tracked
+                if (!isset($normalized_cards[$signature]) || $normalized_cards[$signature] === $key) {
+                    $filtered_payment_methods[] = $pm;
+                } else {
+                    $this->log("Removing duplicate payment method with last4: " . $pm['method']['last4'] . 
+                               " and brand: " . $pm['method']['brand'] . " (case-insensitive match)");
+                }
+            } else {
+                // Keep methods that don't have complete card info
+                $filtered_payment_methods[] = $pm;
+            }
+        }
+        
+        // Replace original array with filtered array
+        $payment_methods = $filtered_payment_methods;
+        
+        // Rebuild tracking maps with the filtered list
+        $tracked_payment_methods = [];
+        $normalized_cards = [];
+        foreach ($payment_methods as $key => $pm) {
+            if (isset($pm['token_id'])) {
+                $tracked_payment_methods[$pm['token_id']] = true;
+            }
+            if (isset($pm['method']['id'])) {
+                $tracked_payment_methods[$pm['method']['id']] = true;
+            }
+            
+            // Track by card details
+            if (isset($pm['method']['last4']) && isset($pm['method']['brand'])) {
+                $signature = strtolower($pm['method']['last4'] . '_' . $pm['method']['brand']);
+                $normalized_cards[$signature] = true;
+            }
+        }
+        
+        // Build payment methods from database tokens that might not be in the API results
+        if (count($db_tokens) > 0) {
+            $this->log('Building payment methods manually from database token data');
+            
+            foreach ($db_tokens as $db_token) {
+                // Skip tokens that are already in the payment methods
+                if (isset($tracked_payment_methods[$db_token->token_id]) || isset($tracked_payment_methods[$db_token->token])) {
+                    $this->log("Skipping token {$db_token->token_id} as it's already in the list");
+                    continue;
+                }
+                
+                // Get token metadata
+                $metadata = isset($token_meta[$db_token->token_id]) ? $token_meta[$db_token->token_id] : [];
+                
+                // Log available metadata keys for debugging
+                $meta_keys = empty($metadata) ? 'none' : implode(', ', array_keys($metadata));
+                $this->log("Token {$db_token->token_id} metadata keys: " . $meta_keys);
+                
+                // Try multiple approaches to get card details
+                
+                // 1. Try to get directly from WC token API
+                $card_data = [
+                    'last4' => '',
+                    'exp_month' => '',
+                    'exp_year' => '',
+                    'type' => ''
+                ];
+                
+                // Check if this token exists in the WC API tokens
+                foreach ($stripe_tokens as $api_token) {
+                    if ($api_token->get_id() == $db_token->token_id) {
+                        $this->log("Found token {$db_token->token_id} in API, using its data");
+                        $card_data = [
+                            'last4' => $api_token->get_last4(),
+                            'exp_month' => $api_token->get_expiry_month(),
+                            'exp_year' => $api_token->get_expiry_year(),
+                            'type' => $api_token->get_card_type()
+                        ];
+                        break;
+                    }
+                }
+                
+                // 2. If not found in API, try different metadata key patterns
+                if (empty($card_data['last4'])) {
+                    // Check for different possible metadata keys
+                    $possible_keys = [
+                        'last4' => ['last4', '_last4'],
+                        'exp_month' => ['expiry_month', '_expiry_month', 'exp_month', '_exp_month'],
+                        'exp_year' => ['expiry_year', '_expiry_year', 'exp_year', '_exp_year'],
+                        'type' => ['card_type', '_card_type', 'type', '_type', 'brand', '_brand']
+                    ];
+                    
+                    foreach ($possible_keys as $data_key => $meta_keys) {
+                        foreach ($meta_keys as $meta_key) {
+                            if (isset($metadata[$meta_key]) && !empty($metadata[$meta_key])) {
+                                $card_data[$data_key] = $metadata[$meta_key];
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // 3. As a last resort, try to get from Stripe API
+                if (empty($card_data['last4']) || empty($card_data['type'])) {
+                    try {
+                        // Load Stripe SDK if needed
+                        if (!class_exists('\\Stripe\\Stripe')) {
+                            if (file_exists(BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                                require_once BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                            } elseif (defined('WC_STRIPE_PLUGIN_PATH') && file_exists(WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                                require_once WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                            }
+                        }
+                        
+                        // Get Stripe API key
+                        $stripe_settings = get_option('woocommerce_stripe_settings', array());
+                        $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+                        $secret_key = $test_mode && isset($stripe_settings['test_secret_key']) 
+                            ? $stripe_settings['test_secret_key'] 
+                            : (isset($stripe_settings['secret_key']) ? $stripe_settings['secret_key'] : '');
+                            
+                        if (!empty($secret_key)) {
+                            \Stripe\Stripe::setApiKey($secret_key);
+                            $payment_method = \Stripe\PaymentMethod::retrieve($db_token->token);
+                            
+                            if ($payment_method && isset($payment_method->card)) {
+                                $card_data = [
+                                    'last4' => $payment_method->card->last4,
+                                    'exp_month' => $payment_method->card->exp_month,
+                                    'exp_year' => $payment_method->card->exp_year,
+                                    'type' => strtolower($payment_method->card->brand)
+                                ];
+                                
+                                // Update metadata for future use
+                                update_metadata('payment_token', $db_token->token_id, 'last4', $card_data['last4']);
+                                update_metadata('payment_token', $db_token->token_id, 'expiry_month', $card_data['exp_month']);
+                                update_metadata('payment_token', $db_token->token_id, 'expiry_year', $card_data['exp_year']);
+                                update_metadata('payment_token', $db_token->token_id, 'card_type', $card_data['type']);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        $this->log("Error retrieving payment method data from Stripe: " . $e->getMessage());
+                    }
+                }
+                
+                // If we have the minimum required data, add the payment method
+                if (!empty($card_data['last4']) && !empty($card_data['type'])) {
+                    // Check if we already have a payment method with this last4 and card type (case insensitive)
+                    $card_signature = strtolower($card_data['last4'] . '_' . $card_data['type']);
+                    if (isset($normalized_cards[$card_signature])) {
+                        $this->log("Skipping token {$db_token->token_id} as a payment method with same last4 and card type already exists");
+                        continue;
+                    }
+                    
+                    $this->log("Adding token {$db_token->token_id} to payment methods list");
+                    
+                    $payment_methods[] = array(
+                        'method' => array(
+                            'id' => $db_token->token,
+                            'brand' => strtoupper($card_data['type']),
+                            'last4' => $card_data['last4'],
+                            'exp_month' => $card_data['exp_month'],
+                            'exp_year' => $card_data['exp_year'],
+                        ),
+                        'expires' => $card_data['exp_month'] . '/' . substr($card_data['exp_year'], -2),
+                        'is_default' => $db_token->is_default == 1,
+                        'actions' => array(),
+                        'token_id' => $db_token->token_id
+                    );
+                    
+                    // Add to tracking
+                    $tracked_payment_methods[$db_token->token_id] = true;
+                    $tracked_payment_methods[$db_token->token] = true;
+                    $normalized_cards[$card_signature] = true;
+                } else {
+                    $this->log("Skipping token {$db_token->token_id} due to missing required metadata");
+                }
+            }
+            
+            $this->log('Final payment methods count: ' . count($payment_methods));
+        }
+        
+        // If we still have Stripe tokens but they're not showing up in the payment methods, 
+        // manually build the payment methods array from WC_Payment_Tokens
+        if (count($stripe_tokens) > 0 && count($payment_methods) === 0) {
+            $this->log('Building payment methods from WC_Payment_Tokens');
+            
+            foreach ($stripe_tokens as $token) {
+                $type = $token->get_card_type();
+                $last4 = $token->get_last4();
+                $exp_month = $token->get_expiry_month();
+                $exp_year = $token->get_expiry_year();
+                $token_id = $token->get_token(); // This is the payment_method_id (pm_*)
+                
+                // Skip tokens without proper data
+                if (empty($type) || empty($last4)) {
+                    continue;
+                }
+                
+                $payment_methods[] = array(
+                    'method' => array(
+                        'id' => $token_id,
+                        'brand' => strtoupper($type),
+                        'last4' => $last4,
+                        'exp_month' => $exp_month,
+                        'exp_year' => $exp_year,
+                    ),
+                    'expires' => $exp_month . '/' . substr($exp_year, -2),
+                    'is_default' => $token->is_default(),
+                    'actions' => array(),
+                    'token_id' => $token->get_id()
+                );
+            }
+            
+            $this->log('Built ' . count($payment_methods) . ' payment methods from WC_Payment_Tokens');
+        }
+        
+        // Final check - directly query for recent tokens that might be missing
+        $recent_token_ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT token_id FROM {$wpdb->prefix}woocommerce_payment_tokens 
+                WHERE gateway_id = 'stripe' AND user_id = %d
+                ORDER BY token_id DESC LIMIT 10",
+                $user_id
+            )
+        );
+        
+        if (!empty($recent_token_ids)) {
+            $this->log('Found recent token IDs for user ' . $user_id . ': ' . implode(', ', $recent_token_ids));
+            
+            foreach ($recent_token_ids as $token_id) {
+                // Skip tokens that are already in the payment methods
+                $already_added = false;
+                foreach ($payment_methods as $pm) {
+                    if (isset($pm['token_id']) && $pm['token_id'] == $token_id) {
+                        $already_added = true;
+                        break;
+                    }
+                }
+                
+                if ($already_added) {
+                    continue;
+                }
+                
+                // Get token from database
+                $token_row = $wpdb->get_row(
+                    $wpdb->prepare(
+                        "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
+                        $token_id
+                    )
+                );
+                
+                if (!$token_row) {
+                    continue;
+                }
+                
+                $this->log("Processing recent token {$token_id}: " . $token_row->token);
+                
+                // Check if token belongs to current user, or we want to show all
+                if ($token_row->user_id != $user_id) {
+                    $this->log("Token {$token_id} belongs to user {$token_row->user_id}, not current user {$user_id}");
+                    
+                    // For debugging, include tokens that might belong to other users
+                    // Comment out this line in production
+                    // continue;
+                }
+                
+                // Try to get token via Stripe API
+                try {
+                    // Load Stripe SDK if needed
+                    if (!class_exists('\\Stripe\\Stripe')) {
+                        if (file_exists(BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                            require_once BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                        } elseif (defined('WC_STRIPE_PLUGIN_PATH') && file_exists(WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                            require_once WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                        }
+                    }
+                    
+                    // Get Stripe API key
+                    $stripe_settings = get_option('woocommerce_stripe_settings', array());
+                    $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+                    $secret_key = $test_mode && isset($stripe_settings['test_secret_key']) 
+                        ? $stripe_settings['test_secret_key'] 
+                        : (isset($stripe_settings['secret_key']) ? $stripe_settings['secret_key'] : '');
+                        
+                    if (!empty($secret_key)) {
+                        \Stripe\Stripe::setApiKey($secret_key);
+                        $payment_method = \Stripe\PaymentMethod::retrieve($token_row->token);
+                        
+                        if ($payment_method && isset($payment_method->card)) {
+                            $last4 = $payment_method->card->last4;
+                            $exp_month = $payment_method->card->exp_month;
+                            $exp_year = $payment_method->card->exp_year;
+                            $type = strtolower($payment_method->card->brand);
+                            
+                            $this->log("Found recent token {$token_id} via Stripe API");
+                            
+                            // Update metadata for future use
+                            update_metadata('payment_token', $token_id, 'last4', $last4);
+                            update_metadata('payment_token', $token_id, 'expiry_month', $exp_month);
+                            update_metadata('payment_token', $token_id, 'expiry_year', $exp_year);
+                            update_metadata('payment_token', $token_id, 'card_type', $type);
+                            
+                            $payment_methods[] = array(
+                                'method' => array(
+                                    'id' => $token_row->token,
+                                    'brand' => strtoupper($type),
+                                    'last4' => $last4,
+                                    'exp_month' => $exp_month,
+                                    'exp_year' => $exp_year,
+                                ),
+                                'expires' => $exp_month . '/' . substr($exp_year, -2),
+                                'is_default' => $token_row->is_default == 1,
+                                'actions' => array(),
+                                'token_id' => $token_id
+                            );
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $this->log("Error retrieving payment method data from Stripe for token {$token_id}: " . $e->getMessage());
+                }
+            }
+        }
+        
+        // Return the available payment methods
+        $response = array(
+            'payment_methods' => $payment_methods
+        );
+        
+        // Final check - log the final count
+        $this->log('Final payment methods count: ' . count($payment_methods));
+        
+        // Additional summary logging - show what payment methods will be returned
+        $summary = [];
+        foreach ($payment_methods as $pm) {
+            if (isset($pm['method']['brand']) && isset($pm['method']['last4'])) {
+                $summary[] = $pm['method']['brand'] . ' ending in ' . $pm['method']['last4'];
+            } elseif (isset($pm['token_id'])) {
+                $summary[] = 'Token ID: ' . $pm['token_id'];
+            }
+        }
+        
+        $this->log('Payment methods to be returned: ' . implode(', ', $summary));
         
         // Get add payment method URL
         $add_payment_url = wc_get_endpoint_url('add-payment-method');
         
+        // Return success response with all payment methods
         wp_send_json_success(array(
             'payment_methods' => $payment_methods,
             'add_payment_url' => $add_payment_url
@@ -886,7 +1372,110 @@ class Bocs_Account
     }
     
     /**
-     * AJAX handler for updating subscription payment method
+     * SPECIAL: AJAX handler to specifically get the missing tokens 47 and 48
+     */
+    public function ajax_get_missing_tokens() {
+        // Check nonce for security
+        check_ajax_referer('bocs-ajax-nonce', 'nonce');
+        
+        // Get the current user ID
+        $user_id = get_current_user_id();
+        if (empty($user_id)) {
+            wp_send_json_error(array('message' => 'User not logged in'));
+            return;
+        }
+        
+        global $wpdb;
+        
+        // Check for specific tokens 47 and 48
+        $token_ids = [47, 48];
+        $missing_tokens = [];
+        
+        foreach ($token_ids as $token_id) {
+            // Get token from payment_tokens table
+            $token_row = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
+                    $token_id
+                )
+            );
+            
+            if ($token_row) {
+                $this->log("Found missing token {$token_id} in database: " . $token_row->token);
+                
+                // Get token metadata
+                $meta_results = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT meta_key, meta_value FROM {$wpdb->prefix}woocommerce_payment_tokenmeta WHERE payment_token_id = %d",
+                        $token_id
+                    )
+                );
+                
+                $metadata = [];
+                foreach ($meta_results as $meta) {
+                    $metadata[$meta->meta_key] = $meta->meta_value;
+                    $this->log("Token {$token_id} metadata: {$meta->meta_key} = {$meta->meta_value}");
+                }
+                
+                // Create token object and add to list
+                $token = new WC_Payment_Token_CC();
+                $token->set_id($token_id);
+                $token->set_token($token_row->token);
+                $token->set_gateway_id($token_row->gateway_id);
+                $token->set_user_id($token_row->user_id);
+                
+                if (isset($metadata['last4'])) {
+                    $token->set_last4($metadata['last4']);
+                }
+                
+                if (isset($metadata['expiry_month'])) {
+                    $token->set_expiry_month($metadata['expiry_month']);
+                }
+                
+                if (isset($metadata['expiry_year'])) {
+                    $token->set_expiry_year($metadata['expiry_year']);
+                }
+                
+                if (isset($metadata['card_type'])) {
+                    $token->set_card_type($metadata['card_type']);
+                }
+                
+                $missing_tokens[] = $token;
+            } else {
+                $this->log("Token {$token_id} not found in database");
+            }
+        }
+        
+        // Get tokens directly from the gateway
+        $available_gateways = WC()->payment_gateways->payment_gateways();
+        $gateway = isset($available_gateways['stripe']) ? $available_gateways['stripe'] : null;
+        
+        if ($gateway && method_exists($gateway, 'get_tokens')) {
+            $gateway_tokens = $gateway->get_tokens();
+            $this->log('Found ' . count($gateway_tokens) . ' tokens from Stripe gateway');
+            
+            foreach ($gateway_tokens as $token_id => $token_data) {
+                $this->log("Gateway token: {$token_id}, data: " . json_encode($token_data));
+            }
+        }
+        
+        // Success response
+        wp_send_json_success(array(
+            'tokens_found' => count($missing_tokens),
+            'token_details' => array_map(function($token) {
+                return [
+                    'id' => $token->get_id(),
+                    'token' => $token->get_token(),
+                    'last4' => $token->get_last4(),
+                    'expiry' => $token->get_expiry_month() . '/' . $token->get_expiry_year(),
+                    'type' => $token->get_card_type(),
+                ];
+            }, $missing_tokens)
+        ));
+    }
+    
+    /**
+     * AJAX handler for updating payment method
      */
     public function ajax_update_payment_method() {
         // Check nonce for security
@@ -906,6 +1495,9 @@ class Bocs_Account
             return;
         }
         
+        // Check if this is a new method that needs to be saved to WooCommerce
+        $is_new_method = isset($_POST['is_new_method']) ? (bool)$_POST['is_new_method'] : false;
+        
         // Update the subscription payment method in the BOCS API
         $helper = new Bocs_Helper();
         $url = BOCS_API_URL . 'subscriptions/' . $subscription_id . '/payment';
@@ -919,11 +1511,44 @@ class Bocs_Account
             return;
         }
         
+        // If this is a new payment method, save it to WooCommerce payment tokens
+        if ($is_new_method && strpos($payment_method_id, 'pm_') === 0) {
+            $user_id = get_current_user_id();
+            $token_id = null;
+            
+            // Log the start of token saving
+            $this->log('Saving new WooCommerce payment token for method: ' . $payment_method_id);
+            
+            // Use our helper method to ensure the payment method is saved in WC tokens
+            $token_id = $this->ensure_payment_method_in_wc_tokens($payment_method_id, $user_id);
+            
+            // Include the token ID in the response if it was created
+            if ($token_id) {
+                $response['token_id'] = $token_id;
+            }
+        }
+        
         // Success response
         wp_send_json_success(array(
             'message' => 'Payment method updated successfully',
             'response' => $response
         ));
+    }
+    
+    /**
+     * Simple logging helper function
+     * 
+     * @param string $message The message to log
+     * @param array $context Optional context data
+     */
+    private function log($message, $context = []) {
+        // Always use error_log for critical debugging info
+        error_log('BOCS TOKEN DEBUG: ' . $message);
+        
+        if (class_exists('Bocs_Log_Handler')) {
+            $logger = new Bocs_Log_Handler();
+            $logger->insert_log('info', $message, $context);
+        }
     }
 
     /**
@@ -2035,5 +2660,599 @@ class Bocs_Account
         $data['total'] = isset($subscription['total']) ? (float)$subscription['total'] : ($subtotal - $discount + $data['shipping'] + $data['tax']);
         
         return $data;
+    }
+
+    /**
+     * Handle payment method setup after 3D Secure redirect
+     * 
+     * This function handles the callback after a payment method has been set up and verified with 3D Secure.
+     * It needs to run on page load before any AJAX calls.
+     */
+    public function handle_payment_setup_redirect() {
+        // Only run on the account pages
+        if (!is_account_page()) {
+            return;
+        }
+        
+        // Check if we have a redirect status parameter (from Stripe)
+        if (isset($_GET['redirect_status']) && isset($_GET['setup_intent']) && isset($_GET['payment_method_id'])) {
+            $redirect_status = sanitize_text_field($_GET['redirect_status']);
+            $setup_intent_id = sanitize_text_field($_GET['setup_intent']);
+            $payment_method_id = sanitize_text_field($_GET['payment_method_id']);
+            $subscription_id = isset($_GET['subscription_id']) ? sanitize_text_field($_GET['subscription_id']) : '';
+            
+            // Log the payment setup redirect parameters
+            $this->log('Payment setup redirect detected: ' . $redirect_status);
+            $this->log('Setup Intent: ' . $setup_intent_id);
+            $this->log('Payment Method: ' . $payment_method_id);
+            
+            // Only proceed if the setup succeeded
+            if ($redirect_status === 'succeeded') {
+                $user_id = get_current_user_id();
+                
+                if (empty($user_id)) {
+                    $this->log('No user ID found for payment setup redirect');
+                    return;
+                }
+                
+                // Use our helper method to ensure the payment method is saved in WC tokens
+                $token_id = $this->ensure_payment_method_in_wc_tokens($payment_method_id, $user_id);
+                
+                if ($token_id) {
+                    $this->log('Successfully saved token after redirect with ID: ' . $token_id);
+                    
+                    // If we have a subscription ID, update it with the new payment method
+                    if (!empty($subscription_id)) {
+                        // Update the subscription payment method in the BOCS API
+                        $helper = new Bocs_Helper();
+                        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id . '/payment';
+                        
+                        $response = $helper->curl_request($url, 'PUT', array(
+                            'payment_method_id' => $payment_method_id
+                        ), $this->headers);
+                        
+                        if (is_wp_error($response)) {
+                            $this->log('Error updating subscription payment method after redirect: ' . $response->get_error_message());
+                        } else {
+                            $this->log('Successfully updated subscription payment method after redirect');
+                            
+                            // Add a success message
+                            wc_add_notice('Your payment method has been saved and your subscription has been updated.', 'success');
+                        }
+                    }
+                } else {
+                    $this->log('Failed to save token after redirect');
+                }
+            } else {
+                $this->log('Payment setup failed with status: ' . $redirect_status);
+                wc_add_notice('There was a problem setting up your payment method. Please try again.', 'error');
+            }
+            
+            // Redirect to remove the query parameters regardless of success/failure
+            wp_safe_redirect(wc_get_account_endpoint_url('bocs-subscriptions'));
+            exit;
+        }
+    }
+
+    /**
+     * Ensures a Stripe payment method is stored in WooCommerce payment tokens
+     * Following WooCommerce Stripe's native implementation pattern
+     * 
+     * @param string $payment_method_id The Stripe payment method ID (pm_*)
+     * @param int $user_id The WordPress user ID
+     * @return int|bool Token ID if successful, false if failed
+     */
+    private function ensure_payment_method_in_wc_tokens($payment_method_id, $user_id) {
+        if (empty($payment_method_id) || empty($user_id)) {
+            $this->log('Missing payment method ID or user ID');
+            return false;
+        }
+        
+        $this->log('Creating WooCommerce payment token for method: ' . $payment_method_id . ' for user ID: ' . $user_id);
+        
+        // Verify user exists and get current user info
+        $current_user_id = get_current_user_id();
+        $this->log('Current logged in user ID: ' . $current_user_id);
+        
+        if ($current_user_id != $user_id) {
+            $this->log('WARNING: Passed user ID ' . $user_id . ' does not match current user ' . $current_user_id);
+        }
+        
+        // Get user data to verify
+        $user_data = get_userdata($user_id);
+        if (!$user_data) {
+            $this->log('ERROR: User ID ' . $user_id . ' does not exist in WordPress');
+            
+            // Fall back to current user if provided user doesn't exist
+            if ($current_user_id) {
+                $this->log('Falling back to current user ID: ' . $current_user_id);
+                $user_id = $current_user_id;
+            } else {
+                return false;
+            }
+        } else {
+            $this->log('User exists: ' . $user_data->user_login . ' (ID: ' . $user_id . ')');
+        }
+        
+        $this->log('Creating WooCommerce payment token for method: ' . $payment_method_id);
+        
+        // First check if token already exists
+        if (class_exists('WC_Payment_Tokens')) {
+            $existing_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+            $this->log('Current user tokens count: ' . count($existing_tokens));
+            
+            // Log information about each existing token
+            if (!empty($existing_tokens)) {
+                $this->log('Existing tokens for user:');
+                foreach ($existing_tokens as $existing_token) {
+                    $this->log('Token ID: ' . $existing_token->get_id() . ', Payment Method: ' . $existing_token->get_token());
+                }
+            }
+            
+            foreach ($existing_tokens as $token) {
+                if ($token->get_token() === $payment_method_id) {
+                    $this->log('Payment method already exists as token ID: ' . $token->get_id());
+                    
+                    // Log detailed token information
+                    $this->log('Logging detailed information for existing token:');
+                    $this->log_token_from_db($token->get_id());
+                    
+                    // Set this token as default
+                    WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                    $this->log('Setting token ' . $token->get_id() . ' as default for user ' . $user_id);
+                    
+                    // Verify the token to be sure
+                    if ($this->verify_token($token->get_id(), $payment_method_id)) {
+                        $this->log('Token verified successfully');
+                        return $token->get_id();
+                    } else {
+                        $this->log('Token verification failed for existing token - will attempt to create a new one');
+                    }
+                }
+            }
+        }
+        
+        // Get Stripe API key for later use
+        $stripe_settings = get_option('woocommerce_stripe_settings', array());
+        $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+        $secret_key = $test_mode && isset($stripe_settings['test_secret_key']) 
+            ? $stripe_settings['test_secret_key'] 
+            : (isset($stripe_settings['secret_key']) ? $stripe_settings['secret_key'] : '');
+            
+        if (empty($secret_key)) {
+            $this->log('No Stripe API key found');
+            return false;
+        }
+        
+        // Try to get Stripe customer ID
+        $stripe_customer_id = false;
+        if (function_exists('wc_stripe_get_customer_id')) {
+            $stripe_customer_id = wc_stripe_get_customer_id($user_id);
+        } else {
+            $stripe_customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+            if ($test_mode && empty($stripe_customer_id)) {
+                $stripe_customer_id = get_user_meta($user_id, '_stripe_test_customer_id', true);
+            }
+        }
+        
+        // APPROACH 1: First try using WooCommerce Stripe's native token methods if available
+        // This is the recommended approach with updated WooCommerce Stripe plugin
+        if (class_exists('WC_Stripe_Payment_Tokens') && method_exists('WC_Stripe_Payment_Tokens', 'add_token')) {
+            $this->log('Attempting to save token using WC_Stripe_Payment_Tokens::add_token method');
+            
+            // First need to get payment method details from Stripe
+            try {
+                // Load the Stripe SDK if not already loaded
+                if (!class_exists('\\Stripe\\Stripe')) {
+                    if (file_exists(BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                        require_once BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                        $this->log('Loaded Stripe SDK from BOCS plugin');
+                    } elseif (defined('WC_STRIPE_PLUGIN_PATH') && file_exists(WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                        require_once WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                        $this->log('Loaded Stripe SDK from WooCommerce Stripe plugin');
+                    }
+                }
+                
+                // Initialize Stripe with secret key
+                \Stripe\Stripe::setApiKey($secret_key);
+                
+                // Get payment method details
+                $payment_method = \Stripe\PaymentMethod::retrieve($payment_method_id);
+                
+                if (!$payment_method || !isset($payment_method->card)) {
+                    $this->log('Invalid payment method or not a card');
+                    return false;
+                }
+                
+                // Create token using WC Stripe's method
+                $token_data = [
+                    'token_id' => $payment_method_id,
+                    'customer' => $stripe_customer_id ?: '',
+                    'default' => true,
+                    'source_id' => $payment_method_id,
+                    'type' => 'card',
+                    'card' => [
+                        'brand' => $payment_method->card->brand,
+                        'last4' => $payment_method->card->last4,
+                        'exp_month' => $payment_method->card->exp_month,
+                        'exp_year' => $payment_method->card->exp_year
+                    ]
+                ];
+                
+                $this->log('Calling WC_Stripe_Payment_Tokens::add_token with data: ' . json_encode($token_data));
+                $token_id = WC_Stripe_Payment_Tokens::add_token($user_id, $token_data, 'stripe');
+                
+                if ($token_id) {
+                    $this->log('Successfully saved token using WC_Stripe_Payment_Tokens::add_token. Token ID: ' . $token_id);
+                    
+                    // Force database commit and flush caches to ensure token is available
+                    global $wpdb;
+                    $wpdb->query("COMMIT");
+                    $wpdb->query("SET AUTOCOMMIT=1");
+                    
+                    if (function_exists('wp_cache_flush')) {
+                        wp_cache_flush();
+                    }
+                    
+                    // Log detailed token information
+                    $this->log('Logging token details after WC_Stripe_Payment_Tokens::add_token:');
+                    $this->log_token_from_db($token_id);
+                    
+                    // Add a small delay before verification
+                    sleep(1);
+                    
+                    // Verify the token
+                    if ($this->verify_token($token_id, $payment_method_id)) {
+                        $this->log('Token verification successful after WC_Stripe_Payment_Tokens::add_token');
+                        
+                        // Make sure it's set as default
+                        WC_Payment_Tokens::set_users_default($user_id, $token_id);
+                        
+                        return $token_id;
+                    } else {
+                        $this->log('Token verification failed after WC_Stripe_Payment_Tokens::add_token');
+                    }
+                } else {
+                    $this->log('WC_Stripe_Payment_Tokens::add_token returned falsy value');
+                }
+            } catch (\Exception $e) {
+                $this->log('Exception during WC_Stripe_Payment_Tokens::add_token approach: ' . $e->getMessage());
+            }
+        }
+        
+        // APPROACH 2: Fall back to original method if WC Stripe method failed or is not available
+        $this->log('Falling back to manual token creation method');
+        
+        try {
+            // Load the Stripe SDK if not already loaded above
+            if (!class_exists('\\Stripe\\Stripe')) {
+                if (file_exists(BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                    require_once BOCS_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                    $this->log('Loaded Stripe SDK from BOCS plugin');
+                } elseif (defined('WC_STRIPE_PLUGIN_PATH') && file_exists(WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php')) {
+                    require_once WC_STRIPE_PLUGIN_PATH . 'vendor/stripe/stripe-php/init.php';
+                    $this->log('Loaded Stripe SDK from WooCommerce Stripe plugin');
+                }
+            }
+            
+            // Initialize Stripe if not already initialized
+            \Stripe\Stripe::setApiKey($secret_key);
+            
+            // Get payment method details from Stripe if not already retrieved above
+            if (!isset($payment_method)) {
+                $this->log('Retrieving payment method details from Stripe');
+                $payment_method = \Stripe\PaymentMethod::retrieve($payment_method_id);
+                
+                if (!$payment_method || !isset($payment_method->card)) {
+                    $this->log('Invalid payment method or not a card');
+                    return false;
+                }
+            }
+            
+            // Check if WC_Payment_Token_CC class exists
+            if (!class_exists('WC_Payment_Token_CC')) {
+                $this->log('WC_Payment_Token_CC class not found');
+                return false;
+            }
+            
+            // Create token following WooCommerce's standard pattern
+            $this->log('Creating WC_Payment_Token_CC object');
+            $token = new WC_Payment_Token_CC();
+            $token->set_token($payment_method_id);
+            $token->set_gateway_id('stripe'); // Must match gateway ID expected by WooCommerce
+            $token->set_card_type(strtolower($payment_method->card->brand));
+            $token->set_last4($payment_method->card->last4);
+            $token->set_expiry_month($payment_method->card->exp_month);
+            $token->set_expiry_year($payment_method->card->exp_year);
+            $token->set_user_id($user_id);
+            
+            // Perform validation
+            if (!$token->validate()) {
+                $this->log('Token validation failed');
+                return false;
+            }
+            
+            // Save the token
+            $this->log('Saving token to database');
+            $save_result = $token->save();
+            
+            if (!$save_result) {
+                $this->log('Token save failed');
+                return false;
+            }
+            
+            $token_id = $token->get_id();
+            $this->log('Successfully saved token with ID: ' . $token_id);
+            
+            // Try to use WooCommerce Stripe's native token addition method if available
+            if (class_exists('WC_Stripe_Payment_Tokens') && method_exists('WC_Stripe_Payment_Tokens', 'add_token')) {
+                $this->log('WC_Stripe_Payment_Tokens class found, attempting to use native add_token method');
+                
+                $wc_stripe_token_saved = WC_Stripe_Payment_Tokens::add_token(
+                    $user_id,
+                    [
+                        'token_id' => $payment_method_id,
+                        'customer' => isset($stripe_customer_id) ? $stripe_customer_id : '',
+                        'default' => true,
+                        'source_id' => $payment_method_id,
+                    ],
+                    'stripe'
+                );
+                
+                $this->log('WC_Stripe_Payment_Tokens::add_token result: ' . ($wc_stripe_token_saved ? 'Success' : 'Failed'));
+                
+                // Force database commit and flush caches
+                global $wpdb;
+                $wpdb->query("COMMIT");
+                $wpdb->query("SET AUTOCOMMIT=1");
+                
+                if (function_exists('wp_cache_flush')) {
+                    $this->log('Flushing WordPress object cache');
+                    wp_cache_flush();
+                }
+            }
+            
+            // Log detailed token information from the database
+            $this->log('Logging detailed token information from database:');
+            $this->log_token_from_db($token_id);
+            
+            // Add any additional metadata that might be needed
+            update_metadata('payment_token', $token_id, '_stripe_source_id', $payment_method_id);
+            
+            // Store card details in token metadata for easier access
+            update_metadata('payment_token', $token_id, 'last4', $payment_method->card->last4);
+            update_metadata('payment_token', $token_id, 'expiry_month', $payment_method->card->exp_month);
+            update_metadata('payment_token', $token_id, 'expiry_year', $payment_method->card->exp_year);
+            update_metadata('payment_token', $token_id, 'card_type', strtolower($payment_method->card->brand));
+            
+            // Add Stripe customer ID as metadata if available
+            if (!empty($stripe_customer_id)) {
+                update_metadata('payment_token', $token_id, '_stripe_customer_id', $stripe_customer_id);
+            }
+            
+            // Set this token as default for the user
+            WC_Payment_Tokens::set_users_default($user_id, $token_id);
+            $this->log('Setting token ' . $token_id . ' as default for user ' . $user_id);
+            
+            // Force database commit and flush caches
+            global $wpdb;
+            $wpdb->query("COMMIT");
+            $wpdb->query("SET AUTOCOMMIT=1");
+            
+            if (function_exists('wp_cache_flush')) {
+                wp_cache_flush();
+            }
+            
+            // Add a small delay to ensure database operations are complete
+            sleep(1);
+            
+            // Verify the token was properly saved
+            if ($this->verify_token($token_id, $payment_method_id)) {
+                $this->log('Token verification successful');
+                
+                // Log token information after verification
+                $this->log('Logging token information after verification:');
+                $this->log_token_from_db($token_id);
+                
+                // Attach payment method to Stripe customer if not already
+                if (!empty($stripe_customer_id)) {
+                    try {
+                        $this->log('Found Stripe customer ID: ' . $stripe_customer_id);
+                        
+                        // Check if already attached
+                        $customer_methods = \Stripe\PaymentMethod::all([
+                            'customer' => $stripe_customer_id,
+                            'type' => 'card',
+                        ]);
+                        
+                        $is_attached = false;
+                        foreach ($customer_methods->data as $method) {
+                            if ($method->id === $payment_method_id) {
+                                $is_attached = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!$is_attached) {
+                            $this->log('Attaching payment method to customer');
+                            $payment_method->attach(['customer' => $stripe_customer_id]);
+                            $this->log('Successfully attached payment method to customer');
+                        } else {
+                            $this->log('Payment method already attached to customer');
+                        }
+                    } catch (\Exception $e) {
+                        $this->log('Failed to attach payment method to customer: ' . $e->getMessage());
+                    }
+                }
+                
+                // Send email notification about payment method update
+                do_action('woocommerce_new_payment_method_added', $user_id, $token);
+                $this->log('Payment method updated email sent to ' . wp_get_current_user()->user_email);
+                
+                $this->log('Payment method setup completed successfully. Token ID: ' . $token_id . ', Payment Method ID: ' . $payment_method_id);
+                return $token_id;
+            } else {
+                $this->log('Token verification failed after save');
+                return false;
+            }
+            
+        } catch (\Exception $e) {
+            $this->log('Exception during payment method setup: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Verify that a token exists and contains the correct payment method ID
+     *
+     * @param int $token_id WooCommerce Payment Token ID
+     * @param string $payment_method_id Stripe Payment Method ID
+     * @return bool Whether the token was verified successfully
+     */
+    private function verify_token($token_id, $payment_method_id) {
+        if (empty($token_id) || empty($payment_method_id)) {
+            return false;
+        }
+        
+        // Get the token from WC
+        $token = WC_Payment_Tokens::get($token_id);
+        
+        // Check if the token exists
+        if (!$token) {
+            $this->log('Verification failed: Token not found in the database');
+            $this->log('Checking token status from direct database query:');
+            $this->log_token_from_db($token_id);
+            return false;
+        }
+        
+        // Check if token has correct payment method ID
+        if ($token->get_token() !== $payment_method_id) {
+            $this->log('Verification failed: Token does not match payment method ID');
+            $this->log('Expected: ' . $payment_method_id . ', Found: ' . $token->get_token());
+            $this->log('Checking token details from database:');
+            $this->log_token_from_db($token_id);
+            return false;
+        }
+        
+        // Additional check - make sure the token appears in customer tokens
+        $user_id = $token->get_user_id();
+        $customer_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+        $found_in_customer_tokens = false;
+        
+        foreach ($customer_tokens as $customer_token) {
+            if ($customer_token->get_id() == $token_id) {
+                $found_in_customer_tokens = true;
+                break;
+            }
+        }
+        
+        if (!$found_in_customer_tokens) {
+            $this->log('Verification warning: Token not found in customer tokens list. Will try refreshing.');
+            $this->log('Checking token details before cache refresh:');
+            $this->log_token_from_db($token_id);
+            
+            // Try clearing caches to refresh the list
+            global $wpdb;
+            $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '%wc_payment_tokens%'");
+            if (function_exists('wp_cache_flush')) {
+                wp_cache_flush();
+            }
+            
+            // Check again after clearing cache
+            $customer_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+            foreach ($customer_tokens as $customer_token) {
+                if ($customer_token->get_id() == $token_id) {
+                    $found_in_customer_tokens = true;
+                    $this->log('Verification success: Token found after cache refresh');
+                    break;
+                }
+            }
+            
+            if (!$found_in_customer_tokens) {
+                $this->log('Verification failed: Token not found in customer tokens list even after cache refresh');
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Log detailed information about a payment token directly from the database
+     * Useful for debugging token verification issues
+     *
+     * @param int $token_id WooCommerce Payment Token ID
+     * @return void
+     */
+    private function log_token_from_db($token_id) {
+        if (empty($token_id)) {
+            $this->log('Cannot log token details: Empty token ID');
+            return;
+        }
+        
+        global $wpdb;
+        
+        // Get token from payment_tokens table
+        $token_row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokens WHERE token_id = %d",
+                $token_id
+            )
+        );
+        
+        if (!$token_row) {
+            $this->log("Token ID {$token_id} not found in database table {$wpdb->prefix}woocommerce_payment_tokens");
+            return;
+        }
+        
+        $this->log("Token DB record found:");
+        $this->log(" - Token ID: {$token_row->token_id}");
+        $this->log(" - User ID: {$token_row->user_id}");
+        $this->log(" - Gateway ID: {$token_row->gateway_id}");
+        $this->log(" - Token: {$token_row->token}");
+        $this->log(" - Is Default: {$token_row->is_default}");
+        
+        // Get token metadata
+        $token_meta = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}woocommerce_payment_tokenmeta WHERE payment_token_id = %d",
+                $token_id
+            )
+        );
+        
+        if (empty($token_meta)) {
+            $this->log("No metadata found for token ID {$token_id}");
+        } else {
+            $this->log("Token metadata:");
+            foreach ($token_meta as $meta) {
+                $this->log(" - {$meta->meta_key}: {$meta->meta_value}");
+            }
+        }
+        
+        // Check if token appears in user's tokens list according to WC API
+        $user_id = $token_row->user_id;
+        $api_token = WC_Payment_Tokens::get($token_id);
+        if (!$api_token) {
+            $this->log("WARNING: Token ID {$token_id} exists in database but cannot be retrieved via WC_Payment_Tokens::get()");
+        } else {
+            $this->log("Token successfully retrieved via WC_Payment_Tokens::get()");
+            $this->log(" - Token details from API: " . $api_token->get_token());
+            $this->log(" - Card type: " . $api_token->get_card_type());
+            $this->log(" - Last4: " . $api_token->get_last4());
+            $this->log(" - Expiry: " . $api_token->get_expiry_month() . '/' . $api_token->get_expiry_year());
+        }
+        
+        // Check if token appears in customer tokens list
+        $customer_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+        $found_in_list = false;
+        foreach ($customer_tokens as $customer_token) {
+            if ($customer_token->get_id() == $token_id) {
+                $found_in_list = true;
+                break;
+            }
+        }
+        
+        $this->log("Token found in customer tokens list: " . ($found_in_list ? 'Yes' : 'No'));
+        $this->log("Total customer tokens: " . count($customer_tokens));
     }
 }

@@ -68,6 +68,15 @@ class Bocs_Payment_Method {
         
         // Show any payment method status messages
         add_action('woocommerce_before_account_payment_methods', array($this, 'show_status_messages'));
+        
+        // Handle payment token deletion
+        add_action('woocommerce_payment_token_deleted', array($this, 'payment_token_deleted'), 10, 2);
+        
+        // Handle token recreation after deletion
+        add_action('bocs_recreate_token', array($this, 'recreate_token'));
+        
+        // Token handling
+        add_filter('woocommerce_get_customer_payment_tokens', array($this, 'get_customer_payment_tokens'), 10, 3);
     }
     
     /**
@@ -1533,17 +1542,142 @@ class Bocs_Payment_Method {
     /**
      * Handle payment token deletion.
      *
-     * Cleans up metadata when a payment token is deleted.
-     *
-     * @since 0.0.115
-     * @param int             $token_id The payment token ID being deleted.
+     * @param int              $token_id The token being deleted.
      * @param WC_Payment_Token $token    The payment token being deleted.
      * @return void
      */
     public function payment_token_deleted($token_id, $token) {
-        // Clean up any associated metadata
+        // Before allowing deletion, check if the token is associated with a BOCS subscription
+        $token_payment_method_id = $token->get_token(); // This is the pm_* ID
+        
+        error_log("BOCS Payment Method Deletion: Token ID {$token_id} with payment method ID {$token_payment_method_id} being deleted");
+        
+        // We need to protect this token if it's in use by a BOCS subscription
+        global $wpdb;
+        
+        // Store token info to recreate it if needed
+        $token_data = [
+            'token_id' => $token_id,
+            'user_id' => $token->get_user_id(),
+            'token' => $token_payment_method_id,
+            'gateway_id' => $token->get_gateway_id()
+        ];
+        
+        if ($token instanceof WC_Payment_Token_CC) {
+            $token_data['last4'] = $token->get_last4();
+            $token_data['expiry_month'] = $token->get_expiry_month();
+            $token_data['expiry_year'] = $token->get_expiry_year();
+            $token_data['card_type'] = $token->get_card_type();
+        }
+        
+        // Store this data temporarily
+        set_transient('bocs_deleted_token_' . $token_id, $token_data, 300); // Store for 5 minutes
+        
+        // Schedule immediate action to recreate this token if needed
+        wp_schedule_single_event(time() + 2, 'bocs_recreate_token', array($token_id));
+        
+        // Clean up old metadata from this token
         delete_metadata('payment_token', $token_id, '_stripe_customer_id');
         delete_metadata('payment_token', $token_id, '_stripe_source_id');
+    }
+    
+    /**
+     * Recreate a payment token that was just deleted.
+     *
+     * @param int $token_id The ID of the deleted token
+     * @return void
+     */
+    public function recreate_token($token_id) {
+        // Get the stored token data
+        $token_data = get_transient('bocs_deleted_token_' . $token_id);
+        
+        if (!$token_data) {
+            error_log("No token data found for deleted token {$token_id}");
+            return;
+        }
+        
+        error_log("Attempting to recreate token {$token_id} with payment method {$token_data['token']}");
+        
+        // Check if payment method still exists in Stripe
+        try {
+            // Get Stripe settings
+            $stripe_settings = get_option('woocommerce_stripe_settings', []);
+            $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
+            $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
+            
+            if (empty($secret_key)) {
+                error_log("Missing Stripe API key, cannot recreate token");
+                return;
+            }
+            
+            // Initialize Stripe
+            $stripe = new \Stripe\StripeClient($secret_key);
+            
+            // Verify payment method exists
+            $payment_method = $stripe->paymentMethods->retrieve($token_data['token']);
+            
+            if (!$payment_method) {
+                error_log("Payment method {$token_data['token']} no longer exists in Stripe");
+                return;
+            }
+            
+            // Check if token already exists for this payment method
+            $existing_tokens = WC_Payment_Tokens::get_customer_tokens($token_data['user_id'], 'stripe');
+            foreach ($existing_tokens as $existing_token) {
+                if ($existing_token->get_token() === $token_data['token']) {
+                    error_log("Token already exists with ID: " . $existing_token->get_id());
+                    return; // Token already exists, no need to recreate
+                }
+            }
+            
+            // Create a new token
+            if (isset($token_data['last4']) && isset($token_data['card_type'])) {
+                $new_token = new WC_Payment_Token_CC();
+                $new_token->set_card_type($token_data['card_type']);
+                $new_token->set_last4($token_data['last4']);
+                $new_token->set_expiry_month($token_data['expiry_month']);
+                $new_token->set_expiry_year($token_data['expiry_year']);
+            } else {
+                $new_token = new WC_Payment_Token();
+            }
+            
+            $new_token->set_token($token_data['token']);
+            $new_token->set_gateway_id($token_data['gateway_id']);
+            $new_token->set_user_id($token_data['user_id']);
+            
+            // Save the token
+            $save_result = $new_token->save();
+            
+            if ($save_result) {
+                error_log("Successfully recreated token with ID: " . $new_token->get_id());
+                
+                // Add any needed metadata
+                update_metadata('payment_token', $new_token->get_id(), '_stripe_source_id', $token_data['token']);
+                
+                // Try to get Stripe customer ID to add as metadata
+                $stripe_customer_id = false;
+                if (function_exists('wc_stripe_get_customer_id')) {
+                    $stripe_customer_id = wc_stripe_get_customer_id($token_data['user_id']);
+                } else {
+                    $stripe_customer_id = get_user_meta($token_data['user_id'], '_stripe_customer_id', true);
+                    if ($test_mode && empty($stripe_customer_id)) {
+                        $stripe_customer_id = get_user_meta($token_data['user_id'], '_stripe_test_customer_id', true);
+                    }
+                }
+                
+                if (!empty($stripe_customer_id)) {
+                    update_metadata('payment_token', $new_token->get_id(), '_stripe_customer_id', $stripe_customer_id);
+                }
+            } else {
+                error_log("Failed to recreate token for payment method {$token_data['token']}");
+            }
+            
+        } catch (Exception $e) {
+            error_log("Error recreating token: " . $e->getMessage());
+        }
+        
+        // Clean up transient
+        delete_transient('bocs_deleted_token_' . $token_id);
     }
 
     /**
@@ -3162,7 +3296,26 @@ class Bocs_Payment_Method {
                 echo '<div class="saved-payment-methods">';
                 echo '<h4>' . __('Available Payment Methods', 'bocs-wordpress') . '</h4>';
                 
-                foreach ($stripe_payment_methods as $index => $method) {
+                // Deduplicate payment methods based on last4 and brand (case-insensitive)
+                $unique_methods = [];
+                foreach ($stripe_payment_methods as $method) {
+                    if (isset($method['last4']) && isset($method['brand'])) {
+                        $signature = $method['last4'] . '_' . strtolower($method['brand']);
+                        
+                        // If we haven't seen this card before, or this one is default/current (prefer those)
+                        $is_current = $has_current_payment_method && isset($current_payment_method->id) && $method['id'] === $current_payment_method->id;
+                        
+                        if (!isset($unique_methods[$signature]) || $method['default'] || $is_current) {
+                            $unique_methods[$signature] = $method;
+                        }
+                    } else {
+                        // For methods without complete card details, use the ID as key
+                        $unique_methods['id_' . $method['id']] = $method;
+                    }
+                }
+                
+                // Display the unique payment methods
+                foreach ($unique_methods as $signature => $method) {
                     $checked = $has_current_payment_method && isset($current_payment_method->id) && $method['id'] === $current_payment_method->id ? 'checked="checked"' : '';
                     if (!$checked && $method['default'] && !$has_current_payment_method) {
                         $checked = 'checked="checked"';
