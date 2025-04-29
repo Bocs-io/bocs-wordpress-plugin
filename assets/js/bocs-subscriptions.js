@@ -883,8 +883,11 @@
                                     const methodLabel = method.method.brand + 
                                         (method.method.last4 ? (' ending in ' + method.method.last4) : '');
                                     
+                                    // Mark as selected if it's the default (is_default=1) payment method
+                                    const isSelected = method.is_default ? 'selected' : '';
+                                    
                                     $('#payment-method').append(
-                                        `<option value="${method.method.id}" ${method.is_default ? 'selected' : ''}>
+                                        `<option value="${method.method.id}" ${isSelected}>
                                             ${methodLabel}
                                         </option>`
                                     );
