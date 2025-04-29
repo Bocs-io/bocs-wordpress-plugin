@@ -60,6 +60,9 @@ class Bocs_Payment_Method {
         add_action('wp_ajax_nopriv_bocs_get_payment_methods', array($this, 'ajax_get_payment_methods'));
         add_action('wp_ajax_bocs_update_payment_method', array($this, 'ajax_update_payment_method'));
         
+        // Add hook for Stripe setup
+        add_action('wp_ajax_bocs_get_stripe_setup', array($this, 'get_stripe_setup'));
+        
         // Show any payment method status messages
         add_action('woocommerce_before_account_payment_methods', array($this, 'show_status_messages'));
     }
@@ -278,7 +281,7 @@ class Bocs_Payment_Method {
                 'bocs-payment-methods',
                 plugins_url('assets/js/payment-methods.js', dirname(__FILE__)),
                 ['jquery', 'stripe-js'],
-                '20250410.2', // Updated version to force browser refresh
+                '20250428.2', // Updated version to force browser refresh
                 true
             );
 
@@ -491,6 +494,82 @@ class Bocs_Payment_Method {
                 }
             }
             
+            // Get the payment method details from Stripe
+            try {
+                $payment_method = $stripe->paymentMethods->retrieve($payment_method_id);
+                $card_details = [];
+                
+                // Extract card details if this is a card payment method
+                if ($payment_method->type === 'card' && isset($payment_method->card)) {
+                    $card_details = [
+                        'brand' => ucfirst($payment_method->card->brand),
+                        'last4' => $payment_method->card->last4,
+                        'exp_month' => sprintf('%02d', $payment_method->card->exp_month),
+                        'exp_year' => $payment_method->card->exp_year
+                    ];
+                }
+                
+                // Check if this payment method already exists in WooCommerce tokens
+                $existing_tokens = WC_Payment_Tokens::get_customer_tokens($user_id, 'stripe');
+                $token_exists = false;
+                $existing_token_id = null;
+                
+                foreach ($existing_tokens as $existing_token) {
+                    if ($existing_token->get_token() === $payment_method_id) {
+                        $token_exists = true;
+                        $existing_token_id = $existing_token->get_id();
+                        break;
+                    }
+                }
+                
+                // Only create a new token if one doesn't already exist
+                if (!$token_exists) {
+                    // Create and save WC payment token
+                    $token = new WC_Payment_Token_CC();
+                    
+                    // Set token data
+                    $token->set_token($payment_method_id);
+                    $token->set_gateway_id('stripe');
+                    $token->set_card_type(strtolower($payment_method->card->brand));
+                    $token->set_last4($payment_method->card->last4);
+                    $token->set_expiry_month($payment_method->card->exp_month);
+                    $token->set_expiry_year($payment_method->card->exp_year);
+                    $token->set_user_id($user_id);
+
+                    // Save the token
+                    error_log("Saving new WooCommerce payment token for method: {$payment_method_id}");
+                    $save_result = $token->save();
+                    if (!$save_result) {
+                        error_log("Failed to save WooCommerce payment token");
+                        throw new Exception('Failed to save payment token');
+                    }
+                    error_log("Successfully saved token with ID: {$token->get_id()}");
+
+                    // Verify token was saved
+                    $saved_token = WC_Payment_Tokens::get($token->get_id());
+                    if (!$saved_token) {
+                        error_log("Token verification failed after save");
+                        throw new Exception('Token verification failed after save');
+                    }
+
+                    // Update token meta
+                    update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
+                    update_metadata('payment_token', $token->get_id(), '_stripe_source_id', $payment_method_id);
+                    
+                    // Set as default payment method for the user
+                    error_log("Setting token {$token->get_id()} as default for user {$user_id}");
+                    WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                } else {
+                    error_log("Using existing WooCommerce payment token for method: {$payment_method_id}");
+                    // Set as default payment method
+                    WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                }
+                
+            } catch (\Exception $e) {
+                // Continue even if WooCommerce token creation fails
+                error_log('Failed to save WooCommerce payment token: ' . $e->getMessage());
+            }
+            
             // Now update the payment method on the subscription with the BOCS API
             $helper = new Bocs_Helper();
             $options = get_option('bocs_settings', []);
@@ -508,7 +587,10 @@ class Bocs_Payment_Method {
             wp_send_json_success(array(
                 'message' => 'Payment method updated successfully',
                 'subscription_id' => $subscription_id,
-                'payment_method_id' => $payment_method_id
+                'payment_method_id' => $payment_method_id,
+                'card_details' => $card_details ?? null,
+                'is_saved_to_wc' => $token_exists || (isset($token) && $token->get_id()),
+                'token_id' => $existing_token_id
             ));
             
         } catch (\Exception $e) {
@@ -692,19 +774,32 @@ class Bocs_Payment_Method {
                 $token->set_user_id($user_id);
 
                 // Save the token
-                if (!$token->save()) {
+                error_log("Saving new WooCommerce payment token for method: {$payment_method_id}");
+                $save_result = $token->save();
+                if (!$save_result) {
+                    error_log("Failed to save WooCommerce payment token");
                     throw new Exception('Failed to save payment token');
                 }
+                error_log("Successfully saved token with ID: {$token->get_id()}");
 
                 // Verify token was saved
                 $saved_token = WC_Payment_Tokens::get($token->get_id());
                 if (!$saved_token) {
+                    error_log("Token verification failed after save");
                     throw new Exception('Token verification failed after save');
                 }
 
                 // Update token meta
                 update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
                 update_metadata('payment_token', $token->get_id(), '_stripe_source_id', $payment_method_id);
+                
+                // Set as default payment method for the user
+                error_log("Setting token {$token->get_id()} as default for user {$user_id}");
+                WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+            } else {
+                error_log("Using existing WooCommerce payment token for method: {$payment_method_id}");
+                // Set as default payment method
+                WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
             }
 
             // Update Bocs subscription with new payment details
@@ -889,21 +984,80 @@ class Bocs_Payment_Method {
             // Send email notification for successful payment method update
             $this->send_payment_method_updated_email($payment_method, get_user_by('id', $user_id));
 
-            // Set this payment method as the default for the user
-            $this->set_default_payment_method($user_id, $token->get_id());
+            // Set this payment method as the default for the user in WooCommerce
+            // Using WC_Payment_Tokens::set_users_default is more reliable than our custom method
+            WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+
+            // Debug log before redirect
+            error_log("Payment method setup completed successfully. Token ID: {$token->get_id()}, Payment Method ID: {$payment_method_id}");
+            
+            // Store card info in session for display purposes
+            WC()->session->set('last_payment_method_update', [
+                'token_id' => $token->get_id(),
+                'payment_method_id' => $payment_method_id,
+                'card_brand' => $payment_method->card->brand,
+                'card_last4' => $payment_method->card->last4
+            ]);
+
+            // Clear any temp session/cookie data
+            if (isset($_COOKIE['bocs_subscription_id'])) {
+                setcookie('bocs_subscription_id', '', time() - 3600, '/');
+            }
 
             // Redirect to the subscriptions page with success message
-            wp_redirect(add_query_arg(['payment_updated' => 'success'], wc_get_account_endpoint_url('bocs-subscriptions')));
+            wp_redirect(add_query_arg([
+                'payment_updated' => 'success',
+                'payment_method_id' => $payment_method_id,
+                'subscription_id' => $subscription_id,
+                'token_id' => $token->get_id()
+            ], wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
 
         } catch (Exception $e) {
-            // Improve error handling with detailed logging
+            // Log detailed error information
+            error_log("Payment method setup error: " . $e->getMessage());
+            
+            // In case there was a payment method created in Stripe but not properly saved to WC
+            if (isset($payment_method_id) && !empty($payment_method_id)) {
+                error_log("Payment method was created in Stripe but setup failed: {$payment_method_id}");
+                
+                // Try to save the token again if we have enough information
+                if (isset($payment_method) && isset($user_id) && isset($customer_id)) {
+                    try {
+                        error_log("Attempting recovery - saving payment method {$payment_method_id} as WC token");
+                        $token = new WC_Payment_Token_CC();
+                        $token->set_token($payment_method_id);
+                        $token->set_gateway_id('stripe');
+                        $token->set_card_type(strtolower($payment_method->card->brand));
+                        $token->set_last4($payment_method->card->last4);
+                        $token->set_expiry_month($payment_method->card->exp_month);
+                        $token->set_expiry_year($payment_method->card->exp_year);
+                        $token->set_user_id($user_id);
+                        
+                        if ($token->save()) {
+                            error_log("Recovery successful - token saved with ID: {$token->get_id()}");
+                            update_metadata('payment_token', $token->get_id(), '_stripe_customer_id', $customer_id);
+                            update_metadata('payment_token', $token->get_id(), '_stripe_source_id', $payment_method_id);
+                            
+                            // Redirect with recovery success
+                            wp_redirect(add_query_arg([
+                                'payment_updated' => 'recovery',
+                                'subscription_id' => $subscription_id ?? '',
+                                'token_id' => $token->get_id()
+                            ], wc_get_account_endpoint_url('bocs-subscriptions')));
+                            exit;
+                        }
+                    } catch (Exception $recovery_e) {
+                        error_log("Recovery attempt failed: " . $recovery_e->getMessage());
+                    }
+                }
+            }
             
             // Redirect to the subscriptions page with error
             wp_redirect(add_query_arg([
                 'payment_updated' => 'error',
-                'error_type' => 'server',
-                'error_message' => urlencode($e->getMessage())
+                'error_type' => 'setup',
+                'error_message' => urlencode(substr($e->getMessage(), 0, 200))
             ], wc_get_account_endpoint_url('bocs-subscriptions')));
             exit;
         }
@@ -987,26 +1141,82 @@ class Bocs_Payment_Method {
             $status = $_GET['payment_updated'];
             
             if ($status === 'success') {
-                wc_add_notice(__('Your payment method has been successfully updated.', 'bocs-wordpress'), 'success');
+                $payment_method_id = isset($_GET['payment_method_id']) ? sanitize_text_field($_GET['payment_method_id']) : '';
+                $token_id = isset($_GET['token_id']) ? absint($_GET['token_id']) : 0;
+                
+                // Try to get card details from the token
+                $card_info = '';
+                if ($token_id) {
+                    $token = WC_Payment_Tokens::get($token_id);
+                    if ($token && $token instanceof WC_Payment_Token_CC) {
+                        $brand = ucfirst($token->get_card_type());
+                        $last4 = $token->get_last4();
+                        $exp_month = sprintf('%02d', $token->get_expiry_month());
+                        $exp_year = $token->get_expiry_year();
+                        $card_info = " ({$brand} ending in {$last4})";
+                    }
+                }
+                
+                // Try to get card details from session if not in token
+                if (empty($card_info) && WC()->session) {
+                    $last_update = WC()->session->get('last_payment_method_update');
+                    if ($last_update && isset($last_update['card_brand']) && isset($last_update['card_last4'])) {
+                        $brand = ucfirst($last_update['card_brand']);
+                        $last4 = $last_update['card_last4'];
+                        $card_info = " ({$brand} ending in {$last4})";
+                    }
+                }
+                
+                wc_add_notice(sprintf(
+                    __('Your payment method%s has been successfully updated and saved to your account.', 'bocs-wordpress'), 
+                    $card_info
+                ), 'success');
             } 
+            else if ($status === 'recovery') {
+                wc_add_notice(__('We encountered an issue but successfully recovered your payment method. It has been saved to your account.', 'bocs-wordpress'), 'success');
+            }
             else if ($status === 'pending') {
                 wc_add_notice(__('Your payment verification is in progress. Please complete any additional steps required by your bank.', 'bocs-wordpress'), 'notice');
             }
             else if ($status === 'error') {
-                $error_message = isset($_GET['error_message']) ? urldecode($_GET['error_message']) : __('Failed to update payment method. Please try again.', 'bocs-wordpress');
+                $error_type = isset($_GET['error_type']) ? sanitize_text_field($_GET['error_type']) : '';
+                $error_message = isset($_GET['error_message']) ? urldecode($_GET['error_message']) : '';
                 
-                // Sanitize error message for security
-                $error_message = wp_kses($error_message, [
-                    'a' => ['href' => [], 'title' => []],
-                    'br' => [],
-                    'em' => [],
-                    'strong' => [],
-                ]);
+                // Default message
+                $message = __('Failed to update payment method. Please try again.', 'bocs-wordpress');
                 
-                wc_add_notice($error_message, 'error');
+                // Custom message based on error type
+                if ($error_type === 'setup') {
+                    $message = __('There was a problem setting up your payment method. Please try again or contact support if the issue persists.', 'bocs-wordpress');
+                } else if ($error_type === 'server') {
+                    $message = __('A server error occurred while processing your payment method. Please try again later.', 'bocs-wordpress');
+                }
+                
+                // Add the detailed error message if available
+                if (!empty($error_message)) {
+                    // Sanitize error message for security
+                    $error_message = wp_kses($error_message, [
+                        'a' => ['href' => [], 'title' => []],
+                        'br' => [],
+                        'em' => [],
+                        'strong' => [],
+                    ]);
+                    
+                    // Only show detailed errors to admins
+                    if (current_user_can('manage_options')) {
+                        $message .= ' ' . __('Error details:', 'bocs-wordpress') . ' ' . $error_message;
+                    }
+                }
+                
+                wc_add_notice($message, 'error');
                 
                 // Log the error for debugging
-                error_log('Payment update error displayed: ' . $error_message);
+                error_log('Payment update error displayed: ' . ($error_message ?: $message));
+            }
+            
+            // Clear session data after displaying the notice
+            if (WC()->session) {
+                WC()->session->__unset('last_payment_method_update');
             }
         }
     }
@@ -1923,7 +2133,7 @@ class Bocs_Payment_Method {
                                     
                                     if (selectedMethod === 'new') {
                                         // Redirect to add new payment method
-                                        window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $atts['subscription_id']], wc_get_endpoint_url('add-payment-method'))); ?>';
+                                        window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
                                     } else if (selectedMethod === currentMethod) {
                                         alert('<?php _e('This is already the current payment method', 'bocs-wordpress'); ?>');
                                     } else {
@@ -2389,16 +2599,22 @@ class Bocs_Payment_Method {
                             },
                             success: function(response) {
                                 if (response.success) {
-                                    alert('<?php _e('Payment method updated successfully', 'bocs-wordpress'); ?>');
-                                    window.location.reload();
+                                    // Success - show success message and then reload
+                                    $('#payment-element-errors').removeClass('error').addClass('success').text('Payment method updated successfully!').show();
+                                    
+                                    // Disable modal closing for a moment to show the success message
+                                    setTimeout(function() {
+                                        $('#payment-method-modal').hide();
+                                        location.reload(); // Reload to see updated payment method
+                                    }, 1000);
                                 } else {
-                                    alert(response.data.message || '<?php _e('Failed to update payment method', 'bocs-wordpress'); ?>');
-                                    $('.update-payment-method').text('<?php _e('Update Payment Method', 'bocs-wordpress'); ?>').prop('disabled', false);
+                                    $('#payment-element-errors').removeClass('success').addClass('error').text(response.data?.message || 'Error updating payment method').show();
+                                    $('.save-payment-method').prop('disabled', false).text('Save Changes');
                                 }
                             },
                             error: function() {
                                 alert('<?php _e('An error occurred. Please try again.', 'bocs-wordpress'); ?>');
-                                $('.update-payment-method').text('<?php _e('Update Payment Method', 'bocs-wordpress'); ?>').prop('disabled', false);
+                                $('.save-payment-method').prop('disabled', false).text('Save Changes');
                             }
                         });
                     });
@@ -2422,12 +2638,44 @@ class Bocs_Payment_Method {
                 .button.primary {
                     background-color: #7b68ee;
                     color: white;
+                    border-color: #6a5acd;
                 }
-                .payment-method-error {
-                    padding: 10px;
-                    background: #fef8f8;
-                    border-left: 4px solid #d63638;
+                .button.primary:hover {
+                    background-color: #6a5acd;
+                }
+                #payment-element {
+                    margin-top: 10px;
                     margin-bottom: 15px;
+                }
+                .loading-spinner {
+                    display: inline-block;
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    border-top-color: #fff;
+                    animation: spin 1s ease-in-out infinite;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+                #payment-element-errors {
+                    margin-top: 5px;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+                #payment-element-errors.error {
+                    color: #e35d6a;
+                    background-color: #fff2f4;
+                    border: 1px solid #ffe3e7;
+                }
+                #payment-element-errors.success {
+                    color: #0f834d;
+                    background-color: #f0fff4;
+                    border: 1px solid #e0f5e9;
                 }
             </style>
             <?php
@@ -2650,83 +2898,7 @@ class Bocs_Payment_Method {
                 }
             }
             
-            if (empty($stripe_source_id)) {
-                error_log("No Stripe source ID found in metadata");
-                // Modified to show "Add new payment method" option instead of exception
-                ob_start();
-                echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
-                echo '<div class="saved-payment-methods">';
-                echo '<h4>' . __('Saved Payment Methods', 'bocs-wordpress') . '</h4>';
-                echo '<p>' . __('No payment method found for this subscription', 'bocs-wordpress') . '</p>';
-                
-                echo '<form class="payment-methods-form">';
-                
-                // Add new payment method option
-                echo '<label class="payment-method-option">';
-                echo '<input type="radio" name="payment_method" value="new" />';
-                echo ' ' . __('Add new payment method', 'bocs-wordpress');
-                echo '</label>';
-                
-                // Footer buttons (Cancel / Update)
-                echo '<div class="modal-buttons">';
-                echo '<button type="button" class="button cancel-update">' . __('Cancel', 'bocs-wordpress') . '</button>';
-                echo '<button type="button" class="button primary update-payment-method">' . __('Add Payment Method', 'bocs-wordpress') . '</button>';
-                echo '</div>';
-                
-                echo '</form>';
-                echo '</div>';
-                
-                // Add JavaScript for form handling
-                ?>
-                <script type="text/javascript">
-                    jQuery(document).ready(function($) {
-                        $('.cancel-update').on('click', function() {
-                            $('#payment-method-modal').hide();
-                            // Clear modal content except for loading message
-                            $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
-                        });
-                        
-                        $('.update-payment-method').on('click', function() {
-                            // Redirect to add new payment method
-                            window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
-                        });
-                    });
-                </script>
-                <style>
-                    .saved-payment-methods {
-                        margin-top: 20px;
-                    }
-                    .payment-method-option {
-                        display: block;
-                        margin-bottom: 10px;
-                    }
-                    .modal-buttons {
-                        margin-top: 20px;
-                        text-align: right;
-                    }
-                    .modal-buttons .button {
-                        margin-left: 10px;
-                    }
-                    .button.primary {
-                        background-color: #7b68ee;
-                        color: white;
-                    }
-                </style>
-                <?php
-                $html = ob_get_clean();
-                
-                wp_send_json_success([
-                    'html' => $html,
-                    'subscription_id' => $subscription_id,
-                    'debug_info' => [
-                        'source_id' => 'none',
-                        'has_payment_method' => false
-                    ]
-                ]);
-                return;
-            }
-            
-            // Get Stripe payment method details
+            // Get Stripe settings for API initialization
             $stripe_settings = get_option('woocommerce_stripe_settings', []);
             $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
             $secret_key = $test_mode ? $stripe_settings['test_secret_key'] : $stripe_settings['secret_key'];
@@ -2736,310 +2908,260 @@ class Bocs_Payment_Method {
                 throw new Exception('Stripe secret key is not configured');
             }
             
-            error_log("Initializing Stripe with source ID: {$stripe_source_id}");
-            
             // Initialize Stripe
             $stripe = new \Stripe\StripeClient($secret_key);
             
-            $payment_method = null;
-            $retrieval_error = null;
-            $debug_info = ['attempts' => []];
+            // Get current user's customer ID if not found in subscription metadata
+            if (empty($stripe_customer_id)) {
+                $user_id = get_current_user_id();
+                $stripe_customer_id = get_user_meta($user_id, '_stripe_customer_id', true);
+                error_log("Using customer ID from user meta: {$stripe_customer_id}");
+            }
             
-            // First try to retrieve as a payment method (pm_)
-            try {
-                if (strpos($stripe_source_id, 'pm_') === 0) {
-                    error_log("Attempting to retrieve as payment method (pm_)");
-                    $payment_method = $stripe->paymentMethods->retrieve($stripe_source_id);
-                    $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => true];
-                } else if (strpos($stripe_source_id, 'src_') === 0 || strpos($stripe_source_id, 'card_') === 0) {
-                    // If it's a source or card, try to retrieve it that way
-                    error_log("Attempting to retrieve as source (src_ or card_)");
-                    $source = $stripe->sources->retrieve($stripe_source_id);
-                    $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => true];
+            // Get available payment methods from Stripe for this customer
+            $stripe_payment_methods = [];
+            if (!empty($stripe_customer_id)) {
+                try {
+                    error_log("Fetching payment methods for customer: {$stripe_customer_id}");
+                    $methods = $stripe->paymentMethods->all([
+                        'customer' => $stripe_customer_id,
+                        'type' => 'card',
+                        'limit' => 10,
+                    ]);
                     
-                    // Create a synthetic payment method object from the source
-                    $payment_method = new stdClass();
-                    $payment_method->id = $source->id;
-                    $payment_method->type = $source->type;
-                    $payment_method->card = new stdClass();
-                    $payment_method->card->brand = $source->card->brand;
-                    $payment_method->card->last4 = $source->card->last4;
-                    $payment_method->card->exp_month = $source->card->exp_month;
-                    $payment_method->card->exp_year = $source->card->exp_year;
-                } else {
-                    // Try both approaches - first as payment method
-                    error_log("Attempting to retrieve unknown ID format as payment method");
-                    try {
-                        $payment_method = $stripe->paymentMethods->retrieve($stripe_source_id);
-                        $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => true];
-                    } catch (\Exception $e) {
-                        $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => false, 'error' => $e->getMessage()];
-                        
-                        // Then as source
-                        error_log("Failed as payment method, trying as source: " . $e->getMessage());
-                        try {
-                            $source = $stripe->sources->retrieve($stripe_source_id);
-                            $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => true];
-                            
-                            // Create a synthetic payment method object
-                            $payment_method = new stdClass();
-                            $payment_method->id = $source->id;
-                            $payment_method->type = $source->type;
-                            $payment_method->card = new stdClass();
-                            $payment_method->card->brand = $source->card->brand;
-                            $payment_method->card->last4 = $source->card->last4;
-                            $payment_method->card->exp_month = $source->card->exp_month;
-                            $payment_method->card->exp_year = $source->card->exp_year;
-                        } catch (\Exception $e2) {
-                            // Combined error
-                            $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => false, 'error' => $e2->getMessage()];
-                            error_log("Failed as source: " . $e2->getMessage());
-                            throw new Exception("Failed to retrieve as payment method: {$e->getMessage()} and as source: {$e2->getMessage()}");
+                    if (!empty($methods->data)) {
+                        foreach ($methods->data as $method) {
+                            $stripe_payment_methods[] = [
+                                'id' => $method->id,
+                                'brand' => ucfirst($method->card->brand),
+                                'last4' => $method->card->last4,
+                                'exp_month' => $method->card->exp_month,
+                                'exp_year' => $method->card->exp_year,
+                                'default' => false // Will set later if applicable
+                            ];
                         }
+                        error_log("Found " . count($stripe_payment_methods) . " payment methods in Stripe");
                     }
-                }
-                
-                // Log the payment method details
-                if ($payment_method && isset($payment_method->card)) {
-                    error_log("Payment method retrieved: " . json_encode([
-                        'id' => $payment_method->id,
-                        'type' => $payment_method->type ?? 'unknown',
-                        'card' => [
-                            'brand' => $payment_method->card->brand,
-                            'last4' => $payment_method->card->last4,
-                            'exp_month' => $payment_method->card->exp_month,
-                            'exp_year' => $payment_method->card->exp_year
-                        ]
-                    ]));
-                } else {
-                    error_log("Retrieved payment method but no card details available");
-                }
-            } catch (\Exception $e) {
-                $retrieval_error = $e->getMessage();
-                error_log("Error retrieving payment method: " . $retrieval_error);
-                
-                // Try to get payment methods for customer if we have customer ID
-                if (!empty($stripe_customer_id)) {
+                    
+                    // Get the default payment method if available
                     try {
-                        error_log("Attempting to list payment methods for customer: {$stripe_customer_id}");
-                        $debug_info['attempts'][] = ['type' => 'customer_methods', 'id' => $stripe_customer_id, 'attempted' => true];
+                        $customer = $stripe->customers->retrieve($stripe_customer_id);
+                        $default_payment_method = $customer->invoice_settings->default_payment_method;
                         
-                        $methods = $stripe->paymentMethods->all([
-                            'customer' => $stripe_customer_id,
-                            'type' => 'card'
-                        ]);
-                        
-                        if (!empty($methods->data)) {
-                            // Use the first payment method
-                            $payment_method = $methods->data[0];
-                            error_log("Found customer payment method: " . $payment_method->id);
-                            $debug_info['attempts'][] = ['type' => 'customer_methods', 'id' => $stripe_customer_id, 'success' => true, 'methods_found' => count($methods->data)];
-                            
-                            // Update subscription with this payment method
-                            foreach ($metadata as &$meta) {
-                                if ($meta['key'] === '_stripe_source_id') {
-                                    $meta['value'] = $payment_method->id;
+                        // Mark the default payment method
+                        if (!empty($default_payment_method) && !empty($stripe_payment_methods)) {
+                            foreach ($stripe_payment_methods as &$pm) {
+                                if ($pm['id'] === $default_payment_method) {
+                                    $pm['default'] = true;
                                     break;
                                 }
                             }
-                            
-                            // Update subscription metadata with correct payment method
-                            $api_response = wp_remote_request(
-                                BOCS_API_URL . "subscriptions/{$subscription_id}",
-                                array(
-                                    'method' => 'PUT',
-                                    'headers' => array(
-                                        'Content-Type' => 'application/json',
-                                        'Organization' => $options['bocs_headers']['organization'],
-                                        'Store' => $options['bocs_headers']['store'],
-                                        'Authorization' => $options['bocs_headers']['authorization'],
-                                    ),
-                                    'body' => json_encode(array(
-                                        'metaData' => $metadata
-                                    )),
-                                    'timeout' => 30
-                                )
-                            );
-                            
-                            if (is_wp_error($api_response)) {
-                                error_log("Failed to update subscription metadata: " . $api_response->get_error_message());
-                                $debug_info['update_metadata'] = ['success' => false, 'error' => $api_response->get_error_message()];
-                            } else {
-                                error_log("Updated subscription metadata with correct payment method ID");
-                                $debug_info['update_metadata'] = ['success' => true];
-                            }
-                        } else {
-                            error_log("No payment methods found for customer");
-                            $debug_info['attempts'][] = ['type' => 'customer_methods', 'id' => $stripe_customer_id, 'success' => false, 'error' => 'No methods found'];
                         }
-                    } catch (\Exception $e2) {
-                        error_log("Error getting customer payment methods: " . $e2->getMessage());
-                        $debug_info['attempts'][] = ['type' => 'customer_methods', 'id' => $stripe_customer_id, 'success' => false, 'error' => $e2->getMessage()];
+                    } catch (\Exception $e) {
+                        error_log("Error getting default payment method: " . $e->getMessage());
+                        // Continue without setting default
                     }
-                } else {
-                    error_log("No customer ID available to try alternative retrieval methods");
+                } catch (\Exception $e) {
+                    error_log("Error fetching Stripe payment methods: " . $e->getMessage());
+                    // Continue without Stripe payment methods
                 }
             }
             
-            // Build the HTML for payment methods
-            ob_start();
+            // Current payment method details
+            $current_payment_method = null;
+            $has_current_payment_method = false;
             
-            // Start with the Edit Payment Method title
+            if (!empty($stripe_source_id)) {
+                $retrieval_error = null;
+                $debug_info = ['attempts' => []];
+                
+                // Get details of the current payment method attached to subscription
+                try {
+                    if (strpos($stripe_source_id, 'pm_') === 0) {
+                        error_log("Attempting to retrieve as payment method (pm_)");
+                        $current_payment_method = $stripe->paymentMethods->retrieve($stripe_source_id);
+                        $has_current_payment_method = true;
+                        $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => true];
+                    } else if (strpos($stripe_source_id, 'src_') === 0 || strpos($stripe_source_id, 'card_') === 0) {
+                        // If it's a source or card, try to retrieve it that way
+                        error_log("Attempting to retrieve as source (src_ or card_)");
+                        $source = $stripe->sources->retrieve($stripe_source_id);
+                        $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => true];
+                        
+                        // Create a synthetic payment method object from the source
+                        $current_payment_method = new stdClass();
+                        $current_payment_method->id = $source->id;
+                        $current_payment_method->type = $source->type;
+                        $current_payment_method->card = new stdClass();
+                        $current_payment_method->card->brand = $source->card->brand;
+                        $current_payment_method->card->last4 = $source->card->last4;
+                        $current_payment_method->card->exp_month = $source->card->exp_month;
+                        $current_payment_method->card->exp_year = $source->card->exp_year;
+                        $has_current_payment_method = true;
+                    } else {
+                        // Try both approaches - first as payment method
+                        error_log("Attempting to retrieve unknown ID format as payment method");
+                        try {
+                            $current_payment_method = $stripe->paymentMethods->retrieve($stripe_source_id);
+                            $has_current_payment_method = true;
+                            $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => true];
+                        } catch (\Exception $e) {
+                            $debug_info['attempts'][] = ['type' => 'payment_method', 'id' => $stripe_source_id, 'success' => false, 'error' => $e->getMessage()];
+                            
+                            // Then as source
+                            error_log("Failed as payment method, trying as source: " . $e->getMessage());
+                            try {
+                                $source = $stripe->sources->retrieve($stripe_source_id);
+                                $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => true];
+                                
+                                // Create a synthetic payment method object
+                                $current_payment_method = new stdClass();
+                                $current_payment_method->id = $source->id;
+                                $current_payment_method->type = $source->type;
+                                $current_payment_method->card = new stdClass();
+                                $current_payment_method->card->brand = $source->card->brand;
+                                $current_payment_method->card->last4 = $source->card->last4;
+                                $current_payment_method->card->exp_month = $source->card->exp_month;
+                                $current_payment_method->card->exp_year = $source->card->exp_year;
+                                $has_current_payment_method = true;
+                            } catch (\Exception $e2) {
+                                // Combined error
+                                $debug_info['attempts'][] = ['type' => 'source', 'id' => $stripe_source_id, 'success' => false, 'error' => $e2->getMessage()];
+                                $retrieval_error = $e->getMessage() . ' AND ' . $e2->getMessage();
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error retrieving payment method: " . $e->getMessage());
+                    $has_current_payment_method = false;
+                    $retrieval_error = $e->getMessage();
+                }
+            }
+            
+            // Prepare UI for output
+            ob_start();
             echo '<h3>' . __('Edit Payment Method', 'bocs-wordpress') . '</h3>';
             
-            echo '<div class="saved-payment-methods">';
-            echo '<h4>' . __('Saved Payment Methods', 'bocs-wordpress') . '</h4>';
-            
-            echo '<form class="payment-methods-form">';
-            
-            // First add the current subscription payment method
-            if ($payment_method && isset($payment_method->card)) {
-                $formatted_subscription_method = sprintf(
-                    '**** **** **** %s Expires %s/%s',
-                    $payment_method->card->last4,
-                    $payment_method->card->exp_month,
-                    $payment_method->card->exp_year
-                );
+            if ($has_current_payment_method && $current_payment_method) {
+                echo '<div class="current-payment-method">';
+                echo '<h4>' . __('Current Payment Method', 'bocs-wordpress') . '</h4>';
+                echo '<div class="payment-method-details">';
                 
-                echo '<label class="payment-method-option">';
-                echo '<input type="radio" name="payment_method" value="subscription_method" checked />';
-                echo ' ' . $formatted_subscription_method;
-                echo '</label>';
-                echo '<br>';
-            } else {
-                error_log("Payment method doesn't have card details");
-                echo '<p>' . __('Unable to display current payment method details. The payment information may need to be updated.', 'bocs-wordpress') . '</p>';
+                $card_brand = isset($current_payment_method->card->brand) ? ucfirst($current_payment_method->card->brand) : 'Card';
+                $card_last4 = isset($current_payment_method->card->last4) ? $current_payment_method->card->last4 : '****';
+                $exp_month = isset($current_payment_method->card->exp_month) ? sprintf('%02d', $current_payment_method->card->exp_month) : '**';
+                $exp_year = isset($current_payment_method->card->exp_year) ? $current_payment_method->card->exp_year : '****';
                 
-                if ($retrieval_error) {
-                    echo '<p class="error-details" style="color: #d63638; font-size: 12px;">Error: ' . esc_html($retrieval_error) . '</p>';
-                }
+                echo '<div class="card-details">';
+                echo "<strong>{$card_brand}</strong> ending in {$card_last4}";
+                echo "<span class='expiry'>Expires: {$exp_month}/{$exp_year}</span>";
+                echo '</div>';
+                
+                echo '</div>';
+                echo '</div>';
+            } elseif ($retrieval_error) {
+                echo '<div class="payment-error">';
+                echo '<p>' . __('There was an error retrieving the payment method:', 'bocs-wordpress') . ' ' . esc_html($retrieval_error) . '</p>';
                 echo '</div>';
             }
             
-            // Get saved payment methods from WooCommerce
-            $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id(), 'stripe');
+            echo '<form class="payment-methods-form" data-subscription-id="' . esc_attr($subscription_id) . '">';
             
-            error_log("Found " . count($tokens) . " WooCommerce payment tokens");
-            
-            $has_tokens = false;
-            foreach ($tokens as $token) {
-                if ($token instanceof WC_Payment_Token_CC) {
-                    // Skip if it's the same as the current payment method
-                    if ($payment_method && isset($payment_method->id) && $token->get_token() === $payment_method->id) {
-                        error_log("Skipping token {$token->get_id()} as it matches current source ID");
-                        continue;
+            // Display all available payment methods from Stripe
+            if (!empty($stripe_payment_methods)) {
+                echo '<div class="saved-payment-methods">';
+                echo '<h4>' . __('Available Payment Methods', 'bocs-wordpress') . '</h4>';
+                
+                foreach ($stripe_payment_methods as $index => $method) {
+                    $checked = $has_current_payment_method && isset($current_payment_method->id) && $method['id'] === $current_payment_method->id ? 'checked="checked"' : '';
+                    if (!$checked && $method['default'] && !$has_current_payment_method) {
+                        $checked = 'checked="checked"';
                     }
                     
-                    error_log("Adding token to list: " . json_encode([
-                        'id' => $token->get_id(),
-                        'token' => $token->get_token(),
-                        'last4' => $token->get_last4(),
-                        'exp_month' => $token->get_expiry_month(),
-                        'exp_year' => $token->get_expiry_year()
-                    ]));
-                    
-                    $formatted_method = sprintf(
-                        '**** **** **** %s Expires %s/%s',
-                        $token->get_last4(),
-                        $token->get_expiry_month(),
-                        $token->get_expiry_year()
-                    );
-                    
                     echo '<label class="payment-method-option">';
-                    echo '<input type="radio" name="payment_method" value="' . esc_attr($token->get_id()) . '" />';
-                    echo ' ' . $formatted_method;
+                    echo '<input type="radio" name="payment_method" value="' . esc_attr($method['id']) . '" ' . $checked . ' />';
+                    echo ' <span class="card-details">';
+                    echo '<strong>' . esc_html($method['brand']) . '</strong> ending in ' . esc_html($method['last4']);
+                    echo ' <span class="expiry">Expires: ' . sprintf('%02d', $method['exp_month']) . '/' . $method['exp_year'] . '</span>';
+                    echo '</span>';
+                    if ($method['default']) {
+                        echo ' <span class="default-badge">Default</span>';
+                    }
                     echo '</label>';
-                    echo '<br>';
-                    $has_tokens = true;
                 }
+                
+                echo '</div>';
             }
             
             // Add new payment method option
-            echo '<label class="payment-method-option">';
-            echo '<input type="radio" name="payment_method" value="new" />';
+            echo '<label class="payment-method-option add-new">';
+            echo '<input type="radio" name="payment_method" value="new" ' . (empty($stripe_payment_methods) && !$has_current_payment_method ? 'checked="checked"' : '') . ' />';
             echo ' ' . __('Add new payment method', 'bocs-wordpress');
             echo '</label>';
             
-            // Footer buttons (Cancel / Update)
+            // Payment element container (will be populated via JS)
+            echo '<div id="payment-element-container" style="display: none; margin-top: 15px;">';
+            echo '<div id="payment-element"></div>';
+            echo '<div id="payment-element-errors" role="alert" style="color: #e35d6a; margin-top: 5px;"></div>';
+            echo '</div>';
+            
+            // Footer buttons (Cancel / Save Changes)
             echo '<div class="modal-buttons">';
             echo '<button type="button" class="button cancel-update">' . __('Cancel', 'bocs-wordpress') . '</button>';
-            echo '<button type="button" class="button primary update-payment-method">' . __('Update Payment Method', 'bocs-wordpress') . '</button>';
+            echo '<button type="submit" class="button primary save-payment-method">' . __('Save Changes', 'bocs-wordpress') . '</button>';
             echo '</div>';
             
             echo '</form>';
-            echo '</div>';
             
-            // Add JavaScript for form handling
+            // Add CSS for the form
             ?>
-            <script type="text/javascript">
-                jQuery(document).ready(function($) {
-                    $('.cancel-update').on('click', function() {
-                        $('#payment-method-modal').hide();
-                        // Clear modal content except for loading message
-                        $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
-                    });
-                    
-                    $('.update-payment-method').on('click', function() {
-                        var selectedMethod = $('input[name="payment_method"]:checked').val();
-                        
-                        if (!selectedMethod) {
-                            alert('<?php _e('Please select a payment method', 'bocs-wordpress'); ?>');
-                            return;
-                        }
-                        
-                        if (selectedMethod === 'subscription_method') {
-                            // Current method is already selected
-                            alert('<?php _e('This is already the current payment method', 'bocs-wordpress'); ?>');
-                            return;
-                        }
-                        
-                        if (selectedMethod === 'new') {
-                            // Redirect to add new payment method
-                            window.location.href = '<?php echo esc_url(add_query_arg(['add-payment-method' => '1', 'subscription_id' => $subscription_id], wc_get_endpoint_url('add-payment-method'))); ?>';
-                            return;
-                        }
-                        
-                        // Update the subscription with the selected payment method
-                        $.ajax({
-                            url: '<?php echo admin_url('admin-ajax.php'); ?>',
-                            type: 'POST',
-                            data: {
-                                action: 'update_subscription_payment',
-                                nonce: '<?php echo wp_create_nonce('bocs_ajax_nonce'); ?>',
-                                subscription_id: '<?php echo esc_js($subscription_id); ?>',
-                                payment_method: selectedMethod
-                            },
-                            beforeSend: function() {
-                                $('.update-payment-method').text('<?php _e('Processing...', 'bocs-wordpress'); ?>').prop('disabled', true);
-                            },
-                            success: function(response) {
-                                if (response.success) {
-                                    alert('<?php _e('Payment method updated successfully', 'bocs-wordpress'); ?>');
-                                    window.location.reload();
-                                } else {
-                                    alert(response.data.message || '<?php _e('Failed to update payment method', 'bocs-wordpress'); ?>');
-                                    $('.update-payment-method').text('<?php _e('Update Payment Method', 'bocs-wordpress'); ?>').prop('disabled', false);
-                                }
-                            },
-                            error: function() {
-                                alert('<?php _e('An error occurred. Please try again.', 'bocs-wordpress'); ?>');
-                                $('.update-payment-method').text('<?php _e('Update Payment Method', 'bocs-wordpress'); ?>').prop('disabled', false);
-                            }
-                        });
-                    });
-                });
-            </script>
             <style>
-                .saved-payment-methods {
+                .payment-methods-form {
                     margin-top: 20px;
+                }
+                .current-payment-method, 
+                .saved-payment-methods {
+                    margin-bottom: 20px;
+                    border-bottom: 1px solid #eee;
+                    padding-bottom: 15px;
                 }
                 .payment-method-option {
                     display: block;
-                    margin-bottom: 10px;
+                    margin-bottom: 12px;
+                    padding: 8px;
+                    border-radius: 4px;
+                    transition: background-color 0.2s;
+                }
+                .payment-method-option:hover {
+                    background-color: #f7f7f7;
+                }
+                .payment-method-option.add-new {
+                    margin-top: 15px;
+                    font-weight: 500;
+                }
+                .card-details {
+                    display: inline-block;
+                    vertical-align: middle;
+                }
+                .expiry {
+                    color: #6d6d6d;
+                    margin-left: 10px;
+                    font-size: 0.9em;
+                }
+                .default-badge {
+                    display: inline-block;
+                    background: #e8f0fe;
+                    color: #1a73e8;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 0.8em;
+                    margin-left: 10px;
                 }
                 .modal-buttons {
-                    margin-top: 20px;
+                    margin-top: 25px;
                     text-align: right;
+                    border-top: 1px solid #eee;
+                    padding-top: 15px;
                 }
                 .modal-buttons .button {
                     margin-left: 10px;
@@ -3047,14 +3169,218 @@ class Bocs_Payment_Method {
                 .button.primary {
                     background-color: #7b68ee;
                     color: white;
+                    border-color: #6a5acd;
                 }
-                .payment-method-error {
-                    padding: 10px;
-                    background: #fef8f8;
-                    border-left: 4px solid #d63638;
+                .button.primary:hover {
+                    background-color: #6a5acd;
+                }
+                #payment-element {
+                    margin-top: 10px;
                     margin-bottom: 15px;
                 }
+                .loading-spinner {
+                    display: inline-block;
+                    width: 20px;
+                    height: 20px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    border-top-color: #fff;
+                    animation: spin 1s ease-in-out infinite;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                }
+                @keyframes spin {
+                    to { transform: rotate(360deg); }
+                }
+                #payment-element-errors {
+                    margin-top: 5px;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                }
+                #payment-element-errors.error {
+                    color: #e35d6a;
+                    background-color: #fff2f4;
+                    border: 1px solid #ffe3e7;
+                }
+                #payment-element-errors.success {
+                    color: #0f834d;
+                    background-color: #f0fff4;
+                    border: 1px solid #e0f5e9;
+                }
             </style>
+            <?php
+            
+            // Add JavaScript for form handling
+            ?>
+            <script type="text/javascript">
+                jQuery(document).ready(function($) {
+                    // Handle payment method selection
+                    $('input[name="payment_method"]').on('change', function() {
+                        if ($(this).val() === 'new') {
+                            $('#payment-element-container').show();
+                            setupStripeElements();
+                        } else {
+                            $('#payment-element-container').hide();
+                        }
+                    });
+                    
+                    // Handle cancel button click
+                    $('.cancel-update').on('click', function() {
+                        $('#payment-method-modal').hide();
+                        // Clear modal content except for loading message
+                        $('#payment-method-modal').find('.bocs-modal-body').html('<p class="loading"><?php _e('Loading payment methods...', 'bocs-wordpress'); ?></p>');
+                    });
+                    
+                    // Set up Stripe Elements when needed
+                    function setupStripeElements() {
+                        if (!window.stripe && !window.isLoadingStripe) {
+                            window.isLoadingStripe = true;
+                            
+                            $.ajax({
+                                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                                type: 'POST',
+                                data: {
+                                    action: 'bocs_get_stripe_setup',
+                                    nonce: '<?php echo wp_create_nonce('bocs_ajax_nonce'); ?>',
+                                    subscription_id: '<?php echo esc_js($subscription_id); ?>'
+                                },
+                                success: function(response) {
+                                    if (response.success && response.data) {
+                                        window.setupData = response.data;
+                                        
+                                        // Ensure Stripe is loaded
+                                        if (typeof Stripe !== 'undefined') {
+                                            initializeStripe(response.data);
+                                        } else {
+                                            // Load Stripe.js if not already loaded
+                                            var script = document.createElement('script');
+                                            script.src = 'https://js.stripe.com/v3/';
+                                            script.onload = function() {
+                                                initializeStripe(response.data);
+                                            };
+                                            document.head.appendChild(script);
+                                        }
+                                    } else {
+                                        $('#payment-element-errors').text(response.data?.message || 'Error setting up payment form').show();
+                                    }
+                                    window.isLoadingStripe = false;
+                                },
+                                error: function(xhr, status, error) {
+                                    $('#payment-element-errors').text('Failed to initialize payment form: ' + error).show();
+                                    window.isLoadingStripe = false;
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Initialize Stripe with the provided setup data
+                    function initializeStripe(setupData) {
+                        try {
+                            window.stripe = Stripe(setupData.publishable_key);
+                            window.elements = window.stripe.elements({
+                                clientSecret: setupData.client_secret
+                            });
+                            
+                            const paymentElement = window.elements.create('payment');
+                            paymentElement.mount('#payment-element');
+                        } catch (error) {
+                            $('#payment-element-errors').text('Failed to initialize payment form: ' + error.message).show();
+                        }
+                    }
+                    
+                    // Form submission handler
+                    $('.payment-methods-form').on('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        const selectedMethod = $('input[name="payment_method"]:checked').val();
+                        const submitButton = $('.save-payment-method');
+                        
+                        submitButton.prop('disabled', true)
+                            .html('<span class="loading-spinner"></span> Processing...');
+                        
+                        // If a new payment method is selected, set it up with Stripe
+                        if (selectedMethod === 'new') {
+                            if (!window.stripe || !window.elements) {
+                                $('#payment-element-errors').text('Please wait for the payment form to load completely').show();
+                                submitButton.prop('disabled', false).text('Save Changes');
+                                return;
+                            }
+                            
+                            const {error: submitError} = await window.stripe.confirmSetup({
+                                elements: window.elements,
+                                confirmParams: {
+                                    return_url: window.location.href,
+                                },
+                                redirect: 'if_required'
+                            });
+                            
+                            if (submitError) {
+                                $('#payment-element-errors').text(submitError.message).show();
+                                submitButton.prop('disabled', false).text('Save Changes');
+                                return;
+                            }
+                            
+                            // Get the newly created payment method ID
+                            try {
+                                const result = await window.stripe.retrieveSetupIntent(window.setupData.client_secret);
+                                if (result.error) {
+                                    throw new Error(result.error.message);
+                                }
+                                
+                                // Update subscription with new payment method
+                                updateSubscriptionPaymentMethod(result.setupIntent.payment_method);
+                            } catch (error) {
+                                $('#payment-element-errors').text('Error processing payment: ' + error.message).show();
+                                submitButton.prop('disabled', false).text('Save Changes');
+                            }
+                        } else {
+                            // Update with existing payment method
+                            updateSubscriptionPaymentMethod(selectedMethod);
+                        }
+                    });
+                    
+                    // Function to update the subscription with the selected payment method
+                    function updateSubscriptionPaymentMethod(paymentMethodId) {
+                        $.ajax({
+                            url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                            type: 'POST',
+                            data: {
+                                action: 'bocs_update_payment_method',
+                                nonce: '<?php echo wp_create_nonce('bocs_ajax_nonce'); ?>',
+                                subscription_id: '<?php echo esc_js($subscription_id); ?>',
+                                payment_method_id: paymentMethodId,
+                                is_new_method: $('input[name="payment_method"]:checked').val() === 'new'
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    // Success - show success message and then reload
+                                    $('#payment-element-errors').removeClass('error').addClass('success').text('Payment method updated successfully!').show();
+                                    
+                                    // Disable modal closing for a moment to show the success message
+                                    setTimeout(function() {
+                                        $('#payment-method-modal').hide();
+                                        location.reload(); // Reload to see updated payment method
+                                    }, 1000);
+                                } else {
+                                    $('#payment-element-errors').removeClass('success').addClass('error').text(response.data?.message || 'Error updating payment method').show();
+                                    $('.save-payment-method').prop('disabled', false).text('Save Changes');
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                $('#payment-element-errors').text('Failed to update payment method: ' + error).show();
+                                $('.save-payment-method').prop('disabled', false).text('Save Changes');
+                            }
+                        });
+                    }
+
+                    // Show the payment element container if "new" is already selected
+                    if ($('input[name="payment_method"][value="new"]').is(':checked')) {
+                        $('#payment-element-container').show();
+                        setupStripeElements();
+                    }
+                });
+            </script>
             <?php
             
             $html = ob_get_clean();
@@ -3065,19 +3391,14 @@ class Bocs_Payment_Method {
                 'debug_info' => [
                     'source_id' => $stripe_source_id,
                     'customer_id' => $stripe_customer_id,
-                    'has_payment_method' => !empty($payment_method),
-                    'has_card_details' => !empty($payment_method) && isset($payment_method->card),
-                    'retrieval_attempts' => $debug_info['attempts'],
-                    'test_mode' => $test_mode,
-                    'error' => $retrieval_error
+                    'has_payment_method' => $has_current_payment_method,
+                    'stripe_methods_count' => count($stripe_payment_methods)
                 ]
             ]);
+            
         } catch (Exception $e) {
             error_log("Error in get_subscription_payment_method_direct: " . $e->getMessage());
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-                'subscription_id' => $subscription_id ?? 'not set'
-            ]);
+            wp_send_json_error(['message' => $e->getMessage()]);
         }
     }
 

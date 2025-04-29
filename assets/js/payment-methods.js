@@ -227,7 +227,13 @@ const bocsPaymentMethods = {
         window.currentSubscriptionId = subscriptionId;
         
         // Show modal with loading message
-        $modal.find('.bocs-modal-body').html('<p class="loading">' + (bocsPaymentData.i18n.loading || 'Loading payment methods...') + '</p>');
+        console.log('BOCS DEBUG: Showing loading spinner for payment method modal');
+        $modal.find('.bocs-modal-body').html(
+          '<div style="display:flex;align-items:center;gap:14px;justify-content:center;padding:32px 0;">' +
+            '<span class="loading-spinner" style="width:32px;height:32px;border-width:4px;"></span>' +
+            '<span style="font-size:1.2em;font-weight:500;">' + (bocsPaymentData.i18n.loading || 'Loading payment methods...') + '</span>' +
+          '</div>'
+        );
         
         // Show the modal
         $modal.css('display', 'flex');
@@ -1755,7 +1761,13 @@ jQuery(document).ready(function($) {
         console.log('Modal element:', $modal.length ? 'found' : 'not found');
         
         // Show modal with loading message
-        $modal.find('.bocs-modal-body').html('<p class="loading">' + (bocsPaymentData.i18n.loading || 'Loading payment methods...') + '</p>');
+        console.log('BOCS DEBUG: Showing loading spinner for payment method modal');
+        $modal.find('.bocs-modal-body').html(
+          '<div style="display:flex;align-items:center;gap:14px;justify-content:center;padding:32px 0;">' +
+            '<span class="loading-spinner" style="width:32px;height:32px;border-width:4px;"></span>' +
+            '<span style="font-size:1.2em;font-weight:500;">' + (bocsPaymentData.i18n.loading || 'Loading payment methods...') + '</span>' +
+          '</div>'
+        );
         
         // Show the modal
         $modal.css('display', 'flex');
