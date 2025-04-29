@@ -1500,11 +1500,69 @@ class Bocs_Account
         
         // Update the subscription payment method in the BOCS API
         $helper = new Bocs_Helper();
-        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id . '/payment';
         
-        $response = $helper->curl_request($url, 'PUT', array(
-            'payment_method_id' => $payment_method_id
-        ), $this->headers);
+        // Use the main subscription endpoint instead of the payment endpoint
+        $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+        
+        // Ensure headers are properly formatted for authentication
+        $api_headers = [
+            'Content-Type' => 'application/json',
+            'Organization' => $this->headers['organization'] ?? '',
+            'Store' => $this->headers['store'] ?? '',
+            'Authorization' => $this->headers['authorization'] ?? ''
+        ];
+        
+        // Get customer ID for metadata
+        $customer_id = get_user_meta(get_current_user_id(), '_stripe_customer_id', true);
+        
+        // Format the data as metadata fields
+        $data = [
+            'metaData' => [
+                [
+                    'key' => '_stripe_source_id',
+                    'value' => $payment_method_id
+                ]
+            ]
+        ];
+        
+        // Add customer ID to metadata if available
+        if (!empty($customer_id)) {
+            $data['metaData'][] = [
+                'key' => '_stripe_customer_id',
+                'value' => $customer_id
+            ];
+        }
+        
+        // Add payment intent ID if available
+        if (isset($_POST['setup_intent']) && !empty($_POST['setup_intent'])) {
+            $data['metaData'][] = [
+                'key' => '_stripe_intent_id',
+                'value' => sanitize_text_field($_POST['setup_intent'])
+            ];
+        }
+        
+        // Try to get payment intent from Stripe if using Stripe
+        if (strpos($payment_method_id, 'pm_') === 0 && function_exists('wc_stripe_get_client')) {
+            try {
+                $stripe = wc_stripe_get_client();
+                $payment_method = $stripe->paymentMethods->retrieve($payment_method_id);
+                
+                if (isset($payment_method->latest_charge) && !empty($payment_method->latest_charge)) {
+                    $charge = $stripe->charges->retrieve($payment_method->latest_charge);
+                    if ($charge && isset($charge->payment_intent)) {
+                        $data['metaData'][] = [
+                            'key' => '_stripe_intent_id',
+                            'value' => $charge->payment_intent
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {
+                // Continue even if retrieving payment intent fails
+                error_log('Failed to retrieve payment intent: ' . $e->getMessage());
+            }
+        }
+        
+        $response = $helper->curl_request($url, 'PUT', $data, $api_headers);
         
         if (is_wp_error($response)) {
             wp_send_json_error(array('message' => $response->get_error_message()));

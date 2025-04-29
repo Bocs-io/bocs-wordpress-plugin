@@ -570,11 +570,11 @@ class Bocs_Payment_Method {
                     
                     // Set as default payment method for the user
                     error_log("Setting token {$token->get_id()} as default for user {$user_id}");
-                    WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                    $this->set_as_default_and_clear_others($user_id, $token->get_id());
                 } else {
                     error_log("Using existing WooCommerce payment token for method: {$payment_method_id}");
                     // Set as default payment method
-                    WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                    $this->set_as_default_and_clear_others($user_id, $existing_token_id);
                 }
                 
             } catch (\Exception $e) {
@@ -587,10 +587,56 @@ class Bocs_Payment_Method {
             $options = get_option('bocs_settings', []);
             $headers = isset($options['bocs_headers']) ? $options['bocs_headers'] : [];
             
-            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id . '/payment';
-            $data = ['payment_method_id' => $payment_method_id];
+            // Ensure headers are properly formatted with key-value pairs
+            $api_headers = [
+                'Content-Type' => 'application/json',
+                'Organization' => $headers['organization'] ?? '',
+                'Store' => $headers['store'] ?? '',
+                'Authorization' => $headers['authorization'] ?? ''
+            ];
             
-            $response = $helper->curl_request($url, 'PUT', $data, $headers);
+            // Use the main subscription endpoint instead of the payment endpoint
+            $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+            
+            // Format the data as metadata fields
+            $data = [
+                'metaData' => [
+                    [
+                        'key' => '_stripe_source_id',
+                        'value' => $payment_method_id
+                    ],
+                    [
+                        'key' => '_stripe_customer_id',
+                        'value' => $customer_id
+                    ]
+                ]
+            ];
+            
+            // Add payment intent ID if available
+            if (isset($payment_method->latest_charge) && !empty($payment_method->latest_charge)) {
+                try {
+                    $charge = $stripe->charges->retrieve($payment_method->latest_charge);
+                    if ($charge && isset($charge->payment_intent)) {
+                        $data['metaData'][] = [
+                            'key' => '_stripe_intent_id',
+                            'value' => $charge->payment_intent
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // Continue even if retrieving payment intent fails
+                    error_log('Failed to retrieve payment intent: ' . $e->getMessage());
+                }
+            }
+            
+            // Check if setup intent is available in POST data
+            if (isset($_POST['setup_intent']) && !empty($_POST['setup_intent'])) {
+                $data['metaData'][] = [
+                    'key' => '_stripe_intent_id',
+                    'value' => sanitize_text_field($_POST['setup_intent'])
+                ];
+            }
+            
+            $response = $helper->curl_request($url, 'PUT', $data, $api_headers);
             
             if (isset($response['error']) && !empty($response['error'])) {
                 throw new \Exception('API Error: ' . (isset($response['message']) ? $response['message'] : 'Unknown error'));
@@ -807,11 +853,11 @@ class Bocs_Payment_Method {
                 
                 // Set as default payment method for the user
                 error_log("Setting token {$token->get_id()} as default for user {$user_id}");
-                WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                $this->set_as_default_and_clear_others($user_id, $token->get_id());
             } else {
                 error_log("Using existing WooCommerce payment token for method: {$payment_method_id}");
                 // Set as default payment method
-                WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+                $this->set_as_default_and_clear_others($user_id, $existing_token_id);
             }
 
             // Update Bocs subscription with new payment details
@@ -997,8 +1043,8 @@ class Bocs_Payment_Method {
             $this->send_payment_method_updated_email($payment_method, get_user_by('id', $user_id));
 
             // Set this payment method as the default for the user in WooCommerce
-            // Using WC_Payment_Tokens::set_users_default is more reliable than our custom method
-            WC_Payment_Tokens::set_users_default($user_id, $token->get_id());
+            // Using our custom method that ensures all other tokens are set to non-default
+            $this->set_as_default_and_clear_others($user_id, $token->get_id());
 
             // Debug log before redirect
             error_log("Payment method setup completed successfully. Token ID: {$token->get_id()}, Payment Method ID: {$payment_method_id}");
@@ -4023,5 +4069,38 @@ class Bocs_Payment_Method {
                 'message' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Set a payment token as default and ensure all others are non-default
+     * 
+     * @param int $user_id User ID
+     * @param int $token_id Token ID to set as default
+     * @return void
+     */
+    private function set_as_default_and_clear_others($user_id, $token_id) {
+        global $wpdb;
+        
+        // First, set all tokens for this user to non-default (0)
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->prefix}woocommerce_payment_tokens 
+             SET is_default = 0 
+             WHERE user_id = %d",
+            $user_id
+        ));
+        
+        // Then set the specified token as default (1)
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->prefix}woocommerce_payment_tokens 
+             SET is_default = 1 
+             WHERE token_id = %d",
+            $token_id
+        ));
+        
+        // Log for debugging
+        error_log("Payment token {$token_id} set as default for user {$user_id}, all others cleared");
+        
+        // Clean WooCommerce token cache to ensure changes take effect
+        WC_Payment_Tokens::clear_user_cache($user_id);
     }
 }
