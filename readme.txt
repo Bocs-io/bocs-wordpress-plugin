@@ -1,3 +1,10 @@
+v0.0.144 04/28/2025
+* feat(payment): improve Stripe payment method handling for subscriptions
+* fix(ui): enhance subscription management interface and early renewal functionality
+* chore(deps): remove Sentry SDK and update autoloader
+* refactor(core): remove Sentry integration and frontend initialization
+* feat(templates): enhance empty product handling and improve Stripe initialization
+
 v0.0.143 04/27/2025
 * style: Improved subscription status badge styling with modern design
 * fix: Added null checks to prevent PHP notices in updater class

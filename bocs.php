@@ -15,7 +15,7 @@
  * Plugin Name:       Bocs (alpha)
  * Plugin URI:        https://bocs.io
  * Description:       The Bocs service is a powerful sales channel for your products.
- * Version:           0.0.143
+ * Version:           0.0.144
  * Author:            Bocs.io
  * Author URI:        https://bocs.io
  * License:           GPL-2.0+
@@ -34,7 +34,7 @@ if (! defined('WPINC') || ! defined('ABSPATH')) {
 /**
  * Current plugin version.
  */
-define('BOCS_VERSION', '0.0.143');
+define('BOCS_VERSION', '0.0.144');
 
 /**
  * Debug option for script and style cache busting
