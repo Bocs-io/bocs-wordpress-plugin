@@ -1,23 +1,29 @@
 v0.0.146 05/05/2025
-* fix(payments): improve payment method handling and API integration
-* fix(ui): improve payment method selection and update script version
-* style(ui): refine button and modal styles for better visual consistency
-* feat(address): enhance delivery address form with country-specific states
-* feat(payment): improve payment token handling and management
-* refactor(account): optimize customer subscription lookup by using externalSourceId
-* feat(payment): add debug sync endpoint and improve payment method handling
+* Fix: Improved payment method handling and API integration
+* Fix: Enhanced payment method selection and updated script version
+* Style: Refined button and modal styles for better visual consistency
+* Feature: Enhanced delivery address form with country-specific states
+* Feature: Improved payment token handling and management
+* Refactor: Optimized customer subscription lookup by using externalSourceId
+* Feature: Added debug sync endpoint and improved payment method handling
+
+v0.0.145 05/01/2025
+* Feature: Added payment intent synchronization between Stripe and BOCS API
+* Fix: Resolved issue with default payment method selection
+* Refactor: Enhanced error handling in API communication
+* UI: Improved responsive design for subscription management screens
 
 v0.0.144 04/28/2025
-* feat(payment): improve Stripe payment method handling for subscriptions
-* fix(ui): enhance subscription management interface and early renewal functionality
-* chore(deps): remove Sentry SDK and update autoloader
-* refactor(core): remove Sentry integration and frontend initialization
-* feat(templates): enhance empty product handling and improve Stripe initialization
+* Feature: Improved Stripe payment method handling for subscriptions
+* Fix: Enhanced subscription management interface and early renewal functionality
+* Chore: Removed Sentry SDK and updated autoloader
+* Refactor: Removed Sentry integration and frontend initialization
+* Feature: Enhanced empty product handling and improved Stripe initialization
 
 v0.0.143 04/27/2025
-* style: Improved subscription status badge styling with modern design
-* fix: Added null checks to prevent PHP notices in updater class
-* docs: Updated changelog release dates for consistency
+* Style: Improved subscription status badge styling with modern design
+* Fix: Added null checks to prevent PHP notices in updater class
+* Docs: Updated changelog release dates for consistency
 
 v0.0.142 04/26/2025
 * Feature: Implemented reusable order line items component for consistent display
