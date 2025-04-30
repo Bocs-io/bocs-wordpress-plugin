@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
 wp_enqueue_script('jquery');
 wp_enqueue_script('jquery-ui-datepicker');
 wp_enqueue_style('jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
-wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), '20250428.3');
-wp_enqueue_script('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/js/bocs-edit-details.js', array('jquery'), bocs_get_cache_bust_version('20250425.2'), true);
+wp_enqueue_style('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/css/bocs-edit-details.css', array(), '20250430.2');
+wp_enqueue_script('bocs-edit-details', BOCS_PLUGIN_URL . 'assets/js/bocs-edit-details.js', array('jquery'), "20250430.8", true);
 
 // Add order line items component
 wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
@@ -107,7 +107,7 @@ if (!empty($bocs_id)) {
         if (isset($bocs_data['products']) && is_array($bocs_data['products'])) {
             $all_products = $bocs_data['products'];
             
-            // Format products for JavaScript
+            // Format products for JavaScript - ensure all required fields are present
             foreach ($all_products as &$product) {
                 $image_url = '';
                 if (isset($product['images']) && !empty($product['images']) && !empty($product['images'][0]['url'])) {
@@ -117,6 +117,26 @@ if (!empty($bocs_id)) {
                 // Add formatted price
                 $product['price_html'] = $helper->format_price($product['price'] ?? 0, $subscription['currency'] ?? 'USD');
                 $product['image'] = $image_url;
+                
+                // Ensure all required fields are present and not empty
+                $product['sku'] = $product['sku'] ?? '';
+                $product['taxClass'] = $product['taxClass'] ?? '';
+                $product['taxes'] = $product['taxes'] ?? [];
+                $product['metaData'] = $product['metaData'] ?? [];
+                $product['parentName'] = $product['parentName'] ?? '';
+                $product['variationId'] = $product['variationId'] ?? '';
+                $product['externalSourceId'] = $product['externalSourceId'] ?? '';
+                
+                // Ensure we have a mapping for externalSourceId if it's empty but we can find it in the subscription
+                if (empty($product['externalSourceId']) && isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
+                    foreach ($subscription['lineItems'] as $lineItem) {
+                        if (isset($lineItem['productId']) && $lineItem['productId'] === $product['id'] && 
+                            isset($lineItem['externalSourceId']) && !empty($lineItem['externalSourceId'])) {
+                            $product['externalSourceId'] = $lineItem['externalSourceId'];
+                            break;
+                        }
+                    }
+                }
             }
         }
         
@@ -297,8 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
     </h2>
 
     <div class="bocs-subscription-overview">
-        <div class="subscription-status <?php echo esc_attr($status_class); ?>">
-            <?php echo esc_html($status_label); ?>
+        <div class="subscription-status">
+            <span class="subscription-status-label <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></span>
         </div>
         
         <div class="subscription-dates">

@@ -717,7 +717,7 @@ h3 {
     background-color: var(--bocs-background);
     border-radius: var(--bocs-radius);
     box-shadow: var(--bocs-shadow);
-    border-left: 4px solid var(--bocs-primary);
+    /*border-left: 4px solid var(--bocs-primary);*/
 }
 
 .subscription-status {

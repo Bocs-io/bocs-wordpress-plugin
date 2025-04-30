@@ -96,16 +96,10 @@ h3 {
     background-color: #f8f9fa;
     border-radius: var(--bocs-radius);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid var(--bocs-primary);
+    /*border-left: 4px solid var(--bocs-primary);*/
 }
 
-.subscription-status {
-
-    /*padding: 8px 16px;
-    border-radius: var(--bocs-radius);
-    font-weight: 600;
-    display: inline-block;
-    transition: var(--bocs-transition);*/
+.subscription-status-label {
 
     display: inline-block;
     padding: 0.25rem 0.75rem;
