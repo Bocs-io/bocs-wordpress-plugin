@@ -1,3 +1,11 @@
+v0.0.146 04/30/2025
+* Feature: Added detailed debugging logs to edit-details JavaScript for improved troubleshooting
+* Refactor: Optimized subscription product update handling and API interactions
+* Style: Updated subscription edit details UI templates and styling
+* Improvement: Enhanced product relationship tracking with better logging
+* Performance: Streamlined API interactions for better performance
+* Fix: Improved product mapping between WooCommerce and BOCS products
+
 v0.0.145 04/29/2025
 * Fix: Improved payment method handling and API integration
 * Fix: Enhanced payment method selection and updated script version
