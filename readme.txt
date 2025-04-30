@@ -5,6 +5,7 @@ v0.0.146 04/30/2025
 * Improvement: Enhanced product relationship tracking with better logging
 * Performance: Streamlined API interactions for better performance
 * Fix: Improved product mapping between WooCommerce and BOCS products
+* Fix: Added null checks to prevent PHP notices in updater class
 
 v0.0.145 04/29/2025
 * Fix: Improved payment method handling and API integration
