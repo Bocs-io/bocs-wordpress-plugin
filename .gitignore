@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/phpstorm,visualstudiocode,wordpress,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=phpstorm,visualstudiocode,wordpress,macos
 
+### Cursor IDE ###
+.cursor/
+
 ### BOCS Smart Git Agent ###
 smart-git-agent.md
 smart-git-agent.sh
