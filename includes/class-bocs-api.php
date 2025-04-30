@@ -73,463 +73,62 @@ class BOCS_API {
      * @return array|WP_Error         The response from the API or an error
      */
     public function update_subscription_products($subscription_id, $data) {
-        // Log incoming data for debugging
-        $this->helper->log('Starting subscription products update for subscription ID: ' . $subscription_id, 'info');
-        $this->helper->log('Incoming data: ' . json_encode($data), 'info');
         
-        // Validate subscription ID
-        if (empty($subscription_id)) {
-            $this->helper->log('Invalid subscription ID provided', 'error');
-            return new WP_Error('invalid_subscription_id', 'Invalid subscription ID provided');
-        }
-
-        // Get current subscription first
-        $subscription = $this->get_subscription($subscription_id);
-        if (is_wp_error($subscription)) {
-            $this->helper->log('Error retrieving subscription: ' . $subscription->get_error_message(), 'error');
-            return $subscription;
-        }
-        
-        // Make the subscription data available globally for lookups
-        global $bocs_current_subscription;
-        $bocs_current_subscription = $subscription;
-        
-        // Get BOCS data if available
-        $bocs_id = '';
-        if (isset($subscription['bocs']['id']) && !empty($subscription['bocs']['id'])) {
-            $bocs_id = $subscription['bocs']['id'];
-        } else {
-            // Look for BOCS ID in metadata
-            if (isset($subscription['metaData']) && is_array($subscription['metaData'])) {
-                foreach ($subscription['metaData'] as $meta) {
-                    if (isset($meta['key']) && ($meta['key'] === '_bocs_id' || $meta['key'] === '__bocs_bocs_id')) {
-                        $bocs_id = $meta['value'];
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // If we have a BOCS ID, get the BOCS data for direct product lookups
-        if (!empty($bocs_id)) {
-            $bocs_data = $this->get_bocs_products($bocs_id);
-            if (!is_wp_error($bocs_data)) {
-                // Store BOCS data in global for lookups
-                global $bocs_current_data;
-                $bocs_current_data = $bocs_data;
-                $this->helper->log('BOCS data retrieved and stored for product lookups', 'info');
-            } else {
-                $this->helper->log('Could not retrieve BOCS data: ' . $bocs_data->get_error_message(), 'warning');
-            }
-        }
-        
-        // Get current subscription to have the latest data
-        $current_sub = $this->get_subscription($subscription_id);
-        if (is_wp_error($current_sub)) {
-            return $current_sub;
-        }
-
-        // Check if we have line items
-        $has_line_items = false;
-        $existing_line_items = [];
-
-        // Check the 'data' key in case we have a nested structure
-        $current_data = isset($current_sub['data']) ? $current_sub['data'] : $current_sub;
-        
-        // Check for line_items (legacy format)
-        if (isset($current_data['line_items']) && !empty($current_data['line_items'])) {
-            $this->helper->log('Found line_items in current subscription data', 'info');
-            $has_line_items = true;
-            $existing_line_items = $current_data['line_items'];
-        }
-        
-        // Check for lineItems (newer format)
-        if (isset($current_data['lineItems']) && !empty($current_data['lineItems'])) {
-            $this->helper->log('Found lineItems in current subscription data', 'info');
-            $has_line_items = true;
-            $existing_line_items = $current_data['lineItems'];
-        }
-
-        if (!$has_line_items) {
-            $this->helper->log('No line items found in current subscription data', 'error');
-            return new WP_Error('no_line_items', 'No line items found in current subscription data');
-        }
-
-        // Check if we're receiving simplified product data (id, name, quantity only)
-        $simplified_product_data = false;
-        if (isset($data[0]) && is_array($data[0])) {
-            // This appears to be an array of products, not a structured update
-            $this->helper->log('Received simplified product data format', 'info');
-            $simplified_product_data = true;
-            
-            // Format the simplified data to the expected structure
-            $line_items_data = [];
-            foreach ($data as $item) {
-                if (isset($item['id']) && isset($item['quantity'])) {
-                    $line_items_data[] = [
-                        'productId' => $item['id'],
-                        'quantity' => intval($item['quantity'])
-                    ];
-                }
-            }
-            
-            if (!empty($line_items_data)) {
-                $data = ['lineItems' => $line_items_data];
-            } else {
-                $this->helper->log('No valid products found in simplified data', 'error');
-                return new WP_Error('invalid_product_data', 'No valid products found in data');
-            }
-        }
-
-        // Validate line items
-        if (!isset($data['lineItems']) || empty($data['lineItems'])) {
-            $this->helper->log('No line items provided in update data', 'error');
-            return new WP_Error('missing_line_items', 'No line items provided for update');
-        }
-
-        // Process line items
-        $line_items = [];
-        $subtotal = 0;
-        $total_tax = 0;
-        $shipping_total = 0;
-        $shipping_tax = 0;
-
-        // Map existing products for reference
-        $existing_products = [];
-        foreach ($existing_line_items as $item) {
-            $product_id = isset($item['productId']) ? $item['productId'] : '';
-            if (!empty($product_id)) {
-                $existing_products[$product_id] = $item;
-            }
-        }
-
-        // Existing shipping item
-        $shipping_item = null;
-        foreach ($existing_line_items as $item) {
-            if (isset($item['productId']) && $item['productId'] === 'shipping') {
-                $shipping_item = $item;
-                $shipping_total = isset($item['price']) ? floatval($item['price']) : 0;
-                $shipping_tax = isset($item['totalTax']) ? floatval($item['totalTax']) : 0;
-                break;
-            }
-        }
-
-        // Process each line item
-        foreach ($data['lineItems'] as $item) {
-            // Skip shipping items - we'll handle separately
-            if (isset($item['productId']) && $item['productId'] === 'shipping') {
-                continue;
-            }
-            
-            // Validate required fields
-            if (!isset($item['productId']) || !isset($item['quantity'])) {
-                $this->helper->log('Missing required fields in line item: ' . json_encode($item), 'error');
-                continue;
-            }
-
-            $product_id = $item['productId'];
-            $quantity = intval($item['quantity']);
-
-            // Skip if quantity is zero
-            if ($quantity <= 0) {
-                continue;
-            }
-
-            // Debug log for received externalSourceId values
-            if (isset($item['externalSourceId'])) {
-                $ext_id_value = empty($item['externalSourceId']) ? 'empty string' : $item['externalSourceId'];
-                $this->helper->log("Item {$product_id} received with externalSourceId: {$ext_id_value}", 'info');
-            } else {
-                $this->helper->log("Item {$product_id} has no externalSourceId field", 'info');
-            }
-
-            // Initialize line item with required fields
-            $line_item = [
-                'productId' => $product_id,
-                'quantity' => $quantity
-            ];
-
-            // Copy values from existing product if available
-            if (isset($existing_products[$product_id])) {
-                $existing_item = $existing_products[$product_id];
-                
-                // Copy price if not provided
-                if (!isset($item['price']) && isset($existing_item['price'])) {
-                    $line_item['price'] = floatval($existing_item['price']);
-                } else if (isset($item['price'])) {
-                    $line_item['price'] = floatval($item['price']);
-                } else {
-                    $line_item['price'] = 0;
-                }
-
-                // Ensure externalSourceId is preserved
-                if (isset($existing_item['externalSourceId']) && !empty($existing_item['externalSourceId'])) {
-                    $line_item['externalSourceId'] = (string)$existing_item['externalSourceId'];
-                    $this->helper->log('Preserved externalSourceId for product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
-                } elseif (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
-                    $line_item['externalSourceId'] = (string)$item['externalSourceId'];
-                    $this->helper->log('Using provided externalSourceId for product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
-                } else {
-                    // First check in BOCS products data - this is the most direct source
-                    global $bocs_current_data;
-                    if (isset($bocs_current_data) && !empty($bocs_current_data['data']) && !empty($bocs_current_data['data']['products'])) {
-                        $products = $bocs_current_data['data']['products'];
-                        foreach ($products as $bocs_product) {
-                            if (isset($bocs_product['id']) && $bocs_product['id'] === $product_id) {
-                                if (isset($bocs_product['externalSourceId']) && !empty($bocs_product['externalSourceId'])) {
-                                    $line_item['externalSourceId'] = (string)$bocs_product['externalSourceId'];
-                                    $this->helper->log('Found externalSourceId in BOCS products data: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
-                                    
-                                    // Save this mapping for future reference
-                                    $this->save_product_mapping($product_id, $line_item['externalSourceId']);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // If still not found, use our lookup function
-                    if (!isset($line_item['externalSourceId']) || empty($line_item['externalSourceId'])) {
-                        $wc_product_id = $this->get_wc_product_id_from_bocs_id($product_id);
-                        if ($wc_product_id) {
-                            $line_item['externalSourceId'] = (string)$wc_product_id;
-                            $this->helper->log('Found WooCommerce product ID for product: ' . $product_id . ' -> ' . $wc_product_id, 'info');
-                        } else {
-                            $line_item['externalSourceId'] = '';
-                            $this->helper->log('WARNING: Could not find WooCommerce product ID for product: ' . $product_id, 'warning');
-                        }
-                    }
-                }
-
-                // Copy other fields if available
-                $copy_fields = [
-                    'name', 'sku', 'taxes', 'metaData', 'taxClass', 'parentName', 
-                    'variationId', 'totalTax', 'subtotalTax'
-                ];
-                
-                foreach ($copy_fields as $field) {
-                    if (isset($existing_item[$field])) {
-                        $line_item[$field] = $existing_item[$field];
-                    }
-                }
-            } else {
-                // Set default values for required fields
-                if (isset($item['price'])) {
-                    $line_item['price'] = floatval($item['price']);
-                } else {
-                    $line_item['price'] = 0;
-                }
-                
-                // Make sure we set externalSourceId if available in the input data
-                if (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
-                    $line_item['externalSourceId'] = (string)$item['externalSourceId'];
-                    $this->helper->log('Using provided externalSourceId for new product: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
-                } else {
-                    // First check in BOCS products data - this is the most direct source
-                    global $bocs_current_data;
-                    if (isset($bocs_current_data) && !empty($bocs_current_data['data']) && !empty($bocs_current_data['data']['products'])) {
-                        $products = $bocs_current_data['data']['products'];
-                        foreach ($products as $bocs_product) {
-                            if (isset($bocs_product['id']) && $bocs_product['id'] === $product_id) {
-                                if (isset($bocs_product['externalSourceId']) && !empty($bocs_product['externalSourceId'])) {
-                                    $line_item['externalSourceId'] = (string)$bocs_product['externalSourceId'];
-                                    $this->helper->log('Found externalSourceId in BOCS products data: ' . $product_id . ' -> ' . $line_item['externalSourceId'], 'info');
-                                    
-                                    // Save this mapping for future reference
-                                    $this->save_product_mapping($product_id, $line_item['externalSourceId']);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // If still not found, use our lookup function
-                    if (!isset($line_item['externalSourceId']) || empty($line_item['externalSourceId'])) {
-                        $wc_product_id = $this->get_wc_product_id_from_bocs_id($product_id);
-                        if ($wc_product_id) {
-                            $line_item['externalSourceId'] = (string)$wc_product_id;
-                            $this->helper->log('Found WooCommerce product ID for new product: ' . $product_id . ' -> ' . $wc_product_id, 'info');
-                        } else {
-                            $line_item['externalSourceId'] = '';
-                            $this->helper->log('WARNING: Could not find WooCommerce product ID for new product: ' . $product_id, 'warning');
-                        }
-                    }
-                }
-                
-                // Set name if provided
-                if (isset($item['name'])) {
-                    $line_item['name'] = $item['name'];
-                }
-                
-                // Set required fields with defaults
-                $line_item['taxClass'] = '';
-                $line_item['taxes'] = [];
-                $line_item['metaData'] = [];
-                $line_item['parentName'] = '';
-                $line_item['variationId'] = '0';
-                $line_item['sku'] = '';
-                $line_item['totalTax'] = 0;
-                $line_item['subtotalTax'] = 0;
-            }
-
-            // Calculate total for this line item
-            $line_item['total'] = $line_item['price'] * $quantity;
-            $line_item['subtotal'] = $line_item['total'];
-            
-            // Add to subtotal and tax totals
-            $subtotal += $line_item['total'];
-            $total_tax += isset($line_item['totalTax']) ? floatval($line_item['totalTax']) : 0;
-            
-            // Add to line items array
-            $line_items[] = $line_item;
-        }
-
-        // Add shipping item if it exists
-        if ($shipping_item) {
-            $line_items[] = $shipping_item;
-        }
-
-        // Calculate discounts
-        $discount_total = 0;
-        $discount_tax = 0;
-        $has_discount = false;
-        $coupon_lines = [];
-
-        // Check if discount data is provided
-        if (isset($data['discountTotal']) && floatval($data['discountTotal']) > 0) {
-            $discount_total = floatval($data['discountTotal']);
-            $has_discount = true;
-            
-            // Use provided discount tax or default to 0
-            $discount_tax = isset($data['discountTax']) ? floatval($data['discountTax']) : 0;
-            
-            // Check for coupon lines
-            if (isset($data['couponLines']) && is_array($data['couponLines'])) {
-                $coupon_lines = $data['couponLines'];
-            } else if ($discount_total > 0) {
-                // Create a default coupon line if not provided
-                $coupon_code = 'bocs-auto-' . date('Ymd-His');
-                $coupon_lines = [
-                    [
-                        'code' => $coupon_code,
-                        'discount' => $discount_total,
-                        'discountTax' => $discount_tax
-                    ]
-                ];
-            }
-        } else if (isset($current_data['discountTotal']) && floatval($current_data['discountTotal']) > 0) {
-            // Use existing discount if none provided
-            $discount_total = floatval($current_data['discountTotal']);
-            $discount_tax = isset($current_data['discountTax']) ? floatval($current_data['discountTax']) : 0;
-            $has_discount = true;
-            
-            // Use existing coupon lines if available
-            if (isset($current_data['couponLines']) && !empty($current_data['couponLines'])) {
-                $coupon_lines = $current_data['couponLines'];
-            } else {
-                // Create a default coupon line
-                $coupon_code = 'bocs-auto-' . date('Ymd-His');
-                $coupon_lines = [
-                    [
-                        'code' => $coupon_code,
-                        'discount' => $discount_total,
-                        'discountTax' => $discount_tax
-                    ]
-                ];
-            }
-        }
-
-        // Calculate final total
-        $final_total = $subtotal - $discount_total + $total_tax + $shipping_total + $shipping_tax;
-
-        // Build request with essential data from current subscription
-        $request_data = [];
-        
-        // Always start with what was provided in the data
-        if (is_array($data)) {
-            $request_data = $data;
-        }
-        
-        // Preserve essential fields from the current subscription
-        $essential_fields = [];
-        
-        foreach ($essential_fields as $field) {
-            if (!isset($request_data[$field]) && isset($current_data[$field])) {
-                $request_data[$field] = $current_data[$field];
-                $this->helper->log('Added field to request data: ' . $field, 'info');
-            }
-        }
-        
-        // Ensure we have properly formatted lineItems
-        $request_data['lineItems'] = $line_items;
-        
-        // Calculate total
-        $total = $subtotal - $discount_total + $shipping_total;
-        $request_data['total'] = $total;
-        $request_data['subtotal'] = $subtotal;
-        
-        if ($shipping_total > 0) {
-            $request_data['shippingTotal'] = $shipping_total;
-        }
-        
-        if ($total_tax > 0) {
-            $request_data['totalTax'] = $total_tax + $shipping_tax;
-        }
-        
-        if ($has_discount) {
-            $request_data['discountTotal'] = $discount_total;
-            if (!empty($coupon_lines)) {
-                $request_data['couponLines'] = $coupon_lines;
-            }
-        }
-        
-        // Log request data for debugging
-        $this->helper->log('Request data: ' . json_encode($request_data), 'info');
-        
-        // Make API request - use the main subscription endpoint (full URL for clarity)
         $url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
-        $this->helper->log('Using subscription endpoint: ' . $url, 'info');
-        
         $curl = new Curl();
         
-        // Create a request with ONLY the line items field
-        $api_request = [
+        // Log the raw request data for debugging
+        error_log('DEBUG - Raw request data: ' . json_encode($data));
+        
+        // Try a simplified request to see if it works
+        $simplified_request = [
             'lineItems' => []
         ];
         
-        // Extract only the required fields from each line item
-        foreach ($line_items as $item) {
-            $simplified_item = [
-                'productId' => $item['productId'],
-                'quantity' => $item['quantity']
-            ];
-            
-            // Add external source ID if available (very important!)
-            if (isset($item['externalSourceId']) && !empty($item['externalSourceId'])) {
-                $simplified_item['externalSourceId'] = (string)$item['externalSourceId'];
+        // Only include essential fields that match the API format
+        if (isset($data['lineItems']) && is_array($data['lineItems'])) {
+            foreach ($data['lineItems'] as $item) {
+                if (isset($item['productId']) && isset($item['quantity'])) {
+                    // Most minimal request possible
+                    $line_item = [
+                        'productId' => $item['productId'],
+                        'quantity' => (int)$item['quantity'],
+                        'name' => $item['name'],
+                        'price' => (float)number_format((float)$item['price'], 2, '.', ''),
+                        'total' => (float)number_format((float)$item['quantity'] * (float)$item['price'], 2, '.', ''),
+                        'subtotal' => (float)number_format((float)$item['quantity'] * (float)$item['price'], 2, '.', ''),
+                        'externalSourceId' => (string)$item['externalSourceId']
+                    ];
+
+                    if(!empty($item['sku'])) {
+                        $line_item['sku'] = $item['sku'];
+                    }
+                    
+                    if(!empty($item['parentName'])) {
+                        $line_item['parentName'] = $item['parentName'];
+                    }
+
+                    if(!empty($item['variationId'])) {
+                        $line_item['variationId'] = $item['variationId'];
+                    }
+                    
+
+                    $simplified_request['lineItems'][] = $line_item;
+                }
             }
-            
-            $api_request['lineItems'][] = $simplified_item;
         }
         
-        // Include shipping item if available in the same simplified format
-        if ($shipping_item) {
-            $shipping = [
-                'productId' => 'shipping',
-                'quantity' => 1
-            ];
-            
-            if (isset($shipping_item['price'])) {
-                $shipping['price'] = floatval($shipping_item['price']);
-            }
-            
-            $api_request['lineItems'][] = $shipping;
+        error_log('DEBUG - Using simplified request: ' . json_encode($simplified_request));
+        
+        // Make the API request with simplified data first
+        $response = $curl->put($url, $simplified_request, 'subscriptions', $subscription_id);
+        
+        // Extra debug logging for response
+        if (is_wp_error($response)) {
+            error_log('DEBUG - WP Error response: ' . $response->get_error_message());
+        } else {
+            error_log('DEBUG - API response: ' . json_encode($response));
         }
-        
-        $this->helper->log('Simplified API request data: ' . json_encode($api_request), 'info');
-        
-        // Make the API request with the simplified data
-        $response = $curl->put($url, $api_request, 'subscriptions', $subscription_id);
         
         if (is_wp_error($response)) {
             $this->helper->log('API request failed: ' . $response->get_error_message(), 'error');

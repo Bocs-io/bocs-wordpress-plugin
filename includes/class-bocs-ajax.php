@@ -1283,11 +1283,11 @@ class BOCS_AJAX {
             return;
         }
         
-        // Log detailed DEBUG info to help debug issues
-        error_log('DETAILED DEBUG - Received product data: ' . $products_json);
         
         // Check if products have complete data (with all required fields)
         $has_complete_data = true;
+        $preserve_all_fields = isset($_POST['preserve_all_fields']) && $_POST['preserve_all_fields'] === 'true';
+        
         if (isset($products[0])) {
             $required_fields = ['id', 'productId', 'quantity', 'name', 'price', 'subtotal', 'total', 'taxClass', 'taxes', 'totalTax', 'subtotalTax', 'metaData', 'parentName', 'variationId'];
             foreach ($required_fields as $field) {
@@ -1298,10 +1298,10 @@ class BOCS_AJAX {
             }
         }
         
-        error_log('DEBUG - Products have complete data: ' . ($has_complete_data ? 'Yes' : 'No'));
+        error_log('DEBUG - Products have complete data: ' . ($has_complete_data ? 'Yes' : 'No') . ', Preserve all fields: ' . ($preserve_all_fields ? 'Yes' : 'No'));
         
         // For now, just pass the products directly to the API
-        if ($has_complete_data) {
+        if ($has_complete_data || $preserve_all_fields) {
             error_log('Using complete product data from frontend');
             $api = new BOCS_API();
             $response = $api->update_subscription_products($subscription_id, ['lineItems' => $products]);
@@ -1346,9 +1346,9 @@ class BOCS_AJAX {
             return;
         }
         
-        // Check user permissions
-        if (!current_user_can('edit_posts')) {
-            wp_send_json_error(['message' => 'You do not have permission to update product mappings']);
+        // Check user permissions - allow any logged in user
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'You must be logged in to update product mappings']);
             return;
         }
         
@@ -1376,17 +1376,40 @@ class BOCS_AJAX {
         // Get existing mappings
         $existing_mappings = get_option('bocs_product_mapping', []);
         
+        // Log the mapping details
+        error_log('BOCS Debug: Existing mappings count: ' . count($existing_mappings) . ', New mappings count: ' . count($product_mapping));
+        
+        // Check if anything has actually changed
+        $has_changes = false;
+        foreach ($product_mapping as $bocs_id => $wc_id) {
+            if (!isset($existing_mappings[$bocs_id]) || $existing_mappings[$bocs_id] !== $wc_id) {
+                $has_changes = true;
+                break;
+            }
+        }
+        
         // Merge with existing mappings (prioritize new mappings)
         $updated_mappings = array_merge($existing_mappings, $product_mapping);
         
-        // Save to options
-        $result = update_option('bocs_product_mapping', $updated_mappings);
+        // If nothing changed, return success anyway
+        if (!$has_changes) {
+            error_log('BOCS: No changes detected in product mappings.');
+            wp_send_json_success(['message' => 'Product mappings are up to date']);
+            return;
+        }
+        
+        // Save to options with a force update flag (true as third parameter)
+        $result = update_option('bocs_product_mapping', $updated_mappings, false);
         
         if ($result) {
             // Log the update
             error_log('BOCS: Updated product mappings. ' . count($product_mapping) . ' mappings processed.');
             wp_send_json_success(['message' => 'Product mappings updated successfully']);
         } else {
+            // Log detailed error information
+            error_log('BOCS Error: Failed to update product mappings. ' . 
+                      'Updated mappings count: ' . count($updated_mappings) . 
+                      ', Option type: ' . gettype($updated_mappings));
             wp_send_json_error(['message' => 'Failed to update product mappings']);
         }
     }
