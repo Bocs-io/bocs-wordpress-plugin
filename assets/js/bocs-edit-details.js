@@ -22,6 +22,49 @@
                 this.allProducts = bocs_edit_details_data.all_products || [];
                 this.minProducts = bocs_edit_details_data.min_products || 0;
                 this.maxProducts = bocs_edit_details_data.max_products || 0;
+                
+                // Log detailed data for debugging
+                console.log('==== BOCS Edit Details Initialization ====');
+                console.log('Subscription ID:', this.subscriptionId);
+                console.log('Is Custom Box:', this.isCustomBox);
+                console.log('Min Products:', this.minProducts);
+                console.log('Max Products:', this.maxProducts);
+                
+                // Log detailed subscription items data
+                console.log('==== Subscription Items (lineItems) ====');
+                console.log('Items Count:', this.subscriptionItems.length);
+                console.table(this.subscriptionItems);
+                
+                // Log BOCS products data
+                console.log('==== BOCS Products ====');
+                console.log('Products Count:', this.allProducts.length);
+                console.table(this.allProducts);
+                
+                // Map and log the relationship between products and lineItems
+                console.log('==== Product to LineItem Relationships ====');
+                let relationships = {};
+                if (this.allProducts && this.allProducts.length && this.subscriptionItems && this.subscriptionItems.length) {
+                    this.allProducts.forEach(product => {
+                        const productId = product.id;
+                        const relatedLineItem = this.subscriptionItems.find(item => item.productId === productId);
+                        
+                        relationships[productId] = {
+                            'exists_in_line_items': !!relatedLineItem,
+                            'product_id': productId,
+                            'product_name': product.name,
+                            'product_sku': product.sku || 'N/A',
+                            'product_externalSourceId': product.externalSourceId || 'N/A',
+                            'lineItem_productId': relatedLineItem ? relatedLineItem.productId : 'N/A',
+                            'lineItem_externalSourceId': relatedLineItem ? relatedLineItem.externalSourceId || 'N/A' : 'N/A',
+                            'lineItem_quantity': relatedLineItem ? relatedLineItem.quantity : 'N/A'
+                        };
+                    });
+                    console.table(relationships);
+                }
+                
+                // Log stored mappings
+                console.log('==== Stored WC Product Mappings ====');
+                console.log(window.bocsToWcProductMapping || 'No mappings available');
             } else {
                 console.error('bocs_edit_details_data is undefined');
                 return;
@@ -359,27 +402,50 @@
             
             $container.empty();
             
+            console.log('==== Populating Product Selection ====');
+            
             // Create item lookup directly from API lineItems
             var itemLookup = {};
             
             // Use lineItems from the subscription data directly
             if (bocs_edit_details_data.subscription_items && bocs_edit_details_data.subscription_items.length) {
+                console.log('Building itemLookup from subscription_items:', bocs_edit_details_data.subscription_items.length, 'items');
                 bocs_edit_details_data.subscription_items.forEach(function(item) {
-                    // BOCS API uses productId property for line items
+                    // BOCS API uses productId property for line items which maps to id in BOCS products
                     if (item.productId) {
                         itemLookup[item.productId] = {
-                            id: item.productId,
+                            id: item.productId, // This is the BOCS product ID
+                            lineItemId: item.id || '', // Keep track of the line item's own ID
                             name: item.name || '',
                             quantity: parseInt(item.quantity) || 0,
                             price: parseFloat(item.price) || 0,
-                            externalSourceId: item.externalSourceId || ''
+                            externalSourceId: item.externalSourceId || '',
+                            sku: item.sku || '',
+                            taxClass: item.taxClass || '',
+                            taxes: item.taxes || [],
+                            metaData: item.metaData || [],
+                            parentName: item.parentName || '',
+                            variationId: item.variationId || ''
                         };
+                        console.log('Added to itemLookup -', 'productId:', item.productId, 'name:', item.name, 'externalSourceId:', item.externalSourceId || 'EMPTY');
+                    } else {
+                        console.warn('Subscription item missing productId:', item);
+                    }
+                });
+            } else {
+                console.warn('No subscription_items available for lookup');
+            }
+            
+            // Create a lookup for all products from BOCS data
+            var bocsProductLookup = {};
+            if (this.allProducts && this.allProducts.length) {
+                this.allProducts.forEach(function(product) {
+                    if (product.id) {
+                        bocsProductLookup[product.id] = product;
                     }
                 });
             }
-            
-            // Log the lookup table for debugging
-            console.log('Product Lookup Table:', itemLookup);
+            console.log('BOCS Product Lookup Table:', bocsProductLookup);
             
             // Prepare sorted products
             var productsToShow = [];
@@ -408,25 +474,58 @@
             // Map products to subscription items and display
             $.each(productsToShow, function(index, product) {
                 var quantity = 0;
-                var externalSourceId = '';
+                var externalSourceId = product.externalSourceId || '';
+                var sku = product.sku || '';
+                var taxClass = product.taxClass || '';
+                var variationId = product.variationId || '';
+                var parentName = product.parentName || '';
+                
+                // In BOCS products, the unique identifier is the 'id' field
+                var productId = product.id || '';
+                console.log('Processing product:', productId, 'name:', product.name, 'initial externalSourceId:', externalSourceId);
                 
                 // Check if this product is in the subscription using lineItems data
-                if (itemLookup[product.id]) {
-                    quantity = itemLookup[product.id].quantity;
-                    externalSourceId = itemLookup[product.id].externalSourceId || '';
+                if (itemLookup[productId]) {
+                    var item = itemLookup[productId];
+                    quantity = item.quantity;
+                    externalSourceId = item.externalSourceId || externalSourceId;
+                    sku = item.sku || sku;
+                    taxClass = item.taxClass || taxClass;
+                    variationId = item.variationId || variationId;
+                    parentName = item.parentName || parentName;
+                    console.log('Found in lineItems - quantity:', quantity, 'updated externalSourceId:', externalSourceId);
+                } else {
+                    console.log('Product not found in subscription line items');
+                }
+                
+                // If any values are empty, check the BOCS products data
+                if ((!externalSourceId || !sku) && bocsProductLookup[productId]) {
+                    var bocsProduct = bocsProductLookup[productId];
+                    if (!externalSourceId && bocsProduct.externalSourceId) {
+                        externalSourceId = bocsProduct.externalSourceId;
+                        console.log('Using externalSourceId from BOCS data for product: ' + productId + ' -> ' + externalSourceId);
+                    }
+                    if (!sku && bocsProduct.sku) {
+                        sku = bocsProduct.sku;
+                        console.log('Using SKU from BOCS data for product: ' + productId + ' -> ' + sku);
+                    }
                 }
                 
                 // If we don't have an externalSourceId yet, try to get it from our mapping
-                if (!externalSourceId && window.bocsToWcProductMapping && window.bocsToWcProductMapping[product.id]) {
-                    externalSourceId = window.bocsToWcProductMapping[product.id];
-                    console.log('Using mapped WooCommerce ID for product: ' + product.id + ' -> ' + externalSourceId);
+                if (!externalSourceId && window.bocsToWcProductMapping && window.bocsToWcProductMapping[productId]) {
+                    externalSourceId = window.bocsToWcProductMapping[productId];
+                    console.log('Using mapped WooCommerce ID for product: ' + productId + ' -> ' + externalSourceId);
                 }
+                
+                console.log('Final values for product', productId, '- externalSourceId:', externalSourceId, 'sku:', sku);
                 
                 var productImage = product.image || '';
                 var productName = product.name || 'Product ' + (index + 1);
                 var productPrice = product.price_html || '$0.00';
                 
-                html += '<div class="product-item" data-product-id="' + product.id + '" data-external-source-id="' + externalSourceId + '">';
+                html += '<div class="product-item" data-product-id="' + productId + '" data-external-source-id="' + externalSourceId + 
+                         '" data-sku="' + sku + '" data-tax-class="' + taxClass + '" data-variation-id="' + variationId + 
+                         '" data-parent-name="' + parentName + '" data-price="' + (product.price || 0) + '" data-name="' + productName + '">';
                 html += '<div class="product-image"><img src="' + productImage + '" alt="' + productName + '"></div>';
                 html += '<div class="product-details">';
                 html += '<h4>' + productName + '</h4>';
@@ -447,6 +546,8 @@
             var self = this;
             const $button = $('.bocs-save-products-btn');
             
+            console.log('==== Updating Products ====');
+            
             // Verify product count against min/max requirements
             const productCountInfo = this.updateProductCount();
             if (!productCountInfo.isValid) {
@@ -460,6 +561,16 @@
                 
                 this.showNotification(errorMessage, 'error');
                 return;
+            }
+            
+            // Create a lookup for all products from BOCS data
+            var bocsProductLookup = {};
+            if (this.allProducts && this.allProducts.length) {
+                this.allProducts.forEach(function(product) {
+                    if (product.id) {
+                        bocsProductLookup[product.id] = product;
+                    }
+                });
             }
             
             // Disable button and show loading state
@@ -480,9 +591,34 @@
                 if (quantity > 0) {
                     // Get the product ID
                     const productId = $item.data('product-id');
+                    console.log('Updating product:', productId, 'quantity:', quantity);
                     
-                    // Get the externalSourceId either from data attribute or from global mapping
+                    // Get all data attributes we stored
                     let externalSourceId = $item.data('external-source-id') || '';
+                    let sku = $item.data('sku') || '';
+                    let taxClass = $item.data('tax-class') || '';
+                    let variationId = $item.data('variation-id') || '0';
+                    let parentName = $item.data('parent-name') || '';
+                    let productName = $item.data('name') || '';
+                    console.log('Initial data -', 'externalSourceId:', externalSourceId, 'sku:', sku);
+                    
+                    // If any values are empty, check the BOCS data
+                    if (bocsProductLookup[productId]) {
+                        var bocsProduct = bocsProductLookup[productId];
+                        if (!externalSourceId && bocsProduct.externalSourceId) {
+                            externalSourceId = bocsProduct.externalSourceId;
+                            console.log('Using externalSourceId from BOCS data for product update: ' + productId + ' -> ' + externalSourceId);
+                        }
+                        if (!sku && bocsProduct.sku) {
+                            sku = bocsProduct.sku;
+                            console.log('Using SKU from BOCS data for product update: ' + productId + ' -> ' + sku);
+                        }
+                        if (!productName && bocsProduct.name) {
+                            productName = bocsProduct.name;
+                        }
+                    }
+                    
+                    // If externalSourceId is still empty, try the mapping
                     if (!externalSourceId && window.bocsToWcProductMapping && window.bocsToWcProductMapping[productId]) {
                         externalSourceId = window.bocsToWcProductMapping[productId];
                         console.log('Using mapped WooCommerce ID for product in update: ' + productId + ' -> ' + externalSourceId);
@@ -512,35 +648,33 @@
                     const totalTax = total * taxRate;
                     
                     // Get product name
-                    const name = $item.find('.product-details h4').text().trim();
-                    
-                    // Log what we're adding
-                    console.log('Adding product to update:', {
-                        id: productId,
-                        name: name,
-                        price: price,
-                        quantity: quantity
-                    });
+                    const name = $item.data('name') || $item.find('.product-details h4').text().trim();
                     
                     // Create complete product object with all required fields
                     // IMPORTANT: Set ALL fields explicitly here
                     productsToUpdate.push({
-                        id: productId,
-                        productId: productId, // Make sure both id and productId are set
+
+                        taxClass: taxClass, // Use the stored value instead of empty string
                         quantity: quantity,
-                        name: name,
-                        price: price,
-                        subtotal: subtotal,
-                        total: total,
-                        taxClass: "", // Required field - empty string
+                        productId: productId, // Make sure both id and productId are set for compatibility
                         taxes: [], // Required field - empty array
                         totalTax: totalTax,
-                        subtotalTax: subtotalTax,
                         metaData: [], // Required field - empty array
-                        parentName: "", // Required field - empty string
-                        variationId: "0", // Required field - set to "0"
-                        sku: "", // Required field - empty string
-                        externalSourceId: externalSourceId // Include if available
+                        total: total,
+                        parentName: parentName, // Use the stored value
+                        variationId: variationId, // Use the stored value
+                        subtotalTax: subtotalTax,
+                        price: price,
+                        name: productName,
+                        externalSourceId: externalSourceId, // Include if available
+                        sku: sku, // Include if available
+                        // Additional fields from full line items structure
+                        //salePrice: 0,
+                        //regularPrice: price,
+                        //stockQuantity: 0,
+                        //description: "",
+                        externalSource: "WP",
+                        //images: []
                     });
                 }
             });
@@ -571,8 +705,9 @@
                 return;
             }
             
-            // Log the products being sent to the API
-            console.log('Sending products to API:', productsToUpdate);
+            // Log the final array of products to be sent
+            console.log('==== Final Products to Update ====');
+            console.table(productsToUpdate);
             
             // Send AJAX request to update products
             $.ajax({
@@ -582,7 +717,8 @@
                     action: 'bocs_update_subscription_products',
                     subscription_id: this.subscriptionId,
                     products: JSON.stringify(productsToUpdate),
-                    nonce: bocs_edit_details_data.nonce
+                    nonce: bocs_edit_details_data.nonce,
+                    preserve_all_fields: true  // Signal the backend to preserve all fields
                 },
                 success: function(response) {
                     if (response.success) {
@@ -637,7 +773,7 @@
                     update_type: 'schedule',
                     next_payment_date: nextPaymentDate,
                     reason: reason,
-                    nonce: bocs_edit_details_data.edit_details_nonce
+                    nonce: bocs_edit_details_data.nonce
                 },
                 success: function(response) {
                     if (response.success) {
