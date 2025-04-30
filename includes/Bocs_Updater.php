@@ -173,13 +173,11 @@ class Bocs_Updater {
                 return false;
             }
 
-            // For dev environment, find the latest pre-release
+            // For dev environment, find the latest pre-release/release
             if ($environment === 'dev' && is_array($response_body)) {
                 foreach ($response_body as $release) {
-                    if ($release->prerelease) {
-                        $response_body = $release;
-                        break;
-                    }
+                    $response_body = $release;
+                    break;
                 }
             }
 
