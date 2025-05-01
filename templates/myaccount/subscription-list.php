@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250428.2");
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250429.3", true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.2");
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250501.3", true);
 
 // Add order line items component
 wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
@@ -197,7 +197,7 @@ if (function_exists('bocs_log')) {
                 
                 $items = isset($subscription['items']) ? $subscription['items'] : array();
                 $discount = isset($subscription['discount']) ? $subscription['discount'] : '';
-                $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '5.00';
+                $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '';
                 $total = isset($subscription['total']) ? $subscription['total'] : $price;
                 $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
                 
@@ -368,17 +368,17 @@ if (function_exists('bocs_log')) {
                     // Check for lineItems first (API-style keys)
                     if (isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
                         $items = $subscription['lineItems'];
-                                                }
+                    }
                     // Fall back to items format (formatted data keys)
                     elseif (isset($subscription['items']) && is_array($subscription['items'])) {
                         $items = $subscription['items'];
-                                        } else {
+                    } else {
                         $items = array();
-                                        }
+                    }
                     
                     $subtotal = isset($subscription['subtotal']) ? $subscription['subtotal'] : 0;
                     $discount = isset($subscription['discount']) ? $subscription['discount'] : 0;
-                    $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '5.00';
+                    $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : 0;
                     $tax = isset($subscription['taxTotal']) ? $subscription['taxTotal'] : 0;
                     $total = isset($subscription['total']) ? $subscription['total'] : $price;
                     $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
@@ -458,13 +458,18 @@ if (function_exists('bocs_log')) {
         <span class="bocs-modal-close">&times;</span>
         <h3>Edit Schedule</h3>
         <form id="edit-schedule-form">
-            <div class="bocs-form-row">
-                <label for="next-payment-date">Next Payment Date</label>
-                <input type="date" id="next-payment-date" name="next_payment_date">
+            <div class="form-row-container">
+                <div class="bocs-form-row half-width">
+                    <label for="next-payment-date">Next Payment Date</label>
+                    <input type="date" id="next-payment-date" name="next_payment_date">
+                </div>
+                <div class="bocs-form-row half-width">
+                    <label>&nbsp;</label>
+                    <button type="button" class="bocs-button pause-subscription" id="pause-button">Pause Subscription</button>
+                </div>
             </div>
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
-                <button type="button" class="bocs-button pause-subscription" id="pause-button">Pause Subscription</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
             </div>
         </form>

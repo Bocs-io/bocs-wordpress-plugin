@@ -46,6 +46,26 @@
                 $('.bocs-subscription-item').removeClass('active');
                 $('.bocs-toggle-icon').removeClass('open');
 
+                // Open the first accordion by default
+                if ($('.bocs-subscription-item').length > 0) {
+                    const firstItem = $('.bocs-subscription-item').first();
+                    const firstDetails = firstItem.find('.bocs-subscription-details');
+                    const firstToggle = firstItem.find('.bocs-toggle-icon');
+                    
+                    // Show the first item's details
+                    firstDetails.show();
+                    
+                    // Add active and open classes
+                    firstItem.addClass('active');
+                    firstItem.addClass('open');
+                    firstToggle.addClass('open');
+                    firstDetails.addClass('active');
+                    
+                    // Store the active subscription ID
+                    BocsSubscriptions.activeSubscriptionId = firstItem.data('subscription-id');
+                    console.log('BocsSubscriptions: Activated first subscription', BocsSubscriptions.activeSubscriptionId);
+                }
+
                 // Set up toggle functionality
                 $('.bocs-subscription-header').on('click', function() {
                     try {
@@ -100,6 +120,9 @@
             });
             // $('.edit-contents').on('click', this.handlers.editContents);
             // $('.change-box').on('click', this.handlers.changeBox);
+            
+            // Pause subscription button
+            $('#pause-button').on('click', this.handlers.pauseSubscription);
             
             // Form submissions
             $('#edit-schedule-form').on('submit', this.handlers.saveSchedule);
@@ -1284,6 +1307,22 @@
                 // This handler is kept for backward compatibility
                 const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
                 console.log('Navigating to change box page for subscription: ' + subscriptionId);
+            },
+            
+            // Pause subscription handler
+            pauseSubscription: function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                
+                if (!subscriptionId) {
+                    BocsSubscriptions.helpers.showNotification('No subscription selected', 'error');
+                    return;
+                }
+                
+                // Show the pause subscription modal
+                $('#bocs-pause-subscription-modal').css('display', 'flex');
             }
         },
 
