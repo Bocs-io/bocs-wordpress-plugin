@@ -124,7 +124,7 @@ wp_add_inline_style('bocs-switch-bocs', '
 ');
 
 // Also include the subscription styles since we want to maintain visual consistency
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250428.2");
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.1");
 
 // Initialize helper
 $helper = new Bocs_Helper();
@@ -312,108 +312,106 @@ if (class_exists('Bocs_Log_Handler')) {
             </strong>
         </p>
     </div>
-    
-    <h3 class="bocs-section-heading"><?php esc_html_e('Available Box Options', 'bocs-wordpress'); ?></h3>
-    
-    <div class="bocs-options-grid">
-        <?php if (isset($bocs_items) && is_array($bocs_items)) : ?>
-            <?php foreach ($bocs_items as $bocs) : ?>
-                <?php 
-                // Skip current Bocs
-                if ($current_bocs_id == $bocs['id']) {
-                    continue;
+
+    <?php if (isset($bocs_items) && is_array($bocs_items)) : ?>
+        <h3 class="bocs-section-heading"><?php esc_html_e('Available Box Options', 'bocs-wordpress'); ?></h3>
+        <div class="bocs-options-grid">
+        <?php foreach ($bocs_items as $bocs) : ?>
+            <?php 
+            // Skip current Bocs
+            if ($current_bocs_id == $bocs['id']) {
+                continue;
+            }
+            
+            // Extract Bocs details
+            $bocs_id = isset($bocs['id']) ? sanitize_text_field($bocs['id']) : '';
+            $bocs_name = isset($bocs['name']) ? sanitize_text_field($bocs['name']) : '';
+            $bocs_description = isset($bocs['description']) ? sanitize_text_field($bocs['description']) : '';
+            
+            // Calculate total price based on products
+            $bocs_price = 0;
+            if (isset($bocs['products']) && is_array($bocs['products'])) {
+                foreach ($bocs['products'] as $product) {
+                    $product_price = isset($product['price']) ? floatval($product['price']) : 0;
+                    $product_quantity = isset($product['quantity']) ? intval($product['quantity']) : 1;
+                    $bocs_price += ($product_price * $product_quantity);
                 }
-                
-                // Extract Bocs details
-                $bocs_id = isset($bocs['id']) ? sanitize_text_field($bocs['id']) : '';
-                $bocs_name = isset($bocs['name']) ? sanitize_text_field($bocs['name']) : '';
-                $bocs_description = isset($bocs['description']) ? sanitize_text_field($bocs['description']) : '';
-                
-                // Calculate total price based on products
-                $bocs_price = 0;
-                if (isset($bocs['products']) && is_array($bocs['products'])) {
-                    foreach ($bocs['products'] as $product) {
-                        $product_price = isset($product['price']) ? floatval($product['price']) : 0;
-                        $product_quantity = isset($product['quantity']) ? intval($product['quantity']) : 1;
-                        $bocs_price += ($product_price * $product_quantity);
-                    }
-                }
-                
-                // Get image URL from Bocs
-                $bocs_image = '';
-                if (isset($bocs['images']) && !empty($bocs['images']) && isset($bocs['images'][0]['url'])) {
-                    $bocs_image = esc_url($bocs['images'][0]['url']);
-                } elseif (isset($bocs['products']) && !empty($bocs['products']) && 
-                         isset($bocs['products'][0]['images']) && !empty($bocs['products'][0]['images']) &&
-                         isset($bocs['products'][0]['images'][0]['url'])) {
-                    // Fallback to first product image if bocs image not available
-                    $bocs_image = esc_url($bocs['products'][0]['images'][0]['url']);
-                }
-                
-                // Use placeholder image if still none found
-                if (empty($bocs_image)) {
-                    $bocs_image = wc_placeholder_img_src();
-                }
-                ?>
-                
-                <div class="bocs-option" data-bocs-id="<?php echo esc_attr($bocs_id); ?>">
-                    <div class="bocs-option-image">
-                        <img src="<?php echo esc_url($bocs_image); ?>" alt="<?php echo esc_attr($bocs_name); ?>">
+            }
+            
+            // Get image URL from Bocs
+            $bocs_image = '';
+            if (isset($bocs['images']) && !empty($bocs['images']) && isset($bocs['images'][0]['url'])) {
+                $bocs_image = esc_url($bocs['images'][0]['url']);
+            } elseif (isset($bocs['products']) && !empty($bocs['products']) && 
+                        isset($bocs['products'][0]['images']) && !empty($bocs['products'][0]['images']) &&
+                        isset($bocs['products'][0]['images'][0]['url'])) {
+                // Fallback to first product image if bocs image not available
+                $bocs_image = esc_url($bocs['products'][0]['images'][0]['url']);
+            }
+            
+            // Use placeholder image if still none found
+            if (empty($bocs_image)) {
+                $bocs_image = wc_placeholder_img_src();
+            }
+            ?>
+            
+            <div class="bocs-option" data-bocs-id="<?php echo esc_attr($bocs_id); ?>">
+                <div class="bocs-option-image">
+                    <img src="<?php echo esc_url($bocs_image); ?>" alt="<?php echo esc_attr($bocs_name); ?>">
+                </div>
+                <div class="bocs-option-content">
+                    <h3><?php echo esc_html($bocs_name); ?></h3>
+                    <p class="bocs-option-description"><?php echo esc_html($bocs_description); ?></p>
+                    <?php if (isset($bocs['type']) && !empty($bocs['type'])): ?>
+                    <div class="bocs-type-badge <?php echo esc_attr(strtolower($bocs['type'])); ?>-type">
+                        <?php echo esc_html(ucfirst(strtolower($bocs['type']))); ?> <?php esc_html_e('Box', 'bocs-wordpress'); ?>
                     </div>
-                    <div class="bocs-option-content">
-                        <h3><?php echo esc_html($bocs_name); ?></h3>
-                        <p class="bocs-option-description"><?php echo esc_html($bocs_description); ?></p>
-                        <?php if (isset($bocs['type']) && !empty($bocs['type'])): ?>
-                        <div class="bocs-type-badge <?php echo esc_attr(strtolower($bocs['type'])); ?>-type">
-                            <?php echo esc_html(ucfirst(strtolower($bocs['type']))); ?> <?php esc_html_e('Box', 'bocs-wordpress'); ?>
+                    <?php endif; ?>
+                    <div class="bocs-option-details">
+                        <p class="bocs-option-price"><?php echo $helper->format_price($bocs_price, $subscription['data']['currency'] ?? ''); ?></p>
+                        
+                        <?php if (isset($bocs['products']) && is_array($bocs['products']) && !empty($bocs['products'])): ?>
+                        <div class="bocs-option-products">
+                            <p class="bocs-products-title"><?php esc_html_e('Box Contents:', 'bocs-wordpress'); ?></p>
+                            <ul>
+                                <?php 
+                                $max_products = 3; // Show only first 3 products
+                                $product_count = count($bocs['products']);
+                                $shown_products = min($max_products, $product_count);
+                                
+                                for ($i = 0; $i < $shown_products; $i++) {
+                                    $product = $bocs['products'][$i];
+                                    echo '<li>' . esc_html($product['name']) . '</li>';
+                                }
+                                
+                                // Show count of remaining products if there are more
+                                if ($product_count > $max_products) {
+                                    echo '<li>' . sprintf(
+                                        esc_html__('+ %d more items', 'bocs-wordpress'),
+                                        $product_count - $max_products
+                                    ) . '</li>';
+                                }
+                                ?>
+                            </ul>
                         </div>
                         <?php endif; ?>
-                        <div class="bocs-option-details">
-                            <p class="bocs-option-price"><?php echo $helper->format_price($bocs_price, $subscription['data']['currency'] ?? ''); ?></p>
-                            
-                            <?php if (isset($bocs['products']) && is_array($bocs['products']) && !empty($bocs['products'])): ?>
-                            <div class="bocs-option-products">
-                                <p class="bocs-products-title"><?php esc_html_e('Box Contents:', 'bocs-wordpress'); ?></p>
-                                <ul>
-                                    <?php 
-                                    $max_products = 3; // Show only first 3 products
-                                    $product_count = count($bocs['products']);
-                                    $shown_products = min($max_products, $product_count);
-                                    
-                                    for ($i = 0; $i < $shown_products; $i++) {
-                                        $product = $bocs['products'][$i];
-                                        echo '<li>' . esc_html($product['name']) . '</li>';
-                                    }
-                                    
-                                    // Show count of remaining products if there are more
-                                    if ($product_count > $max_products) {
-                                        echo '<li>' . sprintf(
-                                            esc_html__('+ %d more items', 'bocs-wordpress'),
-                                            $product_count - $max_products
-                                        ) . '</li>';
-                                    }
-                                    ?>
-                                </ul>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        <button class="bocs-button select-bocs-button" 
-                                data-bocs-id="<?php echo esc_attr($bocs_id); ?>" 
-                                data-bocs-name="<?php echo esc_attr($bocs_name); ?>"
-                                data-bocs-type="<?php echo esc_attr(isset($bocs['type']) ? strtolower($bocs['type']) : ''); ?>">
-                            <?php esc_html_e('Choose Frequency', 'bocs-wordpress'); ?>
-                        </button>
                     </div>
+                    <button class="bocs-button select-bocs-button" 
+                            data-bocs-id="<?php echo esc_attr($bocs_id); ?>" 
+                            data-bocs-name="<?php echo esc_attr($bocs_name); ?>"
+                            data-bocs-type="<?php echo esc_attr(isset($bocs['type']) ? strtolower($bocs['type']) : ''); ?>">
+                        <?php esc_html_e('Choose Frequency', 'bocs-wordpress'); ?>
+                    </button>
                 </div>
-            <?php endforeach; ?>
-        <?php else : ?>
-            <p><?php esc_html_e('No other Box options available at this time.', 'bocs-wordpress'); ?></p>
-        <?php endif; ?>
-    </div>
-    
+            </div>
+        <?php endforeach; ?>
+        </div>
+    <?php else : ?>
+        <h3 class="bocs-section-heading"><?php esc_html_e('No available boxes at this time', 'bocs-wordpress'); ?></h3>
+    <?php endif; ?>
     <div class="bocs-switch-actions">
         <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="bocs-button cancel">
-            <?php esc_html_e('Cancel', 'bocs-wordpress'); ?>
+            <?php esc_html_e('Back', 'bocs-wordpress'); ?>
         </a>
     </div>
     
