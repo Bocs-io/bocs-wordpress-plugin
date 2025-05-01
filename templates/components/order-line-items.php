@@ -150,6 +150,29 @@ $tax_rate = 0.1; // 10% GST for Australia
             ?>
         </tbody>
         <tfoot>
+        <?php
+            // Show tax row if tax display is enabled and either tax is not empty or we have calculated tax
+            if ($tax_display && (!empty($tax) || $total_tax > 0)): 
+            ?>
+            <tr class="bocs-tax-row">
+                <th colspan="3"><?php esc_html_e('GST', 'bocs-wordpress'); ?></th>
+                <td></td>
+                <td class="text-right" data-title="<?php esc_attr_e('GST', 'bocs-wordpress'); ?>">
+                    <?php 
+                    if (function_exists('wc_price')) {
+                        echo wp_kses_post(wc_price($display_tax));
+                    } else {
+                        echo esc_html('$' . number_format($display_tax, 2));
+                    }
+                    
+                    // If prices include tax, add a note
+                    if ($prices_include_tax) {
+                        echo '<br><small>' . esc_html__('(included in prices)', 'bocs-wordpress') . '</small>';
+                    }
+                    ?>
+                </td>
+            </tr>
+            <?php endif; ?>
             <tr class="bocs-subtotal-row">
                 <th colspan="3"><?php esc_html_e('Subtotal', 'bocs-wordpress'); ?> <small><?php esc_html_e('(excl. GST)', 'bocs-wordpress'); ?></small></th>
                 <td class="text-right" data-title="<?php esc_attr_e('Subtotal', 'bocs-wordpress'); ?>">
@@ -240,30 +263,6 @@ $tax_rate = 0.1; // 10% GST for Australia
             // Define display_tax regardless of whether we show the tax row
             $display_tax = ($total_tax > 0) ? $total_tax : (is_array($tax) ? 0 : (float)$tax);
             ?>
-            
-            <?php
-            // Show tax row if tax display is enabled and either tax is not empty or we have calculated tax
-            if ($tax_display && (!empty($tax) || $total_tax > 0)): 
-            ?>
-            <tr class="bocs-tax-row">
-                <th colspan="3"><?php esc_html_e('GST', 'bocs-wordpress'); ?></th>
-                <td></td>
-                <td class="text-right" data-title="<?php esc_attr_e('GST', 'bocs-wordpress'); ?>">
-                    <?php 
-                    if (function_exists('wc_price')) {
-                        echo wp_kses_post(wc_price($display_tax));
-                    } else {
-                        echo esc_html('$' . number_format($display_tax, 2));
-                    }
-                    
-                    // If prices include tax, add a note
-                    if ($prices_include_tax) {
-                        echo '<br><small>' . esc_html__('(included in prices)', 'bocs-wordpress') . '</small>';
-                    }
-                    ?>
-                </td>
-            </tr>
-            <?php endif; ?>
             
             <tr class="bocs-total-row">
                 <th colspan="3"><?php esc_html_e('Subscription Total', 'bocs-wordpress'); ?> <small><?php esc_html_e('(excl. GST)', 'bocs-wordpress'); ?></small></th>
