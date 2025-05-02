@@ -1,3 +1,11 @@
+v0.0.147 05/01/2025
+* Style: Updated CSS files with improved styling for subscription management pages
+* Style: Updated version cache busting for better user experience 
+* Feature: Enhanced template files for subscription management
+* UI: Improved order line items display in subscription templates
+* UX: Enhanced subscription management interface with better user interaction
+* Fix: Improved responsive design for subscription-related pages
+
 v0.0.146 04/30/2025
 * Feature: Added detailed debugging logs to edit-details JavaScript for improved troubleshooting
 * Refactor: Optimized subscription product update handling and API interactions
