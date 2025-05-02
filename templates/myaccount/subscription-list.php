@@ -17,36 +17,91 @@ if (!defined('ABSPATH')) {
 
 // Ensure script and style dependencies are loaded
 wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.3");
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250501.3", true);
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250502.2", true);
 
 // Add order line items component
-wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), bocs_get_cache_bust_version('20250425.1'));
+wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), '20250425.1');
 wp_enqueue_script('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/js/bocs-order-line-items.js', array('jquery'), "20250425.10", true);
+
+// Add modal button styles
+wp_enqueue_style('bocs-modal-buttons', BOCS_PLUGIN_URL . 'assets/css/bocs-modal-buttons.css', array(), "20250501.1");
+
+// Add pause button fix script
+wp_enqueue_script('bocs-pause-button-fix', BOCS_PLUGIN_URL . 'assets/js/pause-button-fix.js', array('jquery'), "20250502.6", true);
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
     wp_enqueue_script('stripe', 'https://js.stripe.com/v3/', [], null, true);
-    
+
     // Add inline script to set publishable key
     wp_add_inline_script('stripe', 'window.stripePublishableKey = "' . wc_stripe_get_publishable_key() . '";', 'after');
-    
-    // Initialize stripe for the payment methods
-    wp_add_inline_script('bocs-subscriptions', '
-        // Ensure Stripe is properly initialized
-        document.addEventListener("DOMContentLoaded", function() {
-            if (typeof Stripe !== "undefined") {
-                if (window.stripePublishableKey) {
-                    console.log("Pre-initializing Stripe with publishable key");
-                    window.stripe = Stripe(window.stripePublishableKey);
-                } else {
-                    console.error("Stripe publishable key not found");
-                }
-            } else {
-                console.error("Stripe.js not loaded");
-            }
-        });
-    ', 'after');
 }
+
+// Create a nonce for BOCS AJAX operations
+$bocs_ajax_nonce = wp_create_nonce('bocs-ajax-nonce');
+
+// Log the nonce for debugging
+if (function_exists('bocs_log')) {
+    bocs_log('Generated BOCS AJAX nonce', 'debug', array(
+        'nonce' => $bocs_ajax_nonce,
+        'action' => 'bocs-ajax-nonce',
+        'template' => 'subscription-list.php'
+    ));
+}
+
+// Add AJAX nonce for BOCS operations - add to all scripts to ensure it's available
+wp_add_inline_script('jquery', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
+wp_add_inline_script('jquery', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
+
+// Also add to bocs-subscriptions.js if it exists
+if (wp_script_is('bocs-subscriptions', 'enqueued')) {
+    wp_add_inline_script('bocs-subscriptions', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
+    wp_add_inline_script('bocs-subscriptions', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
+}
+
+// Also add to bocs-pause-button-fix.js if it exists
+if (wp_script_is('bocs-pause-button-fix', 'enqueued')) {
+    wp_add_inline_script('bocs-pause-button-fix', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
+    wp_add_inline_script('bocs-pause-button-fix', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
+}
+
+// Add a global script tag to ensure the nonce is available to all scripts
+echo '<script type="text/javascript">
+    /* <![CDATA[ */
+    var bocs_ajax_nonce = "' . esc_js($bocs_ajax_nonce) . '";
+    var ajaxurl = "' . esc_js(admin_url('admin-ajax.php')) . '";
+    /* ]]> */
+</script>';
+
+// Initialize stripe for the payment methods
+wp_add_inline_script('bocs-subscriptions', '
+    // Ensure Stripe is properly initialized
+    document.addEventListener("DOMContentLoaded", function() {
+        if (typeof Stripe !== "undefined") {
+            if (window.stripePublishableKey) {
+                console.log("Pre-initializing Stripe with publishable key");
+                window.stripe = Stripe(window.stripePublishableKey);
+            } else {
+                console.error("Stripe publishable key not found");
+            }
+        } else {
+            console.error("Stripe.js not loaded");
+        }
+
+        // Debug pause button
+        console.log("Checking pause button on DOMContentLoaded");
+        var pauseButton = document.getElementById("pause-confirm-button");
+        if (pauseButton) {
+            console.log("Pause button found:", pauseButton);
+            // Add a direct click handler for debugging
+            pauseButton.addEventListener("click", function() {
+                console.log("Pause button clicked via direct DOM event listener");
+            });
+        } else {
+            console.error("Pause button not found in DOM");
+        }
+    });
+', 'after');
 
 // Log template loading - for debugging
 if (class_exists('Bocs_Log_Handler')) {
@@ -55,28 +110,10 @@ if (class_exists('Bocs_Log_Handler')) {
         'template' => 'subscription-list.php',
         'time' => current_time('mysql')
     ]);
-    
-    // Add raw data logging
-    $logger->insert_log('debug', '[Subscription List Template] Raw subscription data', [
-        'has_subscriptions' => isset($subscriptions) && is_array($subscriptions) ? 'Yes' : 'No',
-        'has_data' => isset($subscriptions['data']) ? 'Yes' : 'No',
-        'has_data_data' => isset($subscriptions['data']['data']) ? 'Yes' : 'No',
-        'data_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0,
-        'first_item_keys' => isset($subscriptions['data']['data'][0]) ? implode(', ', array_keys($subscriptions['data']['data'][0])) : 'No items'
-    ]);
 }
 
 // Subscription data is now formatted in Bocs_Account.php before including this template
 // $subscriptions_formatted = bocs_get_customer_subscriptions();
-
-// Log the formatted data
-if (class_exists('Bocs_Log_Handler')) {
-    $logger = new Bocs_Log_Handler();
-    $logger->insert_log('debug', '[Subscription List Template] Formatted subscription data', [
-        'count' => isset($subscriptions_formatted) ? count($subscriptions_formatted) : 0,
-        'first_item_keys' => !empty($subscriptions_formatted) ? implode(', ', array_keys($subscriptions_formatted[0])) : 'No items'
-    ]);
-}
 
 // Pass data to JavaScript
 wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
@@ -85,18 +122,18 @@ wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
         if (!isset($sub['bocs'])) {
             $sub['bocs'] = array();
         }
-        
+
         // Ensure bocs has a frequencies array
         if (!isset($sub['bocs']['frequencies'])) {
             $sub['bocs']['frequencies'] = array();
-            
+
             // Try to get frequencies from price adjustments if available
-            if (isset($sub['bocs']['priceAdjustment']['adjustments']) && 
+            if (isset($sub['bocs']['priceAdjustment']['adjustments']) &&
                 is_array($sub['bocs']['priceAdjustment']['adjustments'])) {
                 $sub['bocs']['frequencies'] = $sub['bocs']['priceAdjustment']['adjustments'];
             }
         }
-        
+
         return $sub;
     }, $subscriptions_formatted),
     'apiUrl' => BOCS_API_URL,
@@ -141,7 +178,7 @@ if (function_exists('bocs_log')) {
         'raw_count' => isset($subscriptions['data']['data']) ? count($subscriptions['data']['data']) : 0,
         'formatted_count' => isset($subscriptions_formatted) ? count($subscriptions_formatted) : 0
     ]);
-    
+
     // Log the structure of the subscription data
     if (isset($subscriptions)) {
         bocs_log('Subscription data structure', 'debug', [
@@ -156,16 +193,16 @@ if (function_exists('bocs_log')) {
     <?php if (!empty($subscriptions_formatted)) : ?>
         <!-- Accordion list - all items closed by default -->
         <div id="bocs-subscriptions-list">
-            <?php foreach ($subscriptions_formatted as $subscription) : 
+            <?php foreach ($subscriptions_formatted as $subscription) :
                 $status = isset($subscription['status']) ? $subscription['status'] : 'active';
                 $status_class = 'status-' . strtolower($status);
                 $status_label = ucfirst($status);
-                
+
                 $subscription_id = isset($subscription['id']) ? $subscription['id'] : '';
                 $price = isset($subscription['price']) ? $subscription['price'] : '';
                 $frequency = isset($subscription['frequency']) ? $subscription['frequency'] : '';
                 $frequency_formatted = isset($subscription['frequency_formatted']) ? $subscription['frequency_formatted'] : '';
-                
+
                 // Get BOCS frequencies if available
                 $bocs_frequencies = [];
                 if (isset($subscription['bocs']['frequencies']) && is_array($subscription['bocs']['frequencies'])) {
@@ -173,7 +210,7 @@ if (function_exists('bocs_log')) {
                 } elseif (isset($subscription['bocs']['priceAdjustment']['adjustments']) && is_array($subscription['bocs']['priceAdjustment']['adjustments'])) {
                     $bocs_frequencies = $subscription['bocs']['priceAdjustment']['adjustments'];
                 }
-                
+
                 // Log frequencies for debugging if Bocs_Log_Handler exists
                 if (class_exists('Bocs_Log_Handler') && !empty($subscription['id'])) {
                     $logger = new Bocs_Log_Handler();
@@ -182,38 +219,28 @@ if (function_exists('bocs_log')) {
                         'bocs_id' => isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : 'None'
                     ]);
                 }
-                
+
                 $next_payment_date = isset($subscription['next_payment_date']) ? $subscription['next_payment_date'] : '';
                 $next_delivery_date = isset($subscription['next_delivery_date']) ? $subscription['next_delivery_date'] : '';
-                
+
                 $billing_date = isset($subscription['billing_date']) ? $subscription['billing_date'] : '';
                 $change_by_date = isset($subscription['change_by_date']) ? $subscription['change_by_date'] : '';
-                
+
                 $delivery_address = isset($subscription['delivery_address']) ? $subscription['delivery_address'] : array();
                 $address_formatted = isset($delivery_address['formatted']) ? $delivery_address['formatted'] : '';
-                
+
                 $payment_method = isset($subscription['payment_method']) ? $subscription['payment_method'] : array();
                 $payment_method_formatted = isset($payment_method['formatted']) ? $payment_method['formatted'] : '';
-                
+
                 $items = isset($subscription['items']) ? $subscription['items'] : array();
                 $discount = isset($subscription['discount']) ? $subscription['discount'] : '';
                 $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : '';
                 $total = isset($subscription['total']) ? $subscription['total'] : $price;
                 $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
-                
+
                 // Make sure discount_type and discount_percent are set for order-line-items component
                 $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
                 $discount_percent = isset($subscription['discount']) ? $subscription['discount'] : '';
-                
-                // For debugging
-                if (current_user_can('manage_options')) {
-                    echo '<!-- DEBUG: Items count: ' . count($items) . ' -->';
-                    if (count($items) === 0) {
-                        echo '<!-- DEBUG: Items sources check: lineItems=' . (isset($subscription['lineItems']) ? 'yes' : 'no') . ', items=' . (isset($subscription['items']) ? 'yes' : 'no') . ' -->';
-                        // Check the entire subscription structure
-                        echo '<!-- DEBUG: Subscription keys: ' . implode(', ', array_keys($subscription)) . ' -->';
-                    }
-                }
             ?>
             <div class="bocs-subscription-item" data-subscription-id="<?php echo esc_attr($subscription_id); ?>">
                 <div class="bocs-subscription-header">
@@ -224,10 +251,10 @@ if (function_exists('bocs_log')) {
                         <div class="bocs-subscription-id-row">
                             <div class="bocs-subscription-status <?php echo esc_attr($status_class); ?>"><?php echo esc_html($status_label); ?></div>
                             <div class="bocs-subscription-id">
-                                <?php 
+                                <?php
                                 // Use externalSourceParentOrderId if available, otherwise use subscription ID
                                 $external_order_id = isset($subscription['externalSourceParentOrderId']) ? $subscription['externalSourceParentOrderId'] : '';
-                                
+
                                 if (!empty($external_order_id)) {
                                     echo esc_html('SUB-' . $external_order_id);
                                 } else {
@@ -238,13 +265,13 @@ if (function_exists('bocs_log')) {
                                 ?>
                             </div>
                             <div class="bocs-subscription-price">
-                                <?php 
+                                <?php
                                 // Format the price with the subscription data
                                 // Ensure total is a numeric value
                                 $numeric_total = is_array($total) ? 0 : (float)$total;
                                 $formatted_price = '$' . number_format($numeric_total, 2, '.', ',');
                                 $formatted_frequency = strtolower($frequency_formatted);
-                                echo esc_html($formatted_price . ' ' . $formatted_frequency); 
+                                echo esc_html($formatted_price . ' ' . $formatted_frequency);
                                 ?>
                             </div>
                         </div>
@@ -256,17 +283,17 @@ if (function_exists('bocs_log')) {
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="bocs-subscription-details">
                     <div class="bocs-subscription-actions">
                         <button onclick="window.location.href='<?php echo esc_url(wc_get_account_endpoint_url('bocs-edit-details') . $subscription_id); ?>'" class="bocs-button edit-contents">Edit contents</button>
                         <button onclick="window.location.href='<?php echo esc_url(wc_get_account_endpoint_url('bocs-switch-bocs') . $subscription_id); ?>'" class="bocs-button change-box">Change box</button>
                         <button class="bocs-button early-renewal" id="early-renewal-<?php echo esc_attr($subscription_id); ?>" data-sub-id="<?php echo esc_attr($subscription_id); ?>">Early Renewal</button>
                     </div>
-                    
+
                     <div class="bocs-subscription-name">
                         <h3>
-                        <?php 
+                        <?php
                         // Get subscription name - check if BOCS name is empty
                         $bocs_name = '';
                         if (isset($subscription['bocs']['name']) && !empty($subscription['bocs']['name'])) {
@@ -277,22 +304,22 @@ if (function_exists('bocs_log')) {
                             $url = BOCS_API_URL . 'bocs/' . $bocs_id;
                             $helper = new Bocs_Helper();
                             $bocs_details = $helper->curl_request($url, 'GET', [], $options['bocs_headers']);
-                            
+
                             if (isset($bocs_details['data']['name']) && !empty($bocs_details['data']['name'])) {
                                 $bocs_name = $bocs_details['data']['name'];
                             }
                         }
-                        
+
                         // If we still don't have a name, use a generic one
                         if (empty($bocs_name)) {
                             $bocs_name = __('Premium Subscription', 'bocs-wordpress');
                         }
-                        
+
                         echo esc_html($bocs_name);
                         ?>
                         </h3>
                     </div>
-                    
+
                     <div class="bocs-subscription-sections">
                         <div class="bocs-section">
                             <h4>Schedule</h4>
@@ -304,13 +331,13 @@ if (function_exists('bocs_log')) {
                                 <button class="bocs-edit-button edit-schedule">Edit</button>
                             </div>
                         </div>
-                        
+
                         <div class="bocs-section">
                             <h4>Frequency</h4>
                             <div class="bocs-section-content">
                                 <div class="bocs-section-lines">
                                     <div class="bocs-section-line">
-                                        <?php 
+                                        <?php
                                         if (isset($frequency_formatted)) {
                                             echo esc_html($frequency_formatted);
                                             if (!empty($discount)) {
@@ -332,7 +359,7 @@ if (function_exists('bocs_log')) {
                                 <button class="bocs-edit-button edit-frequency">Edit</button>
                             </div>
                         </div>
-                        
+
                         <div class="bocs-section">
                             <h4>Delivery Address</h4>
                             <div class="bocs-section-content">
@@ -342,7 +369,7 @@ if (function_exists('bocs_log')) {
                                 <button class="bocs-edit-button edit-address">Edit</button>
                             </div>
                         </div>
-                        
+
                         <div class="bocs-section">
                             <h4>Payment Method</h4>
                             <div class="bocs-section-content">
@@ -353,7 +380,7 @@ if (function_exists('bocs_log')) {
                             </div>
                         </div>
                     </div>
-                    
+
                     <?php
                     // Prepare the payment URL for any upcoming orders
                     $payment_url = '';
@@ -361,10 +388,10 @@ if (function_exists('bocs_log')) {
                                 $bocs_account = new Bocs_Account();
                                 $payment_url = $bocs_account->get_pending_order_url($subscription_id);
                     }
-                    
+
                     // Set up data for our reusable component
                     $component_id = 'bocs-order-items-' . $subscription_id;
-                    
+
                     // Check for lineItems first (API-style keys)
                     if (isset($subscription['lineItems']) && is_array($subscription['lineItems'])) {
                         $items = $subscription['lineItems'];
@@ -375,27 +402,27 @@ if (function_exists('bocs_log')) {
                     } else {
                         $items = array();
                     }
-                    
+
                     // Calculate subtotal based on line items
                     $subtotal = 0;
                     $subtotal_tax = 0;
-                    
+
                     foreach ($items as $item) {
                         $item_price = isset($item['price']) ? floatval($item['price']) : 0;
                         $item_quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
                         $item_subtotal = $item_price * $item_quantity;
                         $subtotal += $item_subtotal;
-                        
+
                         // Calculate subtotal tax if tax data is available
                         if (isset($item['tax']) && is_numeric($item['tax'])) {
                             $subtotal_tax += floatval($item['tax']) * $item_quantity;
                         }
                     }
-                    
+
                     // Get discount from subscription data
                     $discount = isset($subscription['discount']) ? floatval($subscription['discount']) : 0;
                     $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
-                    
+
                     // Calculate actual discount amount
                     $discount_amount = 0;
                     if ($discount_type === 'percent' && $discount > 0) {
@@ -403,18 +430,18 @@ if (function_exists('bocs_log')) {
                     } else if ($discount_type === 'fixed' && $discount > 0) {
                         $discount_amount = $discount;
                     }
-                    
+
                     // Get shipping from WooCommerce or subscription data
                     $shipping = isset($subscription['shipping']) ? floatval($subscription['shipping']) : 0;
                     $shipping_tax = isset($subscription['shippingTax']) ? floatval($subscription['shippingTax']) : 0;
-                    
+
                     // If shipping is not available in subscription data, try to get from WooCommerce
                     if ($shipping <= 0 && class_exists('WC_Shipping')) {
                         // Get customer shipping zone if available
                         $customer_shipping_country = '';
                         $customer_shipping_state = '';
                         $customer_shipping_postcode = '';
-                        
+
                         if (isset($delivery_address['country'])) {
                             $customer_shipping_country = $delivery_address['country'];
                         }
@@ -424,7 +451,7 @@ if (function_exists('bocs_log')) {
                         if (isset($delivery_address['postcode'])) {
                             $customer_shipping_postcode = $delivery_address['postcode'];
                         }
-                        
+
                         if (!empty($customer_shipping_country)) {
                             $shipping_zone = WC_Shipping_Zones::get_zone_matching_package(array(
                                 'destination' => array(
@@ -433,7 +460,7 @@ if (function_exists('bocs_log')) {
                                     'postcode' => $customer_shipping_postcode,
                                 ),
                             ));
-                            
+
                             if ($shipping_zone) {
                                 $shipping_methods = $shipping_zone->get_shipping_methods(true);
                                 if (!empty($shipping_methods)) {
@@ -453,23 +480,23 @@ if (function_exists('bocs_log')) {
                             }
                         }
                     }
-                    
+
                     // Calculate total tax (subtotal tax + shipping tax)
                     $total_tax = $subtotal_tax + $shipping_tax;
-                    
+
                     // Calculate total
                     $total = $subtotal - $discount_amount + $shipping + $total_tax;
-                    
+
                     // Fall back to subscription total if calculation yields 0
                     if ($total <= 0 && isset($subscription['total']) && $subscription['total'] > 0) {
                         $total = $subscription['total'];
                     }
-                    
+
                     $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
-                    
+
                     // Make sure discount_type and discount_percent are set for order-line-items component
                     $discount_percent = isset($subscription['discount']) ? $subscription['discount'] : '';
-                    
+
                     // For debugging
                     if (current_user_can('manage_options')) {
                         echo '<!-- DEBUG: Items count: ' . count($items) . ' -->';
@@ -479,25 +506,25 @@ if (function_exists('bocs_log')) {
                             echo '<!-- DEBUG: Subscription keys: ' . implode(', ', array_keys($subscription)) . ' -->';
                         }
                     }
-                    
+
                     // Check if any products have empty names
                     $has_empty_products = false;
-                    
+
                     // Add a wrapper div with loading state and unique ID
                     $wrapper_id = 'bocs-order-details-wrapper-' . esc_attr($subscription_id);
                     echo '<div class="bocs-order-details-wrapper" id="' . $wrapper_id . '" data-subscription-id="' . esc_attr($subscription_id) . '" data-needs-loading="' . ($has_empty_products ? 'true' : 'false') . '">';
-                    
+
                     // Show content immediately if all products have names
                     echo '<div class="bocs-order-details-content" style="opacity:1; visibility:visible;">';
-                    
+
                     // Include the line items component within a buffer to prevent partial display
                     ob_start();
                     include(dirname(dirname(__FILE__)) . '/components/order-line-items.php');
                     $order_content = ob_get_clean();
-                    
+
                     // Output the buffered and modified content
                     echo $order_content;
-                    
+
                     // Close wrapper divs
                     echo '</div>'; // End of content div
                     echo '</div>'; // End of wrapper div
@@ -527,7 +554,7 @@ if (function_exists('bocs_log')) {
                 </div>
                 <div class="bocs-form-row half-width">
                     <label>&nbsp;</label>
-                    <button type="button" class="bocs-button pause-subscription" id="pause-button">Pause Subscription</button>
+                    <button type="button" class="bocs-button pause-subscription" id="pause-button" data-subscription-id="">Pause Subscription</button>
                 </div>
             </div>
             <div class="bocs-form-actions">
@@ -536,6 +563,29 @@ if (function_exists('bocs_log')) {
             </div>
         </form>
     </div>
+    <script>
+        // Direct script to set subscription ID on this modal and its button
+        (function() {
+            // Try to get from global variable first
+            if (window.bocsCurrentSubscriptionId) {
+                document.getElementById('bocs-edit-schedule-modal').setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                document.getElementById('pause-button').setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                console.log('EDIT MODAL SCRIPT: Set subscription ID from global variable:', window.bocsCurrentSubscriptionId);
+            } else {
+                // Try to extract from URL
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    var subscriptionId = urlMatch[1];
+                    document.getElementById('bocs-edit-schedule-modal').setAttribute('data-subscription-id', subscriptionId);
+                    document.getElementById('pause-button').setAttribute('data-subscription-id', subscriptionId);
+                    console.log('EDIT MODAL SCRIPT: Set subscription ID from URL:', subscriptionId);
+
+                    // Also set global variable
+                    window.bocsCurrentSubscriptionId = subscriptionId;
+                }
+            }
+        })();
+    </script>
 </div>
 
 <!-- Modal for edit frequency -->
@@ -548,14 +598,14 @@ if (function_exists('bocs_log')) {
             <input type="hidden" id="time-unit" name="time_unit">
             <input type="hidden" id="discount" name="discount">
             <input type="hidden" id="discount-type" name="discount_type">
-            
+
             <div class="bocs-form-row">
                 <label for="frequency-value">Frequency</label>
                 <select id="frequency-value" name="frequency_value">
                     <!-- Will be populated dynamically -->
                 </select>
             </div>
-            
+
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
@@ -579,7 +629,7 @@ if (function_exists('bocs_log')) {
                     <input type="text" id="last-name" name="last_name">
                 </div>
             </div>
-            
+
             <div class="form-row-container">
                 <div class="bocs-form-row half-width">
                     <label for="company">Company (optional)</label>
@@ -590,7 +640,7 @@ if (function_exists('bocs_log')) {
                     <input type="tel" id="phone" name="phone">
                 </div>
             </div>
-            
+
             <div class="bocs-form-row">
                 <label for="address">Address 1</label>
                 <input type="text" id="address" name="address">
@@ -599,7 +649,7 @@ if (function_exists('bocs_log')) {
                 <label for="address2">Address 2 (optional)</label>
                 <input type="text" id="address2" name="address2">
             </div>
-            
+
             <div class="form-row-container">
                 <div class="bocs-form-row half-width">
                     <label for="country">Country</label>
@@ -624,7 +674,7 @@ if (function_exists('bocs_log')) {
                     </select>
                 </div>
             </div>
-            
+
             <div class="form-row-container">
                 <div class="bocs-form-row half-width">
                     <label for="city">City</label>
@@ -635,7 +685,7 @@ if (function_exists('bocs_log')) {
                     <input type="text" id="postcode" name="postcode">
                 </div>
             </div>
-            
+
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
@@ -656,7 +706,7 @@ if (function_exists('bocs_log')) {
                     <!-- Will be populated dynamically -->
                 </select>
             </div>
-            
+
             <!-- Stripe Card Element - initially hidden -->
             <div id="stripe-payment-element-container" style="display: none;">
                 <div class="bocs-form-row">
@@ -667,7 +717,7 @@ if (function_exists('bocs_log')) {
                     <div id="card-errors" role="alert"></div>
                 </div>
             </div>
-            
+
             <div class="bocs-form-actions">
                 <button type="button" class="bocs-button cancel">Cancel</button>
                 <button type="submit" class="bocs-button primary">Save Changes</button>
@@ -695,26 +745,382 @@ if (function_exists('bocs_log')) {
         <span class="bocs-modal-close">&times;</span>
         <h3>Pause Subscription</h3>
         <p>This will pause your subscription. You won't be charged until you resume your subscription.</p>
-        <div class="bocs-form-row">
-            <label for="pause-reason">Reason for pausing (optional)</label>
-            <select id="pause-reason" name="pause_reason">
-                <option value="">Select a reason...</option>
-                <option value="going_away">Going away/vacation</option>
-                <option value="too_many">Have too many products right now</option>
-                <option value="financial">Financial reasons</option>
-                <option value="other">Other reason</option>
-            </select>
-        </div>
-        <div class="bocs-form-row">
-            <label for="pause-until-date">Resume on (optional)</label>
-            <input type="date" id="pause-until-date" name="pause_until_date">
-        </div>
         <div class="bocs-modal-actions">
             <button class="bocs-button modal-cancel">Cancel</button>
-            <button class="bocs-button primary modal-confirm">Confirm Pause</button>
+            <button class="bocs-button primary modal-confirm" id="pause-confirm-button" data-subscription-id="" onclick="handlePauseConfirmClick(event)">Confirm Pause</button>
         </div>
     </div>
+    <script>
+        // Direct script to set subscription ID on this modal and its button
+        (function() {
+            // Try to get from global variable first
+            if (window.bocsCurrentSubscriptionId) {
+                document.getElementById('bocs-pause-subscription-modal').setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                document.getElementById('pause-confirm-button').setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                console.log('MODAL SCRIPT: Set subscription ID from global variable:', window.bocsCurrentSubscriptionId);
+            } else {
+                // Try to extract from URL
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    var subscriptionId = urlMatch[1];
+                    document.getElementById('bocs-pause-subscription-modal').setAttribute('data-subscription-id', subscriptionId);
+                    document.getElementById('pause-confirm-button').setAttribute('data-subscription-id', subscriptionId);
+                    console.log('MODAL SCRIPT: Set subscription ID from URL:', subscriptionId);
+
+                    // Also set global variable
+                    window.bocsCurrentSubscriptionId = subscriptionId;
+                }
+            }
+        })();
+    </script>
 </div>
+
+<!-- Add scripts to ensure the pause modal has the subscription ID -->
+<script>
+// Immediately extract subscription ID from URL and set it on all relevant elements
+(function() {
+    // Extract subscription ID from URL
+    var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+    if (urlMatch && urlMatch[1]) {
+        var subscriptionId = urlMatch[1];
+        console.log('IMMEDIATE: Found subscription ID in URL:', subscriptionId);
+
+        // Function to set this ID on an element if it exists
+        function setIdOnElement(selector) {
+            var element = document.querySelector(selector);
+            if (element) {
+                element.setAttribute('data-subscription-id', subscriptionId);
+                console.log('IMMEDIATE: Set subscription ID on ' + selector);
+            }
+        }
+
+        // Set ID on all relevant elements
+        setIdOnElement('#bocs-pause-subscription-modal');
+        setIdOnElement('#pause-confirm-button');
+        setIdOnElement('#pause-button');
+        setIdOnElement('#bocs-edit-schedule-modal');
+
+        // Also store in a global variable that can be accessed by any script
+        window.bocsCurrentSubscriptionId = subscriptionId;
+        console.log('IMMEDIATE: Stored subscription ID in global variable');
+    } else {
+        console.log('IMMEDIATE: No subscription ID found in URL');
+    }
+})();
+
+// Direct handler for the pause confirm button
+function handlePauseConfirmClick(event) {
+    console.log('Direct pause confirm button click handler');
+
+    // Prevent default button behavior
+    event.preventDefault();
+
+    // Get the subscription ID - first try global variable
+    var subscriptionId = window.bocsCurrentSubscriptionId;
+
+    // If not found in global variable, use the helper function
+    if (!subscriptionId) {
+        subscriptionId = getSubscriptionId();
+    }
+
+    // If still not found, try one last direct URL check
+    if (!subscriptionId) {
+        var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+        if (urlMatch && urlMatch[1]) {
+            subscriptionId = urlMatch[1];
+            console.log('Direct URL check in handler found subscription ID:', subscriptionId);
+        }
+    }
+
+    if (!subscriptionId) {
+        console.error('Could not determine subscription ID');
+        alert('Error: Could not determine which subscription to pause');
+        return;
+    }
+
+    console.log('Pausing subscription:', subscriptionId);
+
+    // Debug all possible sources of subscription ID
+    console.log('Debug subscription ID sources:');
+    console.log('- Pause modal attr:', document.getElementById('bocs-pause-subscription-modal') ? document.getElementById('bocs-pause-subscription-modal').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Edit schedule modal attr:', document.getElementById('bocs-edit-schedule-modal') ? document.getElementById('bocs-edit-schedule-modal').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Pause button attr:', document.getElementById('pause-button') ? document.getElementById('pause-button').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Pause confirm button attr:', document.getElementById('pause-confirm-button') ? document.getElementById('pause-confirm-button').getAttribute('data-subscription-id') : 'not found');
+    console.log('- BocsSubscriptions.activeSubscriptionId:', typeof BocsSubscriptions !== 'undefined' ? BocsSubscriptions.activeSubscriptionId : 'undefined');
+
+    // URL check
+    var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+    console.log('- URL match:', urlMatch ? urlMatch[1] : 'no match');
+
+    // DOM attribute check
+    console.log('- Pause modal DOM attr:', document.getElementById('bocs-pause-subscription-modal') ? document.getElementById('bocs-pause-subscription-modal').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Edit schedule modal DOM attr:', document.getElementById('bocs-edit-schedule-modal') ? document.getElementById('bocs-edit-schedule-modal').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Pause button DOM attr:', document.getElementById('pause-button') ? document.getElementById('pause-button').getAttribute('data-subscription-id') : 'not found');
+    console.log('- Pause confirm button DOM attr:', document.getElementById('pause-confirm-button') ? document.getElementById('pause-confirm-button').getAttribute('data-subscription-id') : 'not found');
+
+    // Show loading state
+    var button = document.getElementById('pause-confirm-button');
+    if (button) {
+        button.classList.add('loading');
+        button.disabled = true;
+    }
+
+    // Try to use the BocsSubscriptions API directly
+    if (typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.api && BocsSubscriptions.api.pauseSubscription) {
+        console.log('Using BocsSubscriptions.api.pauseSubscription directly with ID:', subscriptionId);
+
+        // Call the API function directly
+        BocsSubscriptions.api.pauseSubscription(subscriptionId)
+            .then(function(response) {
+                console.log('Pause subscription API response:', response);
+
+                // Hide the modal
+                var modal = document.getElementById('bocs-pause-subscription-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+
+                // Show success message
+                if (BocsSubscriptions.helpers && BocsSubscriptions.helpers.showNotification) {
+                    BocsSubscriptions.helpers.showNotification('Subscription paused successfully', 'success');
+                } else {
+                    alert('Subscription paused successfully');
+                }
+
+                // Reload the page after a short delay
+                setTimeout(function() {
+                    window.location.reload();
+                }, 2000);
+            })
+            .catch(function(error) {
+                console.error('Error pausing subscription:', error);
+
+                // Check if this is a 502 error or Internal server error (API server error)
+                if (error.message && (error.message.includes('502') || error.message.includes('Internal server error'))) {
+                    console.log('Received API error, will try AJAX fallback silently');
+                    // Don't show an error message, just try the AJAX fallback
+                    // The AJAX fallback will be handled by the pause-button-fix.js script
+
+                    // Remove any existing error notifications
+                    var notifications = document.querySelectorAll('.bocs-notification');
+                    notifications.forEach(function(notification) {
+                        notification.remove();
+                    });
+                } else {
+                    // For other errors, show an error message
+                    alert('Failed to pause subscription: ' + (error.message || 'Unknown error'));
+                }
+
+                // Reset button state
+                if (button) {
+                    button.classList.remove('loading');
+                    button.disabled = false;
+                }
+            });
+    } else {
+        // Fallback to WordPress AJAX if the API is not available
+        console.log('BocsSubscriptions API not available, falling back to AJAX');
+
+        var ajaxUrl = (typeof ajaxurl !== 'undefined') ? ajaxurl : '/wp-admin/admin-ajax.php';
+        var nonce = (typeof bocs_ajax_nonce !== 'undefined') ? bocs_ajax_nonce : '';
+
+        // Debug nonce value
+        console.log('AJAX nonce value:', nonce);
+        console.log('AJAX URL:', ajaxUrl);
+
+        // Create form data
+        var formData = new FormData();
+        formData.append('action', 'bocs_pause_subscription');
+        formData.append('subscription_id', subscriptionId);
+        formData.append('nonce', nonce);
+
+        // Debug form data
+        console.log('Form data:');
+        for (var pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+
+        // Double-check the subscription ID one last time
+        if (!subscriptionId) {
+            // Last resort - extract directly from URL
+            var lastResortMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+            if (lastResortMatch && lastResortMatch[1]) {
+                subscriptionId = lastResortMatch[1];
+                console.log('LAST RESORT: Got subscription ID directly from URL:', subscriptionId);
+                formData.set('subscription_id', subscriptionId);
+            }
+        }
+
+        // Make the request
+        fetch(ajaxUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(response) {
+            if (response.success) {
+                // Hide the modal
+                var modal = document.getElementById('bocs-pause-subscription-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+
+                // Reload the page after a short delay
+                setTimeout(function() {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                throw new Error(response.data ? response.data.message : 'Unknown error');
+            }
+        })
+        .catch(function(error) {
+            console.error('Error pausing subscription:', error);
+            alert('Failed to pause subscription: ' + (error.message || 'Unknown error'));
+
+            // Reset button state
+            if (button) {
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        });
+    }
+}
+
+// Helper function to get the subscription ID
+function getSubscriptionId() {
+    var subscriptionId = null;
+
+    // First check for our global variable
+    if (window.bocsCurrentSubscriptionId) {
+        subscriptionId = window.bocsCurrentSubscriptionId;
+        console.log('Got subscription ID from global variable:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from pause modal data attribute using vanilla JS
+    var pauseModal = document.getElementById('bocs-pause-subscription-modal');
+    if (pauseModal && pauseModal.getAttribute('data-subscription-id')) {
+        subscriptionId = pauseModal.getAttribute('data-subscription-id');
+        console.log('Got subscription ID from pause modal:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from edit schedule modal data attribute using vanilla JS
+    var editScheduleModal = document.getElementById('bocs-edit-schedule-modal');
+    if (editScheduleModal && editScheduleModal.getAttribute('data-subscription-id')) {
+        subscriptionId = editScheduleModal.getAttribute('data-subscription-id');
+        console.log('Got subscription ID from edit schedule modal:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from pause button using vanilla JS
+    var pauseButton = document.getElementById('pause-button');
+    if (pauseButton && pauseButton.getAttribute('data-subscription-id')) {
+        subscriptionId = pauseButton.getAttribute('data-subscription-id');
+        console.log('Got subscription ID from pause button:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from pause confirm button using vanilla JS
+    var pauseConfirmButton = document.getElementById('pause-confirm-button');
+    if (pauseConfirmButton && pauseConfirmButton.getAttribute('data-subscription-id')) {
+        subscriptionId = pauseConfirmButton.getAttribute('data-subscription-id');
+        console.log('Got subscription ID from pause confirm button:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from BocsSubscriptions
+    if (typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.activeSubscriptionId) {
+        subscriptionId = BocsSubscriptions.activeSubscriptionId;
+        console.log('Got subscription ID from BocsSubscriptions:', subscriptionId);
+        return subscriptionId;
+    }
+
+    // Try to get from URL
+    var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+    if (urlMatch && urlMatch[1]) {
+        subscriptionId = urlMatch[1];
+        console.log('Got subscription ID from URL:', subscriptionId);
+        return subscriptionId;
+    }
+
+    return null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Set subscription ID on all elements from global variable if available
+    if (window.bocsCurrentSubscriptionId) {
+        var globalId = window.bocsCurrentSubscriptionId;
+        console.log('Document ready: Setting subscription ID from global variable:', globalId);
+
+        // Set subscription ID on all relevant elements
+        function setIdOnElement(selector) {
+            var element = document.querySelector(selector);
+            if (element) {
+                element.setAttribute('data-subscription-id', globalId);
+                console.log('Set subscription ID on ' + selector + ':', globalId);
+            }
+        }
+
+        setIdOnElement('#bocs-pause-subscription-modal');
+        setIdOnElement('#pause-confirm-button');
+        setIdOnElement('#pause-button');
+        setIdOnElement('#bocs-edit-schedule-modal');
+    }
+
+    // When the pause button is clicked, set the subscription ID on the modal
+    var pauseButton = document.getElementById('pause-button');
+    if (pauseButton) {
+        pauseButton.addEventListener('click', function() {
+            // Try to get the subscription ID from various sources
+            var subscriptionId = window.bocsCurrentSubscriptionId;
+
+            // First try to get from the edit schedule modal
+            var editScheduleModal = document.getElementById('bocs-edit-schedule-modal');
+            if (editScheduleModal && editScheduleModal.getAttribute('data-subscription-id')) {
+                subscriptionId = editScheduleModal.getAttribute('data-subscription-id');
+                console.log('Got subscription ID from edit schedule modal:', subscriptionId);
+            }
+
+            // Try to get from BocsSubscriptions
+            if (!subscriptionId && typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.activeSubscriptionId) {
+                subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                console.log('Got subscription ID from BocsSubscriptions:', subscriptionId);
+            }
+
+            // Try to get from URL
+            if (!subscriptionId) {
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    subscriptionId = urlMatch[1];
+                    console.log('Got subscription ID from URL:', subscriptionId);
+                }
+            }
+
+            // Set the subscription ID on the modal and buttons if found
+            if (subscriptionId) {
+                // Set subscription ID on all relevant elements
+                function setIdOnElement(selector) {
+                    var element = document.querySelector(selector);
+                    if (element) {
+                        element.setAttribute('data-subscription-id', subscriptionId);
+                        console.log('Set subscription ID on ' + selector + ':', subscriptionId);
+                    }
+                }
+
+                setIdOnElement('#bocs-pause-subscription-modal');
+                setIdOnElement('#pause-confirm-button');
+                setIdOnElement('#pause-button');
+            } else {
+                console.error('Could not determine subscription ID for pause modal');
+            }
+        });
+    }
+});
+</script>
 
 <div id="bocs-cancel-subscription-modal" class="bocs-modal">
     <div class="bocs-modal-content">
@@ -726,4 +1132,4 @@ if (function_exists('bocs_log')) {
             <button class="bocs-button primary modal-confirm">Yes, Cancel Subscription</button>
         </div>
     </div>
-</div> 
+</div>
