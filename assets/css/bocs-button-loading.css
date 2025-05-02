@@ -1,0 +1,112 @@
+/**
+ * BOCS Button Loading States
+ * Improved loading state indicators for BOCS buttons
+ */
+
+/* Base button styles */
+.bocs-button,
+.create-subscription-btn {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Loading state for subscription button */
+.create-subscription-btn.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.85;
+    cursor: wait;
+}
+
+/* Hide text when loading */
+.create-subscription-btn.loading .button-text {
+    visibility: hidden;
+}
+
+/* Handle existing spinner in button */
+.create-subscription-btn svg,
+.create-subscription-btn .bocs-spinner {
+    display: none; /* Hide by default */
+}
+
+.create-subscription-btn.loading svg,
+.create-subscription-btn.loading .bocs-spinner {
+    display: inline-block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    animation: bocs-button-spinner 1s linear infinite;
+}
+
+/* Fallback spinner if no SVG exists */
+.create-subscription-btn.loading:not(:has(svg))::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: bocs-button-spinner 1s linear infinite;
+    z-index: 10;
+}
+
+/* Add a subtle background pulse animation */
+.create-subscription-btn.loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: inherit;
+    border-radius: inherit;
+    opacity: 0.6;
+    animation: bocs-button-pulse 1.5s ease-in-out infinite;
+    z-index: 5;
+}
+
+/* Spinner animation */
+@keyframes bocs-button-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pulse animation */
+@keyframes bocs-button-pulse {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Disabled state */
+.create-subscription-btn:disabled,
+.create-subscription-btn.disabled {
+    background-color: #cbd5e0 !important;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Hover effect for active buttons */
+.create-subscription-btn:not(:disabled):not(.loading):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Active/pressed state */
+.create-subscription-btn:not(:disabled):not(.loading):active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

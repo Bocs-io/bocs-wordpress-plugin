@@ -1,0 +1,85 @@
+/**
+ * BOCS Modal Button Styles
+ * Improved button states for modal actions
+ */
+
+/* Modal button base styles */
+.bocs-modal .bocs-button {
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+/* Primary button styles */
+.bocs-modal .bocs-button.primary {
+    background-color: #0073aa;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+}
+
+/* Loading state */
+.bocs-modal .bocs-button.loading {
+    color: transparent !important;
+    pointer-events: none;
+    position: relative;
+}
+
+/* Loading spinner */
+.bocs-modal .bocs-button.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: bocs-button-spinner 1s linear infinite;
+}
+
+/* Spinner animation */
+@keyframes bocs-button-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Disabled state */
+.bocs-modal .bocs-button:disabled,
+.bocs-modal .bocs-button.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Hover effect */
+.bocs-modal .bocs-button:not(:disabled):not(.loading):hover {
+    opacity: 0.9;
+}
+
+/* Active/pressed state */
+.bocs-modal .bocs-button:not(:disabled):not(.loading):active {
+    transform: translateY(1px);
+}
+
+/* Cancel button */
+.bocs-modal .bocs-button.modal-cancel {
+    background-color: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+/* Confirm button */
+.bocs-modal .bocs-button.modal-confirm {
+    margin-left: 10px;
+}
+
+/* Modal actions container */
+.bocs-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
