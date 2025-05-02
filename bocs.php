@@ -44,12 +44,12 @@ define('BOCS_DEBUG_CACHE_BUSTING', false);
 
 /**
  * Get cache busting version string
- * 
+ *
  * IMPORTANT:
  * 1. ALWAYS update cache bust versions when modifying any JS or CSS files
  * 2. ALWAYS verify the current date using system command: date "+%Y%m%d"
  * 3. Format should be YYYYMMDD.N where N is incremented for each change on the same day
- * 
+ *
  * @param string $version Base version string (typically a date in format YYYYMMDD.N)
  * @return string Modified version string with timestamp appended if debug mode is on
  */
@@ -66,17 +66,17 @@ function bocs_get_cache_bust_version($version) {
 function bocs_enqueue_dev_scripts() {
     $options = get_option('bocs_plugin_options', ['developer_mode' => 'off']);
     $developer_mode = isset($options['developer_mode']) ? sanitize_text_field($options['developer_mode']) : 'off';
-    
+
     if ($developer_mode === 'on' || isset($_GET['bocs_cache_bust'])) {
         // Enqueue the cache busting script
         wp_enqueue_script(
-            'bocs-cache-buster', 
-            plugin_dir_url(__FILE__) . 'assets/js/clear-cache.js', 
-            [], 
+            'bocs-cache-buster',
+            plugin_dir_url(__FILE__) . 'assets/js/clear-cache.js',
+            [],
             time(), // Always use current time to prevent caching
             true
         );
-        
+
         // Pass developer mode status to JavaScript
         wp_localize_script(
             'bocs-cache-buster',
@@ -86,7 +86,7 @@ function bocs_enqueue_dev_scripts() {
                 'cacheBustTime' => time()
             ]
         );
-        
+
         // Force debug cache busting
         if (!defined('BOCS_DEBUG_CACHE_BUSTING')) {
             define('BOCS_DEBUG_CACHE_BUSTING', true);
@@ -213,7 +213,7 @@ add_action('plugins_loaded', 'bocs_load_textdomain');
 
 /**
  * Disable default WooCommerce processing email for Bocs renewal orders
- * 
+ *
  * @since    0.0.131
  * @param    bool     $enabled  Whether the email is enabled
  * @param    WC_Order $order    The order object
@@ -224,26 +224,26 @@ function bocs_disable_wc_processing_email($enabled, $order) {
     if (!$enabled) {
         return $enabled;
     }
-    
+
     // Check if this is a Bocs renewal order with processing status
     if (is_object($order) && method_exists($order, 'get_meta') && method_exists($order, 'get_status')) {
         $subscription_id = $order->get_meta('__bocs_subscription_id');
         $bocs_order_status = $order->get_meta('__bocs_order_status');
-        
+
         // Only disable for orders with processing status, Bocs subscription ID, and "upcoming" Bocs status
         if (!empty($subscription_id) && $order->get_status() === 'processing' && $bocs_order_status === 'upcoming') {
             error_log('BOCS DEBUG [Global Filter]: Disabling default WooCommerce processing email for order #' . $order->get_id());
             return false;
         }
     }
-    
+
     return $enabled;
 }
 add_filter('woocommerce_email_enabled_customer_processing_order', 'bocs_disable_wc_processing_email', 10, 2);
 
 /**
  * Check if another instance of Bocs plugin is already active
- * 
+ *
  * @since    0.0.109
  * @return   void
  */
@@ -408,12 +408,12 @@ function activate_bocs_plugin() {
         $bocs_account->register_bocs_view_subscription_endpoint();
         $bocs_account->register_bocs_update_box_endpoint();
         $bocs_account->register_bocs_edit_details_endpoint();
-        
+
         // Call Bocs class activation method
         $bocs = new Bocs();
         $bocs->auto_add_bocs_keys();
         Bocs::activate();
-        
+
         flush_rewrite_rules();
     } catch (Exception $e) {
         deactivate_plugins(plugin_basename(__FILE__));
@@ -442,7 +442,7 @@ function activate_bocs_plugin() {
 function deactivate_bocs_plugin() {
     // Call Bocs class deactivation method
     Bocs::deactivate();
-    
+
     // Clean up any scheduled actions
     if (function_exists('as_unschedule_all_actions')) {
         as_unschedule_all_actions('', array(), 'bocs');
@@ -533,14 +533,14 @@ function bocs_locate_template($template, $template_name, $template_path, $defaul
             'template_path' => $template_path
         ]);
     }
-    
+
     // Handle payment methods template
     if ($template_name === 'myaccount/payment-methods.php') {
         // Look for template in yourtheme/bocs-wordpress/ directory first
         $theme_template = locate_template(array(
             'bocs-wordpress/myaccount/payment-methods.php',
         ));
-        
+
         if ($theme_template) {
             if (class_exists('Bocs_Log_Handler')) {
                 $logger->insert_log('debug', '[Template Override] Found theme template', [
@@ -549,7 +549,7 @@ function bocs_locate_template($template, $template_name, $template_path, $defaul
             }
             return $theme_template;
         }
-        
+
         // Next, look in the plugin's templates directory
         $plugin_template = plugin_dir_path(__FILE__) . 'templates/myaccount/payment-methods.php';
         if (file_exists($plugin_template)) {
@@ -561,28 +561,28 @@ function bocs_locate_template($template, $template_name, $template_path, $defaul
             return $plugin_template;
         }
     }
-    
+
     // Handle other BOCS templates
-    if (strpos($template_name, 'bocs-') === 0 || 
-        strpos($template_name, 'emails/bocs-') !== false || 
+    if (strpos($template_name, 'bocs-') === 0 ||
+        strpos($template_name, 'emails/bocs-') !== false ||
         strpos($template_name, 'emails/plain/bocs-') !== false) {
-        
+
         // Look for template in yourtheme/bocs-wordpress/ directory first
         $theme_template = locate_template(array(
             'bocs-wordpress/' . $template_name,
         ));
-        
+
         if ($theme_template) {
             return $theme_template;
         }
-        
+
         // Next, look in the plugin's templates directory
         $plugin_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
         if (file_exists($plugin_template)) {
             return $plugin_template;
         }
     }
-    
+
     return $template;
 }
 
@@ -590,15 +590,15 @@ function bocs_locate_template($template, $template_name, $template_path, $defaul
  * Override WooCommerce email templates with our custom Bocs email templates
  */
 function bocs_override_wc_email_templates($located, $template_name, $args, $template_path, $default_path) {
-    // Only target email templates 
+    // Only target email templates
     if (strpos($template_name, 'emails/') === 0) {
         // Check if we have a Bocs version of this template
         $bocs_template = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
-        
+
         if (file_exists($bocs_template)) {
             return $bocs_template;
         }
-        
+
         // Also handle email-styles.php specifically since it's critical for branding
         if ($template_name === 'emails/email-styles.php') {
             $bocs_styles = plugin_dir_path(__FILE__) . 'templates/emails/email-styles.php';
@@ -606,7 +606,7 @@ function bocs_override_wc_email_templates($located, $template_name, $args, $temp
                 return $bocs_styles;
             }
         }
-        
+
         // Also handle email-header.php and email-footer.php
         if ($template_name === 'emails/email-header.php' || $template_name === 'emails/email-footer.php') {
             $bocs_file = plugin_dir_path(__FILE__) . 'templates/' . $template_name;
@@ -681,7 +681,7 @@ function run_plugin() {
         add_action('woocommerce_init', 'run_plugin', 20); // Higher priority to ensure WC is fully loaded
         return;
     }
-    
+
     if (bocs_check_woocommerce()) {
         $plugin = new Bocs();
         $plugin->run();
@@ -699,7 +699,7 @@ add_action('plugins_loaded', function() {
     if (function_exists('WC')) {
         // Hook with a delay to ensure WooCommerce is fully initialized
         add_action('woocommerce_init', 'run_plugin', 20);
-        
+
         // Add hook to run auto_add_bocs_keys on every page load
         add_action('woocommerce_init', function() {
             if (class_exists('Bocs')) {

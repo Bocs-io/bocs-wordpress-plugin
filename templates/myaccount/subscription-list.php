@@ -26,8 +26,8 @@ wp_enqueue_script('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/js/bocs-ord
 // Add modal button styles
 wp_enqueue_style('bocs-modal-buttons', BOCS_PLUGIN_URL . 'assets/css/bocs-modal-buttons.css', array(), "20250501.1");
 
-// Add pause button fix script
-wp_enqueue_script('bocs-pause-button-fix', BOCS_PLUGIN_URL . 'assets/js/pause-button-fix.js', array('jquery'), "20250502.6", true);
+// Add consolidated pause subscription script
+wp_enqueue_script('bocs-pause-subscription', BOCS_PLUGIN_URL . 'assets/js/bocs-pause-subscription.js', array('jquery'), "20250503.1", true);
 
 // Add Stripe JS if available
 if (class_exists('WC_Gateway_Stripe') && function_exists('wc_stripe_get_publishable_key')) {
@@ -59,10 +59,10 @@ if (wp_script_is('bocs-subscriptions', 'enqueued')) {
     wp_add_inline_script('bocs-subscriptions', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
 }
 
-// Also add to bocs-pause-button-fix.js if it exists
-if (wp_script_is('bocs-pause-button-fix', 'enqueued')) {
-    wp_add_inline_script('bocs-pause-button-fix', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
-    wp_add_inline_script('bocs-pause-button-fix', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
+// Also add to bocs-pause-subscription.js if it exists
+if (wp_script_is('bocs-pause-subscription', 'enqueued')) {
+    wp_add_inline_script('bocs-pause-subscription', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
+    wp_add_inline_script('bocs-pause-subscription', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
 }
 
 // Add a global script tag to ensure the nonce is available to all scripts
