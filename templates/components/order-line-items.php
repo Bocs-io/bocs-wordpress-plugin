@@ -40,6 +40,8 @@ $tax_display_shop = get_option('woocommerce_tax_display_shop', 'excl');
 $tax_display_cart = get_option('woocommerce_tax_display_cart', 'excl');
 $tax_rate = 0.1; // 10% GST for Australia
 
+$display_tax = ($subtotal_tax > 0) ? $subtotal_tax : (is_array($tax) ? 0 : (float)$tax);
+
 // Note: CSS and JS should be enqueued by the parent template, not here
 // to avoid duplicate enqueues
 ?>
@@ -150,9 +152,13 @@ $tax_rate = 0.1; // 10% GST for Australia
             ?>
         </tbody>
         <tfoot>
-        <?php
-            // Show tax row if tax display is enabled and either tax is not empty or we have calculated tax
-            if ($tax_display && (!empty($tax) || $total_tax > 0)): 
+        <?php 
+            // Calculate the total GST for display
+            $total_tax = $calculated_tax + $shipping_tax;
+            
+            // Define display_tax regardless of whether we show the tax row
+            // $display_tax = ($total_tax > 0) ? $total_tax : (is_array($tax) ? 0 : (float)$tax);
+            $display_tax = ($calculated_tax > 0) ? $calculated_tax : (is_array($tax) ? 0 : (float)$tax);
             ?>
             <tr class="bocs-tax-row">
                 <th colspan="3"><?php esc_html_e('GST', 'bocs-wordpress'); ?></th>
@@ -172,7 +178,6 @@ $tax_rate = 0.1; // 10% GST for Australia
                     ?>
                 </td>
             </tr>
-            <?php endif; ?>
             <tr class="bocs-subtotal-row">
                 <th colspan="3"><?php esc_html_e('Subtotal', 'bocs-wordpress'); ?> <small><?php esc_html_e('(excl. GST)', 'bocs-wordpress'); ?></small></th>
                 <td class="text-right" data-title="<?php esc_attr_e('Subtotal', 'bocs-wordpress'); ?>">
@@ -255,14 +260,6 @@ $tax_rate = 0.1; // 10% GST for Australia
                 </td>
             </tr>
             <?php endif; ?>
-            
-            <?php 
-            // Calculate the total GST for display
-            $total_tax = $calculated_tax + $shipping_tax;
-            
-            // Define display_tax regardless of whether we show the tax row
-            $display_tax = ($total_tax > 0) ? $total_tax : (is_array($tax) ? 0 : (float)$tax);
-            ?>
             
             <tr class="bocs-total-row">
                 <th colspan="3"><?php esc_html_e('Subscription Total', 'bocs-wordpress'); ?> <small><?php esc_html_e('(excl. GST)', 'bocs-wordpress'); ?></small></th>

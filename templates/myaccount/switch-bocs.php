@@ -14,7 +14,7 @@ defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
 wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), bocs_get_cache_bust_version('20250424.1'), true);
-wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), bocs_get_cache_bust_version('20250424.1'));
+wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), '20250501.1');
 
 // Add additional inline styles for product selection
 wp_add_inline_style('bocs-switch-bocs', '
@@ -124,7 +124,7 @@ wp_add_inline_style('bocs-switch-bocs', '
 ');
 
 // Also include the subscription styles since we want to maintain visual consistency
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.1");
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.2");
 
 // Initialize helper
 $helper = new Bocs_Helper();

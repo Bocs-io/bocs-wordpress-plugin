@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.2");
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.3");
 wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250501.3", true);
 
 // Add order line items component
@@ -376,15 +376,98 @@ if (function_exists('bocs_log')) {
                         $items = array();
                     }
                     
-                    $subtotal = isset($subscription['subtotal']) ? $subscription['subtotal'] : 0;
-                    $discount = isset($subscription['discount']) ? $subscription['discount'] : 0;
-                    $shipping = isset($subscription['shipping']) ? $subscription['shipping'] : 0;
-                    $tax = isset($subscription['taxTotal']) ? $subscription['taxTotal'] : 0;
-                    $total = isset($subscription['total']) ? $subscription['total'] : $price;
+                    // Calculate subtotal based on line items
+                    $subtotal = 0;
+                    $subtotal_tax = 0;
+                    
+                    foreach ($items as $item) {
+                        $item_price = isset($item['price']) ? floatval($item['price']) : 0;
+                        $item_quantity = isset($item['quantity']) ? intval($item['quantity']) : 1;
+                        $item_subtotal = $item_price * $item_quantity;
+                        $subtotal += $item_subtotal;
+                        
+                        // Calculate subtotal tax if tax data is available
+                        if (isset($item['tax']) && is_numeric($item['tax'])) {
+                            $subtotal_tax += floatval($item['tax']) * $item_quantity;
+                        }
+                    }
+                    
+                    // Get discount from subscription data
+                    $discount = isset($subscription['discount']) ? floatval($subscription['discount']) : 0;
+                    $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
+                    
+                    // Calculate actual discount amount
+                    $discount_amount = 0;
+                    if ($discount_type === 'percent' && $discount > 0) {
+                        $discount_amount = $subtotal * ($discount / 100);
+                    } else if ($discount_type === 'fixed' && $discount > 0) {
+                        $discount_amount = $discount;
+                    }
+                    
+                    // Get shipping from WooCommerce or subscription data
+                    $shipping = isset($subscription['shipping']) ? floatval($subscription['shipping']) : 0;
+                    $shipping_tax = isset($subscription['shippingTax']) ? floatval($subscription['shippingTax']) : 0;
+                    
+                    // If shipping is not available in subscription data, try to get from WooCommerce
+                    if ($shipping <= 0 && class_exists('WC_Shipping')) {
+                        // Get customer shipping zone if available
+                        $customer_shipping_country = '';
+                        $customer_shipping_state = '';
+                        $customer_shipping_postcode = '';
+                        
+                        if (isset($delivery_address['country'])) {
+                            $customer_shipping_country = $delivery_address['country'];
+                        }
+                        if (isset($delivery_address['state'])) {
+                            $customer_shipping_state = $delivery_address['state'];
+                        }
+                        if (isset($delivery_address['postcode'])) {
+                            $customer_shipping_postcode = $delivery_address['postcode'];
+                        }
+                        
+                        if (!empty($customer_shipping_country)) {
+                            $shipping_zone = WC_Shipping_Zones::get_zone_matching_package(array(
+                                'destination' => array(
+                                    'country' => $customer_shipping_country,
+                                    'state' => $customer_shipping_state,
+                                    'postcode' => $customer_shipping_postcode,
+                                ),
+                            ));
+                            
+                            if ($shipping_zone) {
+                                $shipping_methods = $shipping_zone->get_shipping_methods(true);
+                                if (!empty($shipping_methods)) {
+                                    // Use the first available shipping method
+                                    $shipping_method = reset($shipping_methods);
+                                    if ($shipping_method) {
+                                        $shipping = $shipping_method->get_option('cost') ? floatval($shipping_method->get_option('cost')) : 0;
+                                        // Calculate shipping tax if applicable
+                                        if (wc_tax_enabled() && $shipping > 0) {
+                                            $shipping_tax_class = $shipping_method->get_option('tax_status') === 'taxable' ? $shipping_method->get_option('tax_class') : '';
+                                            $tax_rates = WC_Tax::get_shipping_tax_rates($shipping_tax_class);
+                                            $shipping_taxes = WC_Tax::calc_shipping_tax($shipping, $tax_rates);
+                                            $shipping_tax = array_sum($shipping_taxes);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Calculate total tax (subtotal tax + shipping tax)
+                    $total_tax = $subtotal_tax + $shipping_tax;
+                    
+                    // Calculate total
+                    $total = $subtotal - $discount_amount + $shipping + $total_tax;
+                    
+                    // Fall back to subscription total if calculation yields 0
+                    if ($total <= 0 && isset($subscription['total']) && $subscription['total'] > 0) {
+                        $total = $subscription['total'];
+                    }
+                    
                     $coupon_lines = isset($subscription['couponLines']) ? $subscription['couponLines'] : array();
                     
                     // Make sure discount_type and discount_percent are set for order-line-items component
-                    $discount_type = isset($subscription['discountType']) ? $subscription['discountType'] : 'percent';
                     $discount_percent = isset($subscription['discount']) ? $subscription['discount'] : '';
                     
                     // For debugging
@@ -399,39 +482,18 @@ if (function_exists('bocs_log')) {
                     
                     // Check if any products have empty names
                     $has_empty_products = false;
-                    foreach ($items as $item) {
-                        if (empty($item['name']) || $item['name'] == '0' || $item['name'] == 'Unknown product') {
-                            $has_empty_products = true;
-                            break;
-                        }
-                    }
                     
                     // Add a wrapper div with loading state and unique ID
                     $wrapper_id = 'bocs-order-details-wrapper-' . esc_attr($subscription_id);
                     echo '<div class="bocs-order-details-wrapper" id="' . $wrapper_id . '" data-subscription-id="' . esc_attr($subscription_id) . '" data-needs-loading="' . ($has_empty_products ? 'true' : 'false') . '">';
                     
-                    if ($has_empty_products) {
-                        // Show loading indicator only if we have empty products
-                        echo '<div class="bocs-order-details-loading">Retrieving product information...</div>';
-                        echo '<div class="bocs-order-details-content" style="display:none;">';
-                    } else {
-                        // Show content immediately if all products have names
-                        echo '<div class="bocs-order-details-content" style="opacity:1; visibility:visible;">';
-                    }
+                    // Show content immediately if all products have names
+                    echo '<div class="bocs-order-details-content" style="opacity:1; visibility:visible;">';
                     
                     // Include the line items component within a buffer to prevent partial display
                     ob_start();
                     include(dirname(dirname(__FILE__)) . '/components/order-line-items.php');
                     $order_content = ob_get_clean();
-                    
-                    // Only replace empty product names if we need to
-                    if ($has_empty_products) {
-                        // Replace any "Unknown product" or empty product names with a placeholder
-                        $order_content = preg_replace('/<td class="product-name"[^>]*>\s*(?:Unknown product|0)?\s*<\/td>/', '<td class="product-name"><span class="product-placeholder"></span></td>', $order_content);
-                        
-                        // Hide the entire bocs-order-details div initially
-                        $order_content = str_replace('<div class="bocs-order-details"', '<div class="bocs-order-details" style="display:none;"', $order_content);
-                    }
                     
                     // Output the buffered and modified content
                     echo $order_content;
