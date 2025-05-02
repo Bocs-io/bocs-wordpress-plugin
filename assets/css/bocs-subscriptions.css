@@ -890,3 +890,8 @@
     color: #ffffff;
     font-weight: 500;
 }
+
+/* Account Navigation Icon Styling - Follow WooCommerce style */
+.woocommerce-MyAccount-navigation-link--bocs-subscriptions a::before {
+    content: "\f021" !important; /* Font Awesome sync icon */
+}
