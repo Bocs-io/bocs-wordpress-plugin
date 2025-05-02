@@ -12,10 +12,10 @@ class Bocs_Checkout {
     public function __construct() {
         // Enable registration if cart contains BOCS subscriptions
         add_filter('woocommerce_checkout_registration_enabled', array($this, 'maybe_enable_registration'), 99);
-        
+
         // Filter checkout fields for account creation
         add_filter('woocommerce_checkout_fields', array($this, 'customize_checkout_account_creation'));
-        
+
         // Override default account creation state with high priority
         add_filter('woocommerce_create_account_default_checked', array($this, 'conditional_auto_create_account'), 99);
 
@@ -24,28 +24,28 @@ class Bocs_Checkout {
 
         // Make registration required for subscription purchases with highest priority
         add_filter('woocommerce_checkout_registration_required', array($this, 'require_registration_during_checkout'), 99);
-        
+
         // Add custom message to checkout when login is required
         add_filter('woocommerce_checkout_login_message', array($this, 'subscription_checkout_login_message'));
 
         // Ensure login form appears but doesn't block checkout display
         add_filter('woocommerce_checkout_must_be_logged_in_message', array($this, 'show_login_message_with_cart'), 10, 1);
-        
+
         // Allow checkout form to display with login form
         add_filter('woocommerce_checkout_registration_required', array($this, 'modify_registration_required_behavior'), 20);
-        
+
         // Add registration fields to checkout when needed
         add_action('woocommerce_before_checkout_billing_form', array($this, 'add_registration_fields_to_checkout'));
-        
+
         // Enhance the checkout form with login reminder
         add_action('woocommerce_before_checkout_form', array($this, 'enhance_checkout_login_form'), 10);
-        
+
         // Add custom notice for subscription products requiring login
         add_action('woocommerce_before_checkout_form', array($this, 'maybe_add_subscription_login_notice'), 9);
-        
+
         // Add styles for checkout login integration
         add_action('wp_enqueue_scripts', array($this, 'add_checkout_login_styles'));
-        
+
         // Filter WooCommerce settings to ensure guest checkout is disabled for BOCS subscriptions
         add_filter('pre_option_woocommerce_enable_guest_checkout', array($this, 'disable_guest_checkout_for_subscriptions'), 99);
 
@@ -62,17 +62,20 @@ class Bocs_Checkout {
         add_filter('woocommerce_payment_token_save_to_order_option', array($this, 'force_save_payment_method'), 10, 2);
         add_filter('wc_stripe_display_save_payment_method_checkbox', array($this, 'always_display_save_checkbox'), 100);
         add_filter('wc_stripe_save_to_account_text', array($this, 'modify_save_payment_text'));
-        
+
+        // Override the place order button with our improved version
+        add_filter('woocommerce_order_button_html', array($this, 'override_order_button'), 10, 1);
+
         // Remove original recurring totals and add our own
         add_action('woocommerce_review_order_before_order_total', array($this, 'remove_original_recurring_totals'), 5);
-        
+
         // Change Contact information heading to Account Creation for guests
         add_filter('woocommerce_billing_fields', array($this, 'change_billing_section_title'), 999);
     }
 
     /**
      * Customizes the checkout account creation fields based on Bocs ID presence
-     * 
+     *
      * @param array $fields WooCommerce checkout fields
      * @return array Modified checkout fields
      */
@@ -82,7 +85,7 @@ class Bocs_Checkout {
             if (isset($fields['account']['createaccount'])) {
                 $fields['account']['createaccount']['class'][] = 'hidden';
             }
-            
+
             // Ensure account password field is present and required
             if (!isset($fields['account']['account_password'])) {
                 $fields['account']['account_password'] = array(
@@ -100,7 +103,7 @@ class Bocs_Checkout {
 
     /**
      * Conditionally enables automatic account creation for Bocs users
-     * 
+     *
      * @param bool $checked Current account creation checkbox state
      * @return bool Modified account creation state
      */
@@ -108,29 +111,29 @@ class Bocs_Checkout {
         if ($checked) {
             return true;
         }
-        
+
         return $this->cart_contains_bocs_subscription();
     }
 
     /**
      * Gets the Bocs ID from session or cookie
-     * 
+     *
      * @return string Bocs ID or empty string if not found
      */
     private function get_bocs_id() {
         $bocs_id = '';
-        
+
         if (isset(WC()->session)) {
             $bocs_id = WC()->session->get('bocs');
         }
-        
+
         if (empty($bocs_id) && isset($_COOKIE['__bocs_id'])) {
             $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
         }
 
         return $bocs_id;
     }
-    
+
     /**
      * Force registration during the checkout process for carts containing BOCS subscriptions
      */
@@ -138,16 +141,16 @@ class Bocs_Checkout {
         if ($this->cart_contains_bocs_subscription() && !is_user_logged_in()) {
             // Force account creation by setting createaccount to 1
             $_POST['createaccount'] = 1;
-            
+
             // Also prevent guest checkout by adding filter with high priority
             add_filter('woocommerce_checkout_registration_enabled', '__return_true', 999);
             add_filter('woocommerce_checkout_registration_required', '__return_true', 20);
-            
+
             // Add validation hook to ensure account creation fields are filled
             add_action('woocommerce_checkout_process', array($this, 'validate_required_account_fields'));
         }
     }
-    
+
     /**
      * Validates that account fields are filled when purchasing a BOCS subscription
      * Called during checkout validation
@@ -158,7 +161,7 @@ class Bocs_Checkout {
             if (empty($_POST['account_username']) && empty($_POST['account_email'])) {
                 wc_add_notice(__('You must create an account to purchase subscription products. Please enter your account details.', 'bocs-wordpress'), 'error');
             }
-            
+
             // Check if password is set
             if (empty($_POST['account_password'])) {
                 wc_add_notice(__('Please enter a password to create your account for subscription management.', 'bocs-wordpress'), 'error');
@@ -176,10 +179,10 @@ class Bocs_Checkout {
         if ($this->cart_contains_bocs_subscription() && !is_user_logged_in()) {
             $account_required = true;
         }
-        
+
         return $account_required;
     }
-    
+
     /**
      * Enables registration for carts containing BOCS subscriptions if admin allows it
      *
@@ -205,7 +208,7 @@ class Bocs_Checkout {
         // Then check our specific BOCS setting
         return 'yes' === get_option('woocommerce_enable_signup_from_checkout_for_bocs_subscriptions', 'yes');
     }
-    
+
     /**
      * Check if the cart contains BOCS subscription products
      *
@@ -215,25 +218,25 @@ class Bocs_Checkout {
         if (!is_object(WC()->cart) || WC()->cart->is_empty()) {
             return false;
         }
-        
+
         // Also check for Bocs ID in session/cookie
         if (!empty($this->get_bocs_id())) {
             return true;
         }
-        
+
         foreach (WC()->cart->get_cart() as $cart_item) {
             $product = $cart_item['data'];
-            
+
             // Check if this is a BOCS subscription product
-            if (isset($cart_item['bocs_data']) || 
+            if (isset($cart_item['bocs_data']) ||
                 (is_a($product, 'WC_Product') && $product->get_meta('_bocs_product'))) {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     /**
      * Check if BOCS subscription registration is enabled in settings
      *
@@ -259,7 +262,7 @@ class Bocs_Checkout {
         if ($this->cart_contains_bocs_subscription() && !is_user_logged_in()) {
             return __('Subscription products require an account. Please log in or create an account to continue.', 'bocs-wordpress');
         }
-        
+
         return $message;
     }
 
@@ -277,12 +280,12 @@ class Bocs_Checkout {
             // The login form will be shown via the woocommerce_checkout_login_message filter
             return '';
         }
-        
+
         return $message;
     }
-    
+
     /**
-     * Modifies the registration required behavior to allow checkout form to display 
+     * Modifies the registration required behavior to allow checkout form to display
      * even when login is required for subscription products
      *
      * @param bool $registration_required Whether registration is required
@@ -293,15 +296,15 @@ class Bocs_Checkout {
         if ($this->cart_contains_bocs_subscription() && !is_user_logged_in()) {
             // Set to false to bypass WooCommerce's login gate, we'll handle login differently
             add_filter('woocommerce_checkout_registration_enabled', '__return_true', 999);
-            
+
             // We'll still require registration, but we want the form to display
             // so we return false to allow the form to render
             return false;
         }
-        
+
         return $registration_required;
     }
-    
+
     /**
      * Adds registration fields to the checkout when users aren't logged in
      * and cart contains subscription products
@@ -317,17 +320,17 @@ class Bocs_Checkout {
                     // Check the createaccount checkbox and make it checked by default
                     $('#createaccount').prop('checked', true);
                     $('#createaccount').prop('disabled', true);
-                    
+
                     // Add a hidden input to ensure the value is passed even when disabled
                     if ($('#createaccount').length && !$('#createaccount_hidden').length) {
                         $('<input type="hidden" name="createaccount" id="createaccount_hidden" value="1" />').insertAfter('#createaccount');
                     }
-                    
+
                     // Ensure account fields are visible
                     $('.create-account').show();
                     $('.woocommerce-account-fields').show();
                     $('#account_password_field').show();
-                    
+
                     // Style the password field
                     if ($('#account_password_field').length) {
                         $('#account_password_field').css({
@@ -341,11 +344,11 @@ class Bocs_Checkout {
                 });
             </script>
             <?php
-            
+
             // Add filter to ensure account fields are included
             add_filter('woocommerce_checkout_registration_required', '__return_true', 9999);
             add_filter('woocommerce_checkout_registration_enabled', '__return_true', 9999);
-            
+
             // Ensure the account password field is added to the form
             if (!empty($checkout->checkout_fields['account']) && !isset($checkout->checkout_fields['account']['account_password'])) {
                 $checkout->checkout_fields['account']['account_password'] = array(
@@ -357,15 +360,15 @@ class Bocs_Checkout {
             }
         }
     }
-    
+
     /**
      * Enhances the checkout login form with additional information for subscription purchases
      */
     public function enhance_checkout_login_form() {
         // Only modify if user is not logged in and cart contains a subscription
-        if (!is_user_logged_in() && $this->cart_contains_bocs_subscription() && 
+        if (!is_user_logged_in() && $this->cart_contains_bocs_subscription() &&
             'yes' === get_option('woocommerce_enable_checkout_login_reminder', 'yes')) {
-            
+
             // Add custom login section above the checkout
             ?>
             <div class="bocs-checkout-login-wrapper">
@@ -381,7 +384,7 @@ class Bocs_Checkout {
             <?php
         }
     }
-    
+
     /**
      * Add a notice at the top of checkout for subscription products requiring login
      */
@@ -392,7 +395,7 @@ class Bocs_Checkout {
             echo '<div class="bocs-account-creation-section" style="margin-bottom: 30px; padding: 20px; background-color: #f8f8f8; border-left: 4px solid #3C7B7C;">';
             echo '<h3 class="bocs-account-creation-heading" style="margin-top: 0; color: #3C7B7C; font-size: 1.5em; font-weight: bold;">Account Creation</h3>';
             echo '<p class="bocs-account-creation-notice" style="margin-bottom: 15px;">' . __('Please create an account to manage your subscription.', 'bocs-wordpress') . '</p>';
-            
+
             echo '<div class="bocs-account-benefits" style="margin-top: 15px;">';
             echo '<p style="font-weight: 600; color: #3C7B7C; margin-bottom: 10px;">' . __('Your account allows you to:', 'bocs-wordpress') . '</p>';
             echo '<ul style="list-style-type: disc; margin-left: 20px; margin-bottom: 15px;">';
@@ -412,11 +415,11 @@ class Bocs_Checkout {
                 __('before continuing.', 'bocs-wordpress')
             ) . '</p>';
             echo '</div>';
-            
+
             echo '</div>';
         }
     }
-    
+
     /**
      * Add custom styles for the checkout login integration
      */
@@ -425,7 +428,7 @@ class Bocs_Checkout {
         if (!is_checkout()) {
             return;
         }
-        
+
         $custom_css = "
             .bocs-checkout-login-wrapper {
                 margin-bottom: 30px;
@@ -456,7 +459,7 @@ class Bocs_Checkout {
             }
             .woocommerce-account-fields .create-account,
             #account_password_field {
-                display: block !important; 
+                display: block !important;
             }
             .woocommerce-account-fields label {
                 font-weight: bold;
@@ -498,7 +501,7 @@ class Bocs_Checkout {
                 margin-bottom: 20px;
             }
         ";
-        
+
         wp_add_inline_style('woocommerce-inline', $custom_css);
     }
 
@@ -518,22 +521,22 @@ class Bocs_Checkout {
         }
         return $value;
     }
-    
+
     /**
      * Check if current request is a REST API request
-     * 
+     *
      * @return bool True if it's a REST API request
      */
     private function is_rest_api_request() {
         if (function_exists('WC') && is_callable(array(WC(), 'is_rest_api_request'))) {
             return WC()->is_rest_api_request();
         }
-        
+
         // Fallback method if WC()->is_rest_api_request() is not available
         if (empty($_SERVER['REQUEST_URI'])) {
             return false;
         }
-        
+
         $rest_prefix = trailingslashit(rest_get_url_prefix());
         return (strpos($_SERVER['REQUEST_URI'], $rest_prefix) !== false);
     }
@@ -555,7 +558,7 @@ class Bocs_Checkout {
 
     /**
      * Modifies the save payment method text for BOCS subscriptions
-     * 
+     *
      * @since 1.0.0
      * @param string $text The current text
      * @return string Modified text
@@ -585,15 +588,33 @@ class Bocs_Checkout {
         if (!is_checkout() || !$this->cart_contains_bocs_subscription()) {
             return;
         }
-        
+
+        // Enqueue main checkout styles
         wp_enqueue_style(
             'bocs-checkout-styles',
             plugins_url('/assets/css/bocs-checkout.css', dirname(__FILE__)),
             array(),
             BOCS_VERSION
         );
+
+        // Enqueue improved button loading styles
+        wp_enqueue_style(
+            'bocs-button-loading-styles',
+            plugins_url('/assets/css/bocs-button-loading.css', dirname(__FILE__)),
+            array('bocs-checkout-styles'),
+            BOCS_VERSION
+        );
+
+        // Enqueue button loading JavaScript
+        wp_enqueue_script(
+            'bocs-button-loading-script',
+            plugins_url('/assets/js/bocs-button-loading.js', dirname(__FILE__)),
+            array('jquery'),
+            BOCS_VERSION,
+            true
+        );
     }
-    
+
     /**
      * Adds Bocs-specific customer information fields to the checkout form
      *
@@ -605,17 +626,17 @@ class Bocs_Checkout {
         if (!$this->cart_contains_bocs_subscription()) {
             return $fields;
         }
-        
+
         // Get BOCS ID
         $bocs_id = $this->get_bocs_id();
-        
+
         if (!empty($bocs_id)) {
             // Add hidden field to store BOCS ID
             $fields['billing']['bocs_id'] = array(
                 'type'  => 'hidden',
                 'default' => $bocs_id
             );
-            
+
             // Collection ID - check URL then cookie
             $collection_id = '';
             if (isset($_GET['collection']) && !empty($_GET['collection'])) {
@@ -623,14 +644,14 @@ class Bocs_Checkout {
             } elseif (isset($_COOKIE['__bocs_collection_id'])) {
                 $collection_id = sanitize_text_field($_COOKIE['__bocs_collection_id']);
             }
-            
+
             if (!empty($collection_id)) {
                 $fields['billing']['bocs_collection_id'] = array(
                     'type'  => 'hidden',
                     'default' => $collection_id
                 );
             }
-            
+
             // Frequency - check URL then cookie
             $frequency_id = '';
             if (isset($_GET['frequency']) && !empty($_GET['frequency'])) {
@@ -638,14 +659,14 @@ class Bocs_Checkout {
             } elseif (isset($_COOKIE['__bocs_frequency_id'])) {
                 $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
             }
-            
+
             if (!empty($frequency_id)) {
                 $fields['billing']['bocs_frequency'] = array(
                     'type'  => 'hidden',
                     'default' => $frequency_id
                 );
             }
-            
+
             // Frequency Time Unit from cookie
             if (isset($_COOKIE['__bocs_frequency_time_unit'])) {
                 $fields['billing']['bocs_frequency_time_unit'] = array(
@@ -653,7 +674,7 @@ class Bocs_Checkout {
                     'default' => sanitize_text_field($_COOKIE['__bocs_frequency_time_unit'])
                 );
             }
-            
+
             // Frequency Interval from cookie
             if (isset($_COOKIE['__bocs_frequency_interval'])) {
                 $fields['billing']['bocs_frequency_interval'] = array(
@@ -661,7 +682,7 @@ class Bocs_Checkout {
                     'default' => sanitize_text_field($_COOKIE['__bocs_frequency_interval'])
                 );
             }
-            
+
             // Frequency Discount from cookie
             if (isset($_COOKIE['__bocs_frequency_discount'])) {
                 $fields['billing']['bocs_frequency_discount'] = array(
@@ -669,7 +690,7 @@ class Bocs_Checkout {
                     'default' => sanitize_text_field($_COOKIE['__bocs_frequency_discount'])
                 );
             }
-            
+
             // Discount Type from cookie
             if (isset($_COOKIE['__bocs_discount_type'])) {
                 $fields['billing']['bocs_discount_type'] = array(
@@ -677,7 +698,7 @@ class Bocs_Checkout {
                     'default' => sanitize_text_field($_COOKIE['__bocs_discount_type'])
                 );
             }
-            
+
             // Total - check URL then cookie
             $total = '';
             if (isset($_GET['total']) && !empty($_GET['total'])) {
@@ -685,14 +706,14 @@ class Bocs_Checkout {
             } elseif (isset($_COOKIE['__bocs_total'])) {
                 $total = sanitize_text_field($_COOKIE['__bocs_total']);
             }
-            
+
             if (!empty($total)) {
                 $fields['billing']['bocs_total'] = array(
                     'type'  => 'hidden',
                     'default' => $total
                 );
             }
-            
+
             // Discount - check URL then cookie
             $discount = '';
             if (isset($_GET['discount']) && !empty($_GET['discount'])) {
@@ -700,14 +721,14 @@ class Bocs_Checkout {
             } elseif (isset($_COOKIE['__bocs_discount'])) {
                 $discount = sanitize_text_field($_COOKIE['__bocs_discount']);
             }
-            
+
             if (!empty($discount)) {
                 $fields['billing']['bocs_discount'] = array(
                     'type'  => 'hidden',
                     'default' => $discount
                 );
             }
-            
+
             // Price/Subtotal - check URL then cookie
             $price = '';
             if (isset($_GET['price']) && !empty($_GET['price'])) {
@@ -715,7 +736,7 @@ class Bocs_Checkout {
             } elseif (isset($_COOKIE['__bocs_subtotal'])) {
                 $price = sanitize_text_field($_COOKIE['__bocs_subtotal']);
             }
-            
+
             if (!empty($price)) {
                 $fields['billing']['bocs_price'] = array(
                     'type'  => 'hidden',
@@ -723,10 +744,10 @@ class Bocs_Checkout {
                 );
             }
         }
-        
+
         return $fields;
     }
-    
+
     /**
      * Adds BOCS subscription information to the checkout page
      */
@@ -735,32 +756,32 @@ class Bocs_Checkout {
         if (!$this->cart_contains_bocs_subscription()) {
             return;
         }
-        
+
         // Get frequency information
         $frequency_id = '';
         $frequency_interval = '';
         $frequency_unit = '';
-        
+
         // Check URL params first, then cookies
         if (isset($_GET['frequency']) && !empty($_GET['frequency'])) {
             $frequency_id = sanitize_text_field($_GET['frequency']);
         } elseif (isset($_COOKIE['__bocs_frequency_id'])) {
             $frequency_id = sanitize_text_field($_COOKIE['__bocs_frequency_id']);
         }
-        
+
         if (isset($_COOKIE['__bocs_frequency_interval'])) {
             $frequency_interval = sanitize_text_field($_COOKIE['__bocs_frequency_interval']);
         }
-        
+
         if (isset($_COOKIE['__bocs_frequency_time_unit'])) {
             $frequency_unit = sanitize_text_field($_COOKIE['__bocs_frequency_time_unit']);
         }
-        
+
         // Only display if we have frequency information
         if (!empty($frequency_id) && (!empty($frequency_interval) || !empty($frequency_unit))) {
             // Format the subscription details
             $subscription_text = __('Subscription', 'bocs-wordpress');
-            
+
             if (!empty($frequency_interval) && !empty($frequency_unit)) {
                 // Format display text based on frequency unit
                 if ($frequency_unit === 'day') {
@@ -772,32 +793,32 @@ class Bocs_Checkout {
                 } else {
                     $unit_text = $frequency_unit;
                 }
-                
+
                 $subscription_text = sprintf(
                     __('Subscription: Every %1$s %2$s', 'bocs-wordpress'),
                     $frequency_interval,
                     $unit_text
                 );
             }
-            
+
             // Get discount if available
             $discount_text = '';
             if (isset($_COOKIE['__bocs_frequency_discount']) && !empty($_COOKIE['__bocs_frequency_discount'])) {
                 $discount = sanitize_text_field($_COOKIE['__bocs_frequency_discount']);
                 $discount_type = isset($_COOKIE['__bocs_discount_type']) ? sanitize_text_field($_COOKIE['__bocs_discount_type']) : 'fixed_cart';
-                
+
                 if ($discount_type === 'percent') {
                     $discount_text = sprintf(__('(%s%% discount)', 'bocs-wordpress'), $discount);
                 } else {
                     $discount_text = sprintf(__('($%s discount)', 'bocs-wordpress'), $discount);
                 }
             }
-            
+
             // Display subscription information
             echo '<div class="bocs-subscription-info" style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #4e3dc8;">';
             echo '<h3 style="margin-top: 0; color: #4e3dc8;">' . __('Subscription Details', 'bocs-wordpress') . '</h3>';
             echo '<p style="font-size: 16px;"><strong>' . $subscription_text . '</strong> ' . $discount_text . '</p>';
-            
+
             // Add a note about managing subscriptions
             echo '<p style="font-size: 14px;">' . __('You can manage this subscription from your account dashboard after purchase.', 'bocs-wordpress') . '</p>';
             echo '</div>';
@@ -814,21 +835,21 @@ class Bocs_Checkout {
         if (!$order_id) {
             return;
         }
-        
+
         // Get the order
         $order = wc_get_order($order_id);
-        
+
         // Check if this is a BOCS order by looking for BOCS ID
         $bocs_id = isset($_POST['bocs_id']) ? sanitize_text_field($_POST['bocs_id']) : '';
-        
+
         if (empty($bocs_id) && isset($_COOKIE['__bocs_id'])) {
             $bocs_id = sanitize_text_field($_COOKIE['__bocs_id']);
         }
-        
+
         if (!empty($bocs_id)) {
             // Save BOCS ID
             $order->update_meta_data('_bocs_id', $bocs_id);
-            
+
             // Save Collection ID
             $collection_id = isset($_POST['bocs_collection_id']) ? sanitize_text_field($_POST['bocs_collection_id']) : '';
             if (empty($collection_id) && isset($_COOKIE['__bocs_collection_id'])) {
@@ -837,7 +858,7 @@ class Bocs_Checkout {
             if (!empty($collection_id)) {
                 $order->update_meta_data('_bocs_collection_id', $collection_id);
             }
-            
+
             // Save Frequency information
             $frequency_id = isset($_POST['bocs_frequency']) ? sanitize_text_field($_POST['bocs_frequency']) : '';
             if (empty($frequency_id) && isset($_COOKIE['__bocs_frequency_id'])) {
@@ -846,7 +867,7 @@ class Bocs_Checkout {
             if (!empty($frequency_id)) {
                 $order->update_meta_data('_bocs_frequency_id', $frequency_id);
             }
-            
+
             // Save Frequency Time Unit
             $frequency_time_unit = isset($_POST['bocs_frequency_time_unit']) ? sanitize_text_field($_POST['bocs_frequency_time_unit']) : '';
             if (empty($frequency_time_unit) && isset($_COOKIE['__bocs_frequency_time_unit'])) {
@@ -855,7 +876,7 @@ class Bocs_Checkout {
             if (!empty($frequency_time_unit)) {
                 $order->update_meta_data('_bocs_frequency_time_unit', $frequency_time_unit);
             }
-            
+
             // Save Frequency Interval
             $frequency_interval = isset($_POST['bocs_frequency_interval']) ? sanitize_text_field($_POST['bocs_frequency_interval']) : '';
             if (empty($frequency_interval) && isset($_COOKIE['__bocs_frequency_interval'])) {
@@ -864,7 +885,7 @@ class Bocs_Checkout {
             if (!empty($frequency_interval)) {
                 $order->update_meta_data('_bocs_frequency_interval', $frequency_interval);
             }
-            
+
             // Save Frequency Discount
             $frequency_discount = isset($_POST['bocs_frequency_discount']) ? sanitize_text_field($_POST['bocs_frequency_discount']) : '';
             if (empty($frequency_discount) && isset($_COOKIE['__bocs_frequency_discount'])) {
@@ -873,7 +894,7 @@ class Bocs_Checkout {
             if (!empty($frequency_discount)) {
                 $order->update_meta_data('_bocs_frequency_discount', $frequency_discount);
             }
-            
+
             // Save Discount Type
             $discount_type = isset($_POST['bocs_discount_type']) ? sanitize_text_field($_POST['bocs_discount_type']) : '';
             if (empty($discount_type) && isset($_COOKIE['__bocs_discount_type'])) {
@@ -882,7 +903,7 @@ class Bocs_Checkout {
             if (!empty($discount_type)) {
                 $order->update_meta_data('_bocs_discount_type', $discount_type);
             }
-            
+
             // Save Total
             $total = isset($_POST['bocs_total']) ? sanitize_text_field($_POST['bocs_total']) : '';
             if (empty($total) && isset($_COOKIE['__bocs_total'])) {
@@ -891,7 +912,7 @@ class Bocs_Checkout {
             if (!empty($total)) {
                 $order->update_meta_data('_bocs_total', $total);
             }
-            
+
             // Save Discount
             $discount = isset($_POST['bocs_discount']) ? sanitize_text_field($_POST['bocs_discount']) : '';
             if (empty($discount) && isset($_COOKIE['__bocs_discount'])) {
@@ -900,7 +921,7 @@ class Bocs_Checkout {
             if (!empty($discount)) {
                 $order->update_meta_data('_bocs_discount', $discount);
             }
-            
+
             // Save Price/Subtotal
             $price = isset($_POST['bocs_price']) ? sanitize_text_field($_POST['bocs_price']) : '';
             if (empty($price) && isset($_COOKIE['__bocs_subtotal'])) {
@@ -909,7 +930,7 @@ class Bocs_Checkout {
             if (!empty($price)) {
                 $order->update_meta_data('_bocs_price', $price);
             }
-            
+
             // Save the order meta
             $order->save();
         }
@@ -922,14 +943,14 @@ class Bocs_Checkout {
         if (!$this->cart_contains_bocs_subscription()) {
             return;
         }
-        
+
         // Remove the action that displays recurring totals
         remove_action('woocommerce_review_order_after_order_total', 'wcs_display_recurring_totals', 10);
-        
+
         // Add our own action to display recurring totals in the proper position
         add_action('woocommerce_review_order_after_order_total', array($this, 'display_custom_recurring_totals'), 10);
     }
-    
+
     /**
      * Displays our custom recurring totals template
      */
@@ -937,7 +958,7 @@ class Bocs_Checkout {
         if (!$this->cart_contains_bocs_subscription()) {
             return;
         }
-        
+
         // Static text with minimal formatting, no dynamic price calculation
         echo '<tr class="bocs-recurring-total"><th>Recurring total</th><td data-title="Recurring total">Same as order total</td></tr>';
     }
@@ -963,7 +984,42 @@ class Bocs_Checkout {
                 <?php
             });
         }
-        
+
         return $fields;
+    }
+
+    /**
+     * Overrides the default order button with our improved version for BOCS subscriptions
+     *
+     * @param string $button_html The default button HTML
+     * @return string Modified button HTML
+     */
+    public function override_order_button($button_html) {
+        // Only override for BOCS subscriptions
+        if (!$this->cart_contains_bocs_subscription()) {
+            return $button_html;
+        }
+
+        // Get the template path
+        $template_path = plugin_dir_path(dirname(__FILE__)) . 'templates/checkout/subscription-button.php';
+
+        // Check if template exists
+        if (file_exists($template_path)) {
+            ob_start();
+            include $template_path;
+            return ob_get_clean();
+        }
+
+        // Fallback to default button with some enhancements
+        if (strpos($button_html, 'class="') !== false) {
+            $button_html = str_replace('class="', 'class="create-subscription-btn ', $button_html);
+        } else {
+            $button_html = str_replace('<button', '<button class="create-subscription-btn"', $button_html);
+        }
+
+        // Add aria attributes
+        $button_html = str_replace('<button', '<button aria-busy="false" aria-live="polite" data-initialized="false"', $button_html);
+
+        return $button_html;
     }
 }

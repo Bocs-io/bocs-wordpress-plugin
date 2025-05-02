@@ -1,6 +1,6 @@
 /**
  * BOCS Subscriptions JavaScript
- * 
+ *
  * Handles the frontend functionality for the BOCS subscriptions accordion layout
  * and subscription management features.
  */
@@ -17,17 +17,17 @@
         init: function() {
             try {
                 console.log('BocsSubscriptions: Initializing');
-                
+
                 // Check if the list exists
                 if ($('#bocs-subscriptions-list').length === 0) {
                     console.log('BocsSubscriptions: No subscription list found in DOM');
                     return;
                 }
-                
+
                 this.initAccordion();
                 this.bindEvents();
                 this.setupModals();
-                
+
                 console.log('BocsSubscriptions: Initialization complete');
             } catch (error) {
                 console.error('BocsSubscriptions: Error during initialization', error);
@@ -38,10 +38,10 @@
         initAccordion: function() {
             try {
                 console.log('BocsSubscriptions: Initializing accordion');
-                
+
                 // Ensure all accordions are closed on page load
                 $('.bocs-subscription-details').hide();
-                
+
                 // Reset any active states that might be present
                 $('.bocs-subscription-item').removeClass('active');
                 $('.bocs-toggle-icon').removeClass('open');
@@ -51,16 +51,16 @@
                     const firstItem = $('.bocs-subscription-item').first();
                     const firstDetails = firstItem.find('.bocs-subscription-details');
                     const firstToggle = firstItem.find('.bocs-toggle-icon');
-                    
+
                     // Show the first item's details
                     firstDetails.show();
-                    
+
                     // Add active and open classes
                     firstItem.addClass('active');
                     firstItem.addClass('open');
                     firstToggle.addClass('open');
                     firstDetails.addClass('active');
-                    
+
                     // Store the active subscription ID
                     BocsSubscriptions.activeSubscriptionId = firstItem.data('subscription-id');
                     console.log('BocsSubscriptions: Activated first subscription', BocsSubscriptions.activeSubscriptionId);
@@ -72,10 +72,10 @@
                         const subscriptionItem = $(this).closest('.bocs-subscription-item');
                         const details = subscriptionItem.find('.bocs-subscription-details');
                         const toggleIcon = subscriptionItem.find('.bocs-toggle-icon');
-                        
+
                         // Toggle the details
                         details.slideToggle(300);
-                        
+
                         // Toggle active class and icon
                         subscriptionItem.toggleClass('active');
                         subscriptionItem.toggleClass('open');
@@ -98,7 +98,7 @@
                         console.error('BocsSubscriptions: Error in accordion click handler', error);
                     }
                 });
-                
+
                 console.log('BocsSubscriptions: Accordion initialized');
             } catch (error) {
                 console.error('BocsSubscriptions: Error initializing accordion', error);
@@ -112,7 +112,7 @@
             $('.edit-frequency').on('click', this.handlers.editFrequency);
             $('.edit-address').on('click', this.handlers.editAddress);
             $('.edit-payment').on('click', this.handlers.editPayment);
-            
+
             // Action buttons
             $('.early-renewal').on('click', function(e) {
                 console.log('Early renewal button clicked');
@@ -120,10 +120,10 @@
             });
             // $('.edit-contents').on('click', this.handlers.editContents);
             // $('.change-box').on('click', this.handlers.changeBox);
-            
+
             // Pause subscription button
             $('#pause-button').on('click', this.handlers.pauseSubscription);
-            
+
             // Form submissions
             $('#edit-schedule-form').on('submit', this.handlers.saveSchedule);
             $('#edit-frequency-form').on('submit', this.handlers.saveFrequency);
@@ -137,30 +137,30 @@
             $('.bocs-modal-close').on('click', function() {
                 $(this).closest('.bocs-modal').css('display', 'none');
             });
-            
+
             // Close modal when clicking cancel button
             $('.bocs-modal .cancel, .bocs-modal .modal-cancel').on('click', function() {
                 $(this).closest('.bocs-modal').css('display', 'none');
             });
-            
+
             // Close modal when clicking outside
             $(window).on('click', function(event) {
                 if ($(event.target).hasClass('bocs-modal')) {
                     $('.bocs-modal').css('display', 'none');
                 }
             });
-            
+
             // Country change handler for address modal
             $('#country').on('change', function() {
                 const country = $(this).val();
                 const stateSelect = $('#state');
-                
+
                 // Save current state value
                 const currentState = stateSelect.val();
-                
+
                 // Reset state options based on country
                 stateSelect.empty();
-                
+
                 if (country === 'AU') {
                     // Australian states
                     stateSelect.append(new Option('Victoria', 'VIC'));
@@ -192,13 +192,13 @@
                     stateSelect.append(new Option('Northern Ireland', 'Northern Ireland'));
                     // Add more UK counties as needed
                 }
-                
+
                 // Try to restore previous selection or default to first option
                 if (stateSelect.find(`option[value="${currentState}"]`).length) {
                     stateSelect.val(currentState);
                 }
             });
-            
+
             // Debug which modals exist
             console.log('Available modals:', $('.bocs-modal').map(function() {
                 return '#' + $(this).attr('id');
@@ -212,7 +212,7 @@
                 try {
                     const url = `${bocsSubscriptionsData.apiUrl}${endpoint}`;
                     console.log(`API Request: ${method} ${url}`, data ? data : '(no data)');
-                    
+
                     const options = {
                         method: method,
                         headers: {
@@ -222,22 +222,22 @@
                             'Authorization': bocsSubscriptionsData.headers.authorization
                         }
                     };
-                    
+
                     if (data && (method === 'POST' || method === 'PUT')) {
                         options.body = JSON.stringify(data);
                     }
-                    
+
                     console.log('Request options:', {...options, headers: {...options.headers, 'Authorization': '[HIDDEN]'}});
                     console.log('Request body:', options.body || 'No body');
-                    
+
                     const response = await fetch(url, options);
-                    
+
                     // Log response status
                     console.log(`API Response status: ${response.status} ${response.statusText}`);
-                    
+
                     // Clone the response so we can log it and still use it
                     const clonedResponse = response.clone();
-                    
+
                     // Log full response for debugging
                     try {
                         const textResponse = await clonedResponse.text();
@@ -245,70 +245,173 @@
                     } catch (err) {
                         console.error('Error logging response text:', err);
                     }
-                    
+
                     const responseData = await response.json();
                     console.log('API Response data:', responseData);
-                    
+
                     if (!response.ok) {
                         console.error('API Error:', responseData);
-                        throw new Error(responseData.message || 'API request failed');
+
+                        // Handle specific error codes
+                        if (response.status === 502) {
+                            // For Bad Gateway errors, try to use the AJAX fallback
+                            console.log('API returned 502 Bad Gateway, will try AJAX fallback');
+
+                            // For pause subscription, we'll handle this specially
+                            if (endpoint.includes('/pause')) {
+                                console.log('This is a pause subscription request, will use AJAX fallback silently');
+                                // Return a special object that indicates we should use the fallback
+                                return {
+                                    useFallback: true,
+                                    message: 'API server error (502). Using fallback method...'
+                                };
+                            } else {
+                                throw new Error('API server error (502). Trying fallback method...');
+                            }
+                        } else if (response.status === 401 || response.status === 403) {
+                            throw new Error('Authentication error. Please refresh the page and try again.');
+                        } else {
+                            throw new Error(responseData.message || 'API request failed');
+                        }
                     }
-                    
+
                     return responseData;
                 } catch (error) {
                     console.error('API Request Error:', error);
-                    BocsSubscriptions.helpers.showNotification(error.message || 'Request failed', 'error');
+
+                    // Special handling for pause subscription requests
+                    if (endpoint.includes('/pause')) {
+                        // For pause subscription, we'll handle 502 errors specially
+                        if (error.message && (error.message.includes('502') || error.message.includes('Internal server error'))) {
+                            console.log('API Request Error for pause subscription, will use fallback silently');
+                            // Return a special object that indicates we should use the fallback
+                            return {
+                                useFallback: true,
+                                message: 'API server error. Using fallback method...'
+                            };
+                        }
+                    }
+
+                    // Only show notification for non-502 errors (we'll handle 502 with fallback)
+                    if (!error.message || (!error.message.includes('502') && !error.message.includes('Internal server error'))) {
+                        BocsSubscriptions.helpers.showNotification(error.message || 'Request failed', 'error');
+                    }
+
                     throw error;
                 }
             },
-            
+
             // Update subscription frequency
             updateFrequency: function(subscriptionId, frequencyData) {
-                return this.request(`subscriptions/${subscriptionId}`, 'PUT', { 
-                    frequency: frequencyData 
+                return this.request(`subscriptions/${subscriptionId}`, 'PUT', {
+                    frequency: frequencyData
                 });
             },
-            
+
             // Update next payment date
             updateSchedule: function(subscriptionId, nextPaymentDate) {
-                return this.request(`subscriptions/${subscriptionId}`, 'PUT', { 
-                    nextPaymentDateGmt: nextPaymentDate 
+                return this.request(`subscriptions/${subscriptionId}`, 'PUT', {
+                    nextPaymentDateGmt: nextPaymentDate
                 });
             },
-            
+
             // Update delivery address
             updateAddress: function(subscriptionId, address) {
                 console.log('updateAddress: Called with subscription ID', subscriptionId);
                 console.log('updateAddress: Address data', address);
-                
+
                 // Ensure the shipping object has the correct property names
                 if (address && address.shipping) {
                     // The API might expect different property names than what we're using
                     // Log this for debugging
                     console.log('updateAddress: Shipping data before formatting', address.shipping);
-                    
+
                     // Some APIs expect camelCase and others expect snake_case, let's ensure we're using the right format
                     // This is just a logging step to help identify issues
                 }
-                
+
                 return this.request(`subscriptions/${subscriptionId}`, 'PUT', address);
             },
-            
+
             // Update payment method
             updatePaymentMethod: function(subscriptionId, paymentMethodId) {
-                return this.request(`subscriptions/${subscriptionId}/payment`, 'PUT', { 
-                    payment_method_id: paymentMethodId 
+                return this.request(`subscriptions/${subscriptionId}/payment`, 'PUT', {
+                    payment_method_id: paymentMethodId
                 });
             },
-            
+
             // Cancel subscription
             cancelSubscription: function(subscriptionId) {
                 return this.request(`subscriptions/${subscriptionId}/cancel`, 'PUT');
             },
-            
+
             // Process early renewal
             earlyRenewal: function(subscriptionId) {
                 return this.request(`subscriptions/${subscriptionId}/renew`, 'POST');
+            },
+
+            // Pause subscription
+            pauseSubscription: function(subscriptionId) {
+                // Log the headers for debugging
+                console.log('Pause subscription headers:', {
+                    'Store': bocsSubscriptionsData.headers.store,
+                    'Organization': bocsSubscriptionsData.headers.organization,
+                    'Authorization': 'HIDDEN'
+                });
+
+                return this.request(`subscriptions/${subscriptionId}/pause`, 'PUT')
+                    .then(response => {
+                        // Check if this is a special response indicating we should use the fallback
+                        if (response && response.useFallback) {
+                            console.log('Received fallback response from API, will use AJAX fallback silently');
+
+                            // Use the WordPress AJAX fallback
+                            return this.pauseSubscriptionAjaxFallback(subscriptionId);
+                        }
+
+                        return response;
+                    });
+            },
+
+            // AJAX fallback for pause subscription
+            pauseSubscriptionAjaxFallback: function(subscriptionId) {
+                console.log('Using AJAX fallback for pause subscription');
+
+                // Get the WordPress AJAX URL
+                const ajaxUrl = (typeof ajaxurl !== 'undefined') ? ajaxurl : '/wp-admin/admin-ajax.php';
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('action', 'bocs_pause_subscription');
+                formData.append('subscription_id', subscriptionId);
+
+                // Get the nonce from the global variable
+                const nonce = typeof bocs_ajax_nonce !== 'undefined' ? bocs_ajax_nonce : '';
+                console.log('Using nonce for AJAX fallback:', nonce);
+                formData.append('nonce', nonce);
+
+                // Return a promise
+                return new Promise((resolve, reject) => {
+                    fetch(ajaxUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(response => response.json())
+                    .then(response => {
+                        if (response.success) {
+                            console.log('AJAX fallback successful');
+                            resolve({ success: true, message: 'Subscription paused successfully' });
+                        } else {
+                            console.error('AJAX fallback failed:', response);
+                            reject(new Error(response.data ? response.data.message : 'Unknown error'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('AJAX fallback error:', error);
+                        reject(error);
+                    });
+                });
             }
         },
 
@@ -318,62 +421,77 @@
             editSchedule: function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id');
-                
+
                 // Get current next payment date and populate the form
                 const nextPaymentText = subscriptionItem.find('.bocs-section:first .bocs-section-line:first').text();
                 const nextPaymentDate = nextPaymentText.replace('Next payment date: ', '');
-                
+
                 // Format date for input (YYYY-MM-DD)
                 const dateObj = new Date(nextPaymentDate);
                 const formattedDate = dateObj.toISOString().split('T')[0];
-                
+
                 $('#next-payment-date').val(formattedDate);
-                
+
+                // Set the subscription ID on both modals and the pause button as a data attribute
+                $('#bocs-edit-schedule-modal').attr('data-subscription-id', subscriptionId);
+                $('#bocs-pause-subscription-modal').attr('data-subscription-id', subscriptionId);
+                $('#pause-button').attr('data-subscription-id', subscriptionId);
+                $('#pause-confirm-button').attr('data-subscription-id', subscriptionId);
+
+                // Also store in global variable
+                window.bocsCurrentSubscriptionId = subscriptionId;
+
+                console.log('Set subscription ID on edit schedule modal:', subscriptionId);
+                console.log('Set subscription ID on pause modal:', subscriptionId);
+                console.log('Set subscription ID on pause button:', subscriptionId);
+                console.log('Set subscription ID on pause confirm button:', subscriptionId);
+                console.log('Set subscription ID in global variable:', subscriptionId);
+
                 // Show the modal
                 $('#bocs-edit-schedule-modal').show();
-                
+
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
             },
-            
+
             // Save schedule changes
             saveSchedule: async function(e) {
                 e.preventDefault();
-                
+
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const nextPaymentDate = $('#next-payment-date').val();
                 const submitButton = $(e.target).find('button[type="submit"]');
-                
+
                 if (!subscriptionId || !nextPaymentDate) {
                     BocsSubscriptions.helpers.showNotification('Missing required information', 'error');
                     return;
                 }
-                
+
                 try {
                     // Show loading state on button
                     submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
-                    
+
                     BocsSubscriptions.helpers.showNotification('Updating schedule...', 'loading');
-                    
+
                     const response = await BocsSubscriptions.api.updateSchedule(subscriptionId, nextPaymentDate);
-                    
+
                     // Update the UI
                     const formattedDate = new Date(nextPaymentDate).toLocaleDateString('en-US', {
-                        year: 'numeric', 
-                        month: 'long', 
+                        year: 'numeric',
+                        month: 'long',
                         day: 'numeric'
                     });
-                    
+
                     $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-section:first .bocs-section-line:first')
                         .text(`Next payment date: ${formattedDate}`);
-                    
+
                     // Hide the modal
                     $('#bocs-edit-schedule-modal').hide();
-                    
+
                     BocsSubscriptions.helpers.showNotification('Schedule updated successfully', 'success');
                 } catch (error) {
                     BocsSubscriptions.helpers.showNotification('Failed to update schedule', 'error');
@@ -382,49 +500,49 @@
                     submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
-            
+
             // Frequency edit handler
             editFrequency: async function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id');
-                
+
                 // Find this subscription in the data
                 const subscription = bocsSubscriptionsData.subscriptions.find(sub => sub.id === subscriptionId);
-                
+
                 try {
                     BocsSubscriptions.helpers.showNotification('Loading frequency options...', 'loading');
-                    
+
                     // Get the BOCS ID from the subscription
                     const bocsId = subscription?.bocs?.id;
-                    
+
                     if (!bocsId) {
                         console.error('BOCS ID not found for subscription:', subscriptionId);
                         console.log('Subscription data:', subscription);
                         throw new Error('BOCS ID not found for this subscription');
                     }
-                    
+
                     // Fetch BOCS details to get frequency options
                     const bocsDetails = await BocsSubscriptions.api.request(`bocs/${bocsId}`, 'GET');
                     console.log('BOCS details retrieved:', bocsDetails);
-                    
+
                     // Clear existing options in the dropdown
                     $('#frequency-value').empty();
-                    
+
                     // Check if we have adjustment options in the BOCS details
-                    if (bocsDetails?.data?.priceAdjustment?.adjustments && 
+                    if (bocsDetails?.data?.priceAdjustment?.adjustments &&
                         bocsDetails.data.priceAdjustment.adjustments.length > 0) {
-                        
+
                         console.log('Found frequency options in BOCS details:', bocsDetails.data.priceAdjustment.adjustments);
                         const adjustments = bocsDetails.data.priceAdjustment.adjustments;
-                        
+
                         // Populate the frequency dropdown with available options
                         adjustments.forEach(adjustment => {
                             // Create frequency text with discount information included
                             let frequencyText = adjustment.name || `${adjustment.frequency} ${adjustment.timeUnit}`;
-                            
+
                             // Add discount information if available
                             if (adjustment.discount > 0) {
                                 if (adjustment.discountType === 'percent') {
@@ -433,24 +551,24 @@
                                     frequencyText += ` ($${adjustment.discount} discount)`;
                                 }
                             }
-                            
-                            $('#frequency-value').append(`<option value="${adjustment.frequency}" 
+
+                            $('#frequency-value').append(`<option value="${adjustment.frequency}"
                                 data-id="${adjustment.id}"
-                                data-time-unit="${adjustment.timeUnit}" 
+                                data-time-unit="${adjustment.timeUnit}"
                                 data-discount="${adjustment.discount}"
                                 data-discount-type="${adjustment.discountType}"
                                 data-scheduled-payment-date="${adjustment.scheduledPaymentDate}">
                                 ${frequencyText}
                             </option>`);
                         });
-                        
+
                     } else if (subscription?.bocs?.frequencies && subscription.bocs.frequencies.length > 0) {
                         // Try to get frequencies from subscription data if available
                         console.log('Using frequencies from subscription data:', subscription.bocs.frequencies);
-                        
+
                         subscription.bocs.frequencies.forEach(freq => {
                             let frequencyText = `${freq.frequency} ${freq.timeUnit}`;
-                            
+
                             // Add discount information if available
                             if (freq.discount > 0) {
                                 if (freq.discountType === 'percent') {
@@ -459,10 +577,10 @@
                                     frequencyText += ` ($${freq.discount} discount)`;
                                 }
                             }
-                            
-                            $('#frequency-value').append(`<option value="${freq.frequency}" 
+
+                            $('#frequency-value').append(`<option value="${freq.frequency}"
                                 data-id="${freq.id || ''}"
-                                data-time-unit="${freq.timeUnit}" 
+                                data-time-unit="${freq.timeUnit}"
                                 data-discount="${freq.discount || 0}"
                                 data-discount-type="${freq.discountType || 'percent'}">
                                 ${frequencyText}
@@ -474,7 +592,7 @@
                         console.log('Subscription frequencies:', subscription?.bocs?.frequencies);
                         throw new Error('No frequency options found for this subscription');
                     }
-                    
+
                     // Set up change handler for the frequency dropdown
                     $('#frequency-value').off('change').on('change', function() {
                         const selectedOption = $(this).find('option:selected');
@@ -482,22 +600,22 @@
                         const timeUnit = selectedOption.data('time-unit');
                         const discount = selectedOption.data('discount');
                         const discountType = selectedOption.data('discount-type');
-                        
+
                         // Update hidden fields
                         $('#frequency-id').val(frequencyId);
                         $('#time-unit').val(timeUnit);
                         $('#discount').val(discount);
                         $('#discount-type').val(discountType);
                     });
-                    
+
                     // Set current frequency as selected if available
                     if (subscription && subscription.frequency) {
                         // Find the matching option
                         const matchingOption = $(`#frequency-value option[data-id="${subscription.frequency.id}"]`);
-                        
+
                         if (matchingOption.length) {
                             matchingOption.prop('selected', true);
-                            
+
                             // Trigger change to update the hidden fields
                             $('#frequency-value').trigger('change');
                         } else {
@@ -512,30 +630,30 @@
                             }
                         }
                     }
-                    
+
                     // Hide the loading notification
                     $('.bocs-notification').remove();
-                    
+
                     // Show the modal
                     $('#bocs-edit-frequency-modal').show();
-                    
+
                     // Store the subscription ID
                     BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                    
+
                 } catch (error) {
                     console.error('Error fetching frequency options:', error);
                     BocsSubscriptions.helpers.showNotification('Error loading frequency options: ' + error.message, 'error');
                 }
             },
-            
+
             // Save frequency changes
             saveFrequency: async function(e) {
                 e.preventDefault();
-                
+
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const selectedOption = $('#frequency-value option:selected');
                 const submitButton = $(e.target).find('button[type="submit"]');
-                
+
                 // Get data from the selected option's data attributes
                 const frequencyValue = selectedOption.val();
                 const frequencyId = selectedOption.data('id') || $('#frequency-id').val();
@@ -543,7 +661,7 @@
                 const discount = selectedOption.data('discount') || $('#discount').val() || '0';
                 const discountType = selectedOption.data('discount-type') || $('#discount-type').val() || 'percent';
                 const scheduledPaymentDate = selectedOption.data('scheduled-payment-date') || 3;
-                
+
                 console.log('Saving frequency with data:', {
                     subscriptionId,
                     frequencyValue,
@@ -553,7 +671,7 @@
                     discountType,
                     scheduledPaymentDate
                 });
-                
+
                 if (!subscriptionId || !timeUnit || !frequencyValue) {
                     console.error('Missing required frequency data:', {
                         subscriptionId,
@@ -563,13 +681,13 @@
                     BocsSubscriptions.helpers.showNotification('Missing required information', 'error');
                     return;
                 }
-                
+
                 try {
                     // Show loading state on button
                     submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
-                    
+
                     BocsSubscriptions.helpers.showNotification('Updating frequency...', 'loading');
-                    
+
                     // Construct the frequency object
                     const frequencyData = {
                         id: frequencyId,
@@ -579,14 +697,14 @@
                         discountType: discountType,
                         scheduledPaymentDate: parseInt(scheduledPaymentDate)
                     };
-                    
+
                     console.log('Sending frequency update request:', frequencyData);
                     const response = await BocsSubscriptions.api.updateFrequency(subscriptionId, frequencyData);
                     console.log('Frequency update response:', response);
-                    
+
                     // Get the display text directly from the selected option
                     let frequencyText = selectedOption.text().trim();
-                    
+
                     // If we don't have display text from the option, construct it
                     if (!frequencyText || frequencyText === '') {
                         frequencyText = `${frequencyValue}`;
@@ -603,7 +721,7 @@
                         } else if (timeUnit === 'weeks') {
                             frequencyText += ' Weeks';
                         }
-                        
+
                         // Add discount information if available and not already in the text
                         if (parseInt(discount) > 0 && !frequencyText.includes('discount')) {
                             if (discountType === 'percent') {
@@ -613,31 +731,31 @@
                             }
                         }
                     }
-                    
+
                     // For display in the main subscription section
                     const displayFrequency = frequencyText.charAt(0).toUpperCase() + frequencyText.slice(1);
-                    
+
                     // Update the frequency display in the subscription section
                     $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-section:eq(1) .bocs-section-line')
                         .text(displayFrequency);
-                    
+
                     // Update header price frequency display
                     // For consistency, reuse the display text but format for the header
                     // Remove any discount information for the header
                     const frequencyFormatted = frequencyText.replace(/\(.+\)/, '').trim().toLowerCase();
-                    
+
                     const priceElement = $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-subscription-price');
-                    
+
                     const priceText = priceElement.text();
                     const price = priceText.split(' ')[0]; // Get the price part
-                    
+
                     priceElement.text(`${price} ${frequencyFormatted}`);
-                    
+
                     // Hide the modal
                     $('#bocs-edit-frequency-modal').hide();
-                    
+
                     BocsSubscriptions.helpers.showNotification('Frequency updated successfully', 'success');
                 } catch (error) {
                     console.error('Error updating frequency:', error);
@@ -647,23 +765,23 @@
                     submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
-            
+
             // Address edit handler
             editAddress: function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id');
-                
+
                 // Find this subscription in the data
                 const subscription = bocsSubscriptionsData.subscriptions.find(sub => sub.id === subscriptionId);
-                
+
                 console.log('editAddress: Subscription data for ID ' + subscriptionId, subscription);
-                
+
                 if (subscription) {
                     console.log('editAddress: Shipping data in subscription', subscription.shipping);
-                    
+
                     // Try to populate with shipping address first - it's at the top level in the subscription object
                     if (subscription.shipping) {
                         console.log('editAddress: Using shipping data', subscription.shipping);
@@ -674,20 +792,20 @@
                         $('#address').val(subscription.shipping.address1 || '');
                         $('#address2').val(subscription.shipping.address2 || '');
                         $('#city').val(subscription.shipping.city || '');
-                        
+
                         // Handle select fields - state and country
                         const stateSelect = $('#state');
                         const countrySelect = $('#country');
                         const state = subscription.shipping.state || '';
                         const country = subscription.shipping.country || 'AU';
-                        
+
                         // Set the country value - we need to check if option exists
                         if (countrySelect.find(`option[value="${country}"]`).length) {
                             countrySelect.val(country);
                         } else {
                             countrySelect.val('AU'); // Default to Australia if not found
                         }
-                        
+
                         // Set the state value - we need to check if option exists
                         if (stateSelect.find(`option[value="${state}"]`).length) {
                             stateSelect.val(state);
@@ -700,9 +818,9 @@
                                 stateSelect.val(state);
                             }
                         }
-                        
+
                         $('#postcode').val(subscription.shipping.postcode || '');
-                    } 
+                    }
                     // Fallback to billing address if shipping is empty
                     else if (subscription.billing) {
                         console.log('editAddress: No shipping data, using billing data', subscription.billing);
@@ -713,20 +831,20 @@
                         $('#address').val(subscription.billing.address1 || '');
                         $('#address2').val(subscription.billing.address2 || '');
                         $('#city').val(subscription.billing.city || '');
-                        
+
                         // Handle select fields - state and country
                         const stateSelect = $('#state');
                         const countrySelect = $('#country');
                         const state = subscription.billing.state || '';
                         const country = subscription.billing.country || 'AU';
-                        
+
                         // Set the country value
                         if (countrySelect.find(`option[value="${country}"]`).length) {
                             countrySelect.val(country);
                         } else {
                             countrySelect.val('AU'); // Default to Australia if not found
                         }
-                        
+
                         // Set the state value
                         if (stateSelect.find(`option[value="${state}"]`).length) {
                             stateSelect.val(state);
@@ -738,7 +856,7 @@
                                 stateSelect.val(state);
                             }
                         }
-                        
+
                         $('#postcode').val(subscription.billing.postcode || '');
                     } else {
                         console.log('editAddress: No shipping or billing data found in subscription');
@@ -746,19 +864,19 @@
                 } else {
                     console.error('editAddress: Subscription not found for ID ' + subscriptionId);
                 }
-                
+
                 // Show the modal
                 $('#bocs-edit-address-modal').show();
-                
+
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
             },
-            
+
             // Save address changes
             saveAddress: async function(e) {
                 e.preventDefault();
                 console.log('saveAddress: Starting address save process');
-                
+
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const firstName = $('#first-name').val();
                 const lastName = $('#last-name').val();
@@ -771,7 +889,7 @@
                 const postcode = $('#postcode').val();
                 const country = $('#country').val() || 'AU';
                 const submitButton = $(e.target).find('button[type="submit"]');
-                
+
                 console.log('saveAddress: Collected form data', {
                     subscriptionId,
                     firstName,
@@ -785,20 +903,20 @@
                     postcode,
                     country
                 });
-                
+
                 // Only required fields validation
                 if (!subscriptionId || !firstName || !lastName || !address || !city || !state || !postcode) {
                     console.error('saveAddress: Validation failed - missing required fields');
                     BocsSubscriptions.helpers.showNotification('Please fill all required fields', 'error');
                     return;
                 }
-                
+
                 try {
                     // Show loading state on button
                     submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
-                    
+
                     BocsSubscriptions.helpers.showNotification('Updating address...', 'loading');
-                    
+
                     // Format address data properly as shipping object
                     const addressData = {
                         shipping: {
@@ -814,28 +932,28 @@
                             country: country
                         }
                     };
-                    
+
                     console.log('saveAddress: Sending address data to API', addressData);
-                    
+
                     const response = await BocsSubscriptions.api.updateAddress(subscriptionId, addressData);
                     console.log('saveAddress: API response received', response);
-                    
+
                     // Update the UI with formatted address - include optional fields only if not empty
                     let formattedAddress = `${firstName} ${lastName}`;
                     if (company) formattedAddress += `, ${company}`;
                     formattedAddress += `, ${address}`;
                     if (address2) formattedAddress += `, ${address2}`;
                     formattedAddress += `, ${city}, ${state} ${postcode}, ${country}`;
-                    
+
                     console.log('saveAddress: Updated address display to:', formattedAddress);
-                    
+
                     $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                         .find('.bocs-section:eq(2) .bocs-section-line')
                         .text(formattedAddress);
-                    
+
                     // Hide the modal
                     $('#bocs-edit-address-modal').hide();
-                    
+
                     BocsSubscriptions.helpers.showNotification('Address updated successfully', 'success');
                     console.log('saveAddress: Address update complete');
                 } catch (error) {
@@ -846,23 +964,23 @@
                     submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
-            
+
             // Payment method edit handler
             editPayment: function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id');
-                
+
                 // Show loading state in the modal
                 $('#payment-method').html('<option>Loading payment methods...</option>');
                 $('#bocs-edit-payment-modal').show();
                 console.log('BOCS DEBUG: Modal shown with loading message');
-                
+
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                
+
                 // Fetch available payment methods
                 $.ajax({
                     url: bocsSubscriptionsData.ajaxUrl,
@@ -876,17 +994,17 @@
                         if (response.success) {
                             // Clear the dropdown
                             $('#payment-method').empty();
-                            
+
                             // Add the payment methods to the dropdown
                             if (response.data.payment_methods.length > 0) {
                                 // Track unique payment methods by last4 + brand (case-insensitive)
                                 const uniqueMethods = new Map();
-                                
+
                                 // First pass - organize by signature (last4 + lowercase brand)
                                 response.data.payment_methods.forEach(function(method) {
                                     if (method.method && method.method.last4 && method.method.brand) {
                                         const signature = method.method.last4 + '_' + method.method.brand.toLowerCase();
-                                        
+
                                         // If we haven't seen this card before, or this is default (prefer default)
                                         if (!uniqueMethods.has(signature) || method.is_default) {
                                             uniqueMethods.set(signature, method);
@@ -900,22 +1018,22 @@
                                         }
                                     }
                                 });
-                                
+
                                 // Second pass - add unique methods to dropdown
                                 uniqueMethods.forEach(function(method) {
-                                    const methodLabel = method.method.brand + 
+                                    const methodLabel = method.method.brand +
                                         (method.method.last4 ? (' ending in ' + method.method.last4) : '');
-                                    
+
                                     // Mark as selected if it's the default (is_default=1) payment method
                                     const isSelected = method.is_default ? 'selected' : '';
-                                    
+
                                     $('#payment-method').append(
                                         `<option value="${method.method.id}" ${isSelected}>
                                             ${methodLabel}
                                         </option>`
                                     );
                                 });
-                                
+
                                 // Add option to add a new payment method
                                 $('#payment-method').append(
                                     '<option value="new">Add new payment method...</option>'
@@ -926,16 +1044,16 @@
                                     '<option value="new">Add new payment method...</option>'
                                 );
                             }
-                            
+
                             // Show the modal
                             $('#bocs-edit-payment-modal').show();
-                            
+
                             // Handle special behavior when "Add new" is selected
                             $('#payment-method').off('change').on('change', function() {
                                 if ($(this).val() === 'new') {
                                     // Show Stripe card element
                                     $('#stripe-payment-element-container').show();
-                                    
+
                                     // Initialize Stripe with setup intent
                                     $.ajax({
                                         url: bocsSubscriptionsData.ajaxUrl,
@@ -948,18 +1066,18 @@
                                         success: function(setupResponse) {
                                             if (setupResponse.success) {
                                                 const setupData = setupResponse.data;
-                                                
-                                                // Store setup data globally 
+
+                                                // Store setup data globally
                                                 window.setupData = setupData;
                                                 window.currentSubscriptionId = subscriptionId;
-                                                
+
                                                 // Initialize Stripe if needed
                                                 if (typeof Stripe !== 'undefined') {
                                                     if (!window.stripe) {
                                                         console.log('Initializing Stripe with key:', setupData.publishable_key);
                                                         window.stripe = Stripe(setupData.publishable_key);
                                                     }
-                                                    
+
                                                     // Create Elements instance
                                                     window.stripeElements = window.stripe.elements({
                                                         clientSecret: setupData.client_secret,
@@ -976,12 +1094,12 @@
                                                             }
                                                         }
                                                     });
-                                                    
+
                                                     // Create and mount the Payment Element
                                                     if (window.cardElement) {
                                                         window.cardElement.destroy();
                                                     }
-                                                    
+
                                                     // Create a payment element
                                                     window.cardElement = window.stripeElements.create('payment', {
                                                         fields: {
@@ -992,10 +1110,10 @@
                                                             googlePay: 'auto'
                                                         }
                                                     });
-                                                    
+
                                                     // Mount the element
                                                     window.cardElement.mount('#card-element');
-                                                    
+
                                                     // Add event listener for change events
                                                     window.cardElement.on('change', function(event) {
                                                         const displayError = document.getElementById('card-errors');
@@ -1024,7 +1142,7 @@
                                 } else {
                                     // Hide Stripe card element for existing methods
                                     $('#stripe-payment-element-container').hide();
-                                    
+
                                     // Clean up any existing elements
                                     if (window.cardElement) {
                                         window.cardElement.destroy();
@@ -1037,7 +1155,7 @@
                                 '<option value="">Error loading payment methods</option>'
                             );
                             BocsSubscriptions.helpers.showNotification(
-                                response.data.message || 'Error loading payment methods', 
+                                response.data.message || 'Error loading payment methods',
                                 'error'
                             );
                         }
@@ -1052,33 +1170,33 @@
                     }
                 });
             },
-            
+
             // Save payment method changes
             savePayment: async function(e) {
                 e.preventDefault();
-                
+
                 const subscriptionId = BocsSubscriptions.activeSubscriptionId;
                 const paymentMethodId = $('#payment-method').val();
                 const submitButton = $(e.target).find('button[type="submit"]');
                 const errorElement = $('#card-errors');
-                
+
                 if (!subscriptionId) {
                     BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
                     return;
                 }
-                
+
                 try {
                     // Show loading state on button
                     submitButton.addClass('loading').html('<span class="button-text">' + bocsSubscriptionsData.i18n.saveChanges + '</span>').prop('disabled', true);
-                    
+
                     // For new payment method with Stripe
                     if (paymentMethodId === 'new') {
                         if (!window.stripe || !window.stripeElements) {
                             throw new Error('Stripe is not properly initialized');
                         }
-                        
+
                         BocsSubscriptions.helpers.showNotification('Creating payment method...', 'loading');
-                        
+
                         // Get user billing details
                         let billingDetails = {};
                         try {
@@ -1090,7 +1208,7 @@
                                     nonce: bocsSubscriptionsData.nonce
                                 }
                             });
-                            
+
                             if (resp.success) {
                                 // Ensure billing details is properly formatted for Stripe
                                 billingDetails = {
@@ -1122,35 +1240,35 @@
                                 }
                             };
                         }
-                        
+
                         // Prepare the confirmation parameters
                         const confirmParams = {
                             elements: window.stripeElements,
                             confirmParams: {
-                                return_url: window.location.origin + window.location.pathname + 
+                                return_url: window.location.origin + window.location.pathname +
                                     '?subscription_id=' + encodeURIComponent(subscriptionId),
                                 payment_method_data: {
                                     billing_details: billingDetails
                                 }
                             }
                         };
-                        
+
                         // Store subscription ID in session storage for retrieval after redirect
                         sessionStorage.setItem('bocs_subscription_id', subscriptionId);
-                        
+
                         // Confirm the setup - this might redirect for 3D Secure
                         const { error, setupIntent } = await window.stripe.confirmSetup(confirmParams);
-                        
+
                         if (error) {
                             // Handle errors from Stripe
                             throw error;
                         }
-                        
+
                         // If we reach here without redirect, it means setup was successful
                         if (setupIntent.status === 'succeeded') {
                             // Get the payment method ID from the setup intent
                             const newPaymentMethodId = setupIntent.payment_method;
-                            
+
                             // Use the AJAX endpoint to update the subscription
                             const response = await $.ajax({
                                 url: bocsSubscriptionsData.ajaxUrl,
@@ -1163,25 +1281,25 @@
                                     is_new_method: true
                                 }
                             });
-                            
+
                             if (!response.success) {
                                 throw new Error(response.data.message || 'Failed to update subscription with new payment method');
                             }
-                            
+
                             // Update the UI and show success message
                             BocsSubscriptions.helpers.showNotification('Payment method updated successfully', 'success');
-                            
+
                             // Refresh the page to show updated payment methods
                             window.location.reload();
                         } else {
                             // For 'requires_action' status, the page will be redirected
                             BocsSubscriptions.helpers.showNotification('Verifying payment method...', 'loading');
                         }
-                    } 
+                    }
                     // For existing payment methods
                     else {
                         BocsSubscriptions.helpers.showNotification('Updating payment method...', 'loading');
-                        
+
                         // Use the AJAX endpoint to update the payment method
                         const response = await $.ajax({
                             url: bocsSubscriptionsData.ajaxUrl,
@@ -1193,27 +1311,27 @@
                                 payment_method_id: paymentMethodId
                             }
                         });
-                        
+
                         if (!response.success) {
                             throw new Error(response.data.message || 'Failed to update payment method');
                         }
-                        
+
                         // Update the payment method display in the UI
                         const selectedOption = $('#payment-method option:selected');
                         const methodLabel = selectedOption.text().trim();
-                        
+
                         $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
                             .find('.bocs-section:eq(3) .bocs-section-line')
                             .text(methodLabel);
-                        
+
                         // Hide the modal
                         $('#bocs-edit-payment-modal').hide();
-                        
+
                         BocsSubscriptions.helpers.showNotification('Payment method updated successfully', 'success');
                     }
                 } catch (error) {
                     console.error('Error updating payment method:', error);
-                    
+
                     if (errorElement.length) {
                         errorElement.text(error.message || 'Payment update failed').show();
                     } else {
@@ -1224,52 +1342,52 @@
                     submitButton.removeClass('loading').html(bocsSubscriptionsData.i18n.saveChanges).prop('disabled', false);
                 }
             },
-            
+
             // Early renewal handler
             earlyRenewal: async function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 console.log('Early renewal handler called');
-                
+
                 const subscriptionItem = $(this).closest('.bocs-subscription-item');
                 const subscriptionId = subscriptionItem.data('subscription-id') || $(this).data('sub-id');
-                
+
                 console.log('Subscription ID:', subscriptionId);
-                
+
                 if (!subscriptionId) {
                     console.error('No subscription ID found');
                     BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
                     return;
                 }
-                
+
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                
+
                 // Check if modal exists
                 const modal = $('#bocs-early-renewal-modal');
                 console.log('Early renewal modal exists:', modal.length > 0);
-                
+
                 // Show the early renewal modal
                 modal.css('display', 'flex');
                 console.log('Modal display style after show:', modal.css('display'));
-                
+
                 // Set up confirm button handler
                 $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
                     const confirmButton = $(this);
-                    
+
                     try {
                         // Show loading state
                         confirmButton.addClass('loading').prop('disabled', true);
                         BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
-                        
+
                         const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
-                        
+
                         // Hide the modal
                         $('#bocs-early-renewal-modal').css('display', 'none');
-                        
+
                         BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
-                        
+
                         // In a real implementation, we might want to reload the page
                         // or update the UI with new subscription details
                         setTimeout(() => {
@@ -1282,24 +1400,24 @@
                         confirmButton.removeClass('loading').prop('disabled', false);
                     }
                 });
-                
+
                 // Set up cancel button handler
                 $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
                     $('#bocs-early-renewal-modal').css('display', 'none');
                 });
             },
-            
+
             // Edit contents handler (placeholder)
             editContents: function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
-                
+
                 // This would typically redirect to a product edit page or open a modal
                 BocsSubscriptions.helpers.showNotification('Edit contents functionality coming soon', 'info');
             },
-            
+
             // Change box handler (placeholder)
             changeBox: function(e) {
                 // We no longer need to prevent default since we're using links now
@@ -1308,19 +1426,45 @@
                 const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
                 console.log('Navigating to change box page for subscription: ' + subscriptionId);
             },
-            
+
             // Pause subscription handler
             pauseSubscription: function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                const subscriptionId = BocsSubscriptions.activeSubscriptionId;
-                
+
+                // Try to get subscription ID from multiple sources
+                let subscriptionId = null;
+
+                // First check global variable
+                if (window.bocsCurrentSubscriptionId) {
+                    subscriptionId = window.bocsCurrentSubscriptionId;
+                    console.log('Got subscription ID from global variable:', subscriptionId);
+                }
+
+                // If not found, try to get from the edit schedule modal
+                if (!subscriptionId) {
+                    const editScheduleModal = $('#bocs-edit-schedule-modal');
+                    if (editScheduleModal.length && editScheduleModal.attr('data-subscription-id')) {
+                        subscriptionId = editScheduleModal.attr('data-subscription-id');
+                        console.log('Got subscription ID from edit schedule modal:', subscriptionId);
+                    }
+                }
+
+                // If not found, try the active subscription ID
+                if (!subscriptionId) {
+                    subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                    console.log('Got subscription ID from active subscription:', subscriptionId);
+                }
+
                 if (!subscriptionId) {
                     BocsSubscriptions.helpers.showNotification('No subscription selected', 'error');
                     return;
                 }
-                
+
+                // Set the subscription ID on the pause modal
+                $('#bocs-pause-subscription-modal').attr('data-subscription-id', subscriptionId);
+                console.log('Set subscription ID on pause modal:', subscriptionId);
+
                 // Show the pause subscription modal
                 $('#bocs-pause-subscription-modal').css('display', 'flex');
             }
@@ -1332,10 +1476,10 @@
             showNotification: function(message, type = 'info', duration = 3000) {
                 // Remove any existing notifications
                 $('.bocs-notification').remove();
-                
+
                 // Create notification element
                 const notification = $('<div class="bocs-notification">').addClass(`notification-${type}`);
-                
+
                 // Add icon based on type
                 let icon = '';
                 switch (type) {
@@ -1351,15 +1495,15 @@
                     default:
                         icon = '<span class="notification-icon">ℹ</span>';
                 }
-                
+
                 notification.html(`${icon} <span class="notification-message">${message}</span>`);
-                
+
                 // Add to page
                 $('body').append(notification);
-                
+
                 // Show with animation
                 notification.addClass('show');
-                
+
                 // Hide after duration (except for loading)
                 if (type !== 'loading') {
                     setTimeout(() => {
@@ -1369,10 +1513,10 @@
                         }, 300);
                     }, duration);
                 }
-                
+
                 return notification;
             },
-            
+
             // Format a date string
             formatDate: function(dateString) {
                 const date = new Date(dateString);
@@ -1382,7 +1526,7 @@
                     day: 'numeric'
                 });
             },
-            
+
             // Format currency
             formatCurrency: function(amount) {
                 return '$' + parseFloat(amount).toFixed(2);
@@ -1393,24 +1537,59 @@
     // Initialize when document is ready
     $(document).ready(function() {
         BocsSubscriptions.init();
-        
+
         // Handle legacy Early Renewal button that might be from WooCommerce Subscriptions
         // or other templates not using our class system
         setTimeout(function() {
             setupEarlyRenewalHandlers();
         }, 1000); // Short delay to ensure page is fully loaded
 
+        // Set up pause subscription modal confirm button handler
+        setupPauseSubscriptionHandler();
+
+        // Add a fallback for the pause button in case it's added to the DOM later
+        // This uses event delegation to handle clicks on the pause button regardless of when it's added
+        $(document).on('click', '#pause-confirm-button', function(e) {
+            console.log("Pause button clicked via document delegation");
+            // Check if the button already has a direct handler
+            if (!$(this).data('has-handler')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                if (subscriptionId) {
+                    // Call the pause subscription API
+                    BocsSubscriptions.api.pauseSubscription(subscriptionId)
+                        .then(function(response) {
+                            // Hide the modal
+                            $('#bocs-pause-subscription-modal').css('display', 'none');
+                            // Success is indicated by the page reload
+                            // Reload the page after a short delay
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 2000);
+                        })
+                        .catch(function(error) {
+                            BocsSubscriptions.helpers.showNotification('Failed to pause subscription: ' + (error.message || 'Unknown error'), 'error');
+                        });
+                } else {
+                    console.error("No active subscription ID found for pausing");
+                    BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
+                }
+            }
+        });
+
         // Country change handler for address modal
         $('#country').on('change', function() {
             const country = $(this).val();
             const stateSelect = $('#state');
-            
+
             // Save current state value
             const currentState = stateSelect.val();
-            
+
             // Reset state options based on country
             stateSelect.empty();
-            
+
             if (country === 'AU') {
                 // Australian states
                 stateSelect.append(new Option('Victoria', 'VIC'));
@@ -1442,20 +1621,20 @@
                 stateSelect.append(new Option('Northern Ireland', 'Northern Ireland'));
                 // Add more UK counties as needed
             }
-            
+
             // Try to restore previous selection or default to first option
             if (stateSelect.find(`option[value="${currentState}"]`).length) {
                 stateSelect.val(currentState);
             }
         });
     });
-    
+
     /**
      * Set up all early renewal handlers for various button types
      */
     function setupEarlyRenewalHandlers() {
         console.log("Setting up early renewal handlers");
-        
+
         // Ensure the early-renewal-modal exists
         if ($('#bocs-early-renewal-modal').length === 0) {
             const modalHtml = `
@@ -1471,19 +1650,19 @@
                 </div>
             </div>`;
             $('body').append(modalHtml);
-            
+
             // Re-initialize modal events
             BocsSubscriptions.setupModals();
         }
-        
+
         // Set up confirm button handler for early renewal modal
         setupEarlyRenewalModalHandlers();
-        
+
         // Look for all types of early renewal buttons across different interfaces
         handleLegacyRenewalButtons();
         handleNativeWooCommerceRenewalButtons();
     }
-    
+
     /**
      * Set up the handlers for the early renewal modal buttons
      */
@@ -1492,27 +1671,27 @@
         $('#bocs-early-renewal-modal .modal-confirm').off('click').on('click', async function() {
             const confirmButton = $(this);
             const subscriptionId = BocsSubscriptions.activeSubscriptionId;
-            
+
             if (!subscriptionId) {
                 console.error("No active subscription ID found for renewal");
                 BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
                 return;
             }
-            
+
             console.log('Processing early renewal for:', subscriptionId);
-            
+
             try {
                 // Show loading state
                 confirmButton.addClass('loading').prop('disabled', true);
                 BocsSubscriptions.helpers.showNotification('Processing early renewal...', 'loading');
-                
+
                 const response = await BocsSubscriptions.api.earlyRenewal(subscriptionId);
-                
+
                 // Hide the modal
                 $('#bocs-early-renewal-modal').css('display', 'none');
-                
+
                 BocsSubscriptions.helpers.showNotification('Early renewal successful', 'success');
-                
+
                 // Reload the page after a short delay
                 setTimeout(() => {
                     window.location.reload();
@@ -1524,13 +1703,13 @@
                 confirmButton.removeClass('loading').prop('disabled', false);
             }
         });
-        
+
         // Set up cancel button handler
         $('#bocs-early-renewal-modal .modal-cancel').off('click').on('click', function() {
             $('#bocs-early-renewal-modal').css('display', 'none');
         });
     }
-    
+
     /**
      * Handle legacy early renewal buttons across the interface
      */
@@ -1539,17 +1718,17 @@
         // Also look for WooCommerce Subscriptions buttons with specific classes
         $('button:contains("Early Renewal"), a:contains("Early Renewal"), .subscription_renewal_early, .wcs-auto-renew-toggle, .subscription_renewal_button').each(function() {
             const $btn = $(this);
-            
+
             // Skip if it already has our early-renewal class
             if ($btn.hasClass('early-renewal')) {
                 return;
             }
-            
+
             console.log('Found legacy Early Renewal button:', $btn);
-            
+
             // Get subscription ID from the button or nearby elements
             let subscriptionId = $btn.data('subscription-id');
-            
+
             // If no subscription ID, try to get it from parent elements
             if (!subscriptionId) {
                 const $parent = $btn.closest('[data-subscription-id]');
@@ -1557,7 +1736,7 @@
                     subscriptionId = $parent.data('subscription-id');
                 }
             }
-            
+
             // If still no subscription ID, try to get it from the URL
             if (!subscriptionId) {
                 const urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
@@ -1565,55 +1744,55 @@
                     subscriptionId = urlMatch[1];
                 }
             }
-            
+
             console.log('Subscription ID for legacy button:', subscriptionId);
-            
+
             if (subscriptionId) {
                 // Add click handler
                 $btn.on('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     console.log('Legacy Early Renewal button clicked');
-                    
+
                     // Store the subscription ID
                     BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                    
+
                     // Show our modal
                     $('#bocs-early-renewal-modal').css('display', 'flex');
                 });
             }
         });
     }
-    
+
     /**
      * Handle Early Renewal buttons in WooCommerce native subscription view
      * This targets the specific button shown in the user's screenshot
      */
     function handleNativeWooCommerceRenewalButtons() {
         console.log("Adding handler for WooCommerce native Early Renewal buttons");
-        
+
         // Find all Early Renewal buttons in the WooCommerce layout
         $('a.bocs-button, button.bocs-button, .woocommerce-button.button').filter(function() {
             return $(this).text().trim() === 'Early Renewal';
         }).each(function() {
             console.log("Found WooCommerce Early Renewal button to handle:", this);
-            
+
             // Skip if already handled by the legacy handler
             if ($(this).data('bocs-handled')) {
                 return;
             }
-            
+
             // Mark as handled to avoid duplicates
             $(this).data('bocs-handled', true);
-            
+
             // Add our handler
             $(this).off('click').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 console.log("Intercepted WooCommerce Early Renewal button click");
-                
+
                 // Get subscription ID
                 var subscriptionId = $(this).data('subscription-id') || '';
                 if (!subscriptionId) {
@@ -1629,21 +1808,99 @@
                         }
                     }
                 }
-                
+
                 console.log("Subscription ID for WooCommerce handler:", subscriptionId);
-                
+
                 if (!subscriptionId) {
                     console.error("No subscription ID found for this button");
                     return;
                 }
-                
+
                 // Store the subscription ID
                 BocsSubscriptions.activeSubscriptionId = subscriptionId;
-                
+
                 // Show our modal
                 $('#bocs-early-renewal-modal').css('display', 'flex');
             });
         });
     }
 
-})(jQuery); 
+    /**
+     * Set up the pause subscription modal handler
+     */
+    function setupPauseSubscriptionHandler() {
+        console.log("Setting up pause subscription handler");
+
+        // Debug: Log the elements found by our selectors
+        console.log("Modal confirm buttons found:", $('#bocs-pause-subscription-modal .modal-confirm').length);
+        console.log("Pause confirm button found by ID:", $('#pause-confirm-button').length);
+
+        // More specific selector that targets both the class and ID
+        const pauseButtons = $('#bocs-pause-subscription-modal .modal-confirm, #pause-confirm-button');
+        console.log("Total pause buttons found:", pauseButtons.length);
+
+        // Set up confirm button handler for pause subscription modal - use a more robust selector
+        pauseButtons.off('click').on('click', async function() {
+            console.log("Pause button clicked:", this);
+            const confirmButton = $(this);
+            // Mark this button as having a handler to prevent duplicate handling
+            confirmButton.data('has-handler', true);
+            const subscriptionId = BocsSubscriptions.activeSubscriptionId;
+
+            if (!subscriptionId) {
+                console.error("No active subscription ID found for pausing");
+                BocsSubscriptions.helpers.showNotification('Subscription ID not found', 'error');
+                return;
+            }
+
+            console.log('Processing pause for subscription:', subscriptionId);
+
+            try {
+                // Show loading state
+                confirmButton.addClass('loading').prop('disabled', true);
+                BocsSubscriptions.helpers.showNotification('Pausing subscription...', 'loading');
+
+                // Call the API to pause the subscription
+                const response = await BocsSubscriptions.api.pauseSubscription(subscriptionId);
+
+                // Check if this is a special response indicating we should use the fallback
+                if (response && response.useFallback) {
+                    console.log('Received fallback response from API, AJAX fallback will handle this silently');
+                    // Don't show any notification, the AJAX fallback will handle it
+                    // Just hide the loading notification
+                    $('.bocs-notification').remove();
+                    return;
+                }
+
+                // Hide the modal
+                $('#bocs-pause-subscription-modal').css('display', 'none');
+
+                // Success is indicated by the page reload
+
+                // Reload the page after a short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                // Check if this is a 502 error (API server error)
+                if (error.message && (error.message.includes('502') || error.message.includes('Internal server error'))) {
+                    console.log('Received 502 error, AJAX fallback will handle this silently');
+                    // Don't show an error message, just hide the loading notification
+                    $('.bocs-notification').remove();
+                } else {
+                    // For other errors, show an error message
+                    BocsSubscriptions.helpers.showNotification('Failed to pause subscription: ' + (error.message || 'Unknown error'), 'error');
+                }
+            } finally {
+                // Reset button state
+                confirmButton.removeClass('loading').prop('disabled', false);
+            }
+        });
+
+        // Set up cancel button handler
+        $('#bocs-pause-subscription-modal .modal-cancel').off('click').on('click', function() {
+            $('#bocs-pause-subscription-modal').css('display', 'none');
+        });
+    }
+
+})(jQuery);
