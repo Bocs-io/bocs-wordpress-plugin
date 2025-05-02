@@ -236,6 +236,11 @@ languages/*.po
 # Bocs WordPress Plugin Zip
 bocs-wordpress.zip
 
+### Documentation files ###
+BOCS-DOCUMENTATION.md
+*-DOCUMENTATION.md
+documentation/
+
 ### Backup files ###
 *.bak
 *.backup
