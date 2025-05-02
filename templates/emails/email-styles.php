@@ -13,14 +13,14 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Load colors
-$bg               = '#f7f7f7';
-$body             = '#ffffff';
-$base             = '#ffffff';
-$base_text        = '#333333';
-$text             = '#333333';
-$heading_text     = '#333333';
-$bocs_primary     = '#3C7B7C'; // Bocs teal color
+// Load colors from WooCommerce settings
+$bg               = get_option('woocommerce_email_background_color', '#f7f7f7');
+$body             = get_option('woocommerce_email_body_background_color', '#ffffff');
+$base             = get_option('woocommerce_email_base_color', '#ffffff');
+$base_text        = get_option('woocommerce_email_text_color', '#333333');
+$text             = get_option('woocommerce_email_text_color', '#333333');
+$heading_text     = get_option('woocommerce_email_text_color', '#333333');
+$bocs_primary     = get_option('woocommerce_email_base_color', '#3C7B7C'); // Use WooCommerce base color
 $bocs_secondary   = '#f8f9fa';
 $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, etc.
 ?>
@@ -130,11 +130,11 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         line-height: 1.6;
         padding: 15px 30px;
     }
-    
+
     .bocs-email-content {
         margin-bottom: 30px;
     }
-    
+
     .bocs-button {
         display: inline-block;
         background-color: <?php echo esc_attr($bocs_primary); ?>;
@@ -145,7 +145,7 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         font-weight: 600;
         margin: 20px 0;
     }
-    
+
     .bocs-app-notice {
         background-color: <?php echo esc_attr($bocs_secondary); ?>;
         border-left: 4px solid <?php echo esc_attr($bocs_primary); ?>;
@@ -153,17 +153,17 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         margin-bottom: 20px;
         border-radius: 4px;
     }
-    
+
     .bocs-highlight {
         color: <?php echo esc_attr($bocs_primary); ?>;
         font-weight: 600;
     }
-    
+
     .bocs-link {
         color: <?php echo esc_attr($bocs_primary); ?>;
         text-decoration: underline;
     }
-    
+
     .bocs-logo {
         margin-bottom: 20px;
         text-align: center;
@@ -454,8 +454,8 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
         color: <?php echo esc_attr($bocs_primary); ?> !important;
     }
 
-    .woocommerce h2, 
-    #template_container h2, 
+    .woocommerce h2,
+    #template_container h2,
     [style*="color: #7f54b3"],
     [style*="color:#7f54b3"] {
         color: <?php echo esc_attr($bocs_primary); ?> !important;
@@ -490,4 +490,4 @@ $bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, e
     #template_container #template_header h1[style*="text-shadow"] {
         text-shadow: none !important;
     }
-</style> 
+</style>

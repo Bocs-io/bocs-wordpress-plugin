@@ -53,7 +53,8 @@ defined('ABSPATH') || exit;
                                     <tr>
                                         <td align="center" valign="top">
                                             <!-- Header -->
-                                            <table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_header" style="background-color: #3C7B7C !important; color: #ffffff; border-bottom: 0; font-weight: bold; line-height: 100%; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; border-radius: 3px 3px 0 0;" bgcolor="#3C7B7C">
+                                            <?php $header_bg_color = get_option('woocommerce_email_base_color', '#3C7B7C'); ?>
+                                            <table border="0" cellpadding="0" cellspacing="0" width="100%" id="template_header" style="background-color: <?php echo esc_attr($header_bg_color); ?>; color: #ffffff; border-bottom: 0; font-weight: bold; line-height: 100%; vertical-align: middle; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; border-radius: 3px 3px 0 0;" bgcolor="<?php echo esc_attr($header_bg_color); ?>">
                                                 <tr>
                                                     <td id="header_wrapper" style="padding: 36px 48px; display: block;">
                                                         <h1 style="font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 30px; font-weight: 300; line-height: 150%; margin: 0; text-align: left; color: #ffffff; background-color: inherit; text-shadow: none !important;"><?php echo esc_html($email_heading); ?></h1>
@@ -73,4 +74,4 @@ defined('ABSPATH') || exit;
                                                         <table border="0" cellpadding="20" cellspacing="0" width="100%">
                                                             <tr>
                                                                 <td valign="top" style="padding: 48px 48px 32px;">
-                                                                    <div id="body_content_inner" style="color: #636363; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 14px; line-height: 150%; text-align: left;"> 
+                                                                    <div id="body_content_inner" style="color: #636363; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 14px; line-height: 150%; text-align: left;">

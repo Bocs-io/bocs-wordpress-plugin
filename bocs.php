@@ -615,51 +615,32 @@ function bocs_override_wc_email_templates($located, $template_name, $args, $temp
             }
         }
     }
-    
+
     return $located;
 }
 add_filter('wc_get_template', 'bocs_override_wc_email_templates', 99, 5);
 
 /**
  * Helper function to replace WooCommerce colors with Bocs colors
- * 
+ *
  * @param string $content The content to process
  * @return string The processed content
  */
 function bocs_replace_woocommerce_colors($content) {
-    // Replace background colors
-    $content = str_replace('background-color: #7f54b3', 'background-color: #3C7B7C', $content);
-    $content = str_replace('background-color:#7f54b3', 'background-color:#3C7B7C', $content);
-    $content = str_replace('bgcolor="#7f54b3"', 'bgcolor="#3C7B7C"', $content);
-    
-    // Replace text colors
-    $content = str_replace('color: #7f54b3', 'color: #3C7B7C', $content);
-    $content = str_replace('color:#7f54b3', 'color:#3C7B7C', $content);
-    $content = str_replace('color="#7f54b3"', 'color="#3C7B7C"', $content);
-    
-    // Replace text shadows
-    $content = str_replace('text-shadow: 0 1px 0 #9976c2', 'text-shadow: none', $content);
-    
-    // Direct hex code replacement (do this last to catch any remaining instances)
-    $content = str_replace('#7f54b3', '#3C7B7C', $content);
-    
+    // No longer replacing colors - using WooCommerce's built-in email customization settings instead
     return $content;
 }
 
 /**
- * Filter WooCommerce email content to replace any remaining WooCommerce purple colors with Bocs teal
- * and add custom inline styles to emails
+ * Filter WooCommerce email content to add custom inline styles to emails
  */
 function bocs_filter_woocommerce_mail_content($content) {
     // Add custom inline styles to the email content
     $custom_style = '<style>
         p { font-size: 16px; }
     </style>';
-    
-    // Apply the existing color replacement
-    $content = bocs_replace_woocommerce_colors($content);
-    
-    // Return the styled content
+
+    // Return the styled content without color replacement
     return $custom_style . $content;
 }
 add_filter('woocommerce_mail_content', 'bocs_filter_woocommerce_mail_content', 99);
@@ -672,14 +653,14 @@ function bocs_setup_email_templates() {
     if (!class_exists('WC_Email')) {
         return;
     }
-    
+
     // Get all email templates
     $mailer = WC()->mailer();
     if (!$mailer) {
         return;
     }
-    
-    
+
+
     // Add a filter to modify all email subjects with proper branding
     add_filter('woocommerce_email_subject', function($subject, $email) {
         // Add [Bocs] prefix to subject if it doesn't already have it
