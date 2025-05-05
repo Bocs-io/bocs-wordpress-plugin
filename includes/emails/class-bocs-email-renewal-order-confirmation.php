@@ -61,7 +61,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_renewal_order_confirmation';
         $this->customer_email = true;
-        $this->title          = __('[Bocs Customer] Renewal Order Confirmation', 'bocs-wordpress');
+        $this->title          = __('Renewal Order Confirmation', 'bocs-wordpress');
         $this->description    = __('When a renewal order goes from Pending payment to Processing', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-customer-renewal-order-confirmation.php';
         $this->template_plain = 'emails/plain/bocs-customer-renewal-order-confirmation.php';
@@ -88,7 +88,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your {site_title} renewal order has been confirmed!', 'bocs-wordpress');
+        return __('Your {site_title} renewal order has been confirmed!', 'bocs-wordpress');
     }
 
     /**
@@ -100,7 +100,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('[Bocs] Renewal Order Confirmation', 'bocs-wordpress');
+        return __('Renewal Order Confirmation', 'bocs-wordpress');
     }
 
     /**
@@ -462,7 +462,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your {site_title} renewal order has been confirmed!</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>Your {site_title} renewal order has been confirmed!</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),
@@ -470,7 +470,7 @@ class WC_Bocs_Email_Renewal_Order_Confirmation extends WC_Email {
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>[Bocs] Renewal Order Confirmation</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Renewal Order Confirmation</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
             ),

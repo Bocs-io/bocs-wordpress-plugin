@@ -83,7 +83,7 @@ class WC_Bocs_Email_Subscription_Reactivated extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your subscription has been reactivated', 'bocs-wordpress');
+        return __('Your subscription has been reactivated', 'bocs-wordpress');
     }
 
     /**

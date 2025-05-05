@@ -82,7 +82,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Thank you for your new subscription', 'bocs-wordpress');
+        return __('Thank you for your new subscription', 'bocs-wordpress');
     }
 
     /**
@@ -285,7 +285,7 @@ class WC_Bocs_Email_Subscription_Confirmation extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Thank you for your new subscription</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>Thank you for your new subscription</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),

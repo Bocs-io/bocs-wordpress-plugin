@@ -155,10 +155,6 @@ if (isset($subscription['createdAt'])) {
 
 </div>
 
-<!-- Manage subscription section -->
-<div style="margin-bottom: 40px; padding: 20px; background-color: #f0f7f7; border-radius: 6px; text-align: center;">
-<h3 style="color: #3C7B7C; margin-top: 0;">Manage Your Subscription</h3>
-<p style="margin-bottom: 20px;">Need to make changes? You can manage your subscription at any time by logging into your account.</p>
 
 <?php
 // My account URL

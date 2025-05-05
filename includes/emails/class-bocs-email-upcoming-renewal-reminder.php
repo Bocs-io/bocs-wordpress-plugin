@@ -37,7 +37,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
     public function __construct() {
         $this->id             = 'bocs_upcoming_renewal_reminder';
         $this->customer_email = true;
-        $this->title          = __('[Bocs Customer] Upcoming Subscription Renewal Reminder', 'bocs-wordpress');
+        $this->title          = __('Upcoming Subscription Renewal Reminder', 'bocs-wordpress');
         $this->description    = __('When an order is created in Pending payment mode - with notes', 'bocs-wordpress');
         $this->template_html  = 'emails/bocs-customer-upcoming-renewal-reminder.php';
         $this->template_plain = 'emails/plain/bocs-customer-upcoming-renewal-reminder.php';
@@ -69,7 +69,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('[Bocs Customer] Upcoming Subscription Renewal Reminder', 'bocs-wordpress');
+        return __('Upcoming Subscription Renewal Reminder', 'bocs-wordpress');
     }
 
     /**
@@ -311,7 +311,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your {site_title} subscription will renew soon</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>Your {site_title} subscription will renew soon</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),

@@ -125,11 +125,7 @@ if (isset($subscription['createdAt'])) {
 
 </div>
 
-<!-- Thank you section -->
-<div style="margin-bottom: 40px; padding: 20px; background-color: #f0f7f7; border-radius: 6px; text-align: center;">
-<h3 style="color: #3C7B7C; margin-top: 0;">Thank You</h3>
-<p style="margin-bottom: 20px;">Thank you for being a customer. We hope to see you again soon!</p>
-</div>
+
 
 <?php
 /*

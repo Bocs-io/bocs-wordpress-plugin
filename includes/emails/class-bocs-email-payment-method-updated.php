@@ -56,7 +56,7 @@ class WC_Bocs_Email_Payment_Method_Updated extends WC_Email {
         $this->template_html  = 'emails/bocs-customer-payment-method-updated.php';
         $this->template_plain = 'emails/plain/bocs-customer-payment-method-updated.php';
         
-        $this->default_subject = __('[Bocs] Your payment method has been updated', 'bocs-wordpress');
+        $this->default_subject = __('Your payment method has been updated', 'bocs-wordpress');
         $this->default_heading = __('Payment Method Updated', 'bocs-wordpress');
 
         // Call parent constructor
@@ -220,7 +220,7 @@ class WC_Bocs_Email_Payment_Method_Updated extends WC_Email {
                 'title'         => __('Subject', 'bocs-wordpress'),
                 'type'          => 'text',
                 'desc_tip'      => true,
-                'description'   => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your payment method has been updated</code>.', 'bocs-wordpress'),
+                'description'   => __('This controls the email subject line. Leave blank to use the default subject: <code>Your payment method has been updated</code>.', 'bocs-wordpress'),
                 'placeholder'   => $this->get_default_subject(),
                 'default'       => '',
             ),

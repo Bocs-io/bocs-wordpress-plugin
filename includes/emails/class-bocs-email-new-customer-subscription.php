@@ -107,7 +107,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Welcome to Bocs! Your subscription is confirmed', 'bocs-wordpress');
+        return __('Your subscription is confirmed', 'bocs-wordpress');
     }
 
     /**
@@ -117,7 +117,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Welcome to Bocs!', 'bocs-wordpress');
+        return __('Welcome!', 'bocs-wordpress');
     }
 
     /**
@@ -420,7 +420,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Welcome to Bocs! Your subscription is confirmed</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>Your subscription is confirmed</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),
@@ -428,7 +428,7 @@ class WC_Bocs_Email_New_Customer_Subscription extends WC_Email {
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Welcome to Bocs!</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Welcome!</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
             ),

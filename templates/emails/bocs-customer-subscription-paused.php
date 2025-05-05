@@ -143,7 +143,7 @@ if (isset($subscription['createdAt'])) {
 </div>
 
 <!-- Resume subscription section -->
-<div style="margin-bottom: 40px; padding: 20px; background-color: #f0f7f7; border-radius: 6px; text-align: center;">
+<div style="margin-bottom: 40px; padding: 20px; background-color: #f0f7f7; border-radius: 6px; text-align: left;">
 <h3 style="color: #3C7B7C; margin-top: 0;">Ready to Resume?</h3>
 <p style="margin-bottom: 20px;">You can resume your subscription at any time by logging into your account.</p>
 

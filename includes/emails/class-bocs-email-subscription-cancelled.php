@@ -92,7 +92,7 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your subscription has been cancelled', 'bocs-wordpress');
+        return __('Your subscription has been cancelled', 'bocs-wordpress');
     }
 
     /**

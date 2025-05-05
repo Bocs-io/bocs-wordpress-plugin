@@ -58,6 +58,6 @@ if ($additional_content) {
     echo "\n\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
 
-echo esc_html__('Thank you for being a valued Bocs customer!', 'bocs-wordpress') . "\n\n";
+echo esc_html__('Thank you for being a valued customer!', 'bocs-wordpress') . "\n\n";
 
 echo apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text', '')); 

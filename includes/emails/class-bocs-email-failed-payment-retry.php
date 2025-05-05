@@ -35,7 +35,7 @@ if (!class_exists('WC_Bocs_Email_Failed_Payment_Retry')) :
  *
  * An email sent to the customer when a renewal order goes from Pending payment to Failed payment.
  * This notification informs customers about failed payment retry attempts
- * and provides instructions for updating their payment method to maintain
+ * and provides instructions for updating their payment method to maintainBocs Assistance
  * uninterrupted service.
  *
  * @class       WC_Bocs_Email_Failed_Payment_Retry
@@ -88,7 +88,7 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Payment retry failed for order {order_number}', 'bocs-wordpress');
+        return __('Payment retry failed for order {order_number}', 'bocs-wordpress');
     }
 
     /**
@@ -98,7 +98,7 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('[Bocs] Payment Retry Failed', 'bocs-wordpress');
+        return __('Payment Retry Failed', 'bocs-wordpress');
     }
 
     /**

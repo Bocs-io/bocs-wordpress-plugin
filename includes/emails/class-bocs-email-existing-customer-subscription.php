@@ -96,7 +96,7 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your New Subscription is Confirmed', 'bocs-wordpress');
+        return __('Your New Subscription is Confirmed', 'bocs-wordpress');
     }
 
     /**
@@ -106,7 +106,7 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Your New Bocs Subscription', 'bocs-wordpress');
+        return __('Your New Subscription', 'bocs-wordpress');
     }
 
     /**
@@ -594,7 +594,7 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
                 'title'       => __('Subject', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>[Bocs] Your New Subscription is Confirmed</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the email subject line. Leave blank to use the default subject: <code>Your New Subscription is Confirmed</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_subject(),
                 'default'     => '',
             ),
@@ -602,7 +602,7 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
                 'title'       => __('Email Heading', 'bocs-wordpress'),
                 'type'        => 'text',
                 'desc_tip'    => true,
-                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Your New Bocs Subscription</code>.', 'bocs-wordpress'),
+                'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Your New Subscription</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
             ),

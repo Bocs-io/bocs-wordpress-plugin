@@ -60,7 +60,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <p style="margin: 0 0 16px;"><?php printf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($first_name)); ?></p>
     
     <p style="margin: 0 0 16px;">
-        <?php esc_html_e('Good news! Your renewal order has been confirmed and is now being processed. Here are the details of your order:', 'bocs-wordpress'); ?>
+        <?php esc_html_e('Good news! Your renewal order has been confirmed.', 'bocs-wordpress'); ?>
     </p>
     
     <!-- Success notification -->
@@ -72,9 +72,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
 
     <?php if (!empty($bocs_id)) : ?>
     <!-- Bocs App Attribution Notice -->
-    <p style="margin: 0 0 16px; font-style: italic; color: #555; font-size: 14px; line-height: 21px;">
-        <?php esc_html_e('This order was created through the Bocs App.', 'bocs-wordpress'); ?>
-    </p>
+  
     <?php endif; ?>
 </div>
 

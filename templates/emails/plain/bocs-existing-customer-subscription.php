@@ -38,7 +38,7 @@ do_action('woocommerce_email_order_meta', $order, $sent_to_admin, true, $email);
 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, true, $email);
 
 echo "\nYOU CAN MANAGE YOUR SUBSCRIPTION ANYTIME THROUGH YOUR CUSTOMER PORTAL:\n";
-echo "* Update your box: Change products, qualities or swap your box for another.\n";
+echo "* Update your box: Change products, quantities or swap your box for another.\n";
 echo "* Change your delivery dates: Get your products more often by updating your delivery schedule.\n";
 echo "* Edit your details: Update your payment methods, or personal details.\n\n";
 

@@ -608,8 +608,8 @@ class BOCS_AJAX {
 
             switch ($email_type) {
                 case 'cancellation':
-                    $subject = '[Bocs] Your subscription has been cancelled';
-                    $message = "Hello,\n\nYour Bocs subscription has been cancelled as requested.\n\n";
+                    $subject = 'Your subscription has been cancelled';
+                    $message = "Hello,\n\nYour subscription has been cancelled as requested.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
@@ -634,8 +634,8 @@ class BOCS_AJAX {
                     break;
 
                 case 'paused':
-                    $subject = '[Bocs] Your subscription has been paused';
-                    $message = "Hello,\n\nYour Bocs subscription has been paused as requested.\n\n";
+                    $subject = 'Your subscription has been paused';
+                    $message = "Hello,\n\nYour subscription has been paused as requested.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
@@ -651,8 +651,8 @@ class BOCS_AJAX {
                     break;
 
                 case 'resumed':
-                    $subject = '[Bocs] Your subscription has been reactivated';
-                    $message = "Hello,\n\nGreat news! Your Bocs subscription has been successfully reactivated.\n\n";
+                    $subject = 'Your subscription has been reactivated';
+                    $message = "Hello,\n\nGreat news! Your subscription has been successfully reactivated.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
@@ -669,8 +669,8 @@ class BOCS_AJAX {
 
                 case 'box_update':
                 default:
-                    $subject = '[Bocs] Your box contents have been updated';
-                    $message = "Hello,\n\nYour Bocs box contents have been updated successfully.\n\n";
+                    $subject = 'Your box contents have been updated';
+                    $message = "Hello,\n\nYour box contents have been updated successfully.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
@@ -681,7 +681,7 @@ class BOCS_AJAX {
                         $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
                     }
 
-                    $message .= "Thank you for choosing Bocs!\n";
+                    $message .= "Thank you for being a valued customer!\n";
                     break;
             }
 
@@ -1236,7 +1236,7 @@ class BOCS_AJAX {
             // error_log('BOCS DIRECT EMAIL: Attempting direct wp_mail');
 
             // Basic email content
-            $subject = '[Bocs] Your box contents have been updated';
+            $subject = 'Your box contents have been updated';
             $message = "Hello,\n\nYour Bocs box contents have been updated successfully.\n\n";
 
             // Add subscription details if available

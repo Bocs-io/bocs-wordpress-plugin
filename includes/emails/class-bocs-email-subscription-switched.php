@@ -104,7 +104,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your subscription has been updated', 'bocs-wordpress');
+        return __('Your subscription has been updated', 'bocs-wordpress');
     }
 
     /**
@@ -114,7 +114,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Your Subscription Has Been Updated', 'bocs-wordpress');
+        return __('Your subscription has been updated', 'bocs-wordpress');
     }
 
     /**
@@ -124,7 +124,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Box updated email subject
      */
     public function get_box_updated_subject() {
-        return __('[Bocs] Your box contents have been updated', 'bocs-wordpress');
+        return __('Your box contents have been updated', 'bocs-wordpress');
     }
 
     /**
@@ -134,7 +134,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Box updated email heading
      */
     public function get_box_updated_heading() {
-        return __('Your Box Contents Have Been Updated', 'bocs-wordpress');
+        return __('Good news! Your subscription contents have been updated.', 'bocs-wordpress');
     }
 
     /**
@@ -144,7 +144,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Frequency updated email subject
      */
     public function get_frequency_updated_subject() {
-        return __('[Bocs] Your subscription frequency has been updated', 'bocs-wordpress');
+        return __('Your subscription frequency has been updated', 'bocs-wordpress');
     }
 
     /**
@@ -154,7 +154,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Frequency updated email heading
      */
     public function get_frequency_updated_heading() {
-        return __('Your Subscription Frequency Has Been Updated', 'bocs-wordpress');
+        return __('Your subscription frequency has been updated', 'bocs-wordpress');
     }
 
     /**
@@ -367,7 +367,7 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
      * @return string Default additional content
      */
     public function get_default_additional_content() {
-        return __('Thank you for choosing Bocs. If you have any questions about your updated subscription, please contact us.', 'bocs-wordpress');
+        return __('Thank you for being a valued customer. If you have any questions about your updated subscription, please contact us.', 'bocs-wordpress');
     }
 
     /**

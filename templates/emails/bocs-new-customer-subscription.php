@@ -25,8 +25,12 @@ do_action('woocommerce_email_header', $email_heading, $email);
 
     <p style="margin: 0 0 16px;">Welcome to <?php echo esc_html(get_bloginfo('name')); ?>!</p>
 
-    <p style="margin: 0 0 16px;">Congratulations your first subscription has been created.</p>
 </div>
+   <!-- Subscription box -->
+   <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;">
+        <p style="margin: 0 0 16px; color: #4caf50; font-weight: 600;"><?php esc_html_e('Subscription Confirmed', 'bocs-wordpress'); ?></p>
+        <p style="margin: 0 0 16px;"><?php esc_html_e('Your new subscription has been processed successfully.', 'bocs-wordpress'); ?></p>
+    </div>
 <?php
 
 /*
