@@ -12,9 +12,7 @@ Congratulations your first subscription has been created.
 
 // Billing/Shipping details will be added by WooCommerce hooks
 
-echo "New Footer
-
-";
+// Removed Customer Portal section
 
 if ($additional_content) echo esc_html($additional_content) . "
 

@@ -1,4 +1,4 @@
-<?php defined("ABSPATH") || exit; 
+<?php defined("ABSPATH") || exit;
 
 echo "= " . esc_html($email_heading) . "\n\n";
 
@@ -37,12 +37,17 @@ do_action('woocommerce_email_order_details', $order, $sent_to_admin, true, $emai
 do_action('woocommerce_email_order_meta', $order, $sent_to_admin, true, $email);
 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, true, $email);
 
-echo "\nMANAGING YOUR BOCS SUBSCRIPTIONS\n";
-echo "- Use the Bocs mobile app to manage all your subscriptions in one place\n";
-echo "- View your subscription history and upcoming renewals\n";
-echo "- Easily access all services across your subscriptions\n\n";
+echo "\nYOU CAN MANAGE YOUR SUBSCRIPTION ANYTIME THROUGH YOUR CUSTOMER PORTAL:\n";
+echo "* Update your box: Change products, qualities or swap your box for another.\n";
+echo "* Change your delivery dates: Get your products more often by updating your delivery schedule.\n";
+echo "* Edit your details: Update your payment methods, or personal details.\n\n";
 
-echo "Visit: https://app.bocs.io to access your Bocs App\n\n";
+echo "GETTING STARTED WITH BOCS\n";
+echo "* Download the Bocs mobile app to manage your subscription\n";
+echo "* Set up your profile to get personalized recommendations\n";
+echo "* Explore the available features and services in your subscription\n\n";
+
+echo "Visit your account to manage your subscription: " . esc_url(wc_get_account_endpoint_url('my-subscriptions')) . "\n\n";
 
 if ($additional_content) {
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
@@ -52,4 +57,4 @@ if ($additional_content) {
 echo "If you have any questions about your new subscription, please contact our customer support team.\n\n";
 
 echo "Thank you for your continued support with Bocs!\n";
-?> 
+?>
