@@ -3,6 +3,11 @@ v0.0.149 05/05/2025
 * Fix: Improve subscription cancellation email with better preview support
 * Fix: Remove hardcoded colors in email templates
 * Enhancement: Add sample data generator for email previews
+* Refactor: Update email template structure to use WooCommerce standards
+* Refactor: Remove additional_content parameter from email classes
+* Refactor: Simplify email templates and remove custom styling
+* Refactor: Update plain text email templates
+* Chore: Remove backup email templates
 
 v0.0.148 05/03/2025
 * Refactor: Use WooCommerce's built-in email customization settings instead of hardcoded colors
