@@ -254,7 +254,7 @@ msgid "User ID not found in the token"
 msgstr ""
 
 #: includes/Bocs_Account.php:46
-msgid "Bocs Subscriptions"
+msgid "My Subscriptions"
 msgstr ""
 
 #: includes/Bocs_Account.php:96

@@ -129,7 +129,7 @@ class Bocs
         $this->loader->add_action('init', $account_handler, 'register_bocs_switch_bocs_endpoint');
 
         // Define endpoint content callbacks
-        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $account_handler, 'bocs_endpoint_content');
+        $this->loader->add_action('woocommerce_account_my-subscriptions_endpoint', $account_handler, 'bocs_endpoint_content');
         $this->loader->add_action('woocommerce_account_bocs-view-subscription_endpoint', $account_handler, 'bocs_view_subscription_endpoint_content');
         $this->loader->add_action('woocommerce_account_bocs-update-box_endpoint', $account_handler, 'bocs_update_box_endpoint_content');
         $this->loader->add_action('woocommerce_account_bocs-edit-details_endpoint', $account_handler, 'bocs_edit_details_endpoint_content');
@@ -150,7 +150,7 @@ class Bocs
         // Add action to handle setup completion
         $this->loader->add_action('init', $bocs_payment_method, 'handle_setup_completion');
         // Add action to display notices
-        $this->loader->add_action('woocommerce_account_bocs-subscriptions_endpoint', $bocs_payment_method, 'display_payment_update_notices');
+        $this->loader->add_action('woocommerce_account_my-subscriptions_endpoint', $bocs_payment_method, 'display_payment_update_notices');
         // Add AJAX action for updating subscription payment method
         $this->loader->add_action('wp_ajax_bocs_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
         $this->loader->add_action('wp_ajax_update_subscription_payment', $bocs_payment_method, 'update_subscription_payment');
