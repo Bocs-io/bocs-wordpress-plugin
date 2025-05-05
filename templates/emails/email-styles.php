@@ -2,492 +2,530 @@
 /**
  * Email Styles
  *
- * This template contains the styling for HTML emails sent from Bocs.
- * This can be overridden by copying it to yourtheme/woocommerce/emails/email-styles.php.
+ * This template can be overridden by copying it to yourtheme/woocommerce/emails/email-styles.php.
  *
- * @package Bocs/Templates/Emails
- * @version 1.0.0
+ * HOWEVER, on occasion WooCommerce will need to update template files and you
+ * (the theme developer) will need to copy the new files to your theme to
+ * maintain compatibility. We try to do this as little as possible, but it does
+ * happen. When this occurs the version of the template file will be bumped and
+ * the readme will list any important changes.
+ *
+ * @see     https://woocommerce.com/document/template-structure/
+ * @package WooCommerce\Templates\Emails
+ * @version 9.8.0
  */
 
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
+use Automattic\WooCommerce\Internal\Email\EmailFont;
+use Automattic\WooCommerce\Utilities\FeaturesUtil;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-// Load colors from WooCommerce settings
-$bg               = get_option('woocommerce_email_background_color', '#f7f7f7');
-$body             = get_option('woocommerce_email_body_background_color', '#ffffff');
-$base             = get_option('woocommerce_email_base_color', '#ffffff');
-$base_text        = get_option('woocommerce_email_text_color', '#333333');
-$text             = get_option('woocommerce_email_text_color', '#333333');
-$heading_text     = get_option('woocommerce_email_text_color', '#333333');
-$bocs_primary     = get_option('woocommerce_email_base_color', '#3C7B7C'); // Use WooCommerce base color
-$bocs_secondary   = '#f8f9fa';
-$bocs_accent      = '#FFA500'; // Adding an accent color (orange) for buttons, etc.
+$email_improvements_enabled = FeaturesUtil::feature_is_enabled( 'email_improvements' );
+
+// Load colors.
+$bg               = get_option( 'woocommerce_email_background_color' );
+$body             = get_option( 'woocommerce_email_body_background_color' );
+$base             = get_option( 'woocommerce_email_base_color' );
+$text             = get_option( 'woocommerce_email_text_color' );
+$footer_text      = get_option( 'woocommerce_email_footer_text_color' );
+$header_alignment = get_option( 'woocommerce_email_header_alignment', $email_improvements_enabled ? 'left' : false );
+$logo_image_width = get_option( 'woocommerce_email_header_image_width', '120' );
+$default_font     = 'Helvetica';
+$font_family      = $email_improvements_enabled ? get_option( 'woocommerce_email_font_family', $default_font ) : $default_font;
+
+/**
+ * Check if we are in preview mode (WooCommerce > Settings > Emails).
+ *
+ * @since 9.6.0
+ * @param bool $is_email_preview Whether the email is being previewed.
+ */
+$is_email_preview = apply_filters( 'woocommerce_is_email_preview', false );
+
+if ( $is_email_preview ) {
+	$bg_transient               = get_transient( 'woocommerce_email_background_color' );
+	$body_transient             = get_transient( 'woocommerce_email_body_background_color' );
+	$base_transient             = get_transient( 'woocommerce_email_base_color' );
+	$text_transient             = get_transient( 'woocommerce_email_text_color' );
+	$footer_text_transient      = get_transient( 'woocommerce_email_footer_text_color' );
+	$header_alignment_transient = get_transient( 'woocommerce_email_header_alignment' );
+	$logo_image_width_transient = get_transient( 'woocommerce_email_header_image_width' );
+	$font_family_transient      = get_transient( 'woocommerce_email_font_family' );
+
+	$bg               = $bg_transient ? $bg_transient : $bg;
+	$body             = $body_transient ? $body_transient : $body;
+	$base             = $base_transient ? $base_transient : $base;
+	$text             = $text_transient ? $text_transient : $text;
+	$footer_text      = $footer_text_transient ? $footer_text_transient : $footer_text;
+	$header_alignment = $header_alignment_transient ? $header_alignment_transient : $header_alignment;
+	$logo_image_width = $logo_image_width_transient ? $logo_image_width_transient : $logo_image_width;
+	$font_family      = $font_family_transient ? $font_family_transient : $font_family;
+}
+
+// Only use safe fonts. They won't be escaped to preserve single quotes.
+$safe_font_family = EmailFont::$font[ $font_family ] ?? EmailFont::$font[ $default_font ];
+
+$base_text = wc_light_or_dark( $base, '#202020', '#ffffff' );
+
+// Pick a contrasting color for links.
+$link_color = wc_hex_is_light( $base ) ? $base : $base_text;
+
+if ( wc_hex_is_light( $body ) ) {
+	$link_color = wc_hex_is_light( $base ) ? $base_text : $base;
+}
+
+// If email improvements are enabled, always use the base color for links.
+if ( $email_improvements_enabled ) {
+	$link_color = $base;
+}
+
+$border_color    = wc_light_or_dark( $body, 'rgba(0, 0, 0, .2)', 'rgba(255, 255, 255, .2)' );
+$bg_darker_10    = wc_hex_darker( $bg, 10 );
+$body_darker_10  = wc_hex_darker( $body, 10 );
+$base_lighter_20 = wc_hex_lighter( $base, 20 );
+$base_lighter_40 = wc_hex_lighter( $base, 40 );
+$text_lighter_20 = wc_hex_lighter( $text, 20 );
+$text_lighter_40 = wc_hex_lighter( $text, 40 );
+
+// !important; is a gmail hack to prevent styles being stripped if it doesn't like something.
+// body{padding: 0;} ensures proper scale/positioning of the email in the iOS native email app.
 ?>
-
-<style type="text/css">
-    /* Base */
-    body {
-        margin: 0;
-        padding: 0;
-        background-color: <?php echo esc_attr($bg); ?>;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        -webkit-text-size-adjust: none;
-        text-size-adjust: none;
-        color: <?php echo esc_attr($text); ?>;
-        line-height: 1.6;
-    }
-
-    #wrapper {
-        background-color: <?php echo esc_attr($bg); ?>;
-        margin: 0;
-        padding: 50px 0;
-        -webkit-text-size-adjust: none;
-        text-size-adjust: none;
-        width: 100%;
-    }
-
-    #template_container {
-        box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1) !important;
-        background-color: <?php echo esc_attr($body); ?>;
-        border: 1px solid #e5e5e5;
-        border-radius: 6px !important;
-        max-width: 600px;
-        margin: 0 auto;
-    }
-
-    #template_header {
-        background-color: <?php echo esc_attr($bocs_primary); ?> !important;
-        border-radius: 6px 6px 0 0 !important;
-        color: <?php echo esc_attr($base); ?>;
-        border-bottom: 0;
-        font-weight: bold;
-        line-height: 100%;
-        vertical-align: middle;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-
-    #header_wrapper {
-        padding: 36px 48px;
-        display: block;
-    }
-
-    #template_header h1 {
-        color: <?php echo esc_attr($base); ?> !important;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 30px;
-        font-weight: 300;
-        line-height: 150%;
-        margin: 0;
-        text-align: left;
-        text-shadow: none !important;
-        background-color: inherit;
-    }
-
-    #template_body {
-        background-color: <?php echo esc_attr($body); ?>;
-        border-radius: 0 0 6px 6px !important;
-    }
-
-    #body_content {
-        background-color: <?php echo esc_attr($body); ?>;
-    }
-
-    #body_content_inner {
-        color: <?php echo esc_attr($text); ?>;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        line-height: 150%;
-        text-align: left;
-        padding: 48px 48px 32px;
-    }
-
-    #template_footer {
-        border-top: 1px solid #e5e5e5;
-        background-color: <?php echo esc_attr($bg); ?>;
-        border-radius: 0 0 6px 6px !important;
-    }
-
-    #footer_wrapper {
-        padding: 24px 48px;
-    }
-
-    #credit {
-        border-radius: 6px;
-        border: 0;
-        color: #8a8a8a;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-size: 12px;
-        line-height: 150%;
-        text-align: center;
-        padding: 24px 0;
-    }
-
-    /* Content */
-    .bocs-email-container {
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        color: <?php echo esc_attr($text); ?>;
-        line-height: 1.6;
-        padding: 15px 30px;
-    }
-
-    .bocs-email-content {
-        margin-bottom: 30px;
-    }
-
-    .bocs-button {
-        display: inline-block;
-        background-color: <?php echo esc_attr($bocs_primary); ?>;
-        color: <?php echo esc_attr($base); ?> !important;
-        text-decoration: none;
-        padding: 12px 24px;
-        border-radius: 4px;
-        font-weight: 600;
-        margin: 20px 0;
-    }
-
-    .bocs-app-notice {
-        background-color: <?php echo esc_attr($bocs_secondary); ?>;
-        border-left: 4px solid <?php echo esc_attr($bocs_primary); ?>;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-    }
-
-    .bocs-highlight {
-        color: <?php echo esc_attr($bocs_primary); ?>;
-        font-weight: 600;
-    }
-
-    .bocs-link {
-        color: <?php echo esc_attr($bocs_primary); ?>;
-        text-decoration: underline;
-    }
-
-    .bocs-logo {
-        margin-bottom: 20px;
-        text-align: center;
-    }
-
-    /* Typography */
-    h1, h2, h3, h4 {
-        color: <?php echo esc_attr($heading_text); ?>;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        font-weight: 600;
-        margin: 0;
-        margin-bottom: 20px;
-        text-align: left;
-        line-height: 1.4;
-    }
-
-    h1 {
-        font-size: 22px;
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    h2 {
-        font-size: 20px;
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-        display: block;
-        font-weight: bold;
-        margin: 0 0 18px;
-    }
-
-    h3 {
-        font-size: 18px;
-    }
-
-    p {
-        margin: 0 0 16px;
-    }
-
-    a {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-        text-decoration: underline;
-    }
-
-    .product-name {
-        font-weight: bold;
-    }
-
-    .subscription-details {
-        background-color: <?php echo esc_attr($bocs_secondary); ?>;
-        padding: 15px;
-        margin: 15px 0;
-        border-radius: 4px;
-    }
-
-    .subscription-status {
-        display: inline-block;
-        padding: 5px 10px;
-        border-radius: 3px;
-        font-size: 12px;
-        font-weight: bold;
-        text-transform: uppercase;
-        color: #fff;
-    }
-
-    .status-active {
-        background-color: #5cb85c;
-    }
-
-    .status-paused {
-        background-color: #f0ad4e;
-    }
-
-    .status-cancelled {
-        background-color: #d9534f;
-    }
-
-    /* Override WooCommerce colors with Bocs styles */
-    table.td {
-        color: <?php echo esc_attr($text); ?>;
-        border: 1px solid #e5e5e5;
-        vertical-align: middle;
-        width: 100%;
-        font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
-    }
-
-    table.td th,
-    table.td td {
-        color: <?php echo esc_attr($text); ?>;
-        border: 1px solid #e5e5e5;
-        padding: 12px;
-        text-align: left;
-        vertical-align: middle;
-    }
-
-    table.td th {
-        background: #f8f8f8;
-        color: <?php echo esc_attr($heading_text); ?>;
-        border-top-width: 4px;
-    }
-
-    #addresses {
-        width: 100%;
-        vertical-align: top;
-        margin-bottom: 40px;
-        padding: 0;
-    }
-
-    #addresses td {
-        text-align: left;
-        font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;
-        border: 0;
-        padding: 0;
-    }
-
-    #addresses address {
-        padding: 12px;
-        color: #636363;
-        border: 1px solid #e5e5e5;
-    }
-
-    .divider {
-        color: #ccc;
-        padding: 0 6px;
-    }
-
-    /* Responsive */
-    @media screen and (max-width: 600px) {
-        #wrapper {
-            width: 100% !important;
-            padding: 15px !important;
-        }
-
-        #template_container,
-        #template_body,
-        #template_footer {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-
-        #body_content_inner {
-            padding: 24px !important;
-        }
-
-        .bocs-email-container {
-            padding: 15px !important;
-        }
-
-        #header_wrapper {
-            padding: 24px !important;
-        }
-
-        #template_header h1 {
-            font-size: 24px !important;
-        }
-
-        table.td th,
-        table.td td {
-            padding: 8px !important;
-        }
-
-        #addresses td {
-            width: 100% !important;
-            display: block !important;
-        }
-    }
-
-    /* Bocs specific styles */
-    .bocs-email-container {
-        padding: 0 12px;
-        max-width: 100%;
-    }
-
-    .bocs-renewal-notice {
-        background-color: #f8f9fa;
-        border-left: 4px solid <?php echo esc_attr($bocs_primary); ?>;
-        padding: 15px 20px;
-        margin-bottom: 30px;
-        border-radius: 4px;
-    }
-
-    .bocs-app-notice {
-        background-color: #fff8e1;
-        padding: 12px 15px;
-        margin-bottom: 25px;
-        border-radius: 4px;
-        border: 1px dashed #ffc107;
-    }
-
-    .bocs-highlight {
-        color: #ff6b00;
-        font-weight: 500;
-    }
-
-    .bocs-order-status {
-        background-color: <?php echo esc_attr($bocs_secondary); ?>;
-        border-radius: 6px;
-        padding: 20px;
-        margin-bottom: 30px;
-        border: 1px solid #e5e5e5;
-    }
-
-    .bocs-order-status h3 {
-        margin-top: 0;
-        margin-bottom: 15px;
-        color: <?php echo esc_attr($heading_text); ?>;
-        font-size: 18px;
-    }
-
-    .status-label {
-        margin-bottom: 15px;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 30px;
-        font-size: 12px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-pending {
-        background-color: #fff8e1;
-        color: #ff6d00;
-    }
-
-    .status-processing {
-        background-color: #e1f5fe;
-        color: #0288d1;
-    }
-
-    .status-on-hold {
-        background-color: #f3e5f5;
-        color: #7b1fa2;
-    }
-
-    .status-completed {
-        background-color: #e8f5e9;
-        color: #388e3c;
-    }
-
-    .status-failed {
-        background-color: #ffebee;
-        color: #d32f2f;
-    }
-
-    .status-cancelled {
-        background-color: #f5f5f5;
-        color: #616161;
-    }
-
-    .bocs-action-button {
-        text-align: center;
-        margin: 25px 0 10px;
-    }
-
-    .bocs-button {
-        background-color: <?php echo esc_attr($bocs_primary); ?>;
-        border-radius: 4px;
-        color: <?php echo esc_attr($base); ?> !important;
-        display: inline-block;
-        font-weight: 500;
-        line-height: 100%;
-        margin: 0;
-        text-align: center;
-        text-decoration: none !important;
-        font-size: 14px;
-        padding: 12px 25px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .bocs-email-content {
-        margin-bottom: 25px;
-        padding: 0 5px;
-    }
-
-    .bocs-email-footer {
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #e5e5e5;
-        color: #757575;
-        font-size: 13px;
-    }
-
-    /* Force override all remaining WooCommerce purple elements */
-    h2, .h2, h2 a, .h2 a {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    .woocommerce h2,
-    #template_container h2,
-    [style*="color: #7f54b3"],
-    [style*="color:#7f54b3"] {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    #template_header,
-    [style*="background-color: #7f54b3"],
-    [style*="background-color:#7f54b3"],
-    [bgcolor="#7f54b3"] {
-        background-color: <?php echo esc_attr($bocs_primary); ?> !important;
-        text-shadow: none !important;
-    }
-
-    a,
-    a:hover,
-    a:visited,
-    a:active,
-    [style*="color: #7f54b3"],
-    [style*="color:#7f54b3"] {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    .address a {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    #credit a {
-        color: <?php echo esc_attr($bocs_primary); ?> !important;
-    }
-
-    #template_container #template_header h1,
-    #template_container #template_header h1[style*="text-shadow"] {
-        text-shadow: none !important;
-    }
-</style>
+body {
+	background-color: <?php echo esc_attr( $bg ); ?>;
+	padding: 0;
+	text-align: center;
+}
+
+#outer_wrapper {
+	background-color: <?php echo esc_attr( $bg ); ?>;
+}
+
+<?php if ( $email_improvements_enabled ) : ?>
+#inner_wrapper {
+	background-color: <?php echo esc_attr( $body ); ?>;
+	border-radius: 8px;
+}
+<?php endif; ?>
+
+#wrapper {
+	margin: 0 auto;
+	padding: <?php echo $email_improvements_enabled ? '24px 0' : '70px 0'; ?>;
+	-webkit-text-size-adjust: none !important;
+	width: 100%;
+	max-width: 600px;
+}
+
+#template_container {
+	box-shadow: <?php echo $email_improvements_enabled ? 'none' : '0 1px 4px rgba(0, 0, 0, 0.1) !important'; ?>;
+	background-color: <?php echo esc_attr( $body ); ?>;
+	border: <?php echo $email_improvements_enabled ? '0' : '1px solid ' . esc_attr( $bg_darker_10 ); ?>;
+	border-radius: 3px !important;
+}
+
+#template_header {
+	background-color: <?php echo esc_attr( $email_improvements_enabled ? $body : $base ); ?>;
+	border-radius: 3px 3px 0 0 !important;
+	color: <?php echo esc_attr( $email_improvements_enabled ? $text : $base_text ); ?>;
+	border-bottom: 0;
+	font-weight: bold;
+	line-height: 100%;
+	vertical-align: middle;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+}
+
+#template_header h1,
+#template_header h1 a {
+	color: <?php echo esc_attr( $email_improvements_enabled ? $text : $base_text ); ?>;
+	background-color: inherit;
+}
+
+<?php if ( $email_improvements_enabled ) : ?>
+.hr {
+	border-bottom: 1px solid #1e1e1e;
+	opacity: 0.2;
+	margin: 16px 0;
+}
+
+.hr-top {
+	margin-top: 32px;
+}
+
+.hr-bottom {
+	margin-bottom: 32px;
+}
+
+#template_header_image {
+	padding: 32px 32px 0;
+}
+
+#template_header_image p {
+	margin-bottom: 0;
+	text-align: <?php echo esc_attr( $header_alignment ); ?>;
+}
+
+#template_header_image img {
+	width: <?php echo esc_attr( $logo_image_width ); ?>px;
+}
+
+.email-logo-text {
+	color: <?php echo esc_attr( $link_color ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: 18px;
+}
+
+.email-introduction {
+	padding-bottom: 24px;
+}
+
+.email-order-item-meta {
+	color: <?php echo esc_attr( $footer_text ); ?>;
+	font-size: 14px;
+	line-height: 140%;
+}
+
+#body_content table td td.email-additional-content {
+	color: <?php echo esc_attr( $text ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	padding: 32px 0 0;
+}
+
+.email-additional-content p {
+	text-align: center;
+}
+
+.email-additional-content-aligned p {
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+}
+
+<?php else : ?>
+
+#template_header_image img {
+	margin-left: 0;
+	margin-right: 0;
+}
+<?php endif; ?>
+
+#template_footer td {
+	padding: 0;
+	border-radius: <?php echo $email_improvements_enabled ? '0' : '6px'; ?>;
+}
+
+#template_footer #credit {
+	border: 0;
+	<?php if ( $email_improvements_enabled ) : ?>
+		border-top: 1px solid <?php echo esc_attr( $border_color ); ?>;
+	<?php endif; ?>
+	color: <?php echo esc_attr( $footer_text ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: 12px;
+	line-height: <?php echo $email_improvements_enabled ? '140%' : '150%'; ?>;
+	text-align: center;
+	padding: <?php echo $email_improvements_enabled ? '32px' : '24px 0'; ?>;
+}
+
+#template_footer #credit p {
+	margin: <?php echo $email_improvements_enabled ? '0' : '0 0 16px'; ?>;
+}
+
+#body_content {
+	background-color: <?php echo esc_attr( $body ); ?>;
+}
+
+#body_content table td {
+	padding: <?php echo $email_improvements_enabled ? '20px 32px 32px' : '48px 48px 32px'; ?>;
+}
+
+#body_content table td td {
+	padding: 12px;
+}
+
+#body_content table td th {
+	padding: 12px;
+}
+
+#body_content table .email-order-details td,
+#body_content table .email-order-details th {
+	padding: 8px 12px;
+}
+
+#body_content table .email-order-details td:first-child,
+#body_content table .email-order-details th:first-child {
+	padding-<?php echo is_rtl() ? 'right' : 'left'; ?>: 0;
+}
+
+#body_content table .email-order-details td:last-child,
+#body_content table .email-order-details th:last-child {
+	padding-<?php echo is_rtl() ? 'left' : 'right'; ?>: 0;
+}
+
+#body_content .email-order-details tbody tr:last-child td {
+	border-bottom: 1px solid <?php echo esc_attr( $border_color ); ?>;
+	padding-bottom: 24px;
+}
+
+#body_content .email-order-details tfoot tr:first-child td,
+#body_content .email-order-details tfoot tr:first-child th {
+	padding-top: 24px;
+}
+
+#body_content .order-item-data td {
+	border: 0 !important;
+	padding: 0 !important;
+	vertical-align: middle;
+}
+
+#body_content .email-order-details .order-totals td,
+#body_content .email-order-details .order-totals th {
+	font-weight: normal;
+	padding-bottom: 5px;
+	padding-top: 5px;
+}
+
+#body_content .email-order-details .order-totals-total th {
+	font-weight: bold;
+}
+
+#body_content .email-order-details .order-totals-total td {
+	font-weight: bold;
+	font-size: 20px;
+}
+
+#body_content .email-order-details .order-totals-last td,
+#body_content .email-order-details .order-totals-last th {
+	border-bottom: 1px solid <?php echo esc_attr( $border_color ); ?>;
+	padding-bottom: 24px;
+}
+
+#body_content .email-order-details .order-customer-note td {
+	border-bottom: 1px solid <?php echo esc_attr( $border_color ); ?>;
+	padding-bottom: 24px;
+	padding-top: 24px;
+}
+
+#body_content td ul.wc-item-meta {
+	font-size: small;
+	margin: 1em 0 0>;
+	padding: 0;
+	list-style: none;
+}
+
+#body_content td ul.wc-item-meta li {
+	margin: 0.5em 0 0;
+	padding: 0;
+}
+
+#body_content td ul.wc-item-meta li p {
+	margin: 0;
+}
+
+#body_content .email-order-details .wc-item-meta-label {
+	clear: both;
+	float: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+	font-weight: normal;
+	margin-<?php echo is_rtl() ? 'left' : 'right'; ?>: .25em;
+}
+
+#body_content p {
+	margin: 0 0 16px;
+}
+
+#body_content_inner {
+	color: <?php echo esc_attr( $text_lighter_20 ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: <?php echo $email_improvements_enabled ? '16px' : '14px'; ?>;
+	line-height: 150%;
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+}
+
+.td {
+	color: <?php echo esc_attr( $text_lighter_20 ); ?>;
+	border: <?php echo $email_improvements_enabled ? '0' : '1px solid ' . esc_attr( $body_darker_10 ); ?>;
+	vertical-align: middle;
+}
+
+.address {
+	<?php if ( $email_improvements_enabled ) { ?>
+		color: <?php echo esc_attr( $text ); ?>;
+		font-style: normal;
+		padding: 8px 0;
+	<?php } else { ?>
+		padding: 12px;
+		color: <?php echo esc_attr( $text_lighter_20 ); ?>;
+		border: 1px solid <?php echo esc_attr( $body_darker_10 ); ?>;
+	<?php } ?>
+}
+
+.additional-fields {
+	padding: 12px 12px 0;
+	color: <?php echo esc_attr( $text_lighter_20 ); ?>;
+	border: 1px solid <?php echo esc_attr( $body_darker_10 ); ?>;
+	list-style: none outside;
+}
+
+.additional-fields li {
+	margin: 0 0 12px 0;
+}
+
+.text,
+.address-title,
+.order-item-data {
+	color: <?php echo esc_attr( $text ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+}
+
+.link {
+	color: <?php echo esc_attr( $link_color ); ?>;
+}
+
+#header_wrapper {
+	padding: <?php echo $email_improvements_enabled ? '20px 32px 0' : '36px 48px'; ?>;
+	display: block;
+}
+
+<?php if ( $header_alignment ) : ?>
+#header_wrapper h1 {
+	text-align: <?php echo esc_attr( $header_alignment ); ?>;
+}
+<?php endif; ?>
+
+#template_footer #credit,
+#template_footer #credit a {
+	color: <?php echo esc_attr( $footer_text ); ?>;
+}
+
+h1 {
+	color: <?php echo esc_attr( $email_improvements_enabled ? $text : $base ); ?>;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: <?php echo $email_improvements_enabled ? '32px' : '30px'; ?>;
+	font-weight: <?php echo $email_improvements_enabled ? 700 : 300; ?>;
+	<?php if ( $email_improvements_enabled ) : ?>
+		letter-spacing: -1px;
+	<?php endif; ?>
+	line-height: <?php echo $email_improvements_enabled ? '120%' : '150%'; ?>;
+	margin: 0;
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+	<?php if ( ! $email_improvements_enabled ) : ?>
+		text-shadow: 0 1px 0 <?php echo esc_attr( $base_lighter_20 ); ?>;
+	<?php endif; ?>
+}
+
+h2 {
+	color: <?php echo esc_attr( $email_improvements_enabled ? $text : $base ); ?>;
+	display: block;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: <?php echo $email_improvements_enabled ? '20px' : '18px'; ?>;
+	font-weight: bold;
+	line-height: <?php echo $email_improvements_enabled ? '160%' : '130%'; ?>;
+	margin: 0 0 18px;
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+}
+
+h3 {
+	color: <?php echo esc_attr( $email_improvements_enabled ? $text : $base ); ?>;
+	display: block;
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+	font-size: 16px;
+	font-weight: bold;
+	line-height: <?php echo $email_improvements_enabled ? '160%' : '130%'; ?>;
+	margin: 16px 0 8px;
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+}
+
+a {
+	color: <?php echo esc_attr( $link_color ); ?>;
+	font-weight: normal;
+	text-decoration: underline;
+}
+
+img {
+	border: none;
+	display: inline-block;
+	font-size: 14px;
+	font-weight: bold;
+	height: auto;
+	outline: none;
+	text-decoration: none;
+	text-transform: capitalize;
+	vertical-align: middle;
+	margin-<?php echo is_rtl() ? 'left' : 'right'; ?>: <?php echo $email_improvements_enabled ? '24px' : '10px'; ?>;
+	max-width: 100%;
+}
+
+h2.email-order-detail-heading span {
+	color: <?php echo esc_attr( $footer_text ); ?>;
+	display: block;
+	font-size: 14px;
+	font-weight: normal;
+}
+
+.font-family {
+	font-family: <?php echo $safe_font_family; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+}
+
+.text-align-left {
+	text-align: <?php echo is_rtl() ? 'right' : 'left'; ?>;
+}
+
+.text-align-right {
+	text-align: <?php echo is_rtl() ? 'left' : 'right'; ?>;
+}
+
+/**
+ * Media queries are not supported by all email clients, however they do work on modern mobile
+ * Gmail clients and can help us achieve better consistency there.
+ */
+@media screen and (max-width: 600px) {
+	<?php if ( $email_improvements_enabled ) : ?>
+		#template_header_image {
+			padding: 16px 10px 0 !important;
+		}
+
+		#header_wrapper {
+			padding: 16px 10px 0 !important;
+		}
+
+		#header_wrapper h1 {
+			font-size: 24px !important;
+		}
+
+		#body_content_inner_cell {
+			padding: 10px !important;
+		}
+
+		#body_content_inner {
+			font-size: 12px !important;
+		}
+
+		.email-order-item-meta {
+			font-size: 12px !important;
+		}
+
+		#body_content .email-order-details .order-totals-total td {
+			font-size: 14px !important;
+		}
+
+		.email-order-detail-heading {
+			font-size: 16px !important;
+			line-height: 130% !important;
+		}
+
+		.email-additional-content {
+			padding-top: 16px !important;
+		}
+	<?php else : ?>
+		#header_wrapper {
+			padding: 27px 36px !important;
+			font-size: 24px;
+		}
+
+		#body_content table > tbody > tr > td {
+			padding: 10px !important;
+		}
+
+		#body_content_inner {
+			font-size: 10px !important;
+		}
+	<?php endif; ?>
+}
+<?php
