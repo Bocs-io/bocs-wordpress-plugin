@@ -162,7 +162,7 @@ if (isset($subscription['createdAt'])) {
 
 <?php
 // My account URL
-$account_url = wc_get_account_endpoint_url('bocs-subscriptions');
+$account_url = wc_get_account_endpoint_url('my-subscriptions');
 if ($account_url) :
 ?>
     <a href="<?php echo esc_url($account_url); ?>" style="display: inline-block; background-color: #3C7B7C; color: #ffffff; font-size: 16px; font-weight: bold; line-height: 100%; text-decoration: none; padding: 12px 25px; border-radius: 4px;">

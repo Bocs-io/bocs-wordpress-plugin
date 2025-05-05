@@ -183,7 +183,7 @@ echo esc_html__('To view or manage your subscription, please visit:', 'bocs-word
 // View subscription URL - if we have a URL
 $view_url = '';
 if (function_exists('wc_get_account_endpoint_url')) {
-    $view_url = wc_get_account_endpoint_url('bocs-subscriptions');
+    $view_url = wc_get_account_endpoint_url('my-subscriptions');
     echo esc_url($view_url) . "\n\n";
 } else {
     echo esc_html__('Please log in to your account to manage your subscription.', 'bocs-wordpress') . "\n\n";

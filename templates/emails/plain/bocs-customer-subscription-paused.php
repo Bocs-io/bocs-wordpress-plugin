@@ -110,7 +110,7 @@ echo "= " . esc_html__('READY TO RESUME?', 'bocs-wordpress') . " =\n";
 echo esc_html__('You can resume your subscription at any time by logging into your account.', 'bocs-wordpress') . "\n";
 
 // My account URL
-$account_url = wc_get_account_endpoint_url('bocs-subscriptions');
+$account_url = wc_get_account_endpoint_url('my-subscriptions');
 if ($account_url) {
     echo esc_html__('Manage your subscription:', 'bocs-wordpress') . ' ' . esc_url($account_url) . "\n\n";
 }

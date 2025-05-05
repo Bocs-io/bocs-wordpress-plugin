@@ -123,7 +123,7 @@ echo "= " . esc_html__('MANAGE YOUR SUBSCRIPTION', 'bocs-wordpress') . " =\n";
 echo esc_html__('Need to make changes? You can manage your subscription at any time by logging into your account.', 'bocs-wordpress') . "\n";
 
 // My account URL
-$account_url = wc_get_account_endpoint_url('bocs-subscriptions');
+$account_url = wc_get_account_endpoint_url('my-subscriptions');
 if ($account_url) {
     echo esc_html__('Visit your account:', 'bocs-wordpress') . ' ' . esc_url($account_url) . "\n\n";
 }
