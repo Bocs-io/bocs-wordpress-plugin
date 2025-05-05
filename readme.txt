@@ -1,6 +1,12 @@
+v0.0.148 05/03/2025
+* Refactor: Use WooCommerce's built-in email customization settings instead of hardcoded colors
+* Feature: Consolidated pause subscription functionality into a single script
+* Fix: Removed color overriding in email templates for better compatibility
+* Performance: Improved JavaScript organization for subscription management
+
 v0.0.147 05/01/2025
 * Style: Updated CSS files with improved styling for subscription management pages
-* Style: Updated version cache busting for better user experience 
+* Style: Updated version cache busting for better user experience
 * Feature: Enhanced template files for subscription management
 * UI: Improved order line items display in subscription templates
 * UX: Enhanced subscription management interface with better user interaction
@@ -68,7 +74,7 @@ v0.0.140 04/24/2025
 v0.0.139 04/23/2025
 * Feature: Added frequency discount display and improved data handling
 * Fix: Implemented API request loop detection and error handling
-* Style: Improved button loading states and subscription display 
+* Style: Improved button loading states and subscription display
 * Style: Updated color scheme and button styling
 * Refactor: Removed temporary button fix scripts and updated subscription display
 * Feature: Added admin email preview functionality and improved email templates
@@ -143,7 +149,7 @@ v0.0.131 04/01/2025
 * Fixed email delivery reliability with multiple fallback methods
 * Improved subscription display and core plugin hooks
 * Enhanced customer details editing interface
-* Improved email templates for subscription status changes 
+* Improved email templates for subscription status changes
 * Fixed standardization of email class registration with WooCommerce
 * Enhanced payment method handling and related emails
 * Added comprehensive error handling for payment processing
@@ -202,16 +208,16 @@ v0.0.126 03/24/2025
 * Rename child/sibling order to renewal order
 * Syntax error at bocs checkout js
 
-v0.0.125 03/24/2025 
-* Product Update 
+v0.0.125 03/24/2025
+* Product Update
 * Frequency Update
 * Get Stripe keys
 
-v0.0.124 03/18/2025 
+v0.0.124 03/18/2025
 * Fixes on the trigger payment
 * Fixes on the null frequency on checkout
 
-v0.0.123 03/17/2025 
+v0.0.123 03/17/2025
 * error on login fix
 
 v0.0.122 03/14/2025
@@ -287,7 +293,7 @@ v0.0.109 02/06/2025
 * Fix the current user's list of subscriptions on My Account page
 
 v0.0.108 02/04/2025
-* Added the save payment checkbox on the checkout page 
+* Added the save payment checkbox on the checkout page
 * Fixes on the frequency on the subscriptions page
 * Fixes on the next payment date on the subscriptions page
 * Fixes on the early renewal on the subscriptions page
@@ -541,7 +547,7 @@ v0.0.30 07/30/2023
 
 v0.0.29 07/27/2023
 * Endpoint ID fix
-* Added logs on the syncs 
+* Added logs on the syncs
 * Added module and id on logs
 
 v0.0.28 07/26/2023
