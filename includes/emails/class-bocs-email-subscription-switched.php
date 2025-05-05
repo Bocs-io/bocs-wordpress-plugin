@@ -400,14 +400,6 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 'default'       => $this->get_default_heading(),
                 'desc_tip'      => true,
             ),
-            'additional_content' => array(
-                'title'         => __('Additional Content', 'bocs-wordpress'),
-                'description'   => __('Text to appear below the main email content.', 'bocs-wordpress') . ' ' . sprintf(__('Leave blank to use the default content: <code>%s</code>.', 'bocs-wordpress'), $this->get_default_additional_content()),
-                'type'          => 'textarea',
-                'default'       => $this->get_default_additional_content(),
-                'placeholder'   => $this->get_default_additional_content(),
-                'desc_tip'      => true,
-            ),
             'email_type' => array(
                 'title'         => __('Email Type', 'bocs-wordpress'),
                 'type'          => 'select',

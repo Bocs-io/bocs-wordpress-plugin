@@ -348,7 +348,6 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
                 array(
                     'subscription'      => $this->object,
                     'email_heading'     => $this->get_heading(),
-                    'additional_content' => $this->get_additional_content(),
                     'email'             => $this,
                     'bocs_id'           => $this->bocs_id,
                 ),
@@ -376,7 +375,6 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
                 array(
                     'subscription'      => $this->object,
                     'email_heading'     => $this->get_heading(),
-                    'additional_content' => $this->get_additional_content(),
                     'email'             => $this,
                     'bocs_id'           => $this->bocs_id,
                 ),
@@ -426,14 +424,6 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
                 'description'   => sprintf(__('This controls the main heading contained within the email notification. Default: %s', 'bocs-wordpress'), $this->get_default_heading()),
                 'placeholder'   => $this->get_default_heading(),
                 'default'       => $this->get_default_heading(),
-            ),
-            'additional_content' => array(
-                'title'       => __('Additional Content', 'bocs-wordpress'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
-                'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('N/A', 'bocs-wordpress'),
-                'type'        => 'textarea',
-                'default'     => $this->get_default_additional_content(),
             ),
             'email_type' => array(
                 'title'         => __('Email type', 'bocs-wordpress'),

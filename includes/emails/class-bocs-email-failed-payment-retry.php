@@ -286,7 +286,6 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
             array(
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => false,
                 'email'              => $this,
@@ -308,7 +307,6 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
             array(
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => true,
                 'email'              => $this,
@@ -356,15 +354,6 @@ class WC_Bocs_Email_Failed_Payment_Retry extends WC_Email {
                 'description' => sprintf(__('Available placeholders: %s', 'bocs-wordpress'), '{site_title}, {order_date}, {order_number}'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => $this->get_default_heading(),
-            ),
-            'additional_content' => array(
-                'title'       => __('Additional Content', 'bocs-wordpress'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
-                'css'         => 'width: 400px; height: 75px;',
-                'placeholder' => $this->get_default_additional_content(),
-                'type'        => 'textarea',
-                'default'     => $this->get_default_additional_content(),
-                'desc_tip'    => true,
             ),
             'email_type' => array(
                 'title'       => __('Email type', 'bocs-wordpress'),

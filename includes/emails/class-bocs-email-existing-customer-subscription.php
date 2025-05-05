@@ -318,7 +318,6 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
             array(
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => false,
                 'email'              => $this,
@@ -340,7 +339,6 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
             array(
                 'order'              => $this->object,
                 'email_heading'      => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'sent_to_admin'      => false,
                 'plain_text'         => true,
                 'email'              => $this,
@@ -607,15 +605,6 @@ class WC_Bocs_Email_Existing_Customer_Subscription extends WC_Email {
                 'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Your New Bocs Subscription</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
-            ),
-            'additional_content' => array(
-                'title'       => __('Additional content', 'bocs-wordpress'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
-                'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('Thank you for your continued trust in Bocs! If you have any questions about your new subscription, our customer support team is always here to help.', 'bocs-wordpress'),
-                'type'        => 'textarea',
-                'default'     => $this->get_default_additional_content(),
-                'desc_tip'    => true,
             ),
             'email_type'         => array(
                 'title'       => __('Email type', 'bocs-wordpress'),

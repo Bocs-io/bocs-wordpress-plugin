@@ -318,7 +318,6 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
             [
                 'subscription' => $this->subscription_data, // Changed from subscription_data to subscription
                 'email_heading' => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'email' => $this,
             ],
             '',
@@ -337,7 +336,6 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
             [
                 'subscription' => $this->subscription_data, // Changed from subscription_data to subscription
                 'email_heading' => $this->get_heading(),
-                'additional_content' => $this->get_additional_content(),
                 'email' => $this,
             ],
             '',
@@ -383,15 +381,6 @@ class WC_Bocs_Email_Subscription_Paused extends WC_Email {
                 'description' => esc_html__('This controls the main heading contained within the email notification. Leave blank to use the default heading: ', 'bocs-wordpress') . $this->get_default_heading(),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
-                'desc_tip'    => true,
-            ),
-            'additional_content' => array(
-                'title'       => esc_html__('Additional content', 'bocs-wordpress'),
-                'description' => esc_html__('Text to appear below the main email content.', 'bocs-wordpress'),
-                'css'         => 'width:400px; height: 75px;',
-                'placeholder' => esc_html__('N/A', 'bocs-wordpress'),
-                'type'        => 'textarea',
-                'default'     => $this->get_default_additional_content(),
                 'desc_tip'    => true,
             ),
             'email_type'         => array(

@@ -184,7 +184,6 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
                 'plain_text'         => false,
                 'email'              => $this,
                 'renewal_date'       => $this->placeholders['{renewal_date}'],
-                'additional_content' => $this->get_option('additional_content', '')
             ),
             $this->template_base,
             $this->template_base
@@ -213,7 +212,6 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
                 'plain_text'         => true,
                 'email'              => $this,
                 'renewal_date'       => $this->placeholders['{renewal_date}'],
-                'additional_content' => $this->get_option('additional_content', '')
             ),
             $this->template_base,
             $this->template_base
@@ -324,15 +322,6 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
                 'description' => __('This controls the main heading contained within the email notification. Leave blank to use the default heading: <code>Upcoming Subscription Renewal</code>.', 'bocs-wordpress'),
                 'placeholder' => $this->get_default_heading(),
                 'default'     => '',
-            ),
-            'additional_content' => array(
-                'title'       => __('Additional content', 'bocs-wordpress'),
-                'description' => __('Text to appear below the main email content.', 'bocs-wordpress'),
-                'css'         => 'width:400px; height: 75px;',
-                'placeholder' => __('If you wish to make any changes to your subscription before the renewal, please contact us.', 'bocs-wordpress'),
-                'type'        => 'textarea',
-                'default'     => $this->get_default_additional_content(),
-                'desc_tip'    => true,
             ),
             'email_type'         => array(
                 'title'       => __('Email type', 'bocs-wordpress'),
