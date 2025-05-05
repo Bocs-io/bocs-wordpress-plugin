@@ -9,7 +9,7 @@ v0.0.149 05/05/2025
 * Refactor: Update plain text email templates
 * Chore: Remove backup email templates
 
-v0.0.148 05/03/2025
+v0.0.148 05/02/2025
 * Refactor: Use WooCommerce's built-in email customization settings instead of hardcoded colors
 * Feature: Consolidated pause subscription functionality into a single script
 * Fix: Removed color overriding in email templates for better compatibility
