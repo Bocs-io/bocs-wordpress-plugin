@@ -32,6 +32,13 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
      * @var string
      */
     public $bocs_id;
+    
+    /**
+    * Subscription data
+    *
+    * @var array
+    */
+   public $subscription_data;
 
     /**
      * Constructor
@@ -48,30 +55,17 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         $this->template_html  = 'emails/bocs-customer-subscription-cancelled.php';
         $this->template_plain = 'emails/plain/bocs-customer-subscription-cancelled.php';
         
-        // Make sure we use the correct template path
-        if (defined('BOCS_TEMPLATE_PATH')) {
-            $this->template_base = BOCS_TEMPLATE_PATH;
-        } else {
-            // Fallback to plugin directory
-            $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
-        }
+        $this->template_base = plugin_dir_path(dirname(dirname(__FILE__))) . 'templates/';
         
         $this->placeholders   = array(
             '{subscription_id}' => '',
         );
 
-        // Force enable this email
-        $this->enabled = 'yes';
-
-        // Call parent constructor
-        parent::__construct();
+         // Call parent constructor first
+         parent::__construct();
         
-        // Do not set a default recipient - we'll set it in the trigger method based on the subscription
-        
-        // Add a filter to ensure this email is always enabled
-        add_filter('woocommerce_email_enabled_' . $this->id, function($enabled) {
-            return 'yes'; // Always enable this email
-        }, 999, 1);
+         // Force enable this email
+         $this->enabled = 'yes';
         
         // Add action to trigger this email when a subscription is cancelled
         add_action('bocs_subscription_cancelled', array($this, 'trigger'), 10, 2);
@@ -108,7 +102,7 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
      * @return string Default email heading
      */
     public function get_default_heading() {
-        return __('Your Subscription Has Been Cancelled', 'bocs-wordpress');
+        return __('Subscription Cancelled', 'bocs-wordpress');
     }
 
     /**
@@ -145,6 +139,15 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         
         error_log('BOCS EMAIL CANCELLED: Starting trigger method');
         
+        // Special handling for email preview - create sample data if needed
+        if (is_admin() && isset($_GET['preview']) && $_GET['preview'] === 'true') {
+            error_log('BOCS EMAIL CANCELLED: Preview mode detected, generating sample data');
+            // Create sample data for preview
+            $subscription_data = $this->get_preview_subscription_data();
+            $this->recipient = get_option('admin_email');
+            error_log('BOCS EMAIL CANCELLED: Using admin email for preview: ' . $this->recipient);
+        }
+        
         // Check if we have valid subscription data
         if (empty($subscription_data)) {
             error_log('BOCS EMAIL CANCELLED: Empty subscription data');
@@ -155,13 +158,8 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         // Handle case where subscription_data is an integer (likely subscription ID during preview)
         if (is_numeric($subscription_data)) {
             error_log('BOCS EMAIL CANCELLED: Received numeric subscription ID instead of data array: ' . $subscription_data);
-            // Create a minimal valid subscription data array
-            $subscription_data = array(
-                'id' => $subscription_data,
-                'customer' => array(
-                    'email' => get_option('admin_email') // Fallback to admin email for previews
-                )
-            );
+            // Use our preview data generator instead of minimal data
+            $subscription_data = $this->get_preview_subscription_data();
         } else if (!is_array($subscription_data)) {
             // Try to convert to array if it's an object
             if (is_object($subscription_data)) {
@@ -180,78 +178,80 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
         $this->object = $subscription_data;
         
         // Get recipient email from subscription data - check all possible locations
-        $customer_email = '';
-        
-        // IMPORTANT: Dump complete billing data if it exists for debugging
-        if (isset($subscription_data['billing'])) {
-            error_log('BOCS EMAIL CANCELLED: Complete billing data: ' . json_encode($subscription_data['billing']));
-        }
-        
-        // Check in customer object
-        if (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
-            $customer_email = $subscription_data['customer']['email'];
-            error_log('BOCS EMAIL CANCELLED: Found email in customer object: ' . $customer_email);
-        } 
-        // Check in billing object
-        elseif (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
-            $customer_email = $subscription_data['billing']['email'];
-            error_log('BOCS EMAIL CANCELLED: Found email in billing object: ' . $customer_email);
-        }
-        // Check in user object
-        elseif (isset($subscription_data['user']) && isset($subscription_data['user']['email'])) {
-            $customer_email = $subscription_data['user']['email'];
-            error_log('BOCS EMAIL CANCELLED: Found email in user object: ' . $customer_email);
-        }
-        // Check if there's directly an email field
-        elseif (isset($subscription_data['email'])) {
-            $customer_email = $subscription_data['email'];
-            error_log('BOCS EMAIL CANCELLED: Found direct email field: ' . $customer_email);
-        }
-        
-        // HARDCODED FALLBACK - use the billing email directly if we can extract it from the data
-        if (empty($customer_email) && isset($subscription_data['billing'])) {
-            // Try direct array access as a last resort
-            if (is_array($subscription_data['billing']) && array_key_exists('email', $subscription_data['billing'])) {
-                $customer_email = $subscription_data['billing']['email'];
-                error_log('BOCS EMAIL CANCELLED: Found email using direct array access: ' . $customer_email);
+        if (!isset($this->recipient) || empty($this->recipient)) {
+            $customer_email = '';
+            
+            // IMPORTANT: Dump complete billing data if it exists for debugging
+            if (isset($subscription_data['billing'])) {
+                error_log('BOCS EMAIL CANCELLED: Complete billing data: ' . json_encode($subscription_data['billing']));
             }
-        }
-        
-        // Last resort fallback - look through metadata
-        if (empty($customer_email) && isset($subscription_data['metaData']) && is_array($subscription_data['metaData'])) {
-            foreach ($subscription_data['metaData'] as $meta) {
-                if (isset($meta['key']) && strpos($meta['key'], 'email') !== false && !empty($meta['value'])) {
-                    if (filter_var($meta['value'], FILTER_VALIDATE_EMAIL)) {
-                        $customer_email = $meta['value'];
-                        error_log('BOCS EMAIL CANCELLED: Found email in metadata: ' . $customer_email);
-                        break;
+            
+            // Check in customer object
+            if (isset($subscription_data['customer']) && isset($subscription_data['customer']['email'])) {
+                $customer_email = $subscription_data['customer']['email'];
+                error_log('BOCS EMAIL CANCELLED: Found email in customer object: ' . $customer_email);
+            } 
+            // Check in billing object
+            elseif (isset($subscription_data['billing']) && isset($subscription_data['billing']['email'])) {
+                $customer_email = $subscription_data['billing']['email'];
+                error_log('BOCS EMAIL CANCELLED: Found email in billing object: ' . $customer_email);
+            }
+            // Check in user object
+            elseif (isset($subscription_data['user']) && isset($subscription_data['user']['email'])) {
+                $customer_email = $subscription_data['user']['email'];
+                error_log('BOCS EMAIL CANCELLED: Found email in user object: ' . $customer_email);
+            }
+            // Check if there's directly an email field
+            elseif (isset($subscription_data['email'])) {
+                $customer_email = $subscription_data['email'];
+                error_log('BOCS EMAIL CANCELLED: Found direct email field: ' . $customer_email);
+            }
+            
+            // HARDCODED FALLBACK - use the billing email directly if we can extract it from the data
+            if (empty($customer_email) && isset($subscription_data['billing'])) {
+                // Try direct array access as a last resort
+                if (is_array($subscription_data['billing']) && array_key_exists('email', $subscription_data['billing'])) {
+                    $customer_email = $subscription_data['billing']['email'];
+                    error_log('BOCS EMAIL CANCELLED: Found email using direct array access: ' . $customer_email);
+                }
+            }
+            
+            // Last resort fallback - look through metadata
+            if (empty($customer_email) && isset($subscription_data['metaData']) && is_array($subscription_data['metaData'])) {
+                foreach ($subscription_data['metaData'] as $meta) {
+                    if (isset($meta['key']) && strpos($meta['key'], 'email') !== false && !empty($meta['value'])) {
+                        if (filter_var($meta['value'], FILTER_VALIDATE_EMAIL)) {
+                            $customer_email = $meta['value'];
+                            error_log('BOCS EMAIL CANCELLED: Found email in metadata: ' . $customer_email);
+                            break;
+                        }
                     }
                 }
             }
+            
+            // Dump the subscription data structure for debugging
+            error_log('BOCS EMAIL CANCELLED: Subscription data keys: ' . print_r(array_keys($subscription_data), true));
+            if (isset($subscription_data['customer']) && is_array($subscription_data['customer'])) {
+                error_log('BOCS EMAIL CANCELLED: Customer object keys: ' . print_r(array_keys($subscription_data['customer']), true));
+            }
+            if (isset($subscription_data['billing']) && is_array($subscription_data['billing'])) {
+                error_log('BOCS EMAIL CANCELLED: Billing object keys: ' . print_r(array_keys($subscription_data['billing']), true));
+            }
+            
+            // FINAL EMERGENCY: Hardcode to the known email if found in the subscription data dump
+            if (empty($customer_email) && strpos(json_encode($subscription_data), 'od-dev@cru.io') !== false) {
+                $customer_email = 'od-dev@cru.io';
+                error_log('BOCS EMAIL CANCELLED: Using hardcoded email found in data: ' . $customer_email);
+            }
+            
+            // If still no email and we're likely in a preview, use admin email
+            if (empty($customer_email) && defined('WP_ADMIN') && WP_ADMIN) {
+                $customer_email = get_option('admin_email');
+                error_log('BOCS EMAIL CANCELLED: Using admin email for preview: ' . $customer_email);
+            }
+            
+            $this->recipient = $customer_email;
         }
-        
-        // Dump the subscription data structure for debugging
-        error_log('BOCS EMAIL CANCELLED: Subscription data keys: ' . print_r(array_keys($subscription_data), true));
-        if (isset($subscription_data['customer']) && is_array($subscription_data['customer'])) {
-            error_log('BOCS EMAIL CANCELLED: Customer object keys: ' . print_r(array_keys($subscription_data['customer']), true));
-        }
-        if (isset($subscription_data['billing']) && is_array($subscription_data['billing'])) {
-            error_log('BOCS EMAIL CANCELLED: Billing object keys: ' . print_r(array_keys($subscription_data['billing']), true));
-        }
-        
-        // FINAL EMERGENCY: Hardcode to the known email if found in the subscription data dump
-        if (empty($customer_email) && strpos(json_encode($subscription_data), 'od-dev@cru.io') !== false) {
-            $customer_email = 'od-dev@cru.io';
-            error_log('BOCS EMAIL CANCELLED: Using hardcoded email found in data: ' . $customer_email);
-        }
-        
-        // If still no email and we're likely in a preview, use admin email
-        if (empty($customer_email) && defined('WP_ADMIN') && WP_ADMIN) {
-            $customer_email = get_option('admin_email');
-            error_log('BOCS EMAIL CANCELLED: Using admin email for preview: ' . $customer_email);
-        }
-        
-        $this->recipient = $customer_email;
         
         // Skip if no recipient
         if (empty($this->recipient)) {
@@ -333,30 +333,86 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
     }
 
     /**
+     * Generate preview subscription data
+     * 
+     * @return array Sample subscription data for email preview
+     */
+    private function get_preview_subscription_data() {
+        // Create a timestamp for dates
+        $now = current_time('timestamp');
+        $created_date = date('Y-m-d H:i:s', strtotime('-30 days', $now));
+        $updated_date = date('Y-m-d H:i:s', $now);
+        
+        // Generate sample subscription data with all required fields
+        return array(
+            'id' => 'SUB12345',
+            'status' => 'CANCELLED',
+            'createdAt' => $created_date,
+            'updatedAt' => $updated_date,
+            'updatedAtGmt' => $updated_date,
+            'customer' => array(
+                'id' => 'CUST12345',
+                'firstName' => 'Sample',
+                'lastName' => 'Customer',
+                'email' => get_option('admin_email')
+            ),
+            'billing' => array(
+                'firstName' => 'Sample',
+                'lastName' => 'Customer',
+                'email' => get_option('admin_email'),
+                'phone' => '555-555-5555',
+                'address1' => '123 Example St',
+                'city' => 'Example City',
+                'state' => 'EX',
+                'postcode' => '12345',
+                'country' => 'US'
+            ),
+            'currency' => 'USD',
+            'lineItems' => array(
+                array(
+                    'id' => 'ITEM12345',
+                    'name' => 'Sample Subscription Product',
+                    'price' => 19.99,
+                    'quantity' => 1,
+                )
+            ),
+            'frequency' => array(
+                'frequency' => 1,
+                'timeUnit' => 'MONTH',
+                'discount' => 10,
+                'discountType' => 'PERCENT'
+            ),
+            'bocs' => array(
+                'id' => 'BOCS12345',
+                'name' => 'Sample Bocs'
+            ),
+            'metaData' => array()
+        );
+    }
+
+    /**
      * Get content html.
      *
      * @since 1.0.0
      * @return string Email HTML content
      */
     public function get_content_html() {
-        ob_start();
-        
-        // Include our custom template
-        if (file_exists($this->template_base . $this->template_html)) {
-            wc_get_template(
-                $this->template_html,
-                array(
-                    'subscription'      => $this->object,
-                    'email_heading'     => $this->get_heading(),
-                    'email'             => $this,
-                    'bocs_id'           => $this->bocs_id,
-                ),
-                '',
-                $this->template_base
-            );
+        // If this is a preview and we have no object, create sample data
+        if (is_admin() && (empty($this->object) || !is_array($this->object))) {
+            $this->object = $this->get_preview_subscription_data();
         }
         
-        return ob_get_clean();
+        return wc_get_template_html(
+            $this->template_html,
+            [
+                'subscription'      => $this->object,
+                'email_heading'     => $this->get_heading(),
+                'email'             => $this,
+                'bocs_id'           => $this->bocs_id,
+            ],
+            '',
+            $this->template_base
+        );
     }
 
     /**
@@ -366,24 +422,22 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
      * @return string Email plain content
      */
     public function get_content_plain() {
-        ob_start();
-        
-        // Include our custom template
-        if (file_exists($this->template_base . $this->template_plain)) {
-            wc_get_template(
-                $this->template_plain,
-                array(
-                    'subscription'      => $this->object,
-                    'email_heading'     => $this->get_heading(),
-                    'email'             => $this,
-                    'bocs_id'           => $this->bocs_id,
-                ),
-                '',
-                $this->template_base
-            );
+        // If this is a preview and we have no object, create sample data
+        if (is_admin() && (empty($this->object) || !is_array($this->object))) {
+            $this->object = $this->get_preview_subscription_data();
         }
         
-        return ob_get_clean();
+        return wc_get_template_html(
+            $this->template_plain,
+            [
+                'subscription'      => $this->object,
+                'email_heading'     => $this->get_heading(),
+                'email'             => $this,
+                'bocs_id'           => $this->bocs_id,
+            ],
+            '',
+            $this->template_base
+        );
     }
 
     /**
@@ -421,9 +475,10 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
             'heading' => array(
                 'title'         => __('Email Heading', 'bocs-wordpress'),
                 'type'          => 'text',
-                'description'   => sprintf(__('This controls the main heading contained within the email notification. Default: %s', 'bocs-wordpress'), $this->get_default_heading()),
+                'description'   => sprintf(__('This controls the main heading contained within the email notification. Leave blank to use the default heading: %s', 'bocs-wordpress'), $this->get_default_heading()),
                 'placeholder'   => $this->get_default_heading(),
-                'default'       => $this->get_default_heading(),
+                'default'       => '',
+                'desc_tip'      => true,
             ),
             'email_type' => array(
                 'title'         => __('Email type', 'bocs-wordpress'),
@@ -434,5 +489,23 @@ class WC_Bocs_Email_Subscription_Cancelled extends WC_Email {
                 'options'       => $this->get_email_type_options(),
             ),
         );
+    }
+
+    /**
+     * Set up a preview for this email in WooCommerce email preview
+     */
+    public function setup_preview() {
+        // Create sample data for preview
+        $this->object = $this->get_preview_subscription_data();
+        
+        // Set a recipient (usually the admin email)
+        $this->recipient = get_option('admin_email');
+        
+        // Set the Bocs ID
+        $this->bocs_id = 'PREVIEW_BOCS_12345';
+        
+        // Set the default heading and subject for preview
+        $this->heading = $this->get_default_heading();
+        $this->subject = $this->get_default_subject();
     }
 } 
