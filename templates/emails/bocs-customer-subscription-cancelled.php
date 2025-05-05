@@ -22,39 +22,25 @@ do_action('woocommerce_email_header', $email_heading, $email);
 <?php
 // Greeting
 $customer_name = '';
-if (isset($subscription['customer']) && isset($subscription['customer']['firstName'])) {
-    $customer_name = $subscription['customer']['firstName'];
-} elseif (isset($subscription['billing']) && isset($subscription['billing']['firstName'])) {
+// Check billing info first since that's where customer data is stored
+if (isset($subscription['billing']) && isset($subscription['billing']['firstName'])) {
     $customer_name = $subscription['billing']['firstName'];
+} 
+// Fallback to customer data if available
+elseif (isset($subscription['customer']) && isset($subscription['customer']['firstName'])) {
+    $customer_name = $subscription['customer']['firstName'];
 }
 ?>
 <p style="margin: 0 0 16px;">Hi <?php echo esc_html($customer_name); ?>,</p>
 
-<p style="margin: 0 0 16px;"><?php echo esc_html__('Your subscription has been cancelled as requested. Below are the details of your cancelled subscription for your reference:', 'bocs-wordpress'); ?></p>
+<p style="margin: 0 0 16px;"><?php echo esc_html__('Your subscription has been cancelled as requested. Here are the details for your reference:', 'bocs-wordpress'); ?></p>
 
-<!-- Cancellation notification box -->
-<div style="background-color: #ffebee; border-left: 4px solid #f44336; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;">
+<!-- Cancelled notification box -->
+<div style="background-color: #f5f5f5; border-left: 4px solid #d32f2f; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;">
 <p style="margin: 0 0 16px; color: #d32f2f; font-weight: 600;"><?php echo esc_html__('Subscription Cancelled', 'bocs-wordpress'); ?></p>
-<p style="margin: 0 0 16px;"><?php echo esc_html__('Your subscription has been cancelled and you will no longer be billed for this service.', 'bocs-wordpress'); ?></p>
+<p style="margin: 0 0 16px;"><?php echo esc_html__('Your subscription has been cancelled. You will no longer be charged for this subscription.', 'bocs-wordpress'); ?></p>
 
 <?php
-// Add cancellation reason if provided
-$cancellation_reason = '';
-if (isset($subscription['metaData']) && is_array($subscription['metaData'])) {
-    foreach ($subscription['metaData'] as $meta) {
-        if (isset($meta['key']) && $meta['key'] === 'cancellation_reason' && !empty($meta['value'])) {
-            $cancellation_reason = $meta['value'];
-            break;
-        }
-    }
-}
-
-if (!empty($cancellation_reason)) {
-    ?>
-    <p style="margin: 0 0 16px;"><strong><?php echo esc_html__('Reason for cancellation:', 'bocs-wordpress'); ?></strong> <?php echo esc_html($cancellation_reason); ?></p>
-    <?php
-}
-
 // Add cancellation date
 if (isset($subscription['updatedAt']) || isset($subscription['updatedAtGmt'])) {
     $date_string = isset($subscription['updatedAtGmt']) ? $subscription['updatedAtGmt'] : $subscription['updatedAt'];
@@ -139,25 +125,15 @@ if (isset($subscription['createdAt'])) {
 
 </div>
 
-<!-- Resubscribe section -->
+<!-- Thank you section -->
 <div style="margin-bottom: 40px; padding: 20px; background-color: #f0f7f7; border-radius: 6px; text-align: center;">
-<h3 style="color: #3C7B7C; margin-top: 0;">Want to Resubscribe?</h3>
-<p style="margin-bottom: 20px;">If you change your mind, you can always sign up for a new subscription from our site.</p>
-
-<?php
-// Shop URL - adjust as needed
-$shop_url = get_permalink(wc_get_page_id('shop'));
-if ($shop_url) :
-?>
-    <a href="<?php echo esc_url($shop_url); ?>" style="display: inline-block; background-color: #3C7B7C; color: #ffffff; font-size: 16px; font-weight: bold; line-height: 100%; text-decoration: none; padding: 12px 25px; border-radius: 4px;">
-    <?php echo esc_html__('Shop Now', 'bocs-wordpress'); ?>
-    </a>
-<?php endif; ?>
+<h3 style="color: #3C7B7C; margin-top: 0;">Thank You</h3>
+<p style="margin-bottom: 20px;">Thank you for being a customer. We hope to see you again soon!</p>
 </div>
 
 <?php
 /*
  * @hooked WC_Emails::email_footer() Output the email footer
  */
-do_action('woocommerce_email_footer', $email); 
+do_action('woocommerce_email_footer', $email);
 ?> 

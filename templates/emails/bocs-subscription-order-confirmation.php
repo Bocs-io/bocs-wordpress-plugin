@@ -34,10 +34,6 @@ do_action('woocommerce_email_header', $email_heading, $email);
     <h2 style="display: block; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 500; line-height: 130%; margin: 30px 0 18px; text-align: left;"><?php esc_html_e('New Subscription Details', 'bocs-wordpress'); ?></h2>
 </div>
 
-<h2 style="color: #3C7B7C !important; display: block; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 18px; font-weight: bold; line-height: 130%; margin: 0 0 18px; text-align: left;">
-    <?php printf(esc_html__('[Order #%s] (%s)', 'bocs-wordpress'), $order->get_order_number(), date_i18n(wc_date_format(), strtotime($order->get_date_created()))); ?>
-</h2>
-
 <?php
 /*
  * @hooked WC_Emails::order_details() Shows the order details table.
