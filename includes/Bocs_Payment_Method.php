@@ -274,7 +274,7 @@ class Bocs_Payment_Method {
      */
     public function enqueue_scripts() {
         // Only load on our subscription page
-        //if (is_account_page() && is_wc_endpoint_url('bocs-subscriptions')) {
+        //if (is_account_page() && is_wc_endpoint_url('my-subscriptions')) {
             // Get Stripe settings
             $stripe_settings = get_option('woocommerce_stripe_settings', []);
             $test_mode = isset($stripe_settings['testmode']) && $stripe_settings['testmode'] === 'yes';
@@ -690,7 +690,7 @@ class Bocs_Payment_Method {
             if ($setup_intent->status !== 'succeeded' && $setup_intent->status !== 'processing') {
                 // Add potential status check for requires_action
                 if ($setup_intent->status === 'requires_action') {
-                    wp_redirect(add_query_arg(['payment_updated' => 'pending'], wc_get_account_endpoint_url('bocs-subscriptions')));
+                    wp_redirect(add_query_arg(['payment_updated' => 'pending'], wc_get_account_endpoint_url('my-subscriptions')));
                     exit;
                 }
                 throw new Exception('Setup was not completed successfully. Status: ' . $setup_intent->status);
@@ -1068,7 +1068,7 @@ class Bocs_Payment_Method {
                 'payment_method_id' => $payment_method_id,
                 'subscription_id' => $subscription_id,
                 'token_id' => $token->get_id()
-            ], wc_get_account_endpoint_url('bocs-subscriptions')));
+            ], wc_get_account_endpoint_url('my-subscriptions')));
             exit;
 
         } catch (Exception $e) {
@@ -1102,7 +1102,7 @@ class Bocs_Payment_Method {
                                 'payment_updated' => 'recovery',
                                 'subscription_id' => $subscription_id ?? '',
                                 'token_id' => $token->get_id()
-                            ], wc_get_account_endpoint_url('bocs-subscriptions')));
+                            ], wc_get_account_endpoint_url('my-subscriptions')));
                             exit;
                         }
                     } catch (Exception $recovery_e) {
@@ -1116,7 +1116,7 @@ class Bocs_Payment_Method {
                 'payment_updated' => 'error',
                 'error_type' => 'setup',
                 'error_message' => urlencode(substr($e->getMessage(), 0, 200))
-            ], wc_get_account_endpoint_url('bocs-subscriptions')));
+            ], wc_get_account_endpoint_url('my-subscriptions')));
             exit;
         }
     }

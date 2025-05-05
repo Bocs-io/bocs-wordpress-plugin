@@ -1,7 +1,7 @@
 <?php
 
 public function register_endpoints() {
-    add_rewrite_endpoint('bocs-subscriptions', EP_ROOT | EP_PAGES);
+    add_rewrite_endpoint('my-subscriptions', EP_ROOT | EP_PAGES);
     add_rewrite_endpoint('bocs-switch-bocs', EP_ROOT | EP_PAGES);
     flush_rewrite_rules();
 }
@@ -10,7 +10,7 @@ public function register_endpoints() {
  * Add new query vars
  */
 public function add_query_vars($vars) {
-    $vars[] = 'bocs-subscriptions';
+    $vars[] = 'my-subscriptions';
     $vars[] = 'bocs-switch-bocs';
     return $vars;
 }

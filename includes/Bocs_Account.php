@@ -104,7 +104,7 @@ class Bocs_Account
         foreach ($items as $key => $value) {
             $new_items[$key] = $value;
             if ($key === 'orders') {
-                $new_items['bocs-subscriptions'] = __('Bocs Subscriptions', 'bocs-wordpress');
+                $new_items['my-subscriptions'] = __('My Subscriptions', 'bocs-wordpress');
             }
         }
         
@@ -121,7 +121,7 @@ class Bocs_Account
      */
     public function register_bocs_account_endpoint()
     {
-        add_rewrite_endpoint('bocs-subscriptions', EP_ROOT | EP_PAGES);
+        add_rewrite_endpoint('my-subscriptions', EP_ROOT | EP_PAGES);
     }
 
     /**
@@ -2529,7 +2529,7 @@ class Bocs_Account
             }
             
             // Redirect to remove the query parameters regardless of success/failure
-            wp_safe_redirect(wc_get_account_endpoint_url('bocs-subscriptions'));
+            wp_safe_redirect(wc_get_account_endpoint_url('my-subscriptions'));
             exit;
         }
     }
