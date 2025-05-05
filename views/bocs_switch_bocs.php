@@ -97,7 +97,7 @@ wp_enqueue_script('jquery-ui-dialog');
             ?>
         </div>
         <p>
-            <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="button">
+            <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="button">
                 <?php esc_html_e('Return to Subscriptions', 'bocs-wordpress'); ?>
             </a>
         </p>
@@ -248,7 +248,7 @@ wp_enqueue_script('jquery-ui-dialog');
     </div>
     
     <div class="bocs-switch-actions">
-        <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="button cancel">
+        <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="button cancel">
             <?php esc_html_e('Cancel', 'bocs-wordpress'); ?>
         </a>
     </div>

@@ -562,7 +562,7 @@
         // Get subscriptions URL
         getSubscriptionsUrl: function() {
             // This should match the URL of the my-account/subscriptions page
-            return window.location.href.replace(/\/bocs-switch-bocs\/.*$/, '/bocs-subscriptions/');
+            return window.location.href.replace(/\/bocs-switch-bocs\/.*$/, '/my-subscriptions/');
         }
     };
     

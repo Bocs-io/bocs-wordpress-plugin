@@ -124,7 +124,7 @@ wp_add_inline_style('bocs-switch-bocs', '
 ');
 
 // Also include the subscription styles since we want to maintain visual consistency
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.2");
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250505.1");
 
 // Initialize helper
 $helper = new Bocs_Helper();
@@ -251,7 +251,7 @@ if (class_exists('Bocs_Log_Handler')) {
             ?>
         </div>
         <p>
-            <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="bocs-button">
+            <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="bocs-button">
                 <?php esc_html_e('Return to Subscriptions', 'bocs-wordpress'); ?>
             </a>
         </p>
@@ -410,7 +410,7 @@ if (class_exists('Bocs_Log_Handler')) {
         <h3 class="bocs-section-heading"><?php esc_html_e('No available boxes at this time', 'bocs-wordpress'); ?></h3>
     <?php endif; ?>
     <div class="bocs-switch-actions">
-        <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="bocs-button cancel">
+        <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="bocs-button cancel">
             <?php esc_html_e('Back', 'bocs-wordpress'); ?>
         </a>
     </div>

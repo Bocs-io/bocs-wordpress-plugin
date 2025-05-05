@@ -65,7 +65,7 @@ wp_enqueue_script('jquery-ui-datepicker');
 wp_enqueue_style('jquery-ui', 'https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css');
 
 // Get the return URL for the main subscriptions page
-$return_url = wc_get_account_endpoint_url('bocs-subscriptions');
+$return_url = wc_get_account_endpoint_url('my-subscriptions');
 ?>
 
 <div class="bocs-edit-details-container">
@@ -2419,7 +2419,7 @@ jQuery(document).ready(function($) {
                 
                 // Redirect back to subscriptions page after a delay
                 setTimeout(() => {
-                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                 }, 3000);
                 
             } else {
@@ -2567,7 +2567,7 @@ jQuery(document).ready(function($) {
                 
                 // Redirect back to subscriptions page after a delay
                 setTimeout(() => {
-                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                 }, 3000);
                 
             } else {
@@ -2732,7 +2732,7 @@ jQuery(document).ready(function($) {
                 
                 // Redirect back to subscriptions page after a delay
                 setTimeout(() => {
-                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.href = '<?php echo esc_js(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                 }, 3000);
                 
             } else {

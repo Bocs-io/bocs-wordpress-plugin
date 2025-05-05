@@ -470,7 +470,6 @@ h3 {
 /* Column widths */
 .bocs-order-table th:nth-child(1),
 .bocs-order-table td:nth-child(1) {
-    width: 35%;
     text-align: left;
 }
 
@@ -519,7 +518,6 @@ h3 {
 }
 
 .product-name {
-    display: flex;
     align-items: flex-start;
 }
 

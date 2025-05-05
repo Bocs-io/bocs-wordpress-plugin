@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250501.3");
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250505.1");
 wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250502.2", true);
 
 // Add order line items component
@@ -144,7 +144,7 @@ wp_localize_script('bocs-subscriptions', 'bocsSubscriptionsData', array(
         'store' => isset($options['bocs_headers']['store']) ? $options['bocs_headers']['store'] : '',
         'authorization' => isset($options['bocs_headers']['authorization']) ? $options['bocs_headers']['authorization'] : '',
     ),
-    'redirectUrl' => wc_get_endpoint_url('bocs-subscriptions'),
+    'redirectUrl' => wc_get_endpoint_url('my-subscriptions'),
     'orderEndpoint' => wc_get_endpoint_url('bocs-edit-details', ''),
     'updateBoxEndpoint' => wc_get_endpoint_url('bocs-update-box', ''),
     'viewSubscriptionEndpoint' => wc_get_endpoint_url('bocs-view-subscription', ''),

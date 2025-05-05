@@ -350,7 +350,7 @@ if (!empty($billing_period)) {
 ?>
 
 <div class="bocs-account-update-box-container">
-    <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="bocs-back-link">
+    <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="bocs-back-link">
         <?php esc_html_e('Back to My Subscriptions', 'bocs-wordpress'); ?>
     </a>
     
@@ -491,7 +491,7 @@ if (!empty($billing_period)) {
         
         <div class="bocs-update-box-actions">
             <button type="button" id="save-box-changes" class="button"><?php esc_html_e('Save Changes', 'bocs-wordpress'); ?></button>
-            <a href="<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>" class="button cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></a>
+            <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" class="button cancel"><?php esc_html_e('Cancel', 'bocs-wordpress'); ?></a>
         </div>
     </div>
 </div>
@@ -1096,7 +1096,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 if (response.success) {
                     console.log('Email notification sent successfully');
-                    window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                    window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                 } else {
                     console.error('Email notification failed:', response);
                     // Try emergency fallback
@@ -1110,7 +1110,7 @@ jQuery(document).ready(function($) {
                         },
                         complete: function() {
                             // Redirect regardless of fallback result
-                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                            window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                         }
                     });
                 }
@@ -1134,7 +1134,7 @@ jQuery(document).ready(function($) {
                     },
                     complete: function() {
                         // Redirect regardless of fallback result
-                        window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('bocs-subscriptions')); ?>';
+                        window.location.href = '<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>';
                     }
                 });
             }
