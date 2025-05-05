@@ -9,10 +9,10 @@
 defined('ABSPATH') || exit;
 
 // Load colors from WooCommerce settings
-$base_color      = get_option('woocommerce_email_base_color', '#3C7B7C');
-$bg_color        = get_option('woocommerce_email_background_color', '#f7f7f7');
-$body_color      = get_option('woocommerce_email_body_background_color', '#ffffff');
-$text_color      = get_option('woocommerce_email_text_color', '#333333');
+$base_color      = get_option('woocommerce_email_base_color');
+$bg_color        = get_option('woocommerce_email_background_color');
+$body_color      = get_option('woocommerce_email_body_background_color');
+$text_color      = get_option('woocommerce_email_text_color');
 
 /*
  * @hooked WC_Emails::email_header() Output the email header
@@ -46,7 +46,6 @@ do_action('woocommerce_email_order_meta', $order, $sent_to_admin, $plain_text, $
  * @hooked WC_Emails::email_address() Shows email address
  */
 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
-
 
 /*
  * @hooked WC_Emails::email_footer() Output the email footer

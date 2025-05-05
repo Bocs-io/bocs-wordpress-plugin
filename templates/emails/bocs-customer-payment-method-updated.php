@@ -92,35 +92,6 @@ if (isset($payment_method) && !empty($payment_method)) {
     $content .= '</div>';
 }
 
-// Security notice
-$content .= '<div style="margin-bottom: 40px; padding: 15px; background-color: #fff8e1; border-radius: 8px; border: 1px dashed #ffc107;">';
-$content .= '<h3 style="color: #ff6b00; margin-top: 0;">Security Notice</h3>';
-$content .= '<p>' . esc_html__('If you did not make this change, please contact us immediately.', 'bocs-wordpress') . '</p>';
-$content .= '</div>';
-
-// Footer text
-// View subscription button - if we have a URL
-$manage_url = '';
-if (function_exists('wc_get_account_endpoint_url')) {
-    $manage_url = wc_get_account_endpoint_url('payment-methods');
-}
-
-if (!empty($manage_url)) {
-    $content .= '<div style="margin: 40px 0; text-align: center;">';
-    $content .= '<a href="' . esc_url($manage_url) . '" style="display: inline-block; background-color: #3C7B7C; color: #ffffff; font-size: 16px; font-weight: bold; line-height: 100%; text-decoration: none; padding: 12px 25px; border-radius: 4px;">';
-    $content .= esc_html__('Manage Payment Methods', 'bocs-wordpress');
-    $content .= '</a>';
-    $content .= '</div>';
-}
-
-// Additional content from settings
-if ($additional_content) {
-    $content .= '<div style="margin-bottom: 25px; padding: 0 5px;">';
-    $content .= wp_kses_post(wpautop(wptexturize($additional_content)));
-    $content .= '</div>';
-}
-
-$content .= '</div>';
 
 // Email footer
 $content .= $email->get_template_footer();

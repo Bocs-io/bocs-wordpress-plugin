@@ -48,6 +48,7 @@ if (empty($first_name)) {
 
 // Define consistent Bocs.io brand color
 $bocs_teal = '#3C7B7C';
+$bg               = get_option('woocommerce_email_background_color', '#f7f7f7');    
 ?>
 <!DOCTYPE html>
 <html>
@@ -55,7 +56,7 @@ $bocs_teal = '#3C7B7C';
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title><?php echo esc_html($email_heading); ?></title>
 </head>
-<body style="background-color: #f7f7f7; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333; margin: 0; padding: 0;">
+<body style="background-color: <?php echo esc_attr($bg); ?>; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333; margin: 0; padding: 0;">
     <div style="padding: 50px 0;">
         <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1);">
             <!-- Header -->
@@ -117,23 +118,6 @@ $bocs_teal = '#3C7B7C';
                  */
                 do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
                 ?>
-                
-                <!-- Additional Content -->
-                <?php if ($additional_content) : ?>
-                <div style="margin-top: 30px; border-top: 1px solid #e5e5e5; padding-top: 20px;">
-                    <p style="margin: 0 0 16px;"><?php echo wp_kses_post(wpautop(wptexturize($additional_content))); ?></p>
-                </div>
-                <?php endif; ?>
-            </div>
-            
-            <!-- Footer -->
-            <div style="background-color: #f7f7f7; padding: 24px 48px; border-top: 1px solid #e5e5e5; border-radius: 0 0 6px 6px; font-size: 12px; color: #8a8a8a; text-align: center;">
-                <p style="margin: 0 0 16px;">
-                    <?php esc_html_e('Thank you for being a valued Bocs customer!', 'bocs-wordpress'); ?>
-                </p>
-                <p style="margin: 0;">
-                    <?php echo wp_kses_post(make_clickable(wpautop(wptexturize(apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text', '')))), array('a'))); ?>
-                </p>
             </div>
         </div>
     </div>

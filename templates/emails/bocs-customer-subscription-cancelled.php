@@ -155,19 +155,6 @@ if ($shop_url) :
 <?php endif; ?>
 </div>
 
-<!-- Footer text -->
-<div style="padding: 0 12px; max-width: 100%;">
-
-<?php if ($additional_content) : ?>
-    <div style="margin-bottom: 25px; padding: 0 5px;">
-    <?php echo wp_kses_post(wpautop(wptexturize($additional_content))); ?>
-    </div>
-<?php endif; ?>
-
-<p style="margin: 0 0 16px;"><?php echo esc_html__('Thank you for being our customer. We hope to see you again soon!', 'bocs-wordpress'); ?></p>
-
-</div>
-
 <?php
 /*
  * @hooked WC_Emails::email_footer() Output the email footer

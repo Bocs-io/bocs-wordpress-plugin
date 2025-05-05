@@ -150,25 +150,7 @@ if (isset($subscription['createdAt'])) {
 <?php
 // My account URL
 $account_url = wc_get_account_endpoint_url('my-subscriptions');
-if ($account_url) :
 ?>
-    <a href="<?php echo esc_url($account_url); ?>" style="display: inline-block; background-color: #3C7B7C; color: #ffffff; font-size: 16px; font-weight: bold; line-height: 100%; text-decoration: none; padding: 12px 25px; border-radius: 4px;">
-    <?php echo esc_html__('Manage Subscription', 'bocs-wordpress'); ?>
-    </a>
-<?php endif; ?>
-</div>
-
-<!-- Footer text -->
-<div style="padding: 0 12px; max-width: 100%;">
-
-<?php if ($additional_content) : ?>
-    <div style="margin-bottom: 25px; padding: 0 5px;">
-    <?php echo wp_kses_post(wpautop(wptexturize($additional_content))); ?>
-    </div>
-<?php endif; ?>
-
-<p style="margin: 0 0 16px;"><?php echo esc_html__('Thank you for being our customer.', 'bocs-wordpress'); ?></p>
-
 </div>
 
 <?php

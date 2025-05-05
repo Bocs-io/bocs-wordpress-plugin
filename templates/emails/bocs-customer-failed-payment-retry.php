@@ -48,6 +48,7 @@ if (empty($first_name)) {
 
 // Define consistent Bocs.io brand color
 $bocs_teal = '#3C7B7C';
+$bg               = get_option('woocommerce_email_background_color', '#f7f7f7');
 ?>
 <!DOCTYPE html>
 <html>
@@ -55,7 +56,7 @@ $bocs_teal = '#3C7B7C';
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title><?php echo esc_html($email_heading); ?></title>
 </head>
-<body style="background-color: #f7f7f7; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.5; margin: 0; padding: 0;">
+<body style="background-color: <?php echo esc_attr($bg); ?>; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.5; margin: 0; padding: 0;">
     <div style="margin: 0 auto; max-width: 600px; padding: 20px;">
         <div style="background-color: #ffffff; border-radius: 4px; border: 1px solid #eaeaea; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); margin-bottom: 20px; padding: 30px;">
             
@@ -118,13 +119,6 @@ $bocs_teal = '#3C7B7C';
                 echo wp_kses_post(wpautop(wptexturize($additional_content)));
             }
             ?>
-            
-            <!-- Footer -->
-            <div style="border-top: 1px solid #eaeaea; margin-top: 30px; padding-top: 20px; text-align: center;">
-                <p style="color: #888888; font-size: 14px; margin: 0 0 10px;">
-                    <?php echo wp_kses_post(sprintf(__('Thank you for choosing %s', 'bocs-wordpress'), get_bloginfo('name'))); ?>
-                </p>
-            </div>
         </div>
     </div>
 </body>

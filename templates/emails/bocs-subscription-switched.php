@@ -91,8 +91,6 @@ $is_frequency_update = !empty($email->frequency_id);
     <?php endif; ?>
 <?php endif; ?>
 
-<p><?php esc_html_e('Thank you for choosing Bocs!', 'bocs-wordpress'); ?></p>
-
 <?php
 /**
  * @hooked WC_Emails::email_footer() Output the email footer
