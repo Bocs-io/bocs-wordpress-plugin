@@ -1,60 +1,56 @@
-<?php defined("ABSPATH") || exit;
+<?php
+/**
+ * Existing customer new subscription confirmation email (Plain text - Bocs specific variant)
+ *
+ * @package Bocs/Templates/Emails/Plain
+ * @version 1.0.0
+ */
 
-echo "= " . esc_html($email_heading) . "\n\n";
+defined('ABSPATH') || exit;
 
-echo "Hi " . esc_html($order->get_billing_first_name()) . ",\n\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html(wp_strip_all_tags($email_heading)) . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-echo "Thank you for your continued support! Your new Bocs subscription has been successfully set up.\n\n";
+/* translators: %s: Customer first name */
+echo sprintf(esc_html__('Hi %s,', 'bocs-wordpress'), esc_html($order->get_billing_first_name())) . "\n\n";
 
-echo "ADDITIONAL SUBSCRIPTION CONFIRMED\n";
-echo "Your new Bocs subscription has been processed successfully. You now have access to all benefits of this additional subscription.\n\n";
+echo esc_html__('Thank you for your continued support!', 'bocs-wordpress') . "\n\n";
 
-echo "VALUED BOCS CUSTOMER\n";
-echo "As a returning customer, we appreciate your continued trust. Thank you for choosing Bocs again for your needs.\n\n";
+// Subscription Confirmation
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('SUBSCRIPTION CONFIRMED', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-echo "This subscription was created through the Bocs App. You can manage all your subscriptions and access services directly through the Bocs mobile app.\n\n";
+echo esc_html__('Your new subscription has been processed successfully.', 'bocs-wordpress') . "\n\n";
 
-echo "SUBSCRIPTION DETAILS\n";
-echo "Order #" . $order->get_order_number() . " (" . date_i18n(wc_date_format(), strtotime($order->get_date_created())) . ")\n\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('ORDER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-// Order items
-foreach ($order->get_items() as $item_id => $item) {
-    $product = $item->get_product();
-    echo $item->get_name() . " × " . $item->get_quantity() . " - " . $order->get_formatted_line_subtotal($item) . "\n";
-}
+/*
+ * @hooked WC_Emails::order_details() Shows the order details table.
+ * @hooked WC_Structured_Data::generate_order_data() Generates structured data.
+ * @hooked WC_Structured_Data::output_structured_data() Outputs structured data.
+ */
+do_action('woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email);
 
-// Order totals
-$totals = $order->get_order_item_totals();
-if ($totals) {
-    echo "\n";
-    foreach ($totals as $total) {
-        echo $total['label'] . ": " . $total['value'] . "\n";
-    }
-}
+echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n";
+echo esc_html__('CUSTOMER DETAILS', 'bocs-wordpress') . "\n";
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
-echo "\n";
-do_action('woocommerce_email_order_details', $order, $sent_to_admin, true, $email);
-do_action('woocommerce_email_order_meta', $order, $sent_to_admin, true, $email);
-do_action('woocommerce_email_customer_details', $order, $sent_to_admin, true, $email);
+/*
+ * @hooked WC_Emails::customer_details() Shows customer details
+ * @hooked WC_Emails::email_address() Shows email address
+ */
+do_action('woocommerce_email_customer_details', $order, $sent_to_admin, $plain_text, $email);
 
-echo "\nYOU CAN MANAGE YOUR SUBSCRIPTION ANYTIME THROUGH YOUR CUSTOMER PORTAL:\n";
-echo "* Update your box: Change products, quantities or swap your box for another.\n";
-echo "* Change your delivery dates: Get your products more often by updating your delivery schedule.\n";
-echo "* Edit your details: Update your payment methods, or personal details.\n\n";
-
-echo "GETTING STARTED WITH BOCS\n";
-echo "* Download the Bocs mobile app to manage your subscription\n";
-echo "* Set up your profile to get personalized recommendations\n";
-echo "* Explore the available features and services in your subscription\n\n";
-
-echo "Visit your account to manage your subscription: " . esc_url(wc_get_account_endpoint_url('my-subscriptions')) . "\n\n";
-
+// Additional content
 if ($additional_content) {
+    echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
     echo esc_html(wp_strip_all_tags(wptexturize($additional_content)));
-    echo "\n\n";
+    echo "\n\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 }
 
-echo "If you have any questions about your new subscription, please contact our customer support team.\n\n";
-
-echo "Thank you for your continued support with Bocs!\n";
+echo apply_filters('woocommerce_email_footer_text', get_option('woocommerce_email_footer_text', ''));
 ?>
