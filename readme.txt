@@ -1,3 +1,9 @@
+v0.0.150 05/06/2025
+* Style: Improve HTML email templates styling and consistency
+* Style: Standardize plain text email templates formatting
+* Fix: Add font-family specifications to HTML emails for better rendering across clients
+* Refactor: Update email headers and improve text formatting in plain text emails
+
 v0.0.149 05/05/2025
 * Refactor: Standardize email templates to use WooCommerce styling
 * Fix: Improve subscription cancellation email with better preview support
