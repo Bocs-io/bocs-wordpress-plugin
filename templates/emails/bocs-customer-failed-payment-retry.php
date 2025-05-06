@@ -73,14 +73,6 @@ do_action('woocommerce_email_header', $email_heading, $email);
         <a href="<?php echo esc_url($order->get_view_order_url()); ?>" style="background-color: <?php echo esc_attr($bocs_teal); ?>; border-radius: 4px; color: #ffffff; display: inline-block; font-size: 16px; font-weight: 500; padding: 12px 24px; text-decoration: none;"><?php esc_html_e('Update Payment Details', 'bocs-wordpress'); ?></a>
     </div>
     <?php endif; ?>
-    
-    <!-- Bocs App notice, if applicable -->
-    <?php if ( function_exists('bocs_order_created_via_app') && bocs_order_created_via_app($order) ) : ?>
-    <div style="background-color: #fff8e1; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; border: 1px dashed #ffa000;">
-        <p style="margin: 0 0 16px;"><span style="color: #ff6b00; font-weight: 500;"><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
-        <p style="margin: 0 0 16px;"><?php esc_html_e('You can update your payment details directly through the Bocs mobile app.', 'bocs-wordpress'); ?></p>
-    </div>
-    <?php endif; ?>
 </div>
 
 <?php

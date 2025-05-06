@@ -17,18 +17,12 @@ do_action('woocommerce_email_header', $email_heading, $email);
 <div style="padding: 0 12px; max-width: 100%;">
     <p style="margin: 0 0 16px;">Hi <?php echo esc_html($order->get_billing_first_name()); ?>,</p>
     
-    <p style="margin: 0 0 16px;"><?php esc_html_e('Thank you for adding a new subscription to your Bocs account! Your subscription has been successfully set up.', 'bocs-wordpress'); ?></p>
+    <p style="margin: 0 0 16px;"><?php esc_html_e('Thank you for adding a new subscription! Your subscription has been successfully set up.', 'bocs-wordpress'); ?></p>
     
     <!-- Subscription box -->
     <div style="background-color: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; margin-bottom: 30px; border-radius: 4px;">
         <p style="margin: 0 0 16px; color: #4caf50; font-weight: 600;"><?php esc_html_e('New Subscription Confirmed', 'bocs-wordpress'); ?></p>
-        <p style="margin: 0 0 16px;"><?php esc_html_e('Your new Bocs subscription has been processed successfully. You now have access to all benefits included with this subscription.', 'bocs-wordpress'); ?></p>
-    </div>
-    
-    <!-- Special Bocs App notice -->
-    <div style="background-color: #fff8e1; padding: 12px 15px; margin-bottom: 25px; border-radius: 4px; border: 1px dashed #ffc107;">
-        <p style="margin: 0 0 16px;"><span style="color: #ff6b00; font-weight: 500;"><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
-        <p style="margin: 0 0 16px;"><?php esc_html_e('You can manage all your subscriptions and access all services directly through the Bocs mobile app.', 'bocs-wordpress'); ?></p>
+        <p style="margin: 0 0 16px;"><?php esc_html_e('Your new subscription has been processed successfully. You now have access to all benefits included with this subscription.', 'bocs-wordpress'); ?></p>
     </div>
     
     <h2 style="display: block; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 500; line-height: 130%; margin: 30px 0 18px; text-align: left;"><?php esc_html_e('New Subscription Details', 'bocs-wordpress'); ?></h2>

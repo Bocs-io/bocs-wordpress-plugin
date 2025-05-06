@@ -62,16 +62,6 @@ do_action('woocommerce_email_header', $email_heading, $email);
         <?php endif; ?>
     </div>
     <?php endif; ?>
-    
-    <!-- Bocs App notice, if applicable -->
-    <?php 
-    if ($order && function_exists('bocs_order_created_via_app') && bocs_order_created_via_app($order)) : 
-    ?>
-    <div style="background-color: #fff8e1; padding: 12px 15px; margin-bottom: 25px; border-radius: 4px; border: 1px dashed #ffa000;">
-        <p style="margin: 0 0 16px;"><span style="color: #ff6b00; font-weight: 500;"><?php esc_html_e('This subscription was created through the Bocs App.', 'bocs-wordpress'); ?></span></p>
-        <p style="margin: 0 0 16px;"><?php esc_html_e('You can manage your subscription directly through the Bocs mobile app.', 'bocs-wordpress'); ?></p>
-    </div>
-    <?php endif; ?>
 </div>
 
 <?php if ($order): ?>

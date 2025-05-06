@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
                                                                                 <?php esc_html_e('Visit your customer portal:', 'bocs-wordpress'); ?>
                                                                             </h2>
                                                                             
-                                                                            <ul style="list-style-type: disc; padding-left: 20px; margin-bottom: 20px;">
+                                                                            <ul style="list-style-type: disc; padding-left: 20px; margin-bottom: 20px;font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
                                                                                 <li style="margin-bottom: 10px;">
                                                                                     <strong><?php esc_html_e('Update your box:', 'bocs-wordpress'); ?></strong>
                                                                                     <?php esc_html_e('Change products, quantities or swap your box.', 'bocs-wordpress'); ?>
@@ -39,12 +39,12 @@ if (!defined('ABSPATH')) {
                                                                                 <table cellspacing="0" cellpadding="0" border="0">
                                                                                     <tr>
                                                                                         <td style="padding-right: 15px;">
-                                                                                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" style="background-color: #f0f0f0; border: 1px solid #dddddd; border-radius: 4px; color: <?php echo esc_attr($base_color); ?>; display: inline-block; font-weight: bold; line-height: 100%; padding: 10px 15px; text-align: center; text-decoration: none;">
+                                                                                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('my-subscriptions')); ?>" style="background-color: #f0f0f0; border: 1px solid #dddddd; border-radius: 4px; color: <?php echo esc_attr($base_color); ?>; display: inline-block; font-weight: bold; line-height: 100%; padding: 10px 15px; text-align: center; text-decoration: none;font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
                                                                                                 <?php esc_html_e('Edit Your Box', 'bocs-wordpress'); ?>
                                                                                             </a>
                                                                                         </td>
                                                                                         <td>
-                                                                                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('dashboard')); ?>" style="background-color: #f0f0f0; border: 1px solid #dddddd; border-radius: 4px; color: <?php echo esc_attr($base_color); ?>; display: inline-block; font-weight: bold; line-height: 100%; padding: 10px 15px; text-align: center; text-decoration: none;">
+                                                                                            <a href="<?php echo esc_url(wc_get_account_endpoint_url('dashboard')); ?>" style="background-color: #f0f0f0; border: 1px solid #dddddd; border-radius: 4px; color: <?php echo esc_attr($base_color); ?>; display: inline-block; font-weight: bold; line-height: 100%; padding: 10px 15px; text-align: center; text-decoration: none;font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif;">
                                                                                                 <?php esc_html_e('My Account', 'bocs-wordpress'); ?>
                                                                                             </a>
                                                                                         </td>

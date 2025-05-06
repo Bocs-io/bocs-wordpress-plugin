@@ -87,7 +87,7 @@ if (isset($subscription['nextPaymentDateGmt'])) {
 </div>
 
 <!-- Order details with Bocs teal color -->
-<h2 style="color: #3C7B7C !important; display: block; font-family: 'Helvetica Neue', Helvetica, Roboto, Arial, sans-serif; font-size: 18px; font-weight: bold; line-height: 130%; margin: 0 0 18px; text-align: left;">
+<h2 style="color: #3C7B7C !important; display: block; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: bold; line-height: 130%; margin: 0 0 18px; text-align: left;">
 <?php echo sprintf(__('[Subscription #%s]', 'bocs-wordpress'), $subscription['id'] ?? ''); ?>
 <?php
 if (isset($subscription['createdAt'])) {
@@ -99,7 +99,7 @@ if (isset($subscription['createdAt'])) {
 
 <!-- Subscription items -->
 <div style="margin-bottom: 40px; padding: 15px; background-color: #f8f8f8; border-radius: 8px;">
-<h3 style="color: #3C7B7C; margin-top: 0;">Subscription Items</h3>
+<h3 style="color: #3C7B7C; margin-top: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">Subscription Items</h3>
 
 <?php if (isset($subscription['lineItems']) && is_array($subscription['lineItems']) && !empty($subscription['lineItems'])) : ?>
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -132,7 +132,7 @@ if (isset($subscription['createdAt'])) {
     $frequency = $subscription['frequency'];
 ?>
     <div style="margin-top: 20px; padding: 10px 15px; background-color: #e9f7f7; border-radius: 4px;">
-    <h4 style="margin-top: 0; color: #3C7B7C;">Billing Frequency</h4>
+    <h4 style="margin-top: 0; color: #3C7B7C; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">Billing Frequency</h4>
     <p>
     <?php echo sprintf(
         esc_html__('You will be billed every %1$s %2$s', 'bocs-wordpress'),
