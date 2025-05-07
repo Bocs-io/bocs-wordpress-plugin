@@ -1,3 +1,14 @@
+v0.0.151 05/13/2025
+* Feature: Improved subscription management UI with enhanced functionality
+* Feature: Added subscription ID extraction and direct handler setup
+* Feature: Enhanced product selection dialog with updated min/max product handling
+* API: Improved subscription data processing and API interactions
+* API: Added robust error handling for subscription updates
+* API: Enhanced header organization and API request structure
+* Emails: Improved email notification templates with modern styling
+* Emails: Enhanced subscription switched email with better UI elements
+* Emails: Updated email footer and standardized email template formatting
+
 v0.0.150 05/06/2025
 * Style: Improve HTML email templates styling and consistency
 * Style: Standardize plain text email templates formatting
