@@ -10,11 +10,15 @@
 
 defined('ABSPATH') || exit;
 
+use Automattic\WooCommerce\Utilities\FeaturesUtil;
+$email_improvements_enabled = FeaturesUtil::feature_is_enabled( 'email_improvements' );
+
 // Load colors from WooCommerce settings
 $base_color      = get_option('woocommerce_email_base_color');
 $bg_color        = get_option('woocommerce_email_background_color');
 $body_color      = get_option('woocommerce_email_body_background_color');
 $text_color      = get_option('woocommerce_email_text_color');
+$base_text = wc_light_or_dark( $base_color, '#202020', '#ffffff' );
 
 // Get the order - template may receive either an order object or order ID
 if (isset($order) && is_a($order, 'WC_Order')) {
@@ -70,7 +74,7 @@ do_action('woocommerce_email_header', $email_heading, $email);
     
     <?php if ($order->get_view_order_url()) : ?>
     <div style="margin: 25px 0; text-align: center;">
-        <a href="<?php echo esc_url($order->get_view_order_url()); ?>" style="background-color: <?php echo esc_attr($bocs_teal); ?>; border-radius: 4px; color: #ffffff; display: inline-block; font-size: 16px; font-weight: 500; padding: 12px 24px; text-decoration: none;"><?php esc_html_e('Update Payment Details', 'bocs-wordpress'); ?></a>
+        <a href="<?php echo esc_url($order->get_view_order_url()); ?>" style="background-color: <?php echo esc_attr( $email_improvements_enabled ? $body_color : $base_color ); ?>; border-radius: 4px; color: <?php echo esc_attr( $email_improvements_enabled ? $text_color : $base_text ); ?>; display: inline-block; font-size: 16px; font-weight: 500; padding: 12px 24px; text-decoration: none;"><?php esc_html_e('Update Payment Details', 'bocs-wordpress'); ?></a>
     </div>
     <?php endif; ?>
 </div>

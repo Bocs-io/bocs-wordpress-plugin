@@ -11,6 +11,11 @@
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
+
+// Set default base color if not provided
+if (!isset($base_color)) {
+    $base_color = get_option('woocommerce_email_base_color', '#557da1');
+}
 ?>
 
                                                                         <!-- Footer section -->
