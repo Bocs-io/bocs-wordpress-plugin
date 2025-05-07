@@ -152,16 +152,20 @@
             }
             
             // Set min/max products based on range
-            let minProducts = 1;
-            let maxProducts = 10;
+            let minProducts = 6; // Default minimum
+            let maxProducts = 12; // Default maximum
             
             if (selectedBox.range && Array.isArray(selectedBox.range) && selectedBox.range.length >= 2) {
-                minProducts = parseInt(selectedBox.range[0]) || 1;
-                maxProducts = parseInt(selectedBox.range[1]) || 10;
+                minProducts = parseInt(selectedBox.range[0]) || 6;
+                maxProducts = parseInt(selectedBox.range[1]) || 12;
             }
             
             $("#min-products").text(minProducts);
             $("#max-products").text(maxProducts);
+            
+            // Update header info
+            // Set title to reflect the required range
+            $("#product-selection-dialog h3").text(`Select Products (${minProducts}-${maxProducts})`);
             
             // Fetch products for the box via AJAX
             $.ajax({
@@ -238,12 +242,13 @@
                             const input = $(`.quantity-input[data-product-id="${productId}"]`);
                             let value = parseInt(input.val()) || 0;
                             
-                            // Calculate current selected products count
-                            const selectedCount = BocsSwitchBox.state.selectedProducts.reduce((total, product) => 
-                                total + (product.id !== productId ? product.quantity : 0), 0);
+                            // Calculate current total selected products count
+                            const totalSelected = BocsSwitchBox.state.selectedProducts.reduce((total, product) => 
+                                total + product.quantity, 0);
                             
                             // Don't allow adding more products if already at max
-                            if (selectedCount >= maxProducts) {
+                            const maxProducts = parseInt($("#max-products").text());
+                            if (totalSelected >= maxProducts) {
                                 BocsSwitchBox.showErrorMessage(`You can select a maximum of ${maxProducts} products.`);
                                 return;
                             }
@@ -260,6 +265,20 @@
                             if (value < 0) {
                                 value = 0;
                                 $(this).val(value);
+                            }
+                            
+                            // Calculate how many products would be selected with this change
+                            const currentProductQuantity = BocsSwitchBox.state.selectedProducts.find(p => p.id === productId)?.quantity || 0;
+                            const otherProductsCount = BocsSwitchBox.state.selectedProducts.reduce((total, product) => 
+                                total + (product.id !== productId ? product.quantity : 0), 0);
+                            const newTotal = otherProductsCount + value;
+                            
+                            // Check if it exceeds max
+                            const maxProducts = parseInt($("#max-products").text());
+                            if (newTotal > maxProducts) {
+                                value = maxProducts - otherProductsCount;
+                                $(this).val(value);
+                                BocsSwitchBox.showErrorMessage(`You can select a maximum of ${maxProducts} products.`);
                             }
                             
                             BocsSwitchBox.updateProductQuantity(productId, value);
@@ -298,14 +317,24 @@
             const count = this.state.selectedProducts.reduce((total, product) => total + product.quantity, 0);
             $("#product-count").text(count);
             
-            // Check if we have minimum required products
+            // Check if we have minimum required products and don't exceed maximum
             const minProducts = parseInt($("#min-products").text());
+            const maxProducts = parseInt($("#max-products").text());
             const confirmBtn = $("#confirm-products");
             
-            if (count >= minProducts) {
+            if (count >= minProducts && count <= maxProducts) {
                 confirmBtn.prop('disabled', false);
             } else {
                 confirmBtn.prop('disabled', true);
+            }
+            
+            // Update the product selection info display
+            if (count < minProducts) {
+                $(".product-selection-info").addClass("insufficient").removeClass("excessive");
+            } else if (count > maxProducts) {
+                $(".product-selection-info").removeClass("insufficient").addClass("excessive");
+            } else {
+                $(".product-selection-info").removeClass("insufficient excessive");
             }
         },
         
@@ -377,6 +406,21 @@
             
             // Confirm product selection
             confirmProducts: function() {
+                // Validate product count before proceeding
+                const count = BocsSwitchBox.state.selectedProducts.reduce((total, product) => total + product.quantity, 0);
+                const minProducts = parseInt($("#min-products").text());
+                const maxProducts = parseInt($("#max-products").text());
+                
+                if (count < minProducts) {
+                    BocsSwitchBox.showErrorMessage(`Please select at least ${minProducts} products.`);
+                    return;
+                }
+                
+                if (count > maxProducts) {
+                    BocsSwitchBox.showErrorMessage(`Please select no more than ${maxProducts} products.`);
+                    return;
+                }
+                
                 // Close product dialog
                 BocsSwitchBox.closeModal();
                 
@@ -424,7 +468,7 @@
                         subscription_id: bocsSwitchData.subscriptionId,
                         bocs_id: this.state.selectedBocsId,
                         frequency_id: this.state.selectedFrequencyId,
-                        products: BocsSwitchBox.state.isCustomBox ? JSON.stringify(BocsSwitchBox.state.selectedProducts) : null,
+                        products: BocsSwitchBox.state.isCustomBox ? JSON.stringify(BocsSwitchBox.state.selectedProducts.filter(product => product.quantity > 0)) : JSON.stringify([]),
                         nonce: bocsSwitchData.nonce
                     },
                     success: (response) => {
@@ -561,8 +605,8 @@
         
         // Get subscriptions URL
         getSubscriptionsUrl: function() {
-            // This should match the URL of the my-account/subscriptions page
-            return window.location.href.replace(/\/bocs-switch-bocs\/.*$/, '/my-subscriptions/');
+            // Return to the same page (refresh with the same subscription ID)
+            return '/my-account/bocs-switch-bocs/' + bocsSwitchData.subscriptionId + '/';
         }
     };
     

@@ -332,13 +332,54 @@
 
 /* Product selection info */
 .product-selection-info {
-    display: flex;
     justify-content: space-between;
     align-items: center;
     background-color: #f9fafb;
     padding: 1rem;
     border-radius: var(--bocs-radius);
     margin-bottom: 1.5rem;
+    transition: background-color 0.3s ease;
+}
+
+/* Validation states for product selection */
+.product-selection-info.insufficient {
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #b91c1c;
+}
+
+.product-selection-info.excessive {
+    background-color: #fef3c7;
+    border: 1px solid #fde68a;
+    color: #92400e;
+}
+
+.product-selection-info.insufficient #product-count,
+.product-selection-info.excessive #product-count {
+    font-weight: 700;
+}
+
+/* Better highlight selected products */
+.quantity-input[value="0"] {
+    background-color: #f9fafb;
+}
+
+.quantity-input:not([value="0"]) {
+    background-color: #e6f7ec;
+    border-color: #0D9F6E;
+    font-weight: bold;
+}
+
+/* Message for product count requirements */
+.product-count-message {
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.product-selection-info.insufficient .product-count-message,
+.product-selection-info.excessive .product-count-message {
+    display: block;
 }
 
 .range-info {
@@ -401,4 +442,9 @@
 /* Account Navigation Icon Styling - Follow WooCommerce style */
 .woocommerce-MyAccount-navigation-link--bocs-subscriptions a::before {
     content: "\f021" !important; /* Font Awesome sync icon */
+}
+
+#product-selection-dialog .bocs-modal-content {
+    max-width: 90%!important;
+    width: 100%!important;
 }

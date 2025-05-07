@@ -27,10 +27,83 @@
                 this.initAccordion();
                 this.bindEvents();
                 this.setupModals();
+                this.setupDirectHandlers();
+                this.extractAndSetSubscriptionId();
 
                 console.log('BocsSubscriptions: Initialization complete');
             } catch (error) {
                 console.error('BocsSubscriptions: Error during initialization', error);
+            }
+        },
+
+        // Extract subscription ID from URL and set it on all relevant elements
+        extractAndSetSubscriptionId: function() {
+            // Extract subscription ID from URL
+            var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+            if (urlMatch && urlMatch[1]) {
+                var subscriptionId = urlMatch[1];
+                console.log('IMMEDIATE: Found subscription ID in URL:', subscriptionId);
+
+                // Function to set this ID on an element if it exists
+                function setIdOnElement(selector) {
+                    var element = document.querySelector(selector);
+                    if (element) {
+                        element.setAttribute('data-subscription-id', subscriptionId);
+                        console.log('IMMEDIATE: Set subscription ID on ' + selector);
+                    }
+                }
+
+                // Set ID on all relevant elements
+                setIdOnElement('#bocs-pause-subscription-modal');
+                setIdOnElement('#pause-confirm-button');
+                setIdOnElement('#pause-button');
+                setIdOnElement('#bocs-edit-schedule-modal');
+
+                // Also store in a global variable that can be accessed by any script
+                window.bocsCurrentSubscriptionId = subscriptionId;
+                console.log('IMMEDIATE: Stored subscription ID in global variable');
+            } else {
+                console.log('IMMEDIATE: No subscription ID found in URL');
+            }
+        },
+
+        // Setup direct handlers for subscription-related elements
+        setupDirectHandlers: function() {
+            // Set up direct handler for pause confirm button
+            const pauseConfirmButton = document.getElementById('pause-confirm-button');
+            if (pauseConfirmButton) {
+                pauseConfirmButton.addEventListener('click', this.handlers.handlePauseConfirmClick);
+                console.log('Added direct click handler to pause-confirm-button');
+            } else {
+                console.warn('Could not find pause-confirm-button to add direct handler');
+            }
+
+            // Set subscription ID from modal script
+            this.setScheduleModalSubscriptionId();
+
+            // Setup DOM ready handlers for setting subscription ID
+            document.addEventListener('DOMContentLoaded', this.handlers.domContentLoadedHandler);
+        },
+
+        // Set subscription ID on the edit schedule modal and related elements
+        setScheduleModalSubscriptionId: function() {
+            // Try to get from global variable first
+            if (window.bocsCurrentSubscriptionId) {
+                document.getElementById('bocs-edit-schedule-modal')?.setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                document.getElementById('pause-button')?.setAttribute('data-subscription-id', window.bocsCurrentSubscriptionId);
+                console.log('EDIT MODAL SCRIPT: Set subscription ID from global variable:', window.bocsCurrentSubscriptionId);
+            } else {
+                // Try to extract from URL
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    var subscriptionId = urlMatch[1];
+                    document.getElementById('bocs-edit-schedule-modal')?.setAttribute('data-subscription-id', subscriptionId);
+                    document.getElementById('pause-button')?.setAttribute('data-subscription-id', subscriptionId);
+                    console.log('EDIT MODAL SCRIPT: Set subscription ID from URL:', subscriptionId);
+
+                    // Also set global variable
+                    window.bocsCurrentSubscriptionId = subscriptionId;
+                }
             }
         },
 
@@ -118,8 +191,8 @@
                 console.log('Early renewal button clicked');
                 BocsSubscriptions.handlers.earlyRenewal.call(this, e);
             });
-            // $('.edit-contents').on('click', this.handlers.editContents);
-            // $('.change-box').on('click', this.handlers.changeBox);
+            $('.edit-contents').on('click', this.handlers.editContents);
+            $('.change-box').on('click', this.handlers.changeBox);
 
             // Pause subscription button
             $('#pause-button').on('click', this.handlers.pauseSubscription);
@@ -1412,19 +1485,33 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
+                const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id') || $(this).data('sub-id');
 
-                // This would typically redirect to a product edit page or open a modal
-                BocsSubscriptions.helpers.showNotification('Edit contents functionality coming soon', 'info');
+                // Check if we have a subscription ID
+                if (!subscriptionId) {
+                    console.error('No subscription ID found for edit contents');
+                    return;
+                }
+
+                // Navigate to the edit details page
+                window.location.href = bocsSubscriptionsData.orderEndpoint + subscriptionId;
             },
 
             // Change box handler (placeholder)
             changeBox: function(e) {
-                // We no longer need to prevent default since we're using links now
-                // The link will navigate to the switch-bocs page
-                // This handler is kept for backward compatibility
-                const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id');
-                console.log('Navigating to change box page for subscription: ' + subscriptionId);
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const subscriptionId = $(this).closest('.bocs-subscription-item').data('subscription-id') || $(this).data('sub-id');
+                
+                // Check if we have a subscription ID
+                if (!subscriptionId) {
+                    console.error('No subscription ID found for change box');
+                    return;
+                }
+                
+                // Navigate to the switch bocs page
+                window.location.href = bocsSubscriptionsData.updateBoxEndpoint + subscriptionId;
             },
 
             // Pause subscription handler
@@ -1467,6 +1554,259 @@
 
                 // Show the pause subscription modal
                 $('#bocs-pause-subscription-modal').css('display', 'flex');
+            },
+
+            // DOM content loaded handler for setting subscription IDs
+            domContentLoadedHandler: function() {
+                // Set subscription ID on all elements from global variable if available
+                if (window.bocsCurrentSubscriptionId) {
+                    var globalId = window.bocsCurrentSubscriptionId;
+                    console.log('Document ready: Setting subscription ID from global variable:', globalId);
+
+                    // Set subscription ID on all relevant elements
+                    function setIdOnElement(selector) {
+                        var element = document.querySelector(selector);
+                        if (element) {
+                            element.setAttribute('data-subscription-id', globalId);
+                            console.log('Set subscription ID on ' + selector + ':', globalId);
+                        }
+                    }
+
+                    setIdOnElement('#bocs-pause-subscription-modal');
+                    setIdOnElement('#pause-confirm-button');
+                    setIdOnElement('#pause-button');
+                    setIdOnElement('#bocs-edit-schedule-modal');
+                }
+
+                // When the pause button is clicked, set the subscription ID on the modal
+                var pauseButton = document.getElementById('pause-button');
+                if (pauseButton) {
+                    pauseButton.addEventListener('click', function() {
+                        // Try to get the subscription ID from various sources
+                        var subscriptionId = window.bocsCurrentSubscriptionId;
+
+                        // First try to get from the edit schedule modal
+                        var editScheduleModal = document.getElementById('bocs-edit-schedule-modal');
+                        if (editScheduleModal && editScheduleModal.getAttribute('data-subscription-id')) {
+                            subscriptionId = editScheduleModal.getAttribute('data-subscription-id');
+                            console.log('Got subscription ID from edit schedule modal:', subscriptionId);
+                        }
+
+                        // Try to get from BocsSubscriptions
+                        if (!subscriptionId && typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.activeSubscriptionId) {
+                            subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                            console.log('Got subscription ID from BocsSubscriptions:', subscriptionId);
+                        }
+
+                        // Try to get from URL
+                        if (!subscriptionId) {
+                            var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                            if (urlMatch && urlMatch[1]) {
+                                subscriptionId = urlMatch[1];
+                                console.log('Got subscription ID from URL:', subscriptionId);
+                            }
+                        }
+
+                        // Set the subscription ID on the modal and buttons if found
+                        if (subscriptionId) {
+                            // Set subscription ID on all relevant elements
+                            function setIdOnElement(selector) {
+                                var element = document.querySelector(selector);
+                                if (element) {
+                                    element.setAttribute('data-subscription-id', subscriptionId);
+                                    console.log('Set subscription ID on ' + selector + ':', subscriptionId);
+                                }
+                            }
+
+                            setIdOnElement('#bocs-pause-subscription-modal');
+                            setIdOnElement('#pause-confirm-button');
+                            setIdOnElement('#pause-button');
+                        } else {
+                            console.error('Could not determine subscription ID for pause modal');
+                        }
+                    });
+                }
+            },
+
+            // Direct handler for pause confirm button
+            handlePauseConfirmClick: function(event) {
+                console.log('Direct pause confirm button click handler');
+
+                // Prevent default button behavior
+                event.preventDefault();
+
+                // Get the subscription ID - first try global variable
+                var subscriptionId = window.bocsCurrentSubscriptionId;
+
+                // If not found in global variable, use the helper function
+                if (!subscriptionId) {
+                    subscriptionId = BocsSubscriptions.helpers.getSubscriptionId();
+                }
+
+                // If still not found, try one last direct URL check
+                if (!subscriptionId) {
+                    var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                    if (urlMatch && urlMatch[1]) {
+                        subscriptionId = urlMatch[1];
+                        console.log('Direct URL check in handler found subscription ID:', subscriptionId);
+                    }
+                }
+
+                if (!subscriptionId) {
+                    console.error('Could not determine subscription ID');
+                    alert('Error: Could not determine which subscription to pause');
+                    return;
+                }
+
+                console.log('Pausing subscription:', subscriptionId);
+
+                // Debug all possible sources of subscription ID
+                console.log('Debug subscription ID sources:');
+                console.log('- Pause modal attr:', document.getElementById('bocs-pause-subscription-modal') ? document.getElementById('bocs-pause-subscription-modal').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Edit schedule modal attr:', document.getElementById('bocs-edit-schedule-modal') ? document.getElementById('bocs-edit-schedule-modal').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Pause button attr:', document.getElementById('pause-button') ? document.getElementById('pause-button').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Pause confirm button attr:', document.getElementById('pause-confirm-button') ? document.getElementById('pause-confirm-button').getAttribute('data-subscription-id') : 'not found');
+                console.log('- BocsSubscriptions.activeSubscriptionId:', typeof BocsSubscriptions !== 'undefined' ? BocsSubscriptions.activeSubscriptionId : 'undefined');
+
+                // URL check
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                console.log('- URL match:', urlMatch ? urlMatch[1] : 'no match');
+
+                // DOM attribute check
+                console.log('- Pause modal DOM attr:', document.getElementById('bocs-pause-subscription-modal') ? document.getElementById('bocs-pause-subscription-modal').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Edit schedule modal DOM attr:', document.getElementById('bocs-edit-schedule-modal') ? document.getElementById('bocs-edit-schedule-modal').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Pause button DOM attr:', document.getElementById('pause-button') ? document.getElementById('pause-button').getAttribute('data-subscription-id') : 'not found');
+                console.log('- Pause confirm button DOM attr:', document.getElementById('pause-confirm-button') ? document.getElementById('pause-confirm-button').getAttribute('data-subscription-id') : 'not found');
+
+                // Show loading state
+                var button = document.getElementById('pause-confirm-button');
+                if (button) {
+                    button.classList.add('loading');
+                    button.disabled = true;
+                }
+
+                // Try to use the BocsSubscriptions API directly
+                if (typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.api && BocsSubscriptions.api.pauseSubscription) {
+                    console.log('Using BocsSubscriptions.api.pauseSubscription directly with ID:', subscriptionId);
+
+                    // Call the API function directly
+                    BocsSubscriptions.api.pauseSubscription(subscriptionId)
+                        .then(function(response) {
+                            console.log('Pause subscription API response:', response);
+
+                            // Hide the modal
+                            var modal = document.getElementById('bocs-pause-subscription-modal');
+                            if (modal) {
+                                modal.style.display = 'none';
+                            }
+
+                            // Show success message
+                            if (BocsSubscriptions.helpers && BocsSubscriptions.helpers.showNotification) {
+                                BocsSubscriptions.helpers.showNotification('Subscription paused successfully', 'success');
+                            } else {
+                                alert('Subscription paused successfully');
+                            }
+
+                            // Reload the page after a short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 2000);
+                        })
+                        .catch(function(error) {
+                            console.error('Error pausing subscription:', error);
+
+                            // Check if this is a 502 error or Internal server error (API server error)
+                            if (error.message && (error.message.includes('502') || error.message.includes('Internal server error'))) {
+                                console.log('Received API error, will try AJAX fallback silently');
+                                // Don't show an error message, just try the AJAX fallback
+                                // The AJAX fallback will be handled by the pause-button-fix.js script
+
+                                // Remove any existing error notifications
+                                var notifications = document.querySelectorAll('.bocs-notification');
+                                notifications.forEach(function(notification) {
+                                    notification.remove();
+                                });
+                            } else {
+                                // For other errors, show an error message
+                                alert('Failed to pause subscription: ' + (error.message || 'Unknown error'));
+                            }
+
+                            // Reset button state
+                            if (button) {
+                                button.classList.remove('loading');
+                                button.disabled = false;
+                            }
+                        });
+                } else {
+                    // Fallback to WordPress AJAX if the API is not available
+                    console.log('BocsSubscriptions API not available, falling back to AJAX');
+
+                    var ajaxUrl = (typeof ajaxurl !== 'undefined') ? ajaxurl : '/wp-admin/admin-ajax.php';
+                    var nonce = (typeof bocs_ajax_nonce !== 'undefined') ? bocs_ajax_nonce : '';
+
+                    // Debug nonce value
+                    console.log('AJAX nonce value:', nonce);
+                    console.log('AJAX URL:', ajaxUrl);
+
+                    // Create form data
+                    var formData = new FormData();
+                    formData.append('action', 'bocs_pause_subscription');
+                    formData.append('subscription_id', subscriptionId);
+                    formData.append('nonce', nonce);
+
+                    // Debug form data
+                    console.log('Form data:');
+                    for (var pair of formData.entries()) {
+                        console.log(pair[0] + ': ' + pair[1]);
+                    }
+
+                    // Double-check the subscription ID one last time
+                    if (!subscriptionId) {
+                        // Last resort - extract directly from URL
+                        var lastResortMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                        if (lastResortMatch && lastResortMatch[1]) {
+                            subscriptionId = lastResortMatch[1];
+                            console.log('LAST RESORT: Got subscription ID directly from URL:', subscriptionId);
+                            formData.set('subscription_id', subscriptionId);
+                        }
+                    }
+
+                    // Make the request
+                    fetch(ajaxUrl, {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(response) {
+                        if (response.success) {
+                            // Hide the modal
+                            var modal = document.getElementById('bocs-pause-subscription-modal');
+                            if (modal) {
+                                modal.style.display = 'none';
+                            }
+
+                            // Reload the page after a short delay
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 2000);
+                        } else {
+                            throw new Error(response.data ? response.data.message : 'Unknown error');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Error pausing subscription:', error);
+                        alert('Failed to pause subscription: ' + (error.message || 'Unknown error'));
+
+                        // Reset button state
+                        if (button) {
+                            button.classList.remove('loading');
+                            button.disabled = false;
+                        }
+                    });
+                }
             }
         },
 
@@ -1530,6 +1870,67 @@
             // Format currency
             formatCurrency: function(amount) {
                 return '$' + parseFloat(amount).toFixed(2);
+            },
+
+            // Get subscription ID from various sources
+            getSubscriptionId: function() {
+                var subscriptionId = null;
+
+                // First check for our global variable
+                if (window.bocsCurrentSubscriptionId) {
+                    subscriptionId = window.bocsCurrentSubscriptionId;
+                    console.log('Got subscription ID from global variable:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from pause modal data attribute using vanilla JS
+                var pauseModal = document.getElementById('bocs-pause-subscription-modal');
+                if (pauseModal && pauseModal.getAttribute('data-subscription-id')) {
+                    subscriptionId = pauseModal.getAttribute('data-subscription-id');
+                    console.log('Got subscription ID from pause modal:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from edit schedule modal data attribute using vanilla JS
+                var editScheduleModal = document.getElementById('bocs-edit-schedule-modal');
+                if (editScheduleModal && editScheduleModal.getAttribute('data-subscription-id')) {
+                    subscriptionId = editScheduleModal.getAttribute('data-subscription-id');
+                    console.log('Got subscription ID from edit schedule modal:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from pause button using vanilla JS
+                var pauseButton = document.getElementById('pause-button');
+                if (pauseButton && pauseButton.getAttribute('data-subscription-id')) {
+                    subscriptionId = pauseButton.getAttribute('data-subscription-id');
+                    console.log('Got subscription ID from pause button:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from pause confirm button using vanilla JS
+                var pauseConfirmButton = document.getElementById('pause-confirm-button');
+                if (pauseConfirmButton && pauseConfirmButton.getAttribute('data-subscription-id')) {
+                    subscriptionId = pauseConfirmButton.getAttribute('data-subscription-id');
+                    console.log('Got subscription ID from pause confirm button:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from BocsSubscriptions
+                if (typeof BocsSubscriptions !== 'undefined' && BocsSubscriptions.activeSubscriptionId) {
+                    subscriptionId = BocsSubscriptions.activeSubscriptionId;
+                    console.log('Got subscription ID from BocsSubscriptions:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                // Try to get from URL
+                var urlMatch = window.location.href.match(/\/([a-f0-9-]{36})/);
+                if (urlMatch && urlMatch[1]) {
+                    subscriptionId = urlMatch[1];
+                    console.log('Got subscription ID from URL:', subscriptionId);
+                    return subscriptionId;
+                }
+
+                return null;
             }
         }
     };
@@ -1903,4 +2304,6 @@
         });
     }
 
+    // Make BocsSubscriptions available globally
+    window.BocsSubscriptions = BocsSubscriptions;
 })(jQuery);

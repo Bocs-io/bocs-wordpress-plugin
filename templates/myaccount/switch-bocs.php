@@ -13,8 +13,8 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), bocs_get_cache_bust_version('20250424.1'), true);
-wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), '20250501.1');
+wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), '20250507.1', true);
+wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), '20250507.3');
 
 // Add additional inline styles for product selection
 wp_add_inline_style('bocs-switch-bocs', '
@@ -466,9 +466,10 @@ if (class_exists('Bocs_Log_Handler')) {
             <h3><?php esc_html_e('Select Products', 'bocs-wordpress'); ?></h3>
             <p class="product-selection-info">
                 <?php esc_html_e('Please select between', 'bocs-wordpress'); ?> 
-                <span id="min-products">1</span> <?php esc_html_e('and', 'bocs-wordpress'); ?> 
-                <span id="max-products">10</span> <?php esc_html_e('products', 'bocs-wordpress'); ?>.
-                (<?php esc_html_e('Products selected', 'bocs-wordpress'); ?>: <span id="product-count">0</span>)
+                <span id="min-products">6</span> <?php esc_html_e('and', 'bocs-wordpress'); ?> 
+                <span id="max-products">12</span> <?php esc_html_e('products', 'bocs-wordpress'); ?>.
+                <span class="product-count-info"><?php esc_html_e('Products selected', 'bocs-wordpress'); ?>: <span id="product-count">0</span></span>
+                <span class="product-count-message"><?php esc_html_e('You must select between the minimum and maximum number of products to continue.', 'bocs-wordpress'); ?></span>
             </p>
             <div id="product-selection-content" class="product-options">
                 <!-- Product options will be dynamically loaded here -->
