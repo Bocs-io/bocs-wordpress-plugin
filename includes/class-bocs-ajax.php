@@ -1433,26 +1433,17 @@ class BOCS_AJAX {
             }
         }
 
-        error_log('DEBUG - Products have complete data: ' . ($has_complete_data ? 'Yes' : 'No') . ', Preserve all fields: ' . ($preserve_all_fields ? 'Yes' : 'No'));
-
         // For now, just pass the products directly to the API
         if ($has_complete_data || $preserve_all_fields) {
-            error_log('Using complete product data from frontend');
             $api = new BOCS_API();
             $response = $api->update_subscription_products($subscription_id, ['lineItems' => $products]);
-
-            error_log('DEBUG - Complete update request data: ' . json_encode(['lineItems' => $products]));
         } else {
-            error_log('Using simplified product data format');
             $api = new BOCS_API();
             $response = $api->update_subscription_products($subscription_id, $products);
-
-            error_log('DEBUG - Simplified update request data: ' . json_encode($products));
         }
 
         if (is_wp_error($response)) {
             $error_message = $response->get_error_message();
-            error_log('BOCS API Error: ' . $error_message);
             wp_send_json_error(['message' => $error_message]);
             return;
         }
@@ -1460,7 +1451,6 @@ class BOCS_AJAX {
         // Check for API error
         if (isset($response['code']) && $response['code'] != 200) {
             $error_message = isset($response['message']) ? $response['message'] : 'Unknown API error';
-            error_log('BOCS API Error: ' . $error_message);
             wp_send_json_error(['message' => $error_message]);
             return;
         }

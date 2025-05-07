@@ -62,14 +62,22 @@ class Bocs_Account
 
         if (! empty($options['bocs_headers']['organization']) && ! empty($options['bocs_headers']['store']) && ! empty($options['bocs_headers']['authorization'])) {
             $this->headers = [
-                'Organization' => $options['bocs_headers']['organization'] ?? '',
                 'Store' => $options['bocs_headers']['store'] ?? '',
+                'Organization' => $options['bocs_headers']['organization'] ?? '',
                 'Authorization' => $options['bocs_headers']['authorization'] ?? '',
                 'Content-Type' => 'application/json'
             ];
         }
 
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Helper.php';
+        
+        // Load and register the subscription switched email class
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+        add_action('woocommerce_email', function($emails) {
+            if (!isset($emails->emails['bocs_subscription_switched'])) {
+                $emails->emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+            }
+        });
         
         // Add AJAX handlers
         add_action('wp_ajax_bocs_get_payment_methods', array($this, 'ajax_get_payment_methods'));
@@ -1801,6 +1809,17 @@ class Bocs_Account
         // Get parameters from request
         $subscription_id = isset($_POST['subscription_id']) ? sanitize_text_field($_POST['subscription_id']) : '';
         $update_type = isset($_POST['update_type']) ? sanitize_text_field($_POST['update_type']) : '';
+        $bocs_id = isset($_POST['bocs_id']) ? sanitize_text_field($_POST['bocs_id']) : '';
+        $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
+        $products = isset($_POST['products']) ? $_POST['products'] : array();
+        
+        // Parse products if it's a JSON string
+        if (!empty($products) && is_string($products)) {
+            $decoded_products = json_decode($products, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded_products)) {
+                $products = $decoded_products;
+            }
+        }
         
         // Handle different update types
         switch ($update_type) {
@@ -1841,7 +1860,323 @@ class Bocs_Account
                 }
                 break;
             
-            // Existing cases...
+            default:
+                // we will be update the bocs and its line items here
+                if( !empty($bocs_id)){
+                    $helper = new Bocs_Helper();
+                    
+                    // Get current subscription data first
+                    $subscription_url = BOCS_API_URL . 'subscriptions/' . urlencode($subscription_id);
+                    $subscription_response = $helper->curl_request($subscription_url, 'GET', [], $this->headers);
+                    
+                    if (is_wp_error($subscription_response)) {
+                        wp_send_json_error(array('message' => $subscription_response->get_error_message()));
+                        return;
+                    }
+                    
+                    if (!isset($subscription_response['data']) || empty($subscription_response['data'])) {
+                        wp_send_json_error(array('message' => __('Subscription data not found', 'bocs-wordpress')));
+                        return;
+                    }
+                    
+                    $current_subscription = $subscription_response['data'];
+                    
+                    // Extract current frequency information
+                    $current_frequency = null;
+                    if (isset($current_subscription['frequency'])) {
+                        $current_frequency = $current_subscription['frequency'];
+                    }
+                    
+                    // Get current BOCS data
+                    $bocs_url = BOCS_API_URL . 'bocs/' . urlencode($bocs_id);
+                    $bocs_response = $helper->curl_request($bocs_url, 'GET', [], $this->headers);
+                    
+                    if (is_wp_error($bocs_response)) {
+                        wp_send_json_error(array('message' => $bocs_response->get_error_message()));
+                        return;
+                    }
+                    
+                    if (!isset($bocs_response['data']) || empty($bocs_response['data'])) {
+                        wp_send_json_error(array('message' => __('BOCS data not found', 'bocs-wordpress')));
+                        return;
+                    }
+                    
+                    $bocs_data = $bocs_response['data'];
+                    
+                    // Prepare data for subscription update
+                    // The update will happen in subsequent code based on the retrieved BOCS data
+                    $update_data = [
+                        'bocs' => [
+                            'id' => $bocs_id,
+                            'name' => isset($bocs_data['name']) ? $bocs_data['name'] : ''
+                        ]
+                    ];
+                    
+                    // Handle frequency update
+                    // First get the current frequency for reference
+                    $current_frequency_data = null;
+                    if (isset($current_subscription['frequency'])) {
+                        $current_frequency_data = $current_subscription['frequency'];
+                        $current_frequency_id = isset($current_frequency_data['id']) ? $current_frequency_data['id'] : null;
+                        
+                    }
+                    
+                    // If a new frequency ID is provided, try to find it in the BOCS data
+                    $new_frequency = null;
+                    if (!empty($frequency_id)) {
+                        
+                        // If not found, check in priceAdjustment.adjustments
+                        if (isset($bocs_data['priceAdjustment']) && 
+                            isset($bocs_data['priceAdjustment']['adjustments']) &&
+                            is_array($bocs_data['priceAdjustment']['adjustments'])) {
+                            
+                            foreach ($bocs_data['priceAdjustment']['adjustments'] as $adjustment) {
+                                if (isset($adjustment['id']) && $adjustment['id'] == $frequency_id) {
+                                    $new_frequency = $adjustment;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If a match was found, use it for the update
+                        if ($new_frequency) {
+                            $update_data['frequency'] = [
+                                'id' => $new_frequency['id'],
+                                'frequency' => isset($new_frequency['frequency']) ? $new_frequency['frequency'] : 1,
+                                'timeUnit' => isset($new_frequency['timeUnit']) ? $new_frequency['timeUnit'] : 'month'
+                            ];
+                            
+                            // Add discount information if available
+                            if (isset($new_frequency['discount'])) {
+                                $update_data['frequency']['discount'] = $new_frequency['discount'];
+                            }
+                            
+                            if (isset($new_frequency['discountType'])) {
+                                $update_data['frequency']['discountType'] = $new_frequency['discountType'];
+                            }
+                            
+                            if (isset($new_frequency['scheduledPaymentDate'])) {
+                                $update_data['frequency']['scheduledPaymentDate'] = $new_frequency['scheduledPaymentDate'];
+                            }
+                            
+                        }
+                    } else if ($current_frequency_data) {
+                        // If no new frequency is provided, keep the current one
+                        $update_data['frequency'] = $current_frequency_data;
+                        
+                    }
+                    
+                    // Process products data from the request
+                    // This ensures we handle both string and array formats properly
+                    $products_data = isset($_POST['products']) ? $_POST['products'] : '';
+                    $products_array = [];
+                    
+                    
+                    if (!empty($products_data)) {
+                        if (is_string($products_data)) {
+                            // First, strip slashes if the string has escaped quotes
+                            $products_data = stripslashes($products_data);
+                            
+                            // Try to decode JSON string
+                            $decoded = json_decode($products_data, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $products_array = $decoded;
+                            } else {
+                                
+                                // Try one more approach - using a regex to extract product information
+                                if (preg_match_all('/\{.*?\}/', $products_data, $matches)) {
+                                    foreach ($matches[0] as $match) {
+                                        $product = json_decode($match, true);
+                                        if (json_last_error() === JSON_ERROR_NONE && is_array($product)) {
+                                            $products_array[] = $product;
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (is_array($products_data)) {
+                            $products_array = $products_data;
+                        }
+                    }
+                    
+                    // Filter out products with zero quantity
+                    if (!empty($products_array)) {
+                        $products_array = array_filter($products_array, function($product) {
+                            return isset($product['quantity']) && $product['quantity'] > 0;
+                        });
+                    }
+                    
+                    // Process line items based on box type and products array
+                    if(isset($bocs_data['type']) && $bocs_data['type'] == 'custom'){
+                        // Handle products if provided for custom box
+                        if (!empty($products_array)) {
+                            // Process products - unified approach to handle all cases
+                            $line_items = [];
+                            
+                            foreach ($products_array as $product) {
+                                // Get product ID (could be in 'id' or 'productId' field)
+                                $product_id = isset($product['id']) ? $product['id'] : 
+                                            (isset($product['productId']) ? $product['productId'] : null);
+                                
+                                if (!empty($product_id)) {
+                                    $line_item = [
+                                        'productId' => sanitize_text_field($product_id),
+                                        'quantity' => isset($product['quantity']) ? max(1, intval($product['quantity'])) : 1
+                                    ];
+                                    
+                                    // Add optional fields if present
+                                    $fields = ['name', 'price', 'sku', 'externalSourceId'];
+                                    foreach ($fields as $field) {
+                                        if (isset($product[$field])) {
+                                            $line_item[$field] = $field === 'price' ? 
+                                                floatval($product[$field]) : 
+                                                sanitize_text_field($product[$field]);
+                                        }
+                                    }
+                                    
+                                    $line_items[] = $line_item;
+                                }
+                            }
+                            
+                            // Add line items to the update data if we have any
+                            if (!empty($line_items)) {
+                                $update_data['lineItems'] = $line_items;
+                            }
+                        }
+                    } else {
+                        // For non-custom boxes, get products directly from BOCS data
+                        if (isset($bocs_data['products']) && is_array($bocs_data['products']) && !empty($bocs_data['products'])) {
+                            // Filter products to only include specified fields
+                            $filtered_products = [];
+                            foreach ($bocs_data['products'] as $line_product) {
+                                $filtered_product = [];
+                                // Only include specified fields
+                                if (isset($line_product['quantity'])) $filtered_product['quantity'] = $line_product['quantity'];
+                                if (isset($line_product['productId'])) $filtered_product['productId'] = $line_product['productId'];
+                                if (isset($line_product['price'])) $filtered_product['price'] = $line_product['price'];
+                                if (isset($line_product['name'])) $filtered_product['name'] = $line_product['name'];
+                                if (isset($line_product['externalSourceId'])) $filtered_product['externalSourceId'] = $line_product['externalSourceId'];
+                                if (isset($line_product['sku'])) $filtered_product['sku'] = $line_product['sku'];
+                                
+                                // Ensure product has at least a quantity of 1
+                                if (!isset($filtered_product['quantity'])) {
+                                    $filtered_product['quantity'] = 1;
+                                }
+                                
+                                // Only add products that have a productId
+                                if (isset($filtered_product['productId'])) {
+                                    $filtered_products[] = $filtered_product;
+                                }
+                            }
+                            
+                            if (!empty($filtered_products)) {
+                                $update_data['lineItems'] = $filtered_products;
+                            }
+                        }
+                    }
+                    
+                    // In case there is a discount, we need to add it to the update data
+                    // Check the frequency for a discount
+                    if(
+                        isset($update_data['frequency']['discount']) && 
+                        $update_data['frequency']['discount'] > 0 && 
+                        isset($update_data['frequency']['discountType']) && 
+                        $update_data['frequency']['discountType'] == 'percent'
+                    ){
+                        // Make sure lineItems exists to avoid null value issues
+                        if (!isset($update_data['lineItems'])) {
+                            $update_data['lineItems'] = [];
+                            error_log('Initialized empty lineItems array for discount calculation');
+                        }
+                        
+                        $discount_percentage = (float)$update_data['frequency']['discount'];
+                        $subscription_subtotal = 0;
+                        $discount_total = 0;
+                        
+                        // Only calculate discounts if we have line items
+                        if (isset($update_data['lineItems']) && is_array($update_data['lineItems']) && !empty($update_data['lineItems'])) {
+                            // First pass: calculate subtotals and the subscription subtotal
+                            foreach($update_data['lineItems'] as $key => &$item){
+                                $subtotal = (float)number_format((float)$item['price'] * (int)$item['quantity'], 2, '.', '');
+                                $update_data['lineItems'][$key]['subtotal'] = $subtotal;
+                                $subscription_subtotal += $subtotal;
+                            }
+                            
+                            // Calculate total discount amount
+                            $discount_total = (float)number_format($subscription_subtotal * ($discount_percentage / 100), 2, '.', '');
+                            
+                            // Second pass: calculate line item totals after discount
+                            foreach($update_data['lineItems'] as $key => &$item){
+                                $item_discount = (float)number_format($item['subtotal'] * ($discount_percentage / 100), 2, '.', '');
+                                $item_total = (float)number_format($item['subtotal'] - $item_discount, 2, '.', '');
+                                $update_data['lineItems'][$key]['total'] = $item_total;
+                            }
+                            
+                            // Only add coupon if we have a valid discount
+                            if ($subscription_subtotal > 0 && $discount_total > 0) {
+                                // Add couponLines entry
+                                $current_time = time();
+                                $coupon_id = 'auto-' . $current_time;
+                                $update_data['couponLines'] = [
+                                    [
+                                        'discount' => $discount_total,
+                                        'id' => $coupon_id,
+                                        'code' => 'bocs-' . $discount_percentage . '-percent-' . substr(uniqid(), 0, 5) . '-' . $current_time,
+                                        'discountTax' => 0 // Set to 0 as default, would be calculated properly by the server
+                                    ]
+                                ];
+                                
+                                // Update overall discount total and total
+                                $update_data['discountTotal'] = $discount_total;
+                                
+                                // Calculate final total (subtotal - discount)
+                                $total = (float)number_format($subscription_subtotal - $discount_total, 2, '.', '');
+                                $update_data['total'] = $total;
+                                
+                                // If there's tax data available, preserve it
+                                if(isset($current_subscription['cartTax'])) {
+                                    $update_data['cartTax'] = $current_subscription['cartTax'];
+                                    // Add tax to total if available
+                                    if(is_numeric($update_data['cartTax'])) {
+                                        $update_data['total'] = (float)number_format($total + (float)$update_data['cartTax'], 2, '.', '');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    $update_url = BOCS_API_URL . 'subscriptions/' . $subscription_id;
+                    $update_response = $helper->curl_request($update_url, 'PUT', $update_data );
+                    
+                    if (is_wp_error($update_response)) {
+                        wp_send_json_error(array('message' => $update_response->get_error_message()));
+                        return;
+                    }
+                    
+                    // If update was successful, trigger the switched subscription email
+                    if (isset($update_response['data'])) {
+                        // Get the subscription data from the response
+                        $subscription_data = $update_response['data'];
+                        
+                        // Trigger the email
+                        do_action(
+                            'bocs_subscription_switched',
+                            $subscription_data,
+                            $bocs_id,
+                            $frequency_id,
+                            isset($bocs_data['type'])
+                        );
+                    }
+                    
+                    // Send success response
+                    wp_send_json_success(array(
+                        'message' => __('Subscription updated successfully', 'bocs-wordpress'),
+                        'data' => $update_response
+                    ));
+                }
+                
+                // If no BOCS ID was provided, return an error
+                wp_send_json_error(array('message' => __('BOCS ID is required', 'bocs-wordpress')));
+                break;
         }
     }
     

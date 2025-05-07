@@ -40,92 +40,7 @@ class Bocs_Helper
     public function curl_request($url, $method = 'GET', $data = [], $headers = [])
     {
         try {
-            // Generate a simplified request fingerprint for loop detection
-            // Don't include all data/headers to avoid false positives
-            $request_fingerprint = md5($url . $method);
-            $current_time = time();
             
-            // Get stack trace for debugging
-            $debug_backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
-            $calling_function = '';
-            $calling_file = '';
-            
-            // Skip the first entry (it's this function)
-            if (isset($debug_backtrace[1])) {
-                $calling_function = isset($debug_backtrace[1]['function']) ? $debug_backtrace[1]['function'] : 'unknown';
-                $calling_file = isset($debug_backtrace[1]['file']) ? basename($debug_backtrace[1]['file']) : 'unknown';
-                $calling_line = isset($debug_backtrace[1]['line']) ? $debug_backtrace[1]['line'] : 'unknown';
-                
-                // For deeper inspection, capture the next caller too
-                if (isset($debug_backtrace[2])) {
-                    $parent_function = isset($debug_backtrace[2]['function']) ? $debug_backtrace[2]['function'] : 'unknown';
-                    $parent_file = isset($debug_backtrace[2]['file']) ? basename($debug_backtrace[2]['file']) : 'unknown';
-                    $parent_line = isset($debug_backtrace[2]['line']) ? $debug_backtrace[2]['line'] : 'unknown';
-                    
-                    $calling_function = "{$parent_function}() -> {$calling_function}()";
-                    $calling_file = "{$parent_file}:{$parent_line} -> {$calling_file}:{$calling_line}";
-                } else {
-                    $calling_function .= '()';
-                    $calling_file .= ':' . $calling_line;
-                }
-            }
-            
-            // Track the number of similar requests
-            if (!isset(self::$recent_requests[$request_fingerprint])) {
-                self::$recent_requests[$request_fingerprint] = [
-                    'count' => 1,
-                    'first_time' => $current_time,
-                    'last_time' => $current_time,
-                    'callers' => ["{$calling_file} in {$calling_function}"]
-                ];
-            } else {
-                // Only count requests within the threshold time
-                if ($current_time - self::$recent_requests[$request_fingerprint]['first_time'] <= self::REQUEST_THRESHOLD_TIME) {
-                    self::$recent_requests[$request_fingerprint]['count']++;
-                    self::$recent_requests[$request_fingerprint]['last_time'] = $current_time;
-                    
-                    // Track unique callers (up to 5)
-                    $caller_key = "{$calling_file} in {$calling_function}";
-                    if (!in_array($caller_key, self::$recent_requests[$request_fingerprint]['callers']) 
-                        && count(self::$recent_requests[$request_fingerprint]['callers']) < 5) {
-                        self::$recent_requests[$request_fingerprint]['callers'][] = $caller_key;
-                    }
-                    
-                    // Check if we're potentially in a loop
-                    if (self::$recent_requests[$request_fingerprint]['count'] > self::MAX_SIMILAR_REQUESTS) {
-                        $message = sprintf(
-                            'Potential API request loop detected: %s %s has been called %d times in %d seconds',
-                            $method,
-                            $url,
-                            self::$recent_requests[$request_fingerprint]['count'],
-                            $current_time - self::$recent_requests[$request_fingerprint]['first_time']
-                        );
-                        
-                        // Log callers for debugging
-                        error_log('BOCS API ERROR - ' . $message);
-                        error_log('BOCS API ERROR - Current call from: ' . $calling_file . ' in ' . $calling_function);
-                        error_log('BOCS API ERROR - Call stack: ' . implode(' | ', self::$recent_requests[$request_fingerprint]['callers']));
-                        
-                        return new WP_Error('bocs_api_loop', $message);
-                    }
-                } else {
-                    // Reset counter if outside threshold
-                    self::$recent_requests[$request_fingerprint] = [
-                        'count' => 1,
-                        'first_time' => $current_time,
-                        'last_time' => $current_time,
-                        'callers' => ["{$calling_file} in {$calling_function}"]
-                    ];
-                }
-            }
-            
-            // Clean up old request records
-            foreach (self::$recent_requests as $fp => $data) {
-                if ($current_time - $data['last_time'] > self::REQUEST_THRESHOLD_TIME * 2) {
-                    unset(self::$recent_requests[$fp]);
-                }
-            }
-
             if (empty($url)) {
                 throw new Exception(__('API URL is required', 'bocs-wordpress'));
             }
@@ -148,33 +63,7 @@ class Bocs_Helper
                     throw new Exception(__('Missing required API authentication headers', 'bocs-wordpress'));
                 }
             }
-
-            // Handle AWS SigV4 authentication for API Gateway
-            if (strpos($url, 'execute-api.') !== false && strpos($url, 'amazonaws.com') !== false) {
-                // This appears to be an AWS API Gateway URL
-                $parsed_url = parse_url($url);
-                $host = $parsed_url['host'];
-                $region = $this->extract_aws_region($host);
-                
-                // Check for issues with existing headers that might cause looping
-                $this->debug_aws_headers($headers);
-                
-                // Check if we already have AWS headers to prevent duplicates
-                if (isset($headers['X-Amz-Date']) || isset($headers['X-Bocs-Authorization'])) {
-                    //  
-                } else {
-                    // Add AWS SigV4 required headers
-                    $date = gmdate('Ymd\THis\Z');
-                    $headers['X-Amz-Date'] = $date;
-                    $headers['host'] = $host;
-                    
-                    // Add original Authorization token as custom header
-                    if (isset($headers['Authorization'])) {
-                        $headers['X-Bocs-Authorization'] = $headers['Authorization'];
-                    }
-                    
-                }
-            }
+            
 
             $args = [
                 'method'      => $method,
@@ -196,29 +85,6 @@ class Bocs_Helper
                 $args['body'] = wp_json_encode($data);
             }
 
-            // Add detailed logging for request
-            $log_url = preg_replace('/\?.*/', '?[query_params_redacted]', $url); // Redact query params
-            
-            // Log headers with sensitive data redacted
-            $log_headers = $headers;
-            if (isset($log_headers['Authorization'])) {
-                $log_headers['Authorization'] = substr($log_headers['Authorization'], 0, 10) . '...';
-            }
-            if (isset($log_headers['X-Bocs-Authorization'])) {
-                $log_headers['X-Bocs-Authorization'] = substr($log_headers['X-Bocs-Authorization'], 0, 10) . '...';
-            }
-            
-            // Log request body for debugging (redact sensitive data)
-            if ($method !== 'GET' && !empty($data)) {
-                $log_data = is_array($data) ? $data : json_decode($data, true);
-                if (is_array($log_data)) {
-                    // Redact sensitive fields
-                    if (isset($log_data['card']) || isset($log_data['payment_method'])) {
-                        $log_data = '[payment_data_redacted]';
-                    }
-                }
-            }
-            
             $response = wp_remote_request($url, $args);
 
             if (is_wp_error($response)) {
@@ -286,7 +152,6 @@ class Bocs_Helper
 
             return $data;
         } catch (Exception $e) {
-            error_log('BOCS API Error: ' . $e->getMessage());
             return new WP_Error('bocs_api_error', $e->getMessage());
         }
     }
