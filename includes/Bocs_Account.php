@@ -323,6 +323,8 @@ class Bocs_Account
                         'externalSourceParentOrderId' => isset($subscription['externalSourceParentOrderId']) ? $subscription['externalSourceParentOrderId'] : '',
                         'next_payment_date' => isset($subscription['nextPaymentDateGmt']) ? date_i18n(get_option('date_format'), strtotime($subscription['nextPaymentDateGmt'])) : '',
                         'next_delivery_date' => isset($subscription['nextPaymentDateGmt']) ? date_i18n(get_option('date_format'), strtotime($subscription['nextPaymentDateGmt'] . ' +3 days')) : '',
+                        'discountType' => isset($subscription['frequency']['discountType']) ? $subscription['frequency']['discountType'] : '',
+                        'discount' => isset($subscription['frequency']['discount']) ? $subscription['frequency']['discount'] : ''
                     );
                     
                     // Check if there are any pending orders for this subscription
@@ -346,11 +348,6 @@ class Bocs_Account
                         
                         // If BOCS name is empty but we have the ID, try to fetch it
                         if (empty($subscription['bocs']['name']) && !empty($subscription['bocs']['id'])) {
-                            if (class_exists('Bocs_Log_Handler')) {
-                                $logger->insert_log('debug', '[Subscriptions Page] Fetching BOCS name for empty value', [
-                                    'bocs_id' => $subscription['bocs']['id']
-                                ]);
-                            }
                             
                             $bocs_id = $subscription['bocs']['id'];
                             
@@ -360,11 +357,7 @@ class Bocs_Account
                             if (isset($bocs_cache[$bocs_id])) {
                                 // Use cached data
                                 $bocs_details = $bocs_cache[$bocs_id];
-                                if (class_exists('Bocs_Log_Handler')) {
-                                    $logger->insert_log('debug', '[Subscriptions Page] Using cached BOCS details', [
-                                        'bocs_id' => $bocs_id
-                                    ]);
-                                }
+
                             } else {
                                 // Make API request and cache the result
                                 $url = BOCS_API_URL . 'bocs/' . $bocs_id;
@@ -382,10 +375,7 @@ class Bocs_Account
                             } else if (is_wp_error($bocs_details)) {
                                 // Log the error
                                 if (class_exists('Bocs_Log_Handler')) {
-                                    $logger->insert_log('error', '[Subscriptions Page] Error fetching BOCS details', [
-                                        'bocs_id' => $bocs_id,
-                                        'error_message' => $bocs_details->get_error_message()
-                                    ]);
+                                    // Do nothing
                                 } else {
                                     error_log('BOCS Error: Failed to get BOCS details - ' . $bocs_details->get_error_message());
                                 }
@@ -503,66 +493,22 @@ class Bocs_Account
                     
                     $subscriptions_formatted[] = $formatted;
                 }
-                
-                if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('debug', '[Subscriptions Page] Formatted subscription data', [
-                        'count' => count($subscriptions_formatted)
-                    ]);
-                }
-            } elseif (class_exists('Bocs_Log_Handler')) {
-                $logger->insert_log('warning', '[Subscriptions Page] No valid subscription data to format', [
-                    'has_data' => isset($subscriptions['data']),
-                    'has_data_data' => isset($subscriptions['data']['data']),
-                    'is_array' => isset($subscriptions['data']['data']) && is_array($subscriptions['data']['data']),
-                    'is_empty' => isset($subscriptions['data']['data']) && empty($subscriptions['data']['data'])
-                ]);
             }
 
             // Define paths for both templates
             $legacy_template_path = plugin_dir_path(dirname(__FILE__)) . 'views/bocs_subscriptions_account.php';
             $new_template_path = plugin_dir_path(dirname(__FILE__)) . 'templates/myaccount/subscription-list.php';
             
-            if (class_exists('Bocs_Log_Handler')) {
-                $logger->insert_log('debug', '[Subscriptions Page] Template paths', [
-                    'legacy_template_exists' => file_exists($legacy_template_path),
-                    'new_template_exists' => file_exists($new_template_path),
-                    'legacy_path' => $legacy_template_path,
-                    'new_path' => $new_template_path
-                ]);
-            }
-            
             // Set necessary variables for template
             $options = get_option('bocs_plugin_options');
             
             // Use the new template if it exists, otherwise fall back to legacy template
             if (file_exists($new_template_path)) {
-                if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('debug', '[Subscriptions Page] Including new template', [
-                        'template_path' => $new_template_path
-                    ]);
-                }
                 include $new_template_path;
             } elseif (file_exists($legacy_template_path)) {
-                if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('debug', '[Subscriptions Page] Including legacy template', [
-                        'template_path' => $legacy_template_path
-                    ]);
-                }
                 include $legacy_template_path;
             } else {
-                if (class_exists('Bocs_Log_Handler')) {
-                    $logger->insert_log('error', '[Subscriptions Page] No template found', [
-                        'new_template_path' => $new_template_path,
-                        'legacy_template_path' => $legacy_template_path
-                    ]);
-                }
                 echo esc_html__('Subscription template not found.', 'bocs-wordpress');
-            }
-        } else {
-            if (class_exists('Bocs_Log_Handler')) {
-                $logger->insert_log('debug', '[Subscriptions Page] No logged in user', [
-                    'time' => current_time('mysql')
-                ]);
             }
         }
     }

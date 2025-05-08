@@ -826,6 +826,235 @@
 
                     priceElement.text(`${price} ${frequencyFormatted}`);
 
+                    // *** START OF NEW CODE - UPDATE PRICE CALCULATIONS ***
+                    
+                    // Update order details section with new discount
+                    const orderDetails = $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"] .bocs-order-details-content`);
+                    
+                    if (orderDetails.length) {
+                        // Update discount display in order table
+                        const discountRow = orderDetails.find('.bocs-discount-row');
+                        
+                        if (discountRow.length) {
+                            // Get the subtotal to calculate discount amount
+                            const subtotalText = orderDetails.find('.bocs-subtotal-row td').text();
+                            const subtotal = parseFloat(subtotalText.replace(/[^0-9.]/g, '')) || 0;
+                            
+                            // Calculate new discount amount
+                            let discountAmount = 0;
+                            if (discountType === 'percent' && parseInt(discount) > 0) {
+                                discountAmount = subtotal * (parseInt(discount) / 100);
+                            } else if (discountType === 'fixed' && parseInt(discount) > 0) {
+                                discountAmount = parseInt(discount);
+                            }
+                            
+                            // Format discount amount for display
+                            const formattedDiscount = '-$' + discountAmount.toFixed(2);
+                            
+                            // Update discount row text
+                            discountRow.find('th').text(`Subscription Discount (${discountType === 'percent' ? discount + '%' : '$' + discount} discount)`);
+                            discountRow.find('td').text(formattedDiscount);
+                            
+                            // Update the total
+                            const shippingText = orderDetails.find('.bocs-shipping-row td').text() || '$0.00';
+                            const shipping = parseFloat(shippingText.replace(/[^0-9.]/g, '')) || 0;
+                            
+                            // Get the tax from the tax row - but we should NOT recalculate it
+                            // Tax should remain the same regardless of discount
+                            // The tax is in the row with class bocs-total-row, which actually contains the Tax
+                            const taxText = orderDetails.find('.bocs-total-row td').text() || '$0.00';
+                            const tax = parseFloat(taxText.replace(/[^0-9.]/g, '')) || 0;
+                            
+                            console.log('Tax text found:', taxText);
+                            
+                            // We should NOT update the displayed tax amount as it should remain the same
+                            
+                            // Calculate new total - subtotal less discount plus shipping plus tax
+                            const newTotal = subtotal - discountAmount + shipping + tax;
+                            const formattedTotal = '$' + newTotal.toFixed(2);
+                            
+                            console.log('Total calculation:', {
+                                subtotal: subtotal,
+                                discountAmount: discountAmount,
+                                shipping: shipping,
+                                tax: tax,
+                                newTotal: newTotal
+                            });
+                            
+                            // Update total row in the final row, not the tax row
+                            orderDetails.find('.bocs-final-total-row td').text(formattedTotal);
+                            
+                            // Update the price in the subscription header
+                            const headerPrice = $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"] .bocs-subscription-price`);
+                            if (headerPrice.length) {
+                                headerPrice.text(`$${newTotal.toFixed(2)} ${frequencyFormatted}`);
+                            }
+                            
+                            // *** NEW CODE - UPDATE INDIVIDUAL PRODUCT DISCOUNTS ***
+                            // Update individual product discounts if they exist
+                            const productRows = orderDetails.find('tbody tr');
+                            
+                            if (productRows.length && parseInt(discount) > 0) {
+                                productRows.each(function() {
+                                    const row = $(this);
+                                    const productPrice = row.find('td[data-title="Price"]').text();
+                                    const quantity = row.find('td[data-title="Quantity"]').text();
+                                    
+                                    // Parse price and quantity
+                                    const price = parseFloat(productPrice.replace(/[^0-9.]/g, '')) || 0;
+                                    const qty = parseInt(quantity) || 1;
+                                    
+                                    // Calculate new product discount
+                                    let productDiscountAmount = 0;
+                                    if (discountType === 'percent') {
+                                        productDiscountAmount = (price * qty) * (parseInt(discount) / 100);
+                                    } else {
+                                        // For fixed discounts, distribute proportionally across products
+                                        // This is an approximation as fixed discounts are usually applied to the entire order
+                                        productDiscountAmount = (price * qty / subtotal) * parseInt(discount);
+                                    }
+                                    
+                                    // Find and update the discount text span
+                                    const discountText = row.find('.discount-text');
+                                    if (discountText.length) {
+                                        // Update discount text with new amount
+                                        if (discountType === 'percent') {
+                                            discountText.text(`$${productDiscountAmount.toFixed(2)} discount`);
+                                        } else {
+                                            discountText.text(`$${productDiscountAmount.toFixed(2)} discount`);
+                                        }
+                                    }
+                                    
+                                    // Update product total if needed
+                                    const productTotalElem = row.find('td[data-title="Total"]');
+                                    if (productTotalElem.length) {
+                                        // Get the total text without the discount span
+                                        const totalText = productTotalElem.contents().filter(function() {
+                                            return this.nodeType === 3; // Text nodes only
+                                        }).text();
+                                        
+                                        // Parse the total from the text
+                                        const totalValue = parseFloat(totalText.replace(/[^0-9.]/g, '')) || 0;
+                                        
+                                        // We don't update the main total display here since it's already 
+                                        // the correct price - we only update the discount text
+                                    }
+                                });
+                            }
+                            
+                            // Update the final total discount text if it exists
+                            const finalDiscount = orderDetails.find('.bocs-final-total-row .discount-text');
+                            if (finalDiscount.length && discount > 0) {
+                                // Calculate the discount amount for display
+                                let finalDiscountAmount = 0;
+                                if (discountType === 'percent') {
+                                    finalDiscountAmount = subtotal * (parseInt(discount) / 100);
+                                } else {
+                                    finalDiscountAmount = parseInt(discount);
+                                }
+                                
+                                finalDiscount.text(`$${finalDiscountAmount.toFixed(2)} discount`);
+                            }
+                        }
+                    }
+                    
+                    // If there are subscription discount elements, update them too
+                    $(`.bocs-subscription-item[data-subscription-id="${subscriptionId}"]`)
+                        .find('.subscription-discount')
+                        .text(discountType === 'percent' ? `${discount}%` : `$${discount}`);
+                    
+                    // *** NEW CODE - UPDATE INDIVIDUAL PRODUCT DISCOUNTS ***
+                    // Update individual product discounts if they exist
+                    const productRows = orderDetails.find('tbody tr');
+                    
+                    if (productRows.length && parseInt(discount) > 0) {
+                        productRows.each(function() {
+                            const row = $(this);
+                            const productPrice = row.find('td[data-title="Price"]').text();
+                            const quantity = row.find('td[data-title="Quantity"]').text();
+                            
+                            // Parse price and quantity
+                            const price = parseFloat(productPrice.replace(/[^0-9.]/g, '')) || 0;
+                            const qty = parseInt(quantity) || 1;
+                            
+                            // Calculate new product discount
+                            let productDiscountAmount = 0;
+                            if (discountType === 'percent') {
+                                productDiscountAmount = (price * qty) * (parseInt(discount) / 100);
+                            } else {
+                                // For fixed discounts, distribute proportionally across products
+                                // This is an approximation as fixed discounts are usually applied to the entire order
+                                productDiscountAmount = (price * qty / subtotal) * parseInt(discount);
+                            }
+                            
+                            // Find and update the discount text span
+                            const discountText = row.find('.discount-text');
+                            if (discountText.length) {
+                                // Update discount text with new amount
+                                if (discountType === 'percent') {
+                                    discountText.text(`$${productDiscountAmount.toFixed(2)} discount`);
+                                } else {
+                                    discountText.text(`$${productDiscountAmount.toFixed(2)} discount`);
+                                }
+                            }
+                            
+                            // Update product total if needed
+                            const productTotalElem = row.find('td[data-title="Total"]');
+                            if (productTotalElem.length) {
+                                // Get the total text without the discount span
+                                const totalText = productTotalElem.contents().filter(function() {
+                                    return this.nodeType === 3; // Text nodes only
+                                }).text();
+                                
+                                // Parse the total from the text
+                                const totalValue = parseFloat(totalText.replace(/[^0-9.]/g, '')) || 0;
+                                
+                                // We don't update the main total display here since it's already 
+                                // the correct price - we only update the discount text
+                            }
+                        });
+                    }
+                    
+                    // Update the final total discount text if it exists
+                    const finalDiscount = orderDetails.find('.bocs-final-total-row .discount-text');
+                    if (finalDiscount.length && discount > 0) {
+                        // Calculate the discount amount for display
+                        let finalDiscountAmount = 0;
+                        if (discountType === 'percent') {
+                            finalDiscountAmount = subtotal * (parseInt(discount) / 100);
+                        } else {
+                            finalDiscountAmount = parseInt(discount);
+                        }
+                        
+                        finalDiscount.text(`$${finalDiscountAmount.toFixed(2)} discount`);
+                    }
+                    // *** END NEW CODE ***
+                    
+                    // *** END OF NEW CODE ***
+
+                    // ***NEW - TRIGGER EMAIL NOTIFICATION***
+                    // Send an AJAX request to trigger the subscription switched email
+                    $.ajax({
+                        url: bocsSubscriptionsData.ajaxUrl,
+                        type: 'POST',
+                        data: {
+                            action: 'bocs_trigger_subscription_switched_email',
+                            nonce: bocsSubscriptionsData.nonce,
+                            subscription_id: subscriptionId,
+                            frequency_id: frequencyId,
+                            frequency_data: JSON.stringify(frequencyData)
+                        },
+                        success: function(emailResponse) {
+                            console.log('Email notification response:', emailResponse);
+                            // No user-facing action needed for email trigger success/failure
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Failed to trigger email notification:', error);
+                            // Don't show this error to the user as it's not critical
+                        }
+                    });
+                    // ***END NEW EMAIL TRIGGER CODE***
+
                     // Hide the modal
                     $('#bocs-edit-frequency-modal').hide();
 
@@ -2177,8 +2406,7 @@
         $('a.bocs-button, button.bocs-button, .woocommerce-button.button').filter(function() {
             return $(this).text().trim() === 'Early Renewal';
         }).each(function() {
-            console.log("Found WooCommerce Early Renewal button to handle:", this);
-
+            
             // Skip if already handled by the legacy handler
             if ($(this).data('bocs-handled')) {
                 return;
@@ -2191,8 +2419,6 @@
             $(this).off('click').on('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
-
-                console.log("Intercepted WooCommerce Early Renewal button click");
 
                 // Get subscription ID
                 var subscriptionId = $(this).data('subscription-id') || '';
@@ -2209,8 +2435,6 @@
                         }
                     }
                 }
-
-                console.log("Subscription ID for WooCommerce handler:", subscriptionId);
 
                 if (!subscriptionId) {
                     console.error("No subscription ID found for this button");

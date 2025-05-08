@@ -40,6 +40,10 @@ $tax_display_shop = get_option('woocommerce_tax_display_shop', 'excl');
 $tax_display_cart = get_option('woocommerce_tax_display_cart', 'excl');
 $tax_rate = 0.1; // 10% GST for Australia
 
+// Initialize tax variables to avoid undefined variable errors
+$subtotal_tax = isset($subtotal_tax) ? $subtotal_tax : 0;
+$shipping_tax = isset($shipping_tax) ? $shipping_tax : 0;
+
 $display_tax = ($subtotal_tax > 0) ? $subtotal_tax : (is_array($tax) ? 0 : (float)$tax);
 
 // Note: CSS and JS should be enqueued by the parent template, not here
@@ -217,10 +221,25 @@ $display_tax = ($subtotal_tax > 0) ? $subtotal_tax : (is_array($tax) ? 0 : (floa
                 <td class="text-right discount" data-title="<?php esc_attr_e('Discount Total', 'bocs-wordpress'); ?>">
                     <?php
                     // Ensure discount is a numeric value
-                    $discount_amount = $discount_percent;
-                    if( $discount_type === 'percent' || $discount_type === 'percentage' ){
+                    $discount_amount = 0;
+                    
+                    // If we have a percentage discount, calculate it
+                    if (!empty($discount_percent) && ($discount_type === 'percent' || $discount_type === 'percentage')) {
                         // Calculate discount based on subtotal only (tax excluded)
                         $discount_amount = floatval($discount_percent) / 100 * $calculated_subtotal;
+                    } else if (!empty($discount)) {
+                        // Otherwise use the provided discount if available
+                        $discount_amount = is_array($discount) ? 0 : (float)$discount;
+                    }
+                    
+                    // If we have coupon lines, process those too
+                    if (!empty($coupon_lines) && is_array($coupon_lines)) {
+                        foreach ($coupon_lines as $coupon) {
+                            if (!empty($coupon['discount'])) {
+                                $coupon_discount = is_array($coupon['discount']) ? 0 : (float)$coupon['discount'];
+                                $discount_amount += $coupon_discount;
+                            }
+                        }
                     }
 
                     if (function_exists('wc_price')) {
@@ -258,19 +277,6 @@ $display_tax = ($subtotal_tax > 0) ? $subtotal_tax : (is_array($tax) ? 0 : (floa
                 <th colspan="4"><?php esc_html_e('Tax', 'bocs-wordpress'); ?></th>
                 <td class="text-right order-total" data-title="<?php esc_attr_e('Tax', 'bocs-wordpress'); ?>">
                     <?php
-                    // Calculate total based on WooCommerce tax display settings
-                    $discount_amount = is_array($discount) ? 0 : (float)$discount;
-
-                    if (!empty($coupon_lines) && is_array($coupon_lines)) {
-                        $discount_amount = 0;
-                        foreach ($coupon_lines as $coupon) {
-                            if (!empty($coupon['discount'])) {
-                                $coupon_discount = is_array($coupon['discount']) ? 0 : (float)$coupon['discount'];
-                                $discount_amount += $coupon_discount;
-                            }
-                        }
-                    }
-
                     // Calculate total excluding tax (subtotal + shipping - discount)
                     $calculated_total = $calculated_subtotal + $shipping_amount - $discount_amount;
 
@@ -300,18 +306,8 @@ $display_tax = ($subtotal_tax > 0) ? $subtotal_tax : (is_array($tax) ? 0 : (floa
                     <?php
                     if (function_exists('wc_price')) {
                         echo wp_kses_post(wc_price($total_with_tax));
-
-                        // Display discount if applicable
-                        if (!empty($discount_amount) && $discount_amount > 0) {
-                            echo '<br><span class="discount-text">' . wp_kses_post(wc_price($discount_amount) . ' discount') . '</span>';
-                        }
                     } else {
                         echo esc_html('$' . number_format($total_with_tax, 2));
-
-                        // Display discount if applicable
-                        if (!empty($discount_amount) && $discount_amount > 0) {
-                            echo '<br><span class="discount-text">$' . number_format($discount_amount, 2) . ' discount</span>';
-                        }
                     }
                     ?>
                 </td>
