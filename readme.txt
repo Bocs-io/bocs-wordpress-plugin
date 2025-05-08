@@ -1,4 +1,4 @@
-v0.0.151 05/13/2025
+v0.0.151 05/07/2025
 * Feature: Improved subscription management UI with enhanced functionality
 * Feature: Added subscription ID extraction and direct handler setup
 * Feature: Enhanced product selection dialog with updated min/max product handling
