@@ -413,8 +413,16 @@ class BOCS_AJAX {
      * AJAX handler for triggering subscription switched email
      */
     public function trigger_subscription_switched_email() {
-        // Check security nonce
-        if (!isset($_POST['security']) || !wp_verify_nonce($_POST['security'], 'bocs-subscription-switched')) {
+        // Check security nonce - accept either 'security' (old format) or 'nonce' (new format)
+        $has_valid_nonce = false;
+        
+        if (isset($_POST['security']) && wp_verify_nonce($_POST['security'], 'bocs-subscription-switched')) {
+            $has_valid_nonce = true;
+        } elseif (isset($_POST['nonce']) && wp_verify_nonce($_POST['nonce'], 'bocs-ajax-nonce')) {
+            $has_valid_nonce = true;
+        }
+        
+        if (!$has_valid_nonce) {
             wp_send_json_error('Invalid security token');
             return;
         }
@@ -429,9 +437,17 @@ class BOCS_AJAX {
         // Check if this is a frequency update
         $is_frequency_update = isset($_POST['is_frequency_update']) ? (bool)$_POST['is_frequency_update'] : false;
         $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
+        
+        // Log the request for debugging
+        $helper = new Bocs_Helper();
+        $helper->log('Triggering subscription switched email', 'info', [
+            'subscription_id' => $subscription_id,
+            'is_frequency_update' => $is_frequency_update,
+            'frequency_id' => $frequency_id,
+            'method' => 'AJAX'
+        ]);
 
         // Get subscription via Bocs API
-        $helper = new Bocs_Helper();
         $options = get_option('bocs_plugin_options');
         $headers = [];
 
@@ -450,11 +466,46 @@ class BOCS_AJAX {
 
         if (is_wp_error($subscription_data) || !isset($subscription_data['data'])) {
             wp_send_json_error('Failed to fetch subscription data from API');
+            $helper->log('Failed to fetch subscription data from API', 'error', [
+                'subscription_id' => $subscription_id,
+                'error' => is_wp_error($subscription_data) ? $subscription_data->get_error_message() : 'Invalid response'
+            ]);
             return;
         }
 
-        // Trigger the switched email notification
-        do_action('bocs_subscription_switched', $subscription_data['data'], '', $frequency_id, false);
+        // Try direct email first
+        $email_sent = false;
+        try {
+            if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
+                $email = new WC_Bocs_Email_Subscription_Switched();
+                $email_sent = $email->trigger($subscription_data['data'], '', $frequency_id, false);
+                $helper->log('Direct email result', 'info', [
+                    'subscription_id' => $subscription_id,
+                    'result' => $email_sent ? 'success' : 'failed'
+                ]);
+            }
+        } catch (Exception $e) {
+            $helper->log('Error in direct email', 'error', [
+                'subscription_id' => $subscription_id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        // If direct email failed, try action hook
+        if (!$email_sent) {
+            $helper->log('Trying action hook method', 'info', [
+                'subscription_id' => $subscription_id
+            ]);
+            do_action('bocs_subscription_switched', $subscription_data['data'], '', $frequency_id, false);
+        }
+
+        // Try emergency email if needed
+        if (!$email_sent) {
+            $helper->log('Trying emergency email', 'info', [
+                'subscription_id' => $subscription_id
+            ]);
+            $email_sent = $this->send_emergency_email($subscription_data['data'], 'frequency_update');
+        }
 
         // Send success response
         wp_send_json_success('Subscription email triggered successfully');
@@ -615,73 +666,88 @@ class BOCS_AJAX {
                     if (isset($subscription_data['id'])) {
                         $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
                     }
+                    break;
 
-                    if (isset($subscription_data['bocs']['name'])) {
-                        $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
+                case 'frequency_update':
+                    $subject = 'Your subscription frequency has been updated';
+                    $message = "Hello,\n\nYour subscription frequency has been updated successfully.\n\n";
+                    
+                    // Add subscription details
+                    if (isset($subscription_data['id'])) {
+                        $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
                     }
-
-                    // Add cancellation reason if available
-                    if (isset($subscription_data['metaData']) && is_array($subscription_data['metaData'])) {
-                        foreach ($subscription_data['metaData'] as $meta) {
-                            if (isset($meta['key']) && $meta['key'] === 'cancellation_reason' && !empty($meta['value'])) {
-                                $message .= "Reason for cancellation: " . $meta['value'] . "\n\n";
-                                break;
+                    
+                    // Add frequency details if available
+                    if (isset($subscription_data['frequency']) && isset($subscription_data['frequency']['frequency']) && isset($subscription_data['frequency']['timeUnit'])) {
+                        $freq = $subscription_data['frequency']['frequency'];
+                        $unit = $subscription_data['frequency']['timeUnit'];
+                        $message .= "New Frequency: Every " . $freq . " " . $unit . "(s)\n";
+                        
+                        // Add discount info if available
+                        if (isset($subscription_data['frequency']['discount']) && $subscription_data['frequency']['discount'] > 0) {
+                            $discount = $subscription_data['frequency']['discount'];
+                            $discount_type = isset($subscription_data['frequency']['discountType']) ? $subscription_data['frequency']['discountType'] : 'percent';
+                            
+                            if ($discount_type === 'percent') {
+                                $message .= "Discount: " . $discount . "% off\n";
+                            } else {
+                                $message .= "Discount: $" . $discount . " off\n";
                             }
                         }
                     }
-
-                    $message .= "Thank you for being our customer. We hope to see you again soon!\n";
+                    
+                    // Add next payment date if available
+                    if (isset($subscription_data['nextPaymentDateGmt'])) {
+                        $next_date = new DateTime($subscription_data['nextPaymentDateGmt']);
+                        $message .= "Next Payment Date: " . $next_date->format('F j, Y') . "\n";
+                    }
                     break;
 
                 case 'paused':
                     $subject = 'Your subscription has been paused';
-                    $message = "Hello,\n\nYour subscription has been paused as requested.\n\n";
+                    $message = "Hello,\n\nYour subscription has been paused. You won't be charged until you decide to resume.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
                         $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
                     }
-
-                    if (isset($subscription_data['bocs']['name'])) {
-                        $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
-                    }
-
-                    $message .= "You can reactivate your subscription at any time from your account.\n\n";
-                    $message .= "Thank you for being our valued customer!\n";
                     break;
 
                 case 'resumed':
-                    $subject = 'Your subscription has been reactivated';
-                    $message = "Hello,\n\nGreat news! Your subscription has been successfully reactivated.\n\n";
+                    $subject = 'Your subscription has been resumed';
+                    $message = "Hello,\n\nYour subscription has been resumed. Your next payment has been scheduled.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
                         $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
                     }
 
-                    if (isset($subscription_data['bocs']['name'])) {
-                        $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
+                    // Add next payment date if available
+                    if (isset($subscription_data['nextPaymentDateGmt'])) {
+                        $next_date = new DateTime($subscription_data['nextPaymentDateGmt']);
+                        $message .= "Next Payment Date: " . $next_date->format('F j, Y') . "\n";
                     }
-
-                    $message .= "You're back on track to receive your products on schedule.\n\n";
-                    $message .= "Thank you for continuing to be our valued customer!\n";
                     break;
 
                 case 'box_update':
                 default:
-                    $subject = 'Your box contents have been updated';
-                    $message = "Hello,\n\nYour box contents have been updated successfully.\n\n";
+                    $subject = 'Your subscription box has been updated';
+                    $message = "Hello,\n\nYour subscription box contents have been updated successfully.\n\n";
 
                     // Add subscription details
                     if (isset($subscription_data['id'])) {
                         $message .= "Subscription ID: " . $subscription_data['id'] . "\n";
                     }
 
-                    if (isset($subscription_data['bocs']['name'])) {
-                        $message .= "Box Type: " . $subscription_data['bocs']['name'] . "\n\n";
+                    // Add item details
+                    if (isset($subscription_data['lineItems']) && is_array($subscription_data['lineItems'])) {
+                        $message .= "\nYour updated box contains:\n";
+                        foreach ($subscription_data['lineItems'] as $item) {
+                            if (isset($item['name']) && isset($item['quantity'])) {
+                                $message .= "- " . $item['quantity'] . "x " . $item['name'] . "\n";
+                            }
+                        }
                     }
-
-                    $message .= "Thank you for being a valued customer!\n";
                     break;
             }
 
@@ -1500,9 +1566,6 @@ class BOCS_AJAX {
 
         // Get existing mappings
         $existing_mappings = get_option('bocs_product_mapping', []);
-
-        // Log the mapping details
-        error_log('BOCS Debug: Existing mappings count: ' . count($existing_mappings) . ', New mappings count: ' . count($product_mapping));
 
         // Check if anything has actually changed
         $has_changes = false;
