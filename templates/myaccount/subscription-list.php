@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 
 // Ensure script and style dependencies are loaded
 wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250505.1");
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250502.2", true);
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250508.7", true);
 
 // Add order line items component
 wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), '20250425.1');
@@ -93,15 +93,6 @@ wp_add_inline_script('bocs-subscriptions', '
         }
     });
 ', 'after');
-
-// Log template loading - for debugging
-if (class_exists('Bocs_Log_Handler')) {
-    $logger = new Bocs_Log_Handler();
-    $logger->insert_log('debug', '[Subscription List Template] Template loaded', [
-        'template' => 'subscription-list.php',
-        'time' => current_time('mysql')
-    ]);
-}
 
 // Subscription data is now formatted in Bocs_Account.php before including this template
 // $subscriptions_formatted = bocs_get_customer_subscriptions();
@@ -184,7 +175,7 @@ if (function_exists('bocs_log')) {
     <?php if (!empty($subscriptions_formatted)) : ?>
         <!-- Accordion list - all items closed by default -->
         <div id="bocs-subscriptions-list">
-            <?php foreach ($subscriptions_formatted as $subscription) :
+            <?php foreach ($subscriptions_formatted as $subKey => $subscription) :
                 $status = isset($subscription['status']) ? $subscription['status'] : 'active';
                 $status_class = 'status-' . strtolower($status);
                 $status_label = ucfirst($status);
@@ -200,15 +191,6 @@ if (function_exists('bocs_log')) {
                     $bocs_frequencies = $subscription['bocs']['frequencies'];
                 } elseif (isset($subscription['bocs']['priceAdjustment']['adjustments']) && is_array($subscription['bocs']['priceAdjustment']['adjustments'])) {
                     $bocs_frequencies = $subscription['bocs']['priceAdjustment']['adjustments'];
-                }
-
-                // Log frequencies for debugging if Bocs_Log_Handler exists
-                if (class_exists('Bocs_Log_Handler') && !empty($subscription['id'])) {
-                    $logger = new Bocs_Log_Handler();
-                    $logger->insert_log('debug', '[Subscription List] Frequencies for subscription ' . $subscription['id'], [
-                        'bocs_frequencies' => !empty($bocs_frequencies) ? json_encode($bocs_frequencies) : 'None found',
-                        'bocs_id' => isset($subscription['bocs']['id']) ? $subscription['bocs']['id'] : 'None'
-                    ]);
                 }
 
                 $next_payment_date = isset($subscription['next_payment_date']) ? $subscription['next_payment_date'] : '';
