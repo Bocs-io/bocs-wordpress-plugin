@@ -59,7 +59,7 @@ class WC_Bocs_Email_Upcoming_Renewal_Reminder extends WC_Email {
      * @return string Default email subject
      */
     public function get_default_subject() {
-        return __('[Bocs] Your {site_title} subscription will renew soon', 'bocs-wordpress');
+        return __('Your {site_title} subscription will renew soon', 'bocs-wordpress');
     }
 
     /**
