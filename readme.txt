@@ -1,3 +1,11 @@
+v0.0.152 05/08/2025
+* Feature: Enhanced subscription pricing calculations with improved discount handling
+* Fix: Improved AJAX security with dual nonce validation support
+* Fix: Updated renewal reminder email subject line for better deliverability
+* Refactor: Removed unnecessary debug logging for cleaner code
+* UI: Added proper initialization for tax variables to prevent undefined errors
+* UI: Updated script versioning for subscription management interface
+
 v0.0.151 05/07/2025
 * Feature: Improved subscription management UI with enhanced functionality
 * Feature: Added subscription ID extraction and direct handler setup
