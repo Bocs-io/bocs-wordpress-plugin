@@ -10,4 +10,13 @@ class Bocs_Email
 
         return $email_classes;
     }
+
+    public function send_email($to, $subject, $message) {
+        // Simulate sending an email
+        return true;
+    }
+
+    public function validate_email($email) {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
 }

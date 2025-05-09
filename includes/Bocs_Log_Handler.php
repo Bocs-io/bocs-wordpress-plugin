@@ -183,4 +183,14 @@ class Bocs_Log_Handler {
         
     }
 
+    public function log_info($message) {
+        // Simulate logging an info message
+        return true;
+    }
+
+    public function log_error($message) {
+        // Simulate logging an error message
+        return true;
+    }
+
 }

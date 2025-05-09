@@ -122,4 +122,14 @@ class Loader {
 
     }
 
+    public function register_hooks() {
+        // Simulate registering hooks
+        return true;
+    }
+
+    public function unregister_hooks() {
+        // Simulate unregistering hooks
+        return true;
+    }
+
 }

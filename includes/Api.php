@@ -2,6 +2,7 @@
 
 class Api
 {
+    const BOCS_API_URL = 'https://api.example.com';
 
     private $url = BOCS_API_URL;
 
@@ -145,5 +146,13 @@ class Api
         }
 
         return new WP_REST_Response($data, 200);
+    }
+
+    public function get_endpoint($path) {
+        return self::BOCS_API_URL . '/' . $path;
+    }
+
+    public function is_valid_response($response) {
+        return isset($response['status']) && $response['status'] === 200;
     }
 }

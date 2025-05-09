@@ -80,5 +80,13 @@ class Bocs_Helper
 
         return json_decode($response, true);
     }
+
+    public function format_price($price) {
+        return '$' . number_format($price, 2);
+    }
+
+    public function sanitize_input($input) {
+        return strip_tags($input);
+    }
 }
 ?>

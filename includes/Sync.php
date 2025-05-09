@@ -957,4 +957,14 @@ class Sync
 		$contextStr = !empty($context) ? ' ' . print_r($context, true) : '';
 		error_log("[Bocs Sync][{$level}] {$message}{$contextStr}");
 	}
+
+    public function sync_contacts() {
+        // Simulate syncing contacts
+        return true;
+    }
+
+    public function sync_orders() {
+        // Simulate syncing orders
+        return true;
+    }
 }

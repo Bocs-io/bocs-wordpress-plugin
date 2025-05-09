@@ -134,4 +134,14 @@ class Bocs_Cart
         error_log('bocs_cart_totals_before_order_total');
         echo '<tr class="custom-text-before-subtotal"><th>Additional Info:</th><td>Your custom message here.</td></tr>';
     }
+
+    public function add_to_cart($productId, $quantity) {
+        // Simulate adding a product to the cart
+        return true;
+    }
+
+    public function remove_from_cart($productId) {
+        // Simulate removing a product from the cart
+        return true;
+    }
 }

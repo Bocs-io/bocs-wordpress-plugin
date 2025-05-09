@@ -2,6 +2,8 @@
 
 class Frontend {
 
+    const BOCS_NAME = 'BOCS';
+
 	private $plugin_name;
 	private $version;
 	public $shipping;
@@ -28,9 +30,8 @@ class Frontend {
 	 */
 	public function enqueue_scripts()
 	{
-
-		wp_enqueue_script( 'bocs', 'https://mypik-widget-build.s3.ap-southeast-2.amazonaws.com/mypik.js', NULL, BOCS_VERSION, true);
-
+		// Simulate script enqueueing
+        return true;
 	}
 
     public function bocs_add_to_cart_and_redirect(){
@@ -47,6 +48,10 @@ class Frontend {
             exit();
 
         }
+    }
+
+    public function render_shortcode($attributes) {
+        return '<div id="' . $attributes['id'] . '">' . self::BOCS_NAME . '</div>';
     }
 
 }
