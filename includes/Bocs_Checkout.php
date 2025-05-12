@@ -551,6 +551,41 @@ class Bocs_Checkout {
      */
     public function force_save_payment_method($save_payment_method) {
         if ($this->cart_contains_bocs_subscription()) {
+            // Add JavaScript to prevent unchecking the box and force it to be checked
+            add_action('wp_footer', function() {
+                // Only run on checkout page
+                if (!is_checkout()) {
+                    return;
+                }
+                ?>
+                <script type="text/javascript">
+                    jQuery(document).ready(function($) {
+                        // Force the save payment method checkbox to be checked and disabled
+                        function forceSavePaymentMethod() {
+                            // Target all save payment method checkboxes across different gateways
+                            $('input[id*="save-card"], input[id*="save_payment_method"], input[id*="save-payment-method"]').each(function() {
+                                $(this).prop('checked', true);
+                                $(this).prop('disabled', true);
+                                $(this).css('opacity', '0.6');
+                                
+                                // Add a hidden input with the same name to ensure the value is submitted
+                                // Only add if it doesn't exist yet
+                                var hiddenInput = $('input[type="hidden"][name="' + $(this).attr('name') + '"]');
+                                if (hiddenInput.length === 0) {
+                                    $(this).after('<input type="hidden" name="' + $(this).attr('name') + '" value="true" />');
+                                }
+                            });
+                        }
+                        
+                        // Initial call
+                        forceSavePaymentMethod();
+                        
+                        // Also call when the checkout updates
+                        $(document.body).on('updated_checkout payment_method_selected', forceSavePaymentMethod);
+                    });
+                </script>
+                <?php
+            });
             return true;
         }
         return $save_payment_method;
@@ -613,6 +648,24 @@ class Bocs_Checkout {
             BOCS_VERSION,
             true
         );
+        
+        // Add inline styles for the forced save payment method checkbox
+        wp_add_inline_style('bocs-checkout-styles', '
+            input[id*="save-card"]:disabled,
+            input[id*="save_payment_method"]:disabled,
+            input[id*="save-payment-method"]:disabled {
+                opacity: 0.6 !important;
+                cursor: not-allowed !important;
+            }
+            
+            /* Style the label to indicate it cannot be changed */
+            input[id*="save-card"]:disabled + label,
+            input[id*="save_payment_method"]:disabled + label,
+            input[id*="save-payment-method"]:disabled + label {
+                opacity: 0.8 !important;
+                font-style: italic !important;
+            }
+        ');
     }
 
     /**
