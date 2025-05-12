@@ -725,6 +725,24 @@
                         // Show success notification
                         self.showNotification('Products updated successfully', 'success');
                         
+                        // Send additional request to trigger email notification
+                        $.ajax({
+                            url: bocs_edit_details_data.ajax_url,
+                            type: 'POST',
+                            data: {
+                                action: 'bocs_send_subscription_switched_email',
+                                subscription_id: self.subscriptionId,
+                                nonce: bocs_edit_details_data.nonce,
+                                is_box_update: true // Indicate this is a box content update
+                            },
+                            success: function(emailResponse) {
+                                console.log('Email notification response:', emailResponse);
+                            },
+                            error: function(xhr) {
+                                console.error('Failed to send email notification');
+                            }
+                        });
+                        
                         // Close modal
                         $('#bocs-product-modal').removeClass('show');
                         $('body').removeClass('modal-open');

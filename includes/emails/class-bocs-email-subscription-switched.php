@@ -264,7 +264,8 @@ class WC_Bocs_Email_Subscription_Switched extends WC_Email {
                 'sent_to_admin'      => false,
                 'plain_text'         => false,
                 'email'              => $this,
-                'base_color'       => $base_color
+                'base_color'         => $base_color,
+                'subscription_data'  => $this->subscription_data
             ),
             '',
             $this->template_base

@@ -60,6 +60,10 @@ class BOCS_AJAX {
 
         // Add new AJAX handler
         add_action('wp_ajax_bocs_trigger_subscription_switched_email', array($this, 'trigger_subscription_switched_email'));
+        
+        // Add handler for sending email after product update
+        add_action('wp_ajax_bocs_send_subscription_switched_email', array($this, 'trigger_subscription_switched_email'));
+        add_action('wp_ajax_nopriv_bocs_send_subscription_switched_email', array($this, 'must_login_first'));
 
         // Add cancellation email trigger
         add_action('wp_ajax_bocs_trigger_subscription_cancelled_email', array($this, 'trigger_subscription_cancelled_email'));
@@ -68,10 +72,6 @@ class BOCS_AJAX {
         // Add pause email trigger
         add_action('wp_ajax_bocs_trigger_subscription_paused_email', array($this, 'trigger_subscription_paused_email'));
         add_action('wp_ajax_nopriv_bocs_trigger_subscription_paused_email', array($this, 'must_login_first'));
-
-        // Add direct pause subscription handler
-        add_action('wp_ajax_bocs_pause_subscription', array($this, 'pause_subscription'));
-        add_action('wp_ajax_nopriv_bocs_pause_subscription', array($this, 'must_login_first'));
 
         // Add resume email trigger
         add_action('wp_ajax_bocs_trigger_subscription_resumed_email', array($this, 'trigger_subscription_resumed_email'));
@@ -91,6 +91,10 @@ class BOCS_AJAX {
         // Admin AJAX actions
         add_action('wp_ajax_bocs_add_product_mapping', array($this, 'add_product_mapping'));
         add_action('wp_ajax_bocs_remove_product_mapping', array($this, 'remove_product_mapping'));
+
+        // Add direct pause subscription handler
+        add_action('wp_ajax_bocs_pause_subscription', array($this, 'pause_subscription'));
+        add_action('wp_ajax_nopriv_bocs_pause_subscription', array($this, 'must_login_first'));
     }
 
     /**
@@ -436,6 +440,7 @@ class BOCS_AJAX {
 
         // Check if this is a frequency update
         $is_frequency_update = isset($_POST['is_frequency_update']) ? (bool)$_POST['is_frequency_update'] : false;
+        $is_box_update = ! $is_frequency_update;
         $frequency_id = isset($_POST['frequency_id']) ? sanitize_text_field($_POST['frequency_id']) : '';
         
         // Log the request for debugging
@@ -473,12 +478,21 @@ class BOCS_AJAX {
             return;
         }
 
+        $bocs_id = '';
+        if (isset($subscription_data['data']['bocs']) && isset($subscription_data['data']['bocs']['id'])) {
+            $bocs_id = $subscription_data['data']['bocs']['id'];
+        }
+
+        if(isset($subscription_data['data']['frequency']) && isset($subscription_data['data']['frequency']['id'])) {
+            $frequency_id = $subscription_data['data']['frequency']['id'];
+        }
+
         // Try direct email first
         $email_sent = false;
         try {
             if (class_exists('WC_Bocs_Email_Subscription_Switched')) {
                 $email = new WC_Bocs_Email_Subscription_Switched();
-                $email_sent = $email->trigger($subscription_data['data'], '', $frequency_id, false);
+                $email_sent = $email->trigger($subscription_data['data'], $bocs_id, $frequency_id, $is_box_update);
                 $helper->log('Direct email result', 'info', [
                     'subscription_id' => $subscription_id,
                     'result' => $email_sent ? 'success' : 'failed'
@@ -496,7 +510,7 @@ class BOCS_AJAX {
             $helper->log('Trying action hook method', 'info', [
                 'subscription_id' => $subscription_id
             ]);
-            do_action('bocs_subscription_switched', $subscription_data['data'], '', $frequency_id, false);
+            do_action('bocs_subscription_switched', $subscription_data['data'], $bocs_id, $frequency_id, $is_box_update);
         }
 
         // Try emergency email if needed
