@@ -72,12 +72,14 @@ class Bocs_Account
         require_once plugin_dir_path(dirname(__FILE__)) . 'includes/Bocs_Helper.php';
         
         // Load and register the subscription switched email class
-        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
-        add_action('woocommerce_email', function($emails) {
-            if (!isset($emails->emails['bocs_subscription_switched'])) {
-                $emails->emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
-            }
-        });
+        if (class_exists('WC_Email')) {
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/emails/class-bocs-email-subscription-switched.php';
+            add_action('woocommerce_email', function($emails) {
+                if (!isset($emails->emails['bocs_subscription_switched'])) {
+                    $emails->emails['bocs_subscription_switched'] = new WC_Bocs_Email_Subscription_Switched();
+                }
+            });
+        }
         
         // Add AJAX handlers
         add_action('wp_ajax_bocs_get_payment_methods', array($this, 'ajax_get_payment_methods'));
@@ -1806,7 +1808,7 @@ class Bocs_Account
                 }
                 break;
             
-            default:
+            case 'switch':
                 // we will be update the bocs and its line items here
                 if( !empty($bocs_id)){
                     $helper = new Bocs_Helper();
@@ -2122,6 +2124,9 @@ class Bocs_Account
                 
                 // If no BOCS ID was provided, return an error
                 wp_send_json_error(array('message' => __('BOCS ID is required', 'bocs-wordpress')));
+                break;
+            default:
+                wp_send_json_error(array('message' => __('Invalid update type', 'bocs-wordpress')));
                 break;
         }
     }

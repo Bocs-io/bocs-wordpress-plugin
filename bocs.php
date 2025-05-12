@@ -250,7 +250,7 @@ function bocs_fix_early_textdomain_loading() {
         }
         
         // Use the load_textdomain filter which runs before loading any text domain
-        add_filter('load_textdomain', function($load, $domain, $mofile) use ($problem_domains) {
+        add_filter('load_textdomain', function($load, $domain, $mofile = null) use ($problem_domains) {
             // If this is one of our problematic domains and the init hook hasn't fired yet
             if (in_array($domain, $problem_domains) && !did_action('init')) {
                 // Make sure we have a global array to store delayed domains
@@ -259,7 +259,9 @@ function bocs_fix_early_textdomain_loading() {
                 }
                 
                 // Store the mofile path to load later at init
-                $GLOBALS['bocs_delayed_textdomains'][$domain] = $mofile;
+                if ($mofile !== null) {
+                    $GLOBALS['bocs_delayed_textdomains'][$domain] = $mofile;
+                }
                 
                 // Prevent loading now by returning false
                 return false;

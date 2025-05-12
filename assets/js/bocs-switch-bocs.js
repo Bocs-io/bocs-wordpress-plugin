@@ -469,7 +469,8 @@
                         bocs_id: this.state.selectedBocsId,
                         frequency_id: this.state.selectedFrequencyId,
                         products: BocsSwitchBox.state.isCustomBox ? JSON.stringify(BocsSwitchBox.state.selectedProducts.filter(product => product.quantity > 0)) : JSON.stringify([]),
-                        nonce: bocsSwitchData.nonce
+                        nonce: bocsSwitchData.nonce,
+                        update_type: 'switch',
                     },
                     success: (response) => {
                         // Hide loading overlay

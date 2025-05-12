@@ -13,7 +13,7 @@
 defined('ABSPATH') || exit;
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), '20250507.1', true);
+wp_enqueue_script('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/js/bocs-switch-bocs.js', array('jquery'), '20250512.1', true);
 wp_enqueue_style('bocs-switch-bocs', BOCS_PLUGIN_URL . 'assets/css/bocs-switch-bocs.css', array(), '20250507.3');
 
 // Add additional inline styles for product selection
