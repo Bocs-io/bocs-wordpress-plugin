@@ -187,6 +187,7 @@ require plugin_dir_path(__FILE__) . 'includes/Bocs.php';
 require plugin_dir_path(__FILE__) . 'includes/Bocs_Account.php';
 require plugin_dir_path(__FILE__) . 'includes/custom-box-update-hook.php';
 require plugin_dir_path(__FILE__) . 'includes/Bocs_WooCommerce.php';
+require plugin_dir_path(__FILE__) . 'includes/Internationalization.php';
 
 // Make sure the api directory exists
 if (!file_exists(plugin_dir_path(__FILE__) . 'includes/api')) {
@@ -195,6 +196,13 @@ if (!file_exists(plugin_dir_path(__FILE__) . 'includes/api')) {
 
 // Load API endpoints
 require plugin_dir_path(__FILE__) . 'includes/api/class-bocs-stripe-keys-api.php';
+
+/**
+ * Initialize the Internationalization class
+ */
+$bocs_i18n = new Internationalization();
+$bocs_i18n->set_domain('bocs-wordpress');
+$bocs_i18n->init();
 
 /**
  * Load plugin text domain for translations.
@@ -209,7 +217,72 @@ function bocs_load_textdomain() {
         dirname(plugin_basename(__FILE__)) . '/languages/'
     );
 }
-add_action('plugins_loaded', 'bocs_load_textdomain');
+// Ensure this runs after our fix is in place
+add_action('init', 'bocs_load_textdomain', 15);
+
+/**
+ * Fix for WooCommerce plugins loading translations too early
+ * WordPress 6.7.0+ shows warnings when translations are loaded before init
+ */
+function bocs_fix_early_textdomain_loading() {
+    // Only run this fix if WordPress version is 6.7.0 or higher
+    if (version_compare(get_bloginfo('version'), '6.7.0', '>=')) {
+        // Define problematic domains
+        $problem_domains = [
+            'woocommerce-gateway-stripe',
+            'woocommerce-memberships',
+            'woocommerce-pdf-product-vouchers',
+            'woocommerce', // Add main WooCommerce domain as well
+            'bocs-wordpress' // Include our own domain for safety
+        ];
+        
+        // Remove any textdomain loading actions that might run too early
+        global $wp_filter;
+        if (isset($wp_filter['plugins_loaded'])) {
+            foreach ($wp_filter['plugins_loaded']->callbacks as $priority => $callbacks) {
+                foreach ($callbacks as $key => $callback) {
+                    // If this is a function that loads textdomains too early, remove it
+                    if (is_string($callback['function']) && strpos($callback['function'], 'load_textdomain') !== false) {
+                        unset($wp_filter['plugins_loaded']->callbacks[$priority][$key]);
+                    }
+                }
+            }
+        }
+        
+        // Use the load_textdomain filter which runs before loading any text domain
+        add_filter('load_textdomain', function($load, $domain, $mofile) use ($problem_domains) {
+            // If this is one of our problematic domains and the init hook hasn't fired yet
+            if (in_array($domain, $problem_domains) && !did_action('init')) {
+                // Make sure we have a global array to store delayed domains
+                if (!isset($GLOBALS['bocs_delayed_textdomains'])) {
+                    $GLOBALS['bocs_delayed_textdomains'] = [];
+                }
+                
+                // Store the mofile path to load later at init
+                $GLOBALS['bocs_delayed_textdomains'][$domain] = $mofile;
+                
+                // Prevent loading now by returning false
+                return false;
+            }
+            
+            return $load;
+        }, 10, 3);
+        
+        // Add action to load the delayed text domains at init with higher priority
+        add_action('init', function() {
+            if (!empty($GLOBALS['bocs_delayed_textdomains']) && is_array($GLOBALS['bocs_delayed_textdomains'])) {
+                foreach ($GLOBALS['bocs_delayed_textdomains'] as $domain => $mofile) {
+                    // Now it's safe to load the text domain
+                    load_textdomain($domain, $mofile);
+                }
+                // Clear the global after loading
+                unset($GLOBALS['bocs_delayed_textdomains']);
+            }
+        }, 1); // Use priority 1 to ensure it runs early in init
+    }
+}
+// Run our fix function as early as possible
+add_action('plugins_loaded', 'bocs_fix_early_textdomain_loading', 0);
 
 /**
  * Disable default WooCommerce processing email for Bocs renewal orders

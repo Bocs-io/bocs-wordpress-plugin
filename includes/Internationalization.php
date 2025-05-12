@@ -45,6 +45,15 @@ class Internationalization {
 
     }
 
+    /**
+     * Register the internationalization functionality.
+     *
+     * @since    1.0.0
+     */
+    public function init() {
+        // Make sure we load the textdomain on the init hook
+        add_action('init', array($this, 'load_plugin_textdomain'), 10);
+    }
 
     /**
      * Set the domain equal to that of the specified domain.
