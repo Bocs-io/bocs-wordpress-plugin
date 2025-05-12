@@ -1,3 +1,12 @@
+v0.0.153 05/12/2025
+* Feature: Improve internationalization with proper initialization
+* Feature: Force save payment method for subscriptions with JavaScript
+* Feature: Enhance subscription switched email notifications
+* UI: Redesign subscription switched email template for better clarity
+* Refactor: Update AJAX handlers for subscription management
+* Refactor: Add dedicated email sending endpoint for product updates
+* Hotfix: Error on activate plugin
+
 v0.0.152 05/08/2025
 * Feature: Enhanced subscription pricing calculations with improved discount handling
 * Fix: Improved AJAX security with dual nonce validation support
