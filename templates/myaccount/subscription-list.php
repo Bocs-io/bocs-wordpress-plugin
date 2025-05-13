@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Ensure script and style dependencies are loaded
-wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250505.1");
-wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250508.7", true);
+wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250513.1");
+wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250513.2", true);
 
 // Add order line items component
 wp_enqueue_style('bocs-order-line-items', BOCS_PLUGIN_URL . 'assets/css/bocs-order-line-items.css', array(), '20250425.1');
@@ -278,7 +278,18 @@ if (function_exists('bocs_log')) {
                             $helper = new Bocs_Helper();
                             $bocs_details = $helper->curl_request($url, 'GET', [], $options['bocs_headers']);
 
-                            if (isset($bocs_details['data']['name']) && !empty($bocs_details['data']['name'])) {
+                            // Check if we got a WP_Error instead of an array
+                            if (is_wp_error($bocs_details)) {
+                                // Log the error for debugging
+                                if (function_exists('bocs_log')) {
+                                    bocs_log('Error fetching BOCS details', 'error', [
+                                        'error' => $bocs_details->get_error_message(),
+                                        'bocs_id' => $bocs_id
+                                    ]);
+                                }
+                                // Use a default name instead of trying to access the error as an array
+                                $bocs_name = __('Premium Subscription', 'bocs-wordpress');
+                            } else if (isset($bocs_details['data']['name']) && !empty($bocs_details['data']['name'])) {
                                 $bocs_name = $bocs_details['data']['name'];
                             }
                         }

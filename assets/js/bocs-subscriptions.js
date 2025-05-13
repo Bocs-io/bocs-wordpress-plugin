@@ -112,35 +112,66 @@
             try {
                 console.log('BocsSubscriptions: Initializing accordion');
 
-                // Ensure all accordions are closed on page load
-                $('.bocs-subscription-details').hide();
+                // Don't hide all accordions on page load - we'll control this more carefully
+                // $('.bocs-subscription-details').hide();
 
                 // Reset any active states that might be present
                 $('.bocs-subscription-item').removeClass('active');
+                $('.bocs-subscription-item').removeClass('open');
                 $('.bocs-toggle-icon').removeClass('open');
 
-                // Open the first accordion by default
+                // Force the first accordion open immediately to prevent flicker
                 if ($('.bocs-subscription-item').length > 0) {
                     const firstItem = $('.bocs-subscription-item').first();
                     const firstDetails = firstItem.find('.bocs-subscription-details');
                     const firstToggle = firstItem.find('.bocs-toggle-icon');
 
-                    // Show the first item's details
+                    // Show the first item's details immediately
                     firstDetails.show();
-
+                    
                     // Add active and open classes
-                    firstItem.addClass('active');
-                    firstItem.addClass('open');
+                    firstItem.addClass('active open');
                     firstToggle.addClass('open');
                     firstDetails.addClass('active');
 
                     // Store the active subscription ID
                     BocsSubscriptions.activeSubscriptionId = firstItem.data('subscription-id');
-                    console.log('BocsSubscriptions: Activated first subscription', BocsSubscriptions.activeSubscriptionId);
+                    console.log('BocsSubscriptions: Immediately activated first subscription', BocsSubscriptions.activeSubscriptionId);
+                    
+                    // Hide all other accordions if there are multiple
+                    if ($('.bocs-subscription-item').length > 1) {
+                        $('.bocs-subscription-item').not(firstItem).find('.bocs-subscription-details').hide();
+                    }
                 }
 
-                // Set up toggle functionality
-                $('.bocs-subscription-header').on('click', function() {
+                // Also set up a delayed check to ensure the accordion stays open (sometimes CSS or other scripts might interfere)
+                setTimeout(function() {
+                    if ($('.bocs-subscription-item').length > 0) {
+                        const firstItem = $('.bocs-subscription-item').first();
+                        const firstDetails = firstItem.find('.bocs-subscription-details');
+                        
+                        // Check if it's already visible
+                        if (firstDetails.is(':hidden')) {
+                            console.log('BocsSubscriptions: First accordion was hidden, forcing display');
+                            
+                            // Show the first item's details with animation
+                            firstDetails.slideDown(300);
+                            
+                            // Add active and open classes
+                            firstItem.addClass('active open');
+                            firstItem.find('.bocs-toggle-icon').addClass('open');
+                            firstDetails.addClass('active');
+                            
+                            // Store the active subscription ID
+                            BocsSubscriptions.activeSubscriptionId = firstItem.data('subscription-id');
+                        } else {
+                            console.log('BocsSubscriptions: First accordion already visible');
+                        }
+                    }
+                }, 500); // Increased delay to ensure DOM is fully ready
+
+                // Set up toggle functionality with improved handling
+                $('.bocs-subscription-header').off('click').on('click', function() {
                     try {
                         const subscriptionItem = $(this).closest('.bocs-subscription-item');
                         const details = subscriptionItem.find('.bocs-subscription-details');
@@ -155,18 +186,20 @@
                         toggleIcon.toggleClass('open');
                         details.toggleClass('active');
 
-                        // Store the active subscription ID
+                        // Store the active subscription ID when opening
                         if (subscriptionItem.hasClass('active')) {
                             BocsSubscriptions.activeSubscriptionId = subscriptionItem.data('subscription-id');
                             console.log('BocsSubscriptions: Activated subscription', BocsSubscriptions.activeSubscriptionId);
                         }
 
-                        // Close other open items
-                        $('.bocs-subscription-item').not(subscriptionItem).removeClass('active')
-                            .removeClass('open')
-                            .find('.bocs-subscription-details').slideUp(300).removeClass('active');
-                        $('.bocs-subscription-item').not(subscriptionItem)
-                            .find('.bocs-toggle-icon').removeClass('open');
+                        // If we have more than one subscription, close other open items
+                        if ($('.bocs-subscription-item').length > 1) {
+                            $('.bocs-subscription-item').not(subscriptionItem).removeClass('active')
+                                .removeClass('open')
+                                .find('.bocs-subscription-details').slideUp(300).removeClass('active');
+                            $('.bocs-subscription-item').not(subscriptionItem)
+                                .find('.bocs-toggle-icon').removeClass('open');
+                        }
                     } catch (error) {
                         console.error('BocsSubscriptions: Error in accordion click handler', error);
                     }
