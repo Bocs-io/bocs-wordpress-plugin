@@ -47,7 +47,15 @@ $subscription_response = $helper->curl_request(
     ]
 );
 
-$subscription = isset($subscription_response['data']) ? $subscription_response['data'] : null;
+// Check if response is a WP_Error before trying to access it as an array
+if (is_wp_error($subscription_response)) {
+    // Log the error
+    error_log('BOCS API Error: ' . $subscription_response->get_error_message());
+    echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details. Please try again later.', 'bocs-wordpress') . '</div>';
+    return;
+} else {
+    $subscription = isset($subscription_response['data']) ? $subscription_response['data'] : null;
+}
 
 if (!$subscription) {
     echo '<div class="woocommerce-error">' . esc_html__('Unable to retrieve subscription details.', 'bocs-wordpress') . '</div>';
@@ -101,7 +109,14 @@ if (!empty($bocs_id)) {
         $api_headers
     );
     
-    $bocs_data = isset($bocs_response['data']) ? $bocs_response['data'] : null;
+    // Check if response is a WP_Error before trying to access it as an array
+    if (is_wp_error($bocs_response)) {
+        // Log the error
+        error_log('BOCS API Error: ' . $bocs_response->get_error_message());
+        $bocs_data = null;
+    } else {
+        $bocs_data = isset($bocs_response['data']) ? $bocs_response['data'] : null;
+    }
     
     if ($bocs_data) {
         if (isset($bocs_data['products']) && is_array($bocs_data['products'])) {

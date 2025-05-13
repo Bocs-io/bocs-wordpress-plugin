@@ -313,7 +313,8 @@ class Bocs_Account
                 $subscriptions = ['data' => ['data' => []]];
             }
             
-            if (isset($subscriptions['data']['data'])) {
+            // Check if data key exists before accessing it
+            if (!is_wp_error($subscriptions) && isset($subscriptions['data']['data'])) {
                 if (class_exists('Bocs_Log_Handler')) {
                     $logger->insert_log('debug', '[Subscriptions Page] Final subscription data', [
                         'count' => count($subscriptions['data']['data']),
@@ -323,15 +324,15 @@ class Bocs_Account
             } else {
                 if (class_exists('Bocs_Log_Handler')) {
                     $logger->insert_log('debug', '[Subscriptions Page] No subscriptions found', [
-                        'response_keys' => isset($subscriptions) ? array_keys($subscriptions) : 'no response',
-                        'data_keys' => isset($subscriptions['data']) ? array_keys($subscriptions['data']) : 'no data'
+                        'response_keys' => isset($subscriptions) && !is_wp_error($subscriptions) ? array_keys($subscriptions) : 'no response',
+                        'data_keys' => isset($subscriptions) && !is_wp_error($subscriptions) && isset($subscriptions['data']) ? array_keys($subscriptions['data']) : 'no data'
                     ]);
                 }
             }
             
             // Format subscriptions data for template
             $subscriptions_formatted = array();
-            if (isset($subscriptions['data']['data']) && is_array($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
+            if (!is_wp_error($subscriptions) && isset($subscriptions['data']['data']) && is_array($subscriptions['data']['data']) && !empty($subscriptions['data']['data'])) {
                 foreach ($subscriptions['data']['data'] as $subscription) {
                     if (!isset($subscription['id'])) {
                         continue; // Skip invalid subscription entries
