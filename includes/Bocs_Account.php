@@ -95,6 +95,29 @@ class Bocs_Account
         
         // Add init action to handle payment method redirect
         add_action('wp', array($this, 'handle_payment_setup_redirect'));
+        
+        // Enqueue subscription styles on my-account page
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_account_styles'));
+    }
+    
+    /**
+     * Enqueue styles needed for the my-account page
+     */
+    public function enqueue_account_styles() {
+        if (is_account_page()) {
+            // Ensure all subscription-related styles are loaded
+            wp_enqueue_style('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/css/bocs-subscriptions.css', array(), "20250513.1");
+            
+            // Also load the subscription JavaScript
+            wp_enqueue_script('bocs-subscriptions', BOCS_PLUGIN_URL . 'assets/js/bocs-subscriptions.js', array('jquery'), "20250513.2", true);
+            
+            // Create a nonce for BOCS AJAX operations
+            $bocs_ajax_nonce = wp_create_nonce('bocs-ajax-nonce');
+            
+            // Add AJAX nonce for BOCS operations
+            wp_add_inline_script('bocs-subscriptions', 'window.bocs_ajax_nonce = "' . $bocs_ajax_nonce . '";', 'before');
+            wp_add_inline_script('bocs-subscriptions', 'window.ajaxurl = "' . admin_url('admin-ajax.php') . '";', 'before');
+        }
     }
 
     /**
