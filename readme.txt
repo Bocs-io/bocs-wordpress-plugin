@@ -1,4 +1,4 @@
-v0.0.154 05/13/2025
+v0.0.154 05/13/2025 - Hotfix
 * Fix: Improve accordion behavior and add error handling for subscriptions
 * Refactor: Centralize script loading for account pages
 
