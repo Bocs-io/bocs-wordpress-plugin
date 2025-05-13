@@ -1,3 +1,7 @@
+v0.0.154 05/13/2025
+* Fix: Improve accordion behavior and add error handling for subscriptions
+* Refactor: Centralize script loading for account pages
+
 v0.0.153 05/12/2025
 * Feature: Improve internationalization with proper initialization
 * Feature: Force save payment method for subscriptions with JavaScript
